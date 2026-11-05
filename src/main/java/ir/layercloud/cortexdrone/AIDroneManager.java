@@ -268,8 +268,19 @@ public class AIDroneManager {
         }
     }
 
+    private boolean anyDroneBusy() {
+        for (DroneController c : this.controllersById.values()) if (c != null && c.drone != null && !c.drone.field_70128_L && isDroneBusy(c)) return true;
+        return false;
+    }
+
+    public static boolean isDroneBusy(DroneController c) {
+        if (c.task.isActive() || c.hasActiveTaskOrLoop(0) || c.isScriptRunning()
+            || !c.mineQueue.isEmpty() || c.currentMineTarget != null) return true;
+        return c.mode == Mode.GOTO || c.mode == Mode.MINE || c.mode == Mode.HUNT || c.mode == Mode.CARRY
+            || c.mode == Mode.DEPOSIT || c.mode == Mode.DROP;
+    }
     public void onServerTickEnd() {
-        this.chunkLoader.tickPolicy();
+        this.chunkLoader.tickPolicy(anyDroneBusy());
         this.rpcDispatcher.onServerTickEnd();
         this.tickCounter++;
         if (this.tickCounter % 40 == 0) {

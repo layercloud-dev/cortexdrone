@@ -93,15 +93,16 @@ of stacking behind it. The classifier lives in
 The AI chunk manager is player-driven:
 
 - after a player logs in, AI loading stays closed for 10 seconds;
-- while loading is open, AI chunks are loaded/forced only inside a player's
-  server view distance;
-- AI-loaded chunks outside every player's view distance are dropped;
+- while a player is online, active work may load chunks anywhere;
+- when no drone has active work, AI-loaded chunks outside every player's view
+  distance are dropped;
 - after the last player logs out, AI chunks are kept for 10 seconds, then all
   AI tickets and AI-loaded chunks are released.
 
-Only chunks explicitly loaded by the AI are candidates for unloading; chunks
-loaded by players or other mods are never dropped by this manager. Chunks are
-loaded with `World.getChunkFromChunkCoords` (chunk coordinates). Feeding chunk
+This means a running task never has chunks pulled out from under it. Only
+chunks explicitly loaded by the AI are candidates for unloading; chunks loaded
+by players or other mods are never dropped by this manager. Chunks are loaded
+with `World.getChunkFromChunkCoords` (chunk coordinates). Feeding chunk
 coordinates to `World.getChunkFromBlockCoords` is wrong because it shifts right
 by four internally.
 

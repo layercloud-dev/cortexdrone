@@ -6,6 +6,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.harness.PlayerChunkOwnership;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.action.block.BlockActionService;
 import ir.layercloud.cortexdrone.action.combat.CombatService;
@@ -43,10 +44,14 @@ public class TickService {
         if (ctrl.followAnchorCooldown > 0) ctrl.followAnchorCooldown--;
         if (ctrl.breadcrumbCooldown > 0) ctrl.breadcrumbCooldown--;
 
-        // The AI is allowed to work only while the player policy is open and
-        // the drone is inside a player's view distance. Outside that window it
-        // hovers instead of pulling new chunks in.
-        if (!this.manager.getChunkLoader().isAiAllowedAt(world, d.field_70165_t, d.field_70161_v)) {
+        // The AI is allowed to work while the player policy is open. An idle
+        // drone outside player view pauses instead of reloading chunks that
+        // the policy just unloaded.
+        int curCx = MathHelper.func_76128_c(d.field_70165_t) >> 4;
+        int curCz = MathHelper.func_76128_c(d.field_70161_v) >> 4;
+        boolean busy = AIDroneManager.isDroneBusy(ctrl);
+        boolean inView = PlayerChunkOwnership.isWithinAnyPlayerView(world, curCx, curCz);
+        if (!this.manager.getChunkLoader().isLoadAllowed() || (!busy && !inView)) {
             FlightPathfinder.setDroneFlightTarget(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, 0.05f);
             d.field_70159_w *= 0.5;
             d.field_70181_x *= 0.5;

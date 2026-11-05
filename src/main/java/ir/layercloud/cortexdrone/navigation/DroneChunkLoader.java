@@ -27,9 +27,9 @@ import static ir.layercloud.cortexdrone.harness.PlayerChunkOwnership.isPlayerMan
  * <ul>
  *   <li>AI loading is closed while nobody is online and for the first 10s
  *       after a player logs in;</li>
- *   <li>while loading is open, the AI may load and force chunks only inside a
- *       player's server view distance;</li>
- *   <li>AI-loaded chunks outside every player's view distance are dropped;</li>
+ *   <li>while a player is online, active work may load chunks anywhere;</li>
+ *   <li>AI-loaded chunks outside every player's view distance are dropped only
+ *       when no drone has active work, so a running task never loses chunks;</li>
  *   <li>after the last player logs out, AI chunks are kept for 10s, then all
  *       AI tickets and AI-loaded chunks are released.</li>
  * </ul>
@@ -70,7 +70,7 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     // ------------------------------------------------------------------
 
     /** Called once per server tick from AIDroneManager. */
-    public synchronized void tickPolicy() {
+    public synchronized void tickPolicy(boolean anyDroneBusy) {
         this.policy.tick(MinecraftServer.func_71276_C());
         if (this.policy.isUnloadAll()) {
             if (!this.unloadedAll) {
@@ -79,22 +79,16 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
             }
         } else {
             this.unloadedAll = false;
-            // Unloading AI chunks outside view is not delayed by the login
-            // grace; only new loading waits for the 10s gate.
-            if (this.policy.hasPlayerOnline()) unloadAiOutsideView();
+            // Never pull chunks out from under an active task. Once every drone
+            // is idle, unload AI chunks outside the current player view.
+            if (this.policy.hasPlayerOnline() && !anyDroneBusy) {
+                unloadAiOutsideView();
+            }
         }
     }
 
     public boolean isLoadAllowed() {
         return this.policy.isLoadAllowed();
-    }
-
-    /** Gate + player-view check used by movement/action ticking. */
-    public boolean isAiAllowedAt(World world, double x, double z) {
-        if (!this.policy.isLoadAllowed() || !(world instanceof WorldServer)) return false;
-        int cx = MathHelper.func_76128_c(x) >> 4;
-        int cz = MathHelper.func_76128_c(z) >> 4;
-        return PlayerChunkOwnership.isWithinAnyPlayerView(world, cx, cz);
     }
 
     /**
@@ -180,11 +174,6 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         int cx = MathHelper.func_76128_c(ctrl.drone.field_70165_t) >> 4;
         int cz = MathHelper.func_76128_c(ctrl.drone.field_70161_v) >> 4;
 
-        if (!PlayerChunkOwnership.isWithinAnyPlayerView(world, cx, cz)) {
-            releaseDroneTicket(ctrl);
-            return;
-        }
-
         boolean movedChunk = ctrl.forcedChunkX != cx || ctrl.forcedChunkZ != cz || ctrl.forcedDim != dim;
         boolean periodic = ctrl.tickClock - ctrl.lastChunkPlanTick >= 5;
         if (!movedChunk && !periodic && this.droneTickets.containsKey(ctrl.id)) return;
@@ -235,7 +224,6 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         WorldServer world = (WorldServer) w;
         int cx = MathHelper.func_76128_c(ctrl.drone.field_70165_t) >> 4;
         int cz = MathHelper.func_76128_c(ctrl.drone.field_70161_v) >> 4;
-        if (!PlayerChunkOwnership.isWithinAnyPlayerView(world, cx, cz)) return;
         Ticket ticket = this.droneTickets.get(ctrl.id);
         if (ticket == null || ticket.world != world) return;
         ChunkCoordIntPair pair = new ChunkCoordIntPair(cx, cz);
@@ -289,18 +277,7 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         if (depth <= 0 || depth > DroneChunkPlanner.MAX_TICKET_CHUNKS) {
             depth = DroneChunkPlanner.MAX_TICKET_CHUNKS;
         }
-        List<ChunkCoordIntPair> desired = new ArrayList<ChunkCoordIntPair>();
-        for (int i = 0; i < plan.size() && desired.size() < depth; i++) {
-            ChunkCoordIntPair pair = plan.get(i);
-            if (PlayerChunkOwnership.isWithinAnyPlayerView(world,
-                pair.field_77276_a, pair.field_77275_b)) {
-                desired.add(pair);
-            }
-        }
-        if (desired.isEmpty()) {
-            releaseClaimsOutsideView(world, ticket);
-            return 0;
-        }
+        List<ChunkCoordIntPair> desired = plan.size() > depth ? plan.subList(0, depth) : plan;
         Set<ChunkCoordIntPair> desiredSet = new HashSet<ChunkCoordIntPair>(desired);
         ChunkCoordIntPair center = desired.get(0);
 
@@ -313,13 +290,6 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         Set<ChunkCoordIntPair> current = new HashSet<ChunkCoordIntPair>(ticket.getChunkList());
 
         for (ChunkCoordIntPair old : current) {
-            if (!PlayerChunkOwnership.isWithinAnyPlayerView(world,
-                old.field_77276_a, old.field_77275_b)) {
-                pending.remove(old);
-                unforce(ticket, old);
-                unloadIfAiLoaded(world, old);
-                continue;
-            }
             if (desiredSet.contains(old)) {
                 pending.remove(old);
                 continue;
@@ -382,24 +352,10 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         return loads;
     }
 
-    private void releaseClaimsOutsideView(WorldServer world, Ticket ticket) {
-        for (ChunkCoordIntPair pair : new ArrayList<ChunkCoordIntPair>(ticket.getChunkList())) {
-            if (!PlayerChunkOwnership.isWithinAnyPlayerView(world,
-                pair.field_77276_a, pair.field_77275_b)) {
-                unforce(ticket, pair);
-                unloadIfAiLoaded(world, pair);
-            }
-        }
-    }
-
     private int loadHotChunks(WorldServer world, List<ChunkCoordIntPair> plan, int budget) {
         int loaded = 0;
         for (ChunkCoordIntPair pair : plan) {
             if (budget <= 0) break;
-            if (!PlayerChunkOwnership.isWithinAnyPlayerView(world,
-                pair.field_77276_a, pair.field_77275_b)) {
-                continue;
-            }
             if (isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) continue;
             if (world.field_73059_b.func_73149_a(pair.field_77276_a, pair.field_77275_b)) continue;
             loadChunk(world, pair);
@@ -420,15 +376,6 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
             world.func_72964_e(pair.field_77276_a, pair.field_77275_b);
             if (!wasLoaded) aiLoadedSet(world).add(pair);
         } catch (Throwable ignored) {
-        }
-    }
-
-    private void unloadIfAiLoaded(WorldServer world, ChunkCoordIntPair pair) {
-        Set<ChunkCoordIntPair> loaded = this.aiLoaded.get(world);
-        if (loaded == null || !loaded.remove(pair)) return;
-        if (!PlayerChunkWatchRegistry.isWatched(world,
-            pair.field_77276_a, pair.field_77275_b)) {
-            dropChunk(world, pair);
         }
     }
 
@@ -471,7 +418,6 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
 
     private synchronized boolean requestChunkInternal(World world, int cx, int cz) {
         if (!(world instanceof WorldServer) || !this.policy.isLoadAllowed()) return false;
-        if (!PlayerChunkOwnership.isWithinAnyPlayerView(world, cx, cz)) return false;
         WorldServer ws = (WorldServer) world;
         if (ws.field_73059_b.func_73149_a(cx, cz)) return true;
         loadChunk(ws, new ChunkCoordIntPair(cx, cz));
@@ -487,8 +433,7 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         WorldServer ws = (WorldServer) world;
         if (ws.field_73059_b.func_73149_a(cx, cz)) return true;
         DroneChunkLoader loader = instance;
-        return loader != null && loader.policy.isLoadAllowed()
-            && PlayerChunkOwnership.isWithinAnyPlayerView(world, cx, cz);
+        return loader != null && loader.policy.isLoadAllowed();
     }
 
     // ------------------------------------------------------------------

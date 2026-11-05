@@ -11,8 +11,8 @@ import net.minecraft.world.WorldServer;
  * Player-owned chunk policy used by DroneChunkLoader.
  *
  * <p>A chunk is player-managed when Forge reports it watched by a player or
- * when it lies inside any player's server view square. The AI only loads
- * chunks inside that square; AI-loaded chunks outside it are unloaded.</p>
+ * when it lies inside any player's server view square. Active AI work may load
+ * outside that square; idle AI chunks outside it are unloaded.</p>
  */
 public final class PlayerChunkOwnership {
     public static final int PROTECTION_MARGIN = 0;

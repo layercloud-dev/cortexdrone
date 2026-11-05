@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.action.effect;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.world.ChunkAccess;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -211,6 +212,7 @@ public class LightingAura {
             int cz = unpackChunkZ(ce.getKey().longValue());
             int mask = ce.getValue().intValue() & 0xFFFF;
             if (mask == 0) continue;
+            if (!ChunkAccess.isLoaded(world, cx, cz)) continue;
             Chunk chunk = world.func_72964_e(cx, cz);
             if (chunk == null) continue;
             S21PacketChunkData packet = new S21PacketChunkData(chunk, true, mask);

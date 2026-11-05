@@ -6,7 +6,6 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.harness.PlayerChunkOwnership;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.action.block.BlockActionService;
 import ir.layercloud.cortexdrone.action.combat.CombatService;
@@ -44,22 +43,6 @@ public class TickService {
         if (ctrl.followAnchorCooldown > 0) ctrl.followAnchorCooldown--;
         if (ctrl.breadcrumbCooldown > 0) ctrl.breadcrumbCooldown--;
 
-        // The AI is allowed to work while the player policy is open. An idle
-        // drone outside player view pauses instead of reloading chunks that
-        // the policy just unloaded.
-        int curCx = MathHelper.func_76128_c(d.field_70165_t) >> 4;
-        int curCz = MathHelper.func_76128_c(d.field_70161_v) >> 4;
-        boolean busy = AIDroneManager.isDroneBusy(ctrl);
-        boolean inView = PlayerChunkOwnership.isWithinAnyPlayerView(world, curCx, curCz);
-        if (!this.manager.getChunkLoader().isLoadAllowed() || (!busy && !inView)) {
-            FlightPathfinder.setDroneFlightTarget(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, 0.05f);
-            d.field_70159_w *= 0.5;
-            d.field_70181_x *= 0.5;
-            d.field_70179_y *= 0.5;
-            return;
-        }
-        this.manager.getChunkLoader().updateDroneTicket(ctrl);
-        this.manager.getChunkLoader().ensureDroneChunk(ctrl);
         // OC hardware bridge is expensive (reflection + buffer top-ups); amortize every 40 ticks per drone
         boolean machineRunningOk = (ctrl.tickClock % 40 == 1) ? this.manager.ensureMachineRunningState(d) : d.isRunning();
         ctrl.orbitAngle += 0.045f;

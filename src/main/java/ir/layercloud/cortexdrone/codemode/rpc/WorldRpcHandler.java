@@ -8,8 +8,8 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.navigation.DroneChunkLoader;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
+import ir.layercloud.cortexdrone.world.ChunkAccess;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import ir.layercloud.cortexdrone.world.StructureArchitect;
 import ir.layercloud.cortexdrone.world.WorldScanner;
@@ -60,14 +60,10 @@ public class WorldRpcHandler implements RpcHandler {
         res.addProperty("ok", true);
         Drone d = ctrl.drone;
         World world = d.field_70170_p;
-        DroneChunkLoader chunkLoader = DroneChunkLoader.getInstance();
-        if (chunkLoader == null || !chunkLoader.isLoadAllowed()) {
-            return chunkNotLoaded("player policy closed");
-        }
 
-        if (!world.field_72995_K && !DroneChunkLoader.canUseChunk(world,
-            MathHelper.func_76128_c(d.field_70165_t) >> 4,
-            MathHelper.func_76128_c(d.field_70161_v) >> 4)) {
+        if (!world.field_72995_K && !ChunkAccess.isBlockLoaded(world,
+            MathHelper.func_76128_c(d.field_70165_t),
+            MathHelper.func_76128_c(d.field_70161_v))) {
             return chunkNotLoaded("drone chunk");
         }
 
@@ -75,8 +71,7 @@ public class WorldRpcHandler implements RpcHandler {
             int x = args.has("x") ? args.get("x").getAsInt() : MathHelper.func_76128_c(d.field_70165_t);
             int y = args.has("y") ? args.get("y").getAsInt() : MathHelper.func_76128_c(d.field_70163_u);
             int z = args.has("z") ? args.get("z").getAsInt() : MathHelper.func_76128_c(d.field_70161_v);
-            FlightPathfinder.ensureChunkLoaded(world, x, z);
-            if (!DroneChunkLoader.canUseChunk(world, x >> 4, z >> 4)) {
+            if (!ChunkAccess.isBlockLoaded(world, x, z)) {
                 return chunkNotLoaded("get_block");
             }
             Block b = world.func_147439_a(x, y, z);
@@ -106,8 +101,7 @@ public class WorldRpcHandler implements RpcHandler {
             int minZ = Math.min(z1, z2), maxZ = Math.min(minZ + 32, Math.max(z1, z2));
             for (int cx = (minX >> 4); cx <= (maxX >> 4); cx++) {
                 for (int cz = (minZ >> 4); cz <= (maxZ >> 4); cz++) {
-                    FlightPathfinder.ensureChunkLoaded(world, (cx << 4) + 8, (cz << 4) + 8);
-                    if (!DroneChunkLoader.canUseChunk(world, cx, cz)) {
+                    if (!ChunkAccess.isLoaded(world, cx, cz)) {
                         return chunkNotLoaded("get_blocks_in_box");
                     }
                 }
@@ -159,8 +153,7 @@ public class WorldRpcHandler implements RpcHandler {
         if (m.equals("get_top_y")) {
             int x = args.get("x").getAsInt();
             int z = args.get("z").getAsInt();
-            FlightPathfinder.ensureChunkLoaded(world, x, z);
-            if (!DroneChunkLoader.canUseChunk(world, x >> 4, z >> 4)) {
+            if (!ChunkAccess.isBlockLoaded(world, x, z)) {
                 return chunkNotLoaded("get_top_y");
             }
             int topY = world.func_72976_f(x, z);
@@ -182,7 +175,7 @@ public class WorldRpcHandler implements RpcHandler {
             int sz = args.has("z") ? args.get("z").getAsInt()
                 : MathHelper.func_76128_c(player != null ? player.field_70161_v : d.field_70161_v);
             int maxR = args.has("maxRadius") ? args.get("maxRadius").getAsInt() : 18;
-            if (!DroneChunkLoader.canUseChunk(world, sx >> 4, sz >> 4)) {
+            if (!ChunkAccess.isBlockLoaded(world, sx, sz)) {
                 return chunkNotLoaded("scan_room");
             }
             return this.worldScanner.scanRoom3D(world, sx, sy, sz, maxR);
@@ -202,7 +195,7 @@ public class WorldRpcHandler implements RpcHandler {
             for (int x = cx - radius; x <= cx + radius; x++) {
                 for (int y = minY; y <= maxY; y++) {
                     for (int z = cz - radius; z <= cz + radius; z++) {
-                        if (!DroneChunkLoader.canUseChunk(world, x >> 4, z >> 4)) continue;
+                        if (!ChunkAccess.isBlockLoaded(world, x, z)) continue;
                         if (world.func_147437_c(x, y, z)) continue;
                         Block b = world.func_147439_a(x, y, z);
                         int meta = world.func_72805_g(x, y, z);
@@ -249,7 +242,7 @@ public class WorldRpcHandler implements RpcHandler {
             int cx = args.has("x") ? args.get("x").getAsInt() : MathHelper.func_76128_c(player != null ? player.field_70165_t : d.field_70165_t);
             int cy = args.has("y") ? args.get("y").getAsInt() : MathHelper.func_76128_c(player != null ? player.field_70163_u : d.field_70163_u);
             int cz = args.has("z") ? args.get("z").getAsInt() : MathHelper.func_76128_c(player != null ? player.field_70161_v : d.field_70161_v);
-            if (!DroneChunkLoader.canUseChunk(world, cx >> 4, cz >> 4)) {
+            if (!ChunkAccess.isBlockLoaded(world, cx, cz)) {
                 return chunkNotLoaded("scan_veins");
             }
             return this.worldScanner.scanConnectedVeins(world, cx, cy, cz, radius, filter);
@@ -261,8 +254,7 @@ public class WorldRpcHandler implements RpcHandler {
             double sx = player != null ? player.field_70165_t : d.field_70165_t;
             double sy = player != null ? player.field_70163_u : d.field_70163_u;
             double sz = player != null ? player.field_70161_v : d.field_70161_v;
-            if (!DroneChunkLoader.canUseChunk(world,
-                MathHelper.func_76128_c(sx) >> 4, MathHelper.func_76128_c(sz) >> 4)) {
+            if (!ChunkAccess.isBlockLoaded(world, sx, sz)) {
                 return chunkNotLoaded("find_distant");
             }
             List<int[]> found = this.worldScanner.findDistantResourceOrBiome(world, ctrl, sx, sy, sz, target, maxR);
@@ -459,7 +451,7 @@ public class WorldRpcHandler implements RpcHandler {
     private static JsonObject chunkNotLoaded(String source) {
         JsonObject res = new JsonObject();
         res.addProperty("ok", false);
-        res.addProperty("error", "Chunk is not loaded inside a player's view: " + source);
+        res.addProperty("error", "Chunk is not loaded: " + source);
         return res;
     }
 }

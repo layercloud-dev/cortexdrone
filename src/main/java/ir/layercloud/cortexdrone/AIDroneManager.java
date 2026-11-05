@@ -20,7 +20,6 @@ import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.navigation.DroneChunkLoader;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.world.DocLookupService;
@@ -57,7 +56,6 @@ public class AIDroneManager {
     private AIConfig config = new AIConfig();
 
     private final DroneLogger logger = new DroneLogger();
-    private final DroneChunkLoader chunkLoader;
     private final FlightPathfinder pathfinder;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
@@ -85,7 +83,6 @@ public class AIDroneManager {
     private final java.util.Set<UUID> despawnedUuids = java.util.Collections.synchronizedSet(new java.util.HashSet<UUID>());
     public AIDroneManager(CortexDroneMod mod) {
         this.mod = mod;
-        this.chunkLoader = new DroneChunkLoader(mod, this.logger);
         this.pathfinder = new FlightPathfinder(this, this.logger);
         this.worldScanner = new WorldScanner(this.logger, this.config);
         this.inventoryService = new InventoryService(this.logger);
@@ -268,19 +265,7 @@ public class AIDroneManager {
         }
     }
 
-    private boolean anyDroneBusy() {
-        for (DroneController c : this.controllersById.values()) if (c != null && c.drone != null && !c.drone.field_70128_L && isDroneBusy(c)) return true;
-        return false;
-    }
-
-    public static boolean isDroneBusy(DroneController c) {
-        if (c.task.isActive() || c.hasActiveTaskOrLoop(0) || c.isScriptRunning()
-            || !c.mineQueue.isEmpty() || c.currentMineTarget != null) return true;
-        return c.mode == Mode.GOTO || c.mode == Mode.MINE || c.mode == Mode.HUNT || c.mode == Mode.CARRY
-            || c.mode == Mode.DEPOSIT || c.mode == Mode.DROP;
-    }
     public void onServerTickEnd() {
-        this.chunkLoader.tickPolicy(anyDroneBusy());
         this.rpcDispatcher.onServerTickEnd();
         this.tickCounter++;
         if (this.tickCounter % 40 == 0) {
@@ -444,7 +429,6 @@ public class AIDroneManager {
         if (ownerName != null && !"Server".equalsIgnoreCase(ownerName)) {
             this.controllersByOwner.put(CortexDroneMod.normKey(ownerName), ctrl);
         }
-        this.chunkLoader.updateDroneTicket(ctrl);
         return ctrl;
     }
 
@@ -550,7 +534,6 @@ public class AIDroneManager {
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
         this.effectService.clearLighting(ctrl);
         ctrl.despawned = true;
-        this.chunkLoader.releaseDroneTicket(ctrl);
         UUID duid = d.func_110124_au();
         if (duid != null) {
             this.despawnedUuids.add(duid);

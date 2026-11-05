@@ -64,7 +64,7 @@ public class StructureArchitect {
     }
 
     private static int getSolidGroundY(World world, int x, int z, int refY) {
-        FlightPathfinder.ensureChunkLoaded(world, x, z);
+        if (!ChunkAccess.isBlockLoaded(world, x, z)) return refY;
         int top = Math.min(250, Math.max(refY + 14, world.func_72976_f(x, z) + 2));
         int minY = Math.max(4, refY - 16);
         for (int y = top; y >= minY; y--) {

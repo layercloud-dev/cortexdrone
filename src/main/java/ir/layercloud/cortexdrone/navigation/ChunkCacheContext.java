@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.navigation;
 
+import ir.layercloud.cortexdrone.world.ChunkAccess;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -30,16 +31,14 @@ public class ChunkCacheContext {
     }
 
     /**
-     * Loads a chunk only when pathfinding actually reads it. The old eager
-     * 7x7 preload generated/loaded up to 49 chunks per repath, including
-     * chunks the search never touched, and then left them to vanilla's
-     * unload queue.
+     * Reads a chunk only if it is already loaded. This class never asks the
+     * server to load or generate a chunk.
      */
     private Chunk chunkAt(int gridX, int gridZ) {
         if (!this.resolved[gridX][gridZ]) {
             int cx = this.baseChunkX + gridX;
             int cz = this.baseChunkZ + gridZ;
-            if (DroneChunkLoader.requestChunk(this.world, cx, cz)) {
+            if (ChunkAccess.isLoaded(this.world, cx, cz)) {
                 try {
                     this.chunks[gridX][gridZ] = this.world.func_72964_e(cx, cz);
                 } catch (Throwable ignored) {
@@ -72,7 +71,7 @@ public class ChunkCacheContext {
             // route through a chunk the AI is not allowed to load.
             return Blocks.field_150357_h;
         }
-        if (!DroneChunkLoader.requestChunk(this.world, x >> 4, z >> 4)) {
+        if (!ChunkAccess.isBlockLoaded(this.world, x, z)) {
             return Blocks.field_150357_h;
         }
         return this.world.func_147439_a(x, y, z);

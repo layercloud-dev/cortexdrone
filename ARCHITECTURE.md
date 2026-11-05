@@ -88,29 +88,15 @@ No instruction is queued for later. A modification replaces the session instead
 of stacking behind it. The classifier lives in
 `harness/TaskIntentClassifier.java` and is covered by JUnit tests.
 
-## Chunk ownership
+## Chunk access
 
-The AI chunk manager is player-driven:
+CortexDrone does **not** load, force, ticket or unload chunks. Chunk ownership
+belongs to vanilla and any server-side chunk-loader feature.
 
-- after a player logs in, AI loading stays closed for 10 seconds;
-- while a player is online, active work may load chunks anywhere;
-- when no drone has active work, AI-loaded chunks outside every player's view
-  distance are dropped;
-- after the last player logs out, AI chunks are kept for 10 seconds, then all
-  AI tickets and AI-loaded chunks are released.
-
-This means a running task never has chunks pulled out from under it. Only
-chunks explicitly loaded by the AI are candidates for unloading; chunks loaded
-by players or other mods are never dropped by this manager. Chunks are loaded
-with `World.getChunkFromChunkCoords` (chunk coordinates). Feeding chunk
-coordinates to `World.getChunkFromBlockCoords` is wrong because it shifts right
-by four internally.
-
-Forge ticket semantics: `forceChunk` only records a claim and never loads;
-`reorderChunk` only changes eviction order; `releaseTicket` and `unforceChunk`
-only drop the mod's own claims. The drone's current chunk is still claimed while
-the policy is open because Forge only ticks an entity in a non-forced chunk if a
-large surrounding chunk box is loaded.
+The AI only checks whether a chunk is already loaded before reading it through
+`world/ChunkAccess`. RPC, pathfinding caches and world scans treat an unloaded
+chunk as unavailable/solid instead of pulling it in. `ChunkCacheContext` reads
+only loaded chunks and never calls a chunk-loading method.
 
 Instruction handling and world-context scans are dispatched to the server
 thread, so no chunk/world object is read from the LLM or heartbeat threads.

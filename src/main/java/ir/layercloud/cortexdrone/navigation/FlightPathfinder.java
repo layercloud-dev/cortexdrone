@@ -59,10 +59,6 @@ public class FlightPathfinder {
         return (((long) x & 0x3FFFFFFL) << 38) | (((long) z & 0x3FFFFFFL) << 12) | ((long) y & 0xFFFL);
     }
 
-    public static void ensureChunkLoaded(World world, double x, double z) {
-        DroneChunkLoader.ensureChunkLoadedStatic(world, x, z);
-    }
-
     public static void setDroneFlightTarget(Drone d, double tx, double ty, double tz, float accel) {
         d.targetX_$eq((float) tx);
         d.targetY_$eq((float) ty);
@@ -448,14 +444,6 @@ public class FlightPathfinder {
             ctrl.pathGoalY = effGy;
             ctrl.pathGoalZ = effGz;
             ctrl.repathCooldown = horizDist > 18.0 ? 8 : 12;
-            // Force the freshly-planned travel corridor NOW (not on the next tick):
-            // A* can read unloaded chunks on demand, but without a ticket vanilla
-            // is free to unload them again before the drone gets there.
-            DroneChunkLoader loader = DroneChunkLoader.getInstance();
-            if (loader != null) {
-                ctrl.lastChunkPlanTick = -1000;
-                loader.updateDroneTicket(ctrl);
-            }
 
             // If trapped underground with a partial path, trigger automatic breadcrumb backtrack or Baritone dig-escape
             if (!"direct".equals(route) && !"tunnel".equals(route) && !droneInOpenSky && ctrl.lastPathPartial

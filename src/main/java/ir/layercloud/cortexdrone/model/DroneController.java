@@ -166,14 +166,6 @@ public class DroneController {
     public double lastZ;
     public float orbitAngle = 0.0f;
     public volatile boolean despawned = false;
-    public int forcedChunkX = Integer.MIN_VALUE;
-    public int forcedChunkZ = Integer.MIN_VALUE;
-    public int forcedDim = Integer.MIN_VALUE;
-    // Chunk-corridor plan generation tick (player-aware force loading).
-    public int lastChunkPlanTick = -1000;
-    public int lastChunkLogTick = -10000;
-    public int lastChunkManaged = -1;
-    public int lastChunkPlayerOwned = -1;
 
     public DroneController(int id, Drone drone, String name, String ownerName) {
         this.id = id;

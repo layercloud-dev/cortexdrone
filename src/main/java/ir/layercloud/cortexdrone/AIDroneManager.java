@@ -14,7 +14,7 @@ import ir.layercloud.cortexdrone.action.block.BlockActionService;
 import ir.layercloud.cortexdrone.action.combat.CombatService;
 import ir.layercloud.cortexdrone.action.effect.EffectActionService;
 import ir.layercloud.cortexdrone.action.interact.InteractionActionService;
-import ir.layercloud.cortexdrone.navigation.action.NavigationService;
+import ir.layercloud.cortexdrone.action.movement.NavigationService;
 import ir.layercloud.cortexdrone.service.TickService;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.inventory.InventoryService;

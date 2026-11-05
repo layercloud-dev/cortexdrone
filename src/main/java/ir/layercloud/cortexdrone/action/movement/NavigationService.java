@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.navigation.action;
+package ir.layercloud.cortexdrone.action.movement;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;

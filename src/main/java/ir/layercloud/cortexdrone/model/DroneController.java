@@ -22,7 +22,7 @@ public class DroneController {
     public double goalX;
     public double goalY;
     public double goalZ;
-    // Master navigation route selected by the AI: auto | direct | tunnel | up.
+    // Master navigation route selected by the AI: auto | direct | tunnel | up | down.
     // "up" routes via the surface first and then continues to the final goal.
     public String navigationRoute = "auto";
     public boolean navViaSurface = false;

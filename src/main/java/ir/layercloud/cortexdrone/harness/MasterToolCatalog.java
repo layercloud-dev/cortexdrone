@@ -7,8 +7,9 @@ package ir.layercloud.cortexdrone.harness;
  */
 public final class MasterToolCatalog {
     public static final String[] METHODS = new String[]{
-        "state", "inspect", "navigate", "break_block", "place_block",
-        "interact_block", "use_item", "transfer", "craft", "effect", "skills", "cancel"
+        "state", "inspect", "navigate", "tunnel", "digup", "digdown",
+        "break_block", "place_block", "interact_block", "use_item",
+        "transfer", "craft", "effect", "skills", "cancel"
     };
 
     public static final String[] REMOVED_COMPOSITE_TOOLS = new String[]{

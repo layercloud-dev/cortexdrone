@@ -50,7 +50,9 @@ public class MasterRpcHandler implements RpcHandler {
         }
         if ("state".equals(m)) return state(ctrl, player, args);
         if ("inspect".equals(m)) return inspect(ctrl, player, args);
-        if ("navigate".equals(m)) return this.manager.getActionRegistry().handle(ctrl, player, "navigate", args);
+        if ("navigate".equals(m) || "tunnel".equals(m) || "digup".equals(m) || "digdown".equals(m)) {
+            return this.manager.getActionRegistry().handle(ctrl, player, m, args);
+        }
         if ("break_block".equals(m)) return breakBlock(ctrl, player, args);
         if ("place_block".equals(m)) return placeBlock(ctrl, player, args);
         if ("interact_block".equals(m)) return interactBlock(ctrl, player, args);

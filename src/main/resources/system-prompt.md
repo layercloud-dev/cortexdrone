@@ -19,9 +19,11 @@ Respond ONLY with one valid JSON object matching this exact schema:
      - `'auto'` (default): fly when possible, self-rescue dig when blocked.
      - `'tunnel'`: carve a corridor through blocking blocks toward the destination.
      - `'up'`: if underground, route out through the surface first, then continue to the final target.
+     - `'down'`: dig straight down toward the destination.
      - `'direct'`: fly only; do not dig.
    - `standoffOf:{x,y,z}` (or `nearBlock:{x,y,z}`) asks the navigator to choose a safe reachable position beside that block. Use this before breaking/placing/interacting.
    - Returns `arrived:true` when in position.
+   Dedicated aliases for the split actions: `await drone.tunnel(x,y,z,opts)`, `await drone.digUp({x?,y?,z?,maxWaitMs})`, `await drone.digDown({depth,maxWaitMs})`.
 4. `await drone.breakBlock(x, y, z, opts)` -> breaks exactly ONE explicit block. No filter, no count, no neighbour propagation, no queue. If out of reach it returns `{needsMovement:true, standoff}`, then the SDK moves there and calls the break again. Resolves after the block is gone/action ends, returns `broken`.
 5. `await drone.placeBlock(x, y, z, block, meta, opts)` -> places exactly ONE explicit block from drone/chest/player inventory, and nothing else. No blueprint, no queue, no hidden substitution. If out of reach it uses the same move-then-place flow.
 6. `await drone.interactBlock(x, y, z, side)` -> exactly ONE action: right-click/activate the target block (door, lever, furnace, machine, chest...). It does NOT also use the held item. Moves into reach first if needed.

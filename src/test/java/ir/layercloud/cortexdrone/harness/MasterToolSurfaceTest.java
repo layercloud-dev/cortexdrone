@@ -14,8 +14,9 @@ public class MasterToolSurfaceTest {
     public void onlyMasterPrimitivesAreRegistered() {
         Set<String> actual = new HashSet<String>(Arrays.asList(MasterToolCatalog.METHODS));
         Set<String> expected = new HashSet<String>(Arrays.asList(
-            "state", "inspect", "navigate", "break_block", "place_block",
-            "interact_block", "use_item", "transfer", "craft", "effect", "skills", "cancel"
+            "state", "inspect", "navigate", "tunnel", "digup", "digdown",
+            "break_block", "place_block", "interact_block", "use_item",
+            "transfer", "craft", "effect", "skills", "cancel"
         ));
         assertEquals(expected, actual);
     }

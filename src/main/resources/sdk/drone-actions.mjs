@@ -5,6 +5,13 @@
 //   interact/use -> repeat.
 // Every primitive waits until its own physical action finishes.
 // ---------------------------------------------------------------------------
+const _awaitMovement = async (r, args = {}) => {
+  if (!r || r.ok === false) return r;
+  const maxWaitMs = Number((args && args.maxWaitMs) || 60000);
+  const st = await _waitUntil((s) => s.mode !== 'GOTO' || s.arrived === true, maxWaitMs);
+  return { ...r, ...st, arrived: st.mode !== 'GOTO' || st.arrived === true };
+};
+
 const drone = {
   state: (opts = {}) => rpc('state', _isObj(opts) ? opts : {}),
 
@@ -22,8 +29,8 @@ const drone = {
   },
 
   // route: 'auto' (fly, dig self-rescue when blocked), 'tunnel' (carve a
-  // corridor), 'up' (route through the surface first), 'direct' (fly only).
-  // Resolves only after the navigator arrives or the route gives up.
+  // corridor), 'up' (route through the surface first), 'direct' (fly only),
+  // 'down' (dig straight down). Resolves only after arrival or route failure.
   moveTo: async (x, y, z, opts = {}) => {
     let args;
     if (_isObj(x)) args = { ...x };
@@ -31,11 +38,28 @@ const drone = {
     else args = { x, y, z };
     if (opts && _isObj(opts)) Object.assign(args, opts);
     if (!args.route) args.route = 'auto';
-    const r = await rpc('navigate', args);
-    if (!r || r.ok === false) return r;
-    const maxWaitMs = Number(args.maxWaitMs || 60000);
-    const st = await _waitUntil((s) => s.mode !== 'GOTO' || s.arrived === true, maxWaitMs);
-    return { ...r, ...st, arrived: st.mode !== 'GOTO' || st.arrived === true };
+    return _awaitMovement(await rpc('navigate', args), args);
+  },
+
+  // Dedicated movement actions. They map to the split movement action classes.
+  tunnel: async (x, y, z, opts = {}) => {
+    let args;
+    if (_isObj(x)) args = { ...x };
+    else if (Array.isArray(x)) args = { x: x[0], y: x[1], z: x[2] };
+    else args = { x, y, z };
+    if (opts && _isObj(opts)) Object.assign(args, opts);
+    return _awaitMovement(await rpc('tunnel', args), args);
+  },
+
+  digUp: async (opts = {}) => {
+    const args = _isObj(opts) ? { ...opts } : {};
+    return _awaitMovement(await rpc('digup', args), args);
+  },
+
+  digDown: async (opts = {}) => {
+    const args = _isObj(opts) ? { ...opts } : {};
+    if (typeof opts === 'number') args.depth = opts;
+    return _awaitMovement(await rpc('digdown', args), args);
   },
 
   // Break exactly one explicit block. If out of reach the primitive returns

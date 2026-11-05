@@ -74,6 +74,7 @@ public class ActionRpcHandler implements RpcHandler {
         }
 
         if (m.equals("queue_mine")) {
+            ctrl.clearSelfRescue(false);
             if (args.has("clear") && args.get("clear").getAsBoolean()) {
                 ctrl.mineQueue.clear();
                 ctrl.currentMineTarget = null;
@@ -161,6 +162,7 @@ public class ActionRpcHandler implements RpcHandler {
         }
 
         if (m.equals("break_block")) {
+            ctrl.clearSelfRescue(false);
             int bx = args.get("x").getAsInt();
             int by = args.get("y").getAsInt();
             int bz = args.get("z").getAsInt();
@@ -169,6 +171,7 @@ public class ActionRpcHandler implements RpcHandler {
             ctrl.mineExactQueueOnly = true;
             ctrl.returnToOwnerAfterMine = false;
             ctrl.minedCount = 0;
+            ctrl.mineMatchedCount = 0;
             ctrl.mineTargetCount = 1;
             if (ItemClassifier.isMineableBlock(world, bx, by, bz)) {
                 ctrl.mineQueue.addLast(new int[]{bx, by, bz});

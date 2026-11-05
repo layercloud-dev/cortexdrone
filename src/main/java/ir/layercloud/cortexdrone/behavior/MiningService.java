@@ -128,7 +128,7 @@ public class MiningService {
         World world = d.field_70170_p;
         d.lightColor_$eq(0x00FF66);
 
-        if (ctrl.mineTargetCount > 0 && ctrl.minedCount >= ctrl.mineTargetCount) {
+        if (ctrl.mineTargetCount > 0 && ctrl.mineMatchedCount >= ctrl.mineTargetCount) {
             if (ctrl.currentMineTarget != null) {
                 world.func_147443_d(d.func_145782_y(), ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2], -1);
             }
@@ -140,7 +140,7 @@ public class MiningService {
             ctrl.mineUntilFull = false;
             ctrl.mineTargetCount = 0;
             if (!ctrl.isScriptRunning() && owner != null) {
-                this.manager.droneSay(owner, ctrl, "Reached target of " + ctrl.minedCount + " harvested block(s)! "
+                this.manager.droneSay(owner, ctrl, "Reached target of " + ctrl.mineMatchedCount + " harvested block(s)! "
                     + (deliverBack ? "Flying back to deliver your items." : "Returning to follow mode."));
             }
             this.manager.setDroneMode(ctrl, deliverBack ? Mode.DROP : Mode.FOLLOW, "Reached mineTargetCount");
@@ -298,7 +298,7 @@ public class MiningService {
         }
 
         if (ctrl.currentMineTarget == null) {
-            if (!ctrl.mineExactQueueOnly && (ctrl.mineUntilFull || (ctrl.mineTargetCount > 0 && ctrl.minedCount < ctrl.mineTargetCount))) {
+            if (!ctrl.mineExactQueueOnly && (ctrl.mineUntilFull || (ctrl.mineTargetCount > 0 && ctrl.mineMatchedCount < ctrl.mineTargetCount))) {
                 List<int[]> more = this.worldScanner.findDistantResourceOrBiome(world, ctrl, d.field_70165_t, d.field_70163_u, d.field_70161_v, ctrl.mineFilter, 256);
                 if (!more.isEmpty()) {
                     for (int[] p : more) {
@@ -309,6 +309,10 @@ public class MiningService {
                 }
             }
             boolean deliverBack = !ctrl.isScriptRunning() && (ctrl.returnToOwnerAfterMine || ctrl.mineUntilFull);
+            if (ctrl.escapeResume != null) {
+                resumeAfterSelfRescue(ctrl);
+                return;
+            }
             ctrl.returnToOwnerAfterMine = false;
             ctrl.mineUntilFull = false;
             ctrl.mineTargetCount = 0;
@@ -443,6 +447,16 @@ public class MiningService {
 
                 if (removed) {
                     ctrl.minedCount++;
+                    // The task target ("mine 8 iron") must count only blocks that
+                    // actually match the requested filter. Counting tunnel dirt and
+                    // stone made the drone stop after 8 obstacle blocks without a
+                    // single iron. Box/rect/break tasks are exact-queue, so every
+                    // block they remove is intentional.
+                    if (ctrl.mineTargetCount > 0
+                        && (ctrl.mineExactQueueOnly
+                            || ItemClassifier.matchesMineFilter(block, meta, ctrl.mineFilter))) {
+                        ctrl.mineMatchedCount++;
+                    }
                     int insertedTotal = 0;
                     IInventory inv = d.mainInventory();
                     if (drops != null) {
@@ -479,19 +493,86 @@ public class MiningService {
         }
     }
 
+    /**
+     * Restores the task that was interrupted by a blocked-waypoint self-rescue.
+     * The rescue dig itself is deliberately not counted toward a mine target, so
+     * "mine 64 iron" cannot finish early just because stone was in the way.
+     */
+    private void resumeAfterSelfRescue(DroneController ctrl) {
+        DroneController.TaskSnapshot snap = ctrl.escapeResume;
+        ctrl.escapeResume = null;
+        if (snap == null) {
+            this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Self-rescue complete");
+            return;
+        }
+        ctrl.mineFilter = snap.mineFilter;
+        ctrl.mineExactQueueOnly = snap.mineExactQueueOnly;
+        ctrl.mineUntilFull = snap.mineUntilFull;
+        ctrl.returnToOwnerAfterMine = snap.returnToOwnerAfterMine;
+        ctrl.mineTargetCount = snap.mineTargetCount;
+        ctrl.minedCount = snap.minedCount;
+        ctrl.mineMatchedCount = snap.mineMatchedCount;
+        ctrl.currentMineTarget = null;
+        ctrl.currentMineStandoff = snap.mineStandoff;
+        ctrl.pathWaypoints.clear();
+        ctrl.pathIndex = 0;
+        ctrl.pathGoalX = Double.NaN;
+        ctrl.repathCooldown = 0;
+        ctrl.stuckTicks = 0;
+
+        // Restore the parked task queue, then put the interrupted current target
+        // back at the front (it was removed from the queue when selected).
+        ctrl.mineQueue.clear();
+        if (snap.mineQueue != null) {
+            ctrl.mineQueue.addAll(snap.mineQueue);
+        }
+        if (snap.mineTarget != null) {
+            boolean duplicate = false;
+            for (int[] p : ctrl.mineQueue) {
+                if (p != null && p[0] == snap.mineTarget[0]
+                    && p[1] == snap.mineTarget[1] && p[2] == snap.mineTarget[2]) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) ctrl.mineQueue.addFirst(snap.mineTarget);
+        }
+
+        if (snap.mode == Mode.MINE && !ctrl.mineQueue.isEmpty()) {
+            this.logger.log("ESCAPE", ctrl, "Self-rescue complete; resuming mining",
+                "remaining=" + ctrl.mineQueue.size() + " mined=" + ctrl.minedCount);
+            this.manager.setDroneMode(ctrl, Mode.MINE, "Resumed mining after self-rescue");
+            return;
+        }
+        if (snap.mode != null && snap.mode != Mode.MINE) {
+            ctrl.goalX = snap.goalX;
+            ctrl.goalY = snap.goalY;
+            ctrl.goalZ = snap.goalZ;
+            this.logger.log("ESCAPE", ctrl, "Self-rescue complete; resuming " + snap.mode.name(),
+                String.format("goal=(%.1f,%.1f,%.1f)", ctrl.goalX, ctrl.goalY, ctrl.goalZ));
+            this.manager.setDroneMode(ctrl, snap.mode, "Resumed " + snap.mode.name() + " after self-rescue");
+            return;
+        }
+        this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Self-rescue complete");
+    }
+
     public int startBoxMiningTask(DroneController ctrl, EntityPlayerMP player, String anchor, int widthX, int heightY, int lengthZ) {
+        if (ctrl != null) ctrl.clearSelfRescue(false);
         return this.excavationPlanner.startBoxMiningTask(ctrl, player, anchor, widthX, heightY, lengthZ);
     }
 
     public int startRectMiningTask(DroneController ctrl, EntityPlayerMP player, int x1, int y1, int z1, int x2, int y2, int z2, String filter) {
+        if (ctrl != null) ctrl.clearSelfRescue(false);
         return this.excavationPlanner.startRectMiningTask(ctrl, player, x1, y1, z1, x2, y2, z2, filter);
     }
 
     public int startFarmingTask(DroneController ctrl, EntityPlayerMP player, String rawTarget, int radiusOverride) {
+        if (ctrl != null) ctrl.clearSelfRescue(false);
         return this.farmingService.startFarmingTask(ctrl, player, rawTarget, radiusOverride);
     }
 
     public int startMiningTask(DroneController ctrl, EntityPlayerMP refPlayer, String rawTarget, int maxCount, boolean untilFull) {
+        if (ctrl != null) ctrl.clearSelfRescue(false);
         return this.excavationPlanner.startMiningTask(ctrl, refPlayer, rawTarget, maxCount, untilFull);
     }
 }

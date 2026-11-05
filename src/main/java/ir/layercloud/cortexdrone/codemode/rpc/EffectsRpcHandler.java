@@ -63,6 +63,10 @@ public class EffectsRpcHandler implements RpcHandler {
             res.addProperty("solidEscalations", ctrl.solidEscalations);
             res.addProperty("blockedWaypoints", ctrl.solidWaypointHits.size());
             res.addProperty("mineQueueSize", ctrl.mineQueue.size());
+            res.addProperty("mineTargetCount", ctrl.mineTargetCount);
+            res.addProperty("mineExactQueueOnly", ctrl.mineExactQueueOnly);
+            res.addProperty("mineFilter", ctrl.mineFilter != null ? ctrl.mineFilter : "");
+            res.addProperty("selfRescue", ctrl.escapeResume != null);
             res.addProperty("buildQueueSize", ctrl.buildQueue.size());
             res.addProperty("scoopQueueSize", ctrl.scoopQueue.size());
             res.addProperty("minedCount", ctrl.minedCount);

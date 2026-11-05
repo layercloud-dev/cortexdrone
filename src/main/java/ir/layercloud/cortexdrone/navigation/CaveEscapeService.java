@@ -189,13 +189,42 @@ public class CaveEscapeService {
         int sz = MathHelper.func_76128_c(d.field_70161_v);
 
         int queued = 0;
+        // Save the real task and run the rescue on an isolated queue. The original
+        // queue is restored the moment the rescue queue empties, so a brief dig
+        // cannot keep the rescue's filter/target flags alive for the whole task.
+        DroneController.TaskSnapshot pendingSnapshot = null;
+        if (ctrl.escapeResume == null) {
+            pendingSnapshot = new DroneController.TaskSnapshot();
+            pendingSnapshot.mode = ctrl.mode;
+            pendingSnapshot.goalX = ctrl.goalX;
+            pendingSnapshot.goalY = ctrl.goalY;
+            pendingSnapshot.goalZ = ctrl.goalZ;
+            pendingSnapshot.mineFilter = ctrl.mineFilter;
+            pendingSnapshot.mineExactQueueOnly = ctrl.mineExactQueueOnly;
+            pendingSnapshot.mineUntilFull = ctrl.mineUntilFull;
+            pendingSnapshot.returnToOwnerAfterMine = ctrl.returnToOwnerAfterMine;
+            pendingSnapshot.mineTargetCount = ctrl.mineTargetCount;
+            pendingSnapshot.minedCount = ctrl.minedCount;
+            pendingSnapshot.mineMatchedCount = ctrl.mineMatchedCount;
+            pendingSnapshot.mineTarget = ctrl.currentMineTarget;
+            pendingSnapshot.mineStandoff = ctrl.currentMineStandoff;
+            pendingSnapshot.mineQueue = new ArrayList<int[]>(ctrl.mineQueue);
+            ctrl.mineQueue.clear();
+        }
+
         // Add in reverse priority: addFirst() puts each next call in front, so the
         // drone's own feet cell ends up first (it is the most urgent voxel).
         queued += queueDig(ctrl, world, wx, wy + 1, wz);
         queued += queueDig(ctrl, world, wx, wy, wz);
         queued += queueDig(ctrl, world, sx, sy + 1, sz);
         queued += queueDig(ctrl, world, sx, sy, sz);
-        if (queued == 0) return 0;
+        if (queued == 0) {
+            if (pendingSnapshot != null) {
+                ctrl.mineQueue.clear();
+                ctrl.mineQueue.addAll(pendingSnapshot.mineQueue);
+            }
+            return 0;
+        }
 
         ctrl.mineFilter = "all";
         ctrl.mineExactQueueOnly = true;
@@ -211,6 +240,11 @@ public class CaveEscapeService {
         ctrl.pathIndex = 0;
         ctrl.repathCooldown = 0;
         this.manager.setDroneMode(ctrl, Mode.MINE, "Dig out blocked waypoint");
+        // Install the snapshot AFTER the mode change: setDroneMode clears any old
+        // rescue state on a real transition, and this one belongs to the new dig.
+        if (pendingSnapshot != null) {
+            ctrl.escapeResume = pendingSnapshot;
+        }
         return queued;
     }
 

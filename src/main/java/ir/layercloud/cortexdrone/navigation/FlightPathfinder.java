@@ -556,8 +556,12 @@ public class FlightPathfinder {
                 }
             }
         } else {
-            // Making progress again: forget old blocked-waypoint hit counts.
-            if (!ctrl.solidWaypointHits.isEmpty()) ctrl.solidWaypointHits.clear();
+            // Making progress at THIS waypoint: forget only its own hit count.
+            // Clearing the whole map here defeated escalation whenever a replan
+            // produced a passable intermediate waypoint between two blocked
+            // attempts at the same solid waypoint: the counter went 1 -> clear -> 1
+            // forever, so the drone hovered instead of digging out.
+            ctrl.solidWaypointHits.remove(Long.valueOf(packBlockPos(awx, away, awz)));
             setDroneFlightTarget(d, activeWp[0], activeWp[1], activeWp[2], accel);
         }
     }

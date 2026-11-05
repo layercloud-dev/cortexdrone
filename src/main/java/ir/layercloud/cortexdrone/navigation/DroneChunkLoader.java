@@ -5,14 +5,15 @@ import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.BuildTask;
 import ir.layercloud.cortexdrone.model.DroneController;
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
@@ -24,22 +25,42 @@ import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.ForgeChunkManager.Ticket;
 
 /**
- * Persistent chunkloader manager using Minecraft Forge's {@link ForgeChunkManager}
- * (the same ticket/forceChunk mechanism used by ChickenChunks and OpenComputers'
- * ChunkloaderUpgradeHandler). Keeps a 3x3 chunk grid around every active drone,
- * saved drone, player base, and saved waypoint permanently loaded and ticking even
- * when players are offline or far away.
+ * Forge 1.7.10 chunk manager for drones and persistent anchors.
+ *
+ * <p>Implemented from the two proven 1.7.10 designs:
+ * <ul>
+ *   <li>Railcraft {@code EntityCartAnchor}: a {@code Type.ENTITY} ticket bound to
+ *       the moving entity, chunks forced in priority order with
+ *       {@code reorderChunk}, Forge loads the entity's own chunk on world start;</li>
+ *   <li>ChickenChunks {@code ChunkLoaderManager}: ticket pooled chunk ownership and a
+ *       timed release queue, so chunks are not dropped the instant an entity crosses
+ *       a border.</li>
+ * </ul>
+ *
+ * <p>Forge's {@code forceChunk} does <b>not</b> load a chunk; it only protects an
+ * already-loaded chunk from the unload queue (see Forge's
+ * {@code ChunkProviderServer.unloadQueuedChunks} patch). The manager therefore
+ * explicitly loads a small, budgeted "hot" set around the drone and lets the rest
+ * of the plan be protected if/when the drone reaches it.
+ *
+ * <p>Player ownership is exact: chunks within a player's vanilla view distance are
+ * left entirely to vanilla. The manager never forces, loads or unloads them, and
+ * drops its own redundant claim when a player takes over.
  */
 public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
-    private static final int DRONE_CHUNK_RADIUS = 1; // 3x3 = 9 chunks per drone
-    private static final int ANCHOR_CHUNK_RADIUS = 1; // 3x3 = 9 chunks per base/saved drone
-    private static final int ROLLING_MAX_CHUNKS = 24;
-    // Forge's default NORMAL-ticket depth is 25. Core 3x3 + a short travel
-    // corridor must fit under it.
-    private static final int MAX_TICKET_CHUNKS = 24;
-    private static final int CORRIDOR_LOOKAHEAD_WAYPOINTS = 6;
-    private static final int MINE_QUEUE_LOOKAHEAD = 8;
-    private static final int BUILD_QUEUE_LOOKAHEAD = 4;
+    private static final int DRONE_CHUNK_RADIUS = 1;       // 3x3 around the drone
+    private static final int ANCHOR_CHUNK_RADIUS = 1;      // 3x3 around a base/waypoint
+    private static final int MAX_CHUNKS = 25;              // Forge default ticket depth
+    private static final int CORRIDOR_LOOKAHEAD_WAYPOINTS = 4;
+    private static final int CORRIDOR_MAX_CHUNKS = 8;
+    private static final int MINE_QUEUE_LOOKAHEAD = 4;
+    private static final int BUILD_QUEUE_LOOKAHEAD = 2;
+    /** Keep a chunk this long after it stops being needed (ChickenChunks uses 100). */
+    private static final int RELEASE_GRACE_TICKS = 200;
+    /** New chunk loads per 5-tick drone plan update. Prevents flight stutter. */
+    private static final int DRONE_LOAD_BUDGET = 2;
+    /** New chunk loads per 20-tick anchor refresh, shared by all anchors. */
+    private static final int ANCHOR_LOAD_BUDGET = 2;
 
     private static volatile DroneChunkLoader instance;
 
@@ -47,8 +68,14 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     private final DroneLogger logger;
     private final Map<Integer, Ticket> droneTickets = new ConcurrentHashMap<Integer, Ticket>();
     private final Map<String, Ticket> anchorTickets = new ConcurrentHashMap<String, Ticket>();
-    private final Map<Integer, Ticket> rollingTickets = new ConcurrentHashMap<Integer, Ticket>();
-    private final Map<Integer, Deque<ChunkCoordIntPair>> rollingOrder = new ConcurrentHashMap<Integer, Deque<ChunkCoordIntPair>>();
+    /** ENTITY tickets restored by Forge on world load, keyed by drone UUID. */
+    private final Map<UUID, Ticket> restoredEntityTickets = new ConcurrentHashMap<UUID, Ticket>();
+    /** Chunks whose delayed release is pending, per ticket. */
+    private final Map<Ticket, Map<ChunkCoordIntPair, Long>> releaseAt =
+        new ConcurrentHashMap<Ticket, Map<ChunkCoordIntPair, Long>>();
+    /** Chunks this manager explicitly loaded; avoids re-loading them every update. */
+    private final Map<Ticket, Set<ChunkCoordIntPair>> explicitLoads =
+        new ConcurrentHashMap<Ticket, Set<ChunkCoordIntPair>>();
 
     public DroneChunkLoader(CortexDroneMod mod, DroneLogger logger) {
         this.mod = mod;
@@ -60,31 +87,54 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         return instance;
     }
 
+    // ------------------------------------------------------------------
+    // Forge callback
+    // ------------------------------------------------------------------
+
     @Override
     public void ticketsLoaded(List<Ticket> tickets, World world) {
-        if (tickets == null || world == null) return;
+        if (tickets == null || world == null || !(world instanceof WorldServer)) return;
+        WorldServer ws = (WorldServer) world;
         for (Ticket ticket : tickets) {
             if (ticket == null) continue;
             try {
+                // Railcraft pattern: Forge has already loaded and bound the entity
+                // chunk for ENTITY tickets. Re-adopt the ticket and protect its 3x3.
+                Entity entity = ticket.getEntity();
+                if (entity != null) {
+                    UUID id = entity.func_110124_au();
+                    if (id != null) {
+                        this.restoredEntityTickets.put(id, ticket);
+                        int ecx = MathHelper.func_76128_c(entity.field_70165_t) >> 4;
+                        int ecz = MathHelper.func_76128_c(entity.field_70161_v) >> 4;
+                        applyTicketChunks(ws, ticket, buildGrid(ecx, ecz, DRONE_CHUNK_RADIUS), true, 0);
+                        continue;
+                    }
+                }
                 NBTTagCompound data = ticket.getModData();
                 if (data != null && data.func_74764_b("cx") && data.func_74764_b("cz")) {
                     int cx = data.func_74762_e("cx");
                     int cz = data.func_74762_e("cz");
-                    int radius = data.func_74764_b("radius") ? Math.min(2, Math.max(0, data.func_74762_e("radius"))) : 1;
+                    int radius = data.func_74764_b("radius")
+                        ? Math.min(2, Math.max(0, data.func_74762_e("radius"))) : 1;
                     String anchorKey = data.func_74764_b("anchorKey") ? data.func_74779_i("anchorKey") : "";
                     if (!anchorKey.isEmpty() && !this.anchorTickets.containsKey(anchorKey)) {
                         this.anchorTickets.put(anchorKey, ticket);
-                        forceGridOnTicket(world, ticket, cx, cz, radius);
+                        applyTicketChunks(ws, ticket, buildGrid(cx, cz, radius), true, 0);
                     } else {
-                        ForgeChunkManager.releaseTicket(ticket);
+                        release(ticket);
                     }
                 } else {
-                    ForgeChunkManager.releaseTicket(ticket);
+                    release(ticket);
                 }
             } catch (Throwable ignored) {
             }
         }
     }
+
+    // ------------------------------------------------------------------
+    // Persistent anchors (bases, saved drones, saved locations)
+    // ------------------------------------------------------------------
 
     public void forceSavedStateChunks(AIConfig config) {
         if (config == null) return;
@@ -128,28 +178,32 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
             }
         }
         if (forcedAnchors > 0 && this.logger != null) {
-            this.logger.log("SYSTEM", null, "ForgeChunkManager forced " + forcedAnchors + " persistent drone/base chunk anchor(s)", "");
+            this.logger.log("SYSTEM", null,
+                "ForgeChunkManager forced " + forcedAnchors + " persistent drone/base chunk anchor(s)", "");
         }
     }
 
     /**
-     * Re-applies player ownership to every persistent anchor ticket. Anchors keep
-     * bases/waypoints loaded when players are away, but a chunk inside a player's
-     * view belongs to vanilla: we release our claim while the player is there and
-     * re-claim it when they leave.
+     * Re-applies player ownership to every anchor. Chunks inside a player's view
+     * belong to vanilla; the anchor releases its claim while the player is there and
+     * re-claims (and explicitly loads) them when the player leaves.
      */
     public synchronized void refreshAnchors() {
         if (this.anchorTickets.isEmpty()) return;
+        int budget = ANCHOR_LOAD_BUDGET;
         for (Map.Entry<String, Ticket> e : this.anchorTickets.entrySet()) {
             Ticket ticket = e.getValue();
-            if (ticket == null || ticket.world == null) continue;
+            if (ticket == null || !(ticket.world instanceof WorldServer)) continue;
             try {
                 NBTTagCompound data = ticket.getModData();
                 if (data == null || !data.func_74764_b("cx") || !data.func_74764_b("cz")) continue;
                 int cx = data.func_74762_e("cx");
                 int cz = data.func_74762_e("cz");
-                int radius = data.func_74764_b("radius") ? Math.min(2, Math.max(0, data.func_74762_e("radius"))) : ANCHOR_CHUNK_RADIUS;
-                applyTicketChunks(ticket.world, ticket, buildGrid(cx, cz, radius), true);
+                int radius = data.func_74764_b("radius")
+                    ? Math.min(2, Math.max(0, data.func_74762_e("radius"))) : ANCHOR_CHUNK_RADIUS;
+                budget -= applyTicketChunks((WorldServer) ticket.world, ticket,
+                    buildGrid(cx, cz, radius), true, budget);
+                if (budget < 0) budget = 0;
             } catch (Throwable ignored) {
             }
         }
@@ -162,15 +216,13 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
             int cz = MathHelper.func_76128_c(z) >> 4;
             Ticket ticket = this.anchorTickets.get(anchorKey);
             if (ticket != null && ticket.world != world) {
-                try { ForgeChunkManager.releaseTicket(ticket); } catch (Throwable ignored) {}
+                release(ticket);
+                this.anchorTickets.remove(anchorKey);
                 ticket = null;
             }
             if (ticket == null) {
                 ticket = ForgeChunkManager.requestTicket(this.mod, world, ForgeChunkManager.Type.NORMAL);
-                if (ticket == null) {
-                    loadGridImmediate(world, cx, cz, radius);
-                    return false;
-                }
+                if (ticket == null) return false;
                 this.anchorTickets.put(anchorKey, ticket);
             }
             NBTTagCompound data = ticket.getModData();
@@ -180,22 +232,21 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
                 data.func_74768_a("cz", cz);
                 data.func_74768_a("radius", radius);
             }
-            forceGridOnTicket(world, ticket, cx, cz, radius);
+            applyTicketChunks(world, ticket, buildGrid(cx, cz, radius), true, 0);
             return true;
         } catch (Throwable t) {
             return false;
         }
     }
 
+    // ------------------------------------------------------------------
+    // Drone ticket
+    // ------------------------------------------------------------------
+
     /**
-     * Maintains the force-loaded chunk set for one drone.
-     *
-     * <p>Policy: chunks inside any online player's view radius are vanilla-owned —
-     * the mod never forces and never unforces them. Only chunks the player cannot
-     * keep loaded (far-away drone routes) are managed here. The maintained set is
-     * the drone's 3x3 plus a short corridor of chunks along its live path, so a
-     * chunk cannot unload right after the drone reaches it while the drone still
-     * has to fly through the next waypoints.
+     * Maintains one ticket per drone. The ticket is {@code Type.ENTITY} so Forge
+     * persists it with the drone UUID and reloads the drone's own chunk on server
+     * start (Railcraft's anchor-cart design).
      */
     public synchronized void updateDroneTicket(DroneController ctrl) {
         if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70128_L) return;
@@ -207,147 +258,353 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         int cz = MathHelper.func_76128_c(ctrl.drone.field_70161_v) >> 4;
 
         boolean movedChunk = ctrl.forcedChunkX != cx || ctrl.forcedChunkZ != cz || ctrl.forcedDim != dim;
-        // Re-evaluate often enough that a player walking in/out of view (or the
-        // player's own chunk ticket shrinking) cannot leave a needed chunk in the
-        // vanilla unload window. 5 ticks = 250 ms.
         boolean periodic = ctrl.tickClock - ctrl.lastChunkPlanTick >= 5;
-        if (!movedChunk && !periodic && this.droneTickets.containsKey(ctrl.id)) {
-            return;
-        }
+        if (!movedChunk && !periodic && this.droneTickets.containsKey(ctrl.id)) return;
         ctrl.lastChunkPlanTick = ctrl.tickClock;
 
-        Set<ChunkCoordIntPair> desired = buildDroneChunkPlan(ctrl, cx, cz);
-        int managed = 0;
-        int playerOwned = 0;
-        for (ChunkCoordIntPair pair : desired) {
-            if (isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) playerOwned++;
-            else managed++;
-        }
-        if (ctrl.tickClock - ctrl.lastChunkLogTick >= 200
-            && (managed != ctrl.lastChunkManaged || playerOwned != ctrl.lastChunkPlayerOwned)) {
-            ctrl.lastChunkLogTick = ctrl.tickClock;
-            ctrl.lastChunkManaged = managed;
-            ctrl.lastChunkPlayerOwned = playerOwned;
-            if (this.logger != null) {
-                this.logger.log("CHUNK", ctrl, "Chunk ownership updated",
-                    "modManaged=" + managed + " playerOwned(skipped)=" + playerOwned
-                        + " corridorWaypoints=" + Math.min(ctrl.pathWaypoints.size(), ctrl.pathIndex + CORRIDOR_LOOKAHEAD_WAYPOINTS));
-            }
-        }
-        try {
-            // A restored ticket for this drone is a startup anchor; once the live
-            // drone owns its chunks, drop the duplicate so old positions are not
-            // force-loaded forever.
-            releaseDroneStartupAnchor(ctrl);
+        Ticket ticket = adoptOrCreateTicket(ctrl, world);
+        releaseDroneStartupAnchor(ctrl);
 
-            Ticket ticket = this.droneTickets.get(ctrl.id);
-            if (ticket != null && ticket.world != world) {
-                try { ForgeChunkManager.releaseTicket(ticket); } catch (Throwable ignored) {}
-                this.droneTickets.remove(ctrl.id);
-                ticket = null;
-            }
-            if (ticket == null) {
-                ticket = ForgeChunkManager.requestTicket(this.mod, world, ForgeChunkManager.Type.NORMAL);
-                if (ticket != null) {
-                    this.droneTickets.put(ctrl.id, ticket);
-                }
-            }
-            if (ticket != null) {
-                NBTTagCompound data = ticket.getModData();
-                if (data != null) {
-                    data.func_74778_a("anchorKey", "drone:" + (ctrl.entityUuid != null ? ctrl.entityUuid.toString() : ctrl.id));
-                    data.func_74768_a("cx", cx);
-                    data.func_74768_a("cz", cz);
-                    data.func_74768_a("radius", DRONE_CHUNK_RADIUS);
-                }
-                applyTicketChunks(world, ticket, desired, true);
-            } else {
-                loadGridImmediate(world, cx, cz, DRONE_CHUNK_RADIUS);
-            }
-            ctrl.forcedChunkX = cx;
-            ctrl.forcedChunkZ = cz;
-            ctrl.forcedDim = dim;
-        } catch (Throwable ignored) {
+        List<ChunkCoordIntPair> plan = buildDroneChunkPlan(ctrl, cx, cz);
+        int playerOwned = 0;
+        for (ChunkCoordIntPair pair : plan) {
+            if (isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) playerOwned++;
         }
+        int managed = plan.size() - playerOwned;
+
+        if (ticket != null) {
+            NBTTagCompound data = ticket.getModData();
+            if (data != null) {
+                data.func_74778_a("anchorKey",
+                    "drone:" + (ctrl.entityUuid != null ? ctrl.entityUuid.toString() : ctrl.id));
+                data.func_74768_a("cx", cx);
+                data.func_74768_a("cz", cz);
+                data.func_74768_a("radius", DRONE_CHUNK_RADIUS);
+            }
+            int loadedNow = applyTicketChunks(world, ticket, plan, true, DRONE_LOAD_BUDGET);
+            int held = ticket.getChunkList().size();
+            if (ctrl.tickClock - ctrl.lastChunkLogTick >= 100
+                && (managed != ctrl.lastChunkManaged || playerOwned != ctrl.lastChunkPlayerOwned
+                    || loadedNow > 0 || ctrl.tickClock - ctrl.lastChunkLogTick >= 600)) {
+                ctrl.lastChunkLogTick = ctrl.tickClock;
+                ctrl.lastChunkManaged = managed;
+                ctrl.lastChunkPlayerOwned = playerOwned;
+                if (this.logger != null) {
+                    this.logger.log("CHUNK", ctrl, "Chunk ownership updated",
+                        "modManaged=" + managed + " playerOwned(skipped)=" + playerOwned
+                            + " plan=" + plan.size() + " held=" + held + " loadedNow=" + loadedNow
+                            + " corridorWaypoints="
+                            + Math.min(ctrl.pathWaypoints.size(), ctrl.pathIndex + CORRIDOR_LOOKAHEAD_WAYPOINTS));
+                }
+            }
+        } else {
+            // No ticket (mod ticket limit): at least keep the drone's own chunk loaded.
+            loadHotChunks(world, plan, DRONE_LOAD_BUDGET);
+        }
+        ctrl.forcedChunkX = cx;
+        ctrl.forcedChunkZ = cz;
+        ctrl.forcedDim = dim;
     }
 
-    private Set<ChunkCoordIntPair> buildDroneChunkPlan(DroneController ctrl, int cx, int cz) {
-        Set<ChunkCoordIntPair> desired = new LinkedHashSet<ChunkCoordIntPair>();
+    private Ticket adoptOrCreateTicket(DroneController ctrl, WorldServer world) {
+        Ticket ticket = this.droneTickets.get(ctrl.id);
+        if (ticket != null && ticket.world == world) return ticket;
+        if (ticket != null) {
+            release(ticket);
+            this.droneTickets.remove(ctrl.id);
+        }
+        if (ctrl.entityUuid != null) {
+            Ticket restored = this.restoredEntityTickets.remove(ctrl.entityUuid);
+            if (restored != null) {
+                if (restored.world == world) {
+                    try { restored.bindEntity(ctrl.drone); } catch (Throwable ignored) {}
+                    this.droneTickets.put(ctrl.id, restored);
+                    return restored;
+                }
+                release(restored);
+            }
+        }
+        Ticket created = null;
+        try {
+            created = ForgeChunkManager.requestTicket(this.mod, world, ForgeChunkManager.Type.ENTITY);
+            if (created != null) {
+                created.bindEntity(ctrl.drone);
+                this.droneTickets.put(ctrl.id, created);
+            }
+        } catch (Throwable t) {
+            if (created != null) release(created);
+        }
+        return created;
+    }
+
+    /**
+     * Priority plan (highest first). Forge's auto-eviction removes the oldest
+     * requested chunk; {@link #applyTicketChunks} re-orders in this list's reverse
+     * order so the drone's own 3x3 and nearest path are always at the tail.
+     */
+    private List<ChunkCoordIntPair> buildDroneChunkPlan(DroneController ctrl, int cx, int cz) {
+        List<ChunkCoordIntPair> plan = new ArrayList<ChunkCoordIntPair>();
+        Set<ChunkCoordIntPair> seen = new HashSet<ChunkCoordIntPair>();
+
+        addChunk(plan, seen, cx, cz);
         for (int dx = -DRONE_CHUNK_RADIUS; dx <= DRONE_CHUNK_RADIUS; dx++) {
             for (int dz = -DRONE_CHUNK_RADIUS; dz <= DRONE_CHUNK_RADIUS; dz++) {
-                desired.add(new ChunkCoordIntPair(cx + dx, cz + dz));
+                if (dx == 0 && dz == 0) continue;
+                addChunk(plan, seen, cx + dx, cz + dz);
             }
         }
-        // Working set first: the mine/build queues are state that must not be
-        // dropped because the chunk carrying it unloads. The old plan only kept
-        // the drone's 3x3, so queued blocks in the previous chunk looked "gone"
-        // and the queue purged itself (the abandoned mining task).
+
         if (ctrl.currentMineTarget != null) {
-            desired.add(new ChunkCoordIntPair(ctrl.currentMineTarget[0] >> 4, ctrl.currentMineTarget[2] >> 4));
+            addChunk(plan, seen, ctrl.currentMineTarget[0] >> 4, ctrl.currentMineTarget[2] >> 4);
         }
-        int queuedChunks = 0;
+
+        // Railcraft-style line chunks: a waypoint can be 100 blocks away but the
+        // drone flies every chunk between here and there. The old planner only
+        // added the two endpoint chunks, leaving the middle unprotected.
+        double px = ctrl.drone.field_70165_t;
+        double pz = ctrl.drone.field_70161_v;
+        int added = 0;
+        int limit = Math.min(ctrl.pathWaypoints.size(), ctrl.pathIndex + CORRIDOR_LOOKAHEAD_WAYPOINTS);
+        for (int i = Math.max(0, ctrl.pathIndex); i < limit && added < CORRIDOR_MAX_CHUNKS; i++) {
+            double[] wp = ctrl.pathWaypoints.get(i);
+            if (wp == null) continue;
+            added += addLineChunks(plan, seen, px, pz, wp[0], wp[2], CORRIDOR_MAX_CHUNKS - added);
+            px = wp[0];
+            pz = wp[2];
+        }
+
+        int queued = 0;
         for (int[] p : ctrl.mineQueue) {
             if (p == null) continue;
-            desired.add(new ChunkCoordIntPair(p[0] >> 4, p[2] >> 4));
-            if (++queuedChunks >= MINE_QUEUE_LOOKAHEAD) break;
+            addChunk(plan, seen, p[0] >> 4, p[2] >> 4);
+            if (++queued >= MINE_QUEUE_LOOKAHEAD) break;
         }
-        queuedChunks = 0;
+        queued = 0;
         for (BuildTask bt : ctrl.buildQueue) {
             if (bt == null) continue;
-            desired.add(new ChunkCoordIntPair(bt.getX() >> 4, bt.getZ() >> 4));
-            if (++queuedChunks >= BUILD_QUEUE_LOOKAHEAD) break;
+            addChunk(plan, seen, bt.getX() >> 4, bt.getZ() >> 4);
+            if (++queued >= BUILD_QUEUE_LOOKAHEAD) break;
         }
-        // Travel corridor: the chunks the drone is about to fly through.
-        int from = Math.max(0, ctrl.pathIndex);
-        int to = Math.min(ctrl.pathWaypoints.size(), from + CORRIDOR_LOOKAHEAD_WAYPOINTS);
-        for (int i = from; i < to; i++) {
-            double[] wp = ctrl.pathWaypoints.get(i);
-            if (wp != null) {
-                desired.add(new ChunkCoordIntPair(MathHelper.func_76128_c(wp[0]) >> 4, MathHelper.func_76128_c(wp[2]) >> 4));
-            }
-        }
+
         if (!Double.isNaN(ctrl.goalX) && !Double.isNaN(ctrl.goalZ)) {
-            desired.add(new ChunkCoordIntPair(MathHelper.func_76128_c(ctrl.goalX) >> 4, MathHelper.func_76128_c(ctrl.goalZ) >> 4));
+            addChunk(plan, seen, MathHelper.func_76128_c(ctrl.goalX) >> 4,
+                MathHelper.func_76128_c(ctrl.goalZ) >> 4);
         }
-        if (desired.size() <= MAX_TICKET_CHUNKS) return desired;
-        Set<ChunkCoordIntPair> capped = new LinkedHashSet<ChunkCoordIntPair>();
-        for (ChunkCoordIntPair pair : desired) {
-            if (capped.size() >= MAX_TICKET_CHUNKS) break;
-            capped.add(pair);
+        if (plan.size() > MAX_CHUNKS) {
+            return new ArrayList<ChunkCoordIntPair>(plan.subList(0, MAX_CHUNKS));
         }
-        return capped;
+        return plan;
+    }
+
+    private static boolean addChunk(List<ChunkCoordIntPair> plan, Set<ChunkCoordIntPair> seen, int cx, int cz) {
+        ChunkCoordIntPair pair = new ChunkCoordIntPair(cx, cz);
+        if (!seen.add(pair)) return false;
+        plan.add(pair);
+        return true;
+    }
+
+    private static int addLineChunks(List<ChunkCoordIntPair> plan, Set<ChunkCoordIntPair> seen,
+                                     double x1, double z1, double x2, double z2, int max) {
+        if (max <= 0) return 0;
+        double dx = x2 - x1;
+        double dz = z2 - z1;
+        double dist = Math.sqrt(dx * dx + dz * dz);
+        int steps = Math.max(1, (int) Math.ceil(dist / 4.0));
+        int added = 0;
+        for (int i = 0; i <= steps && added < max; i++) {
+            double t = (double) i / (double) steps;
+            int cx = MathHelper.func_76128_c(x1 + dx * t) >> 4;
+            int cz = MathHelper.func_76128_c(z1 + dz * t) >> 4;
+            if (addChunk(plan, seen, cx, cz)) added++;
+        }
+        return added;
+    }
+
+    public synchronized void releaseDroneTicket(DroneController ctrl) {
+        if (ctrl == null) return;
+        Ticket ticket = this.droneTickets.remove(ctrl.id);
+        release(ticket);
+        if (ctrl.entityUuid != null) {
+            release(this.restoredEntityTickets.remove(ctrl.entityUuid));
+            release(this.anchorTickets.remove("saved_drone:" + ctrl.entityUuid));
+            release(this.anchorTickets.remove("drone:" + ctrl.entityUuid));
+        }
+        ctrl.forcedChunkX = Integer.MIN_VALUE;
+        ctrl.forcedChunkZ = Integer.MIN_VALUE;
+        ctrl.forcedDim = Integer.MIN_VALUE;
     }
 
     private void releaseDroneStartupAnchor(DroneController ctrl) {
         if (ctrl.entityUuid == null) return;
         String uuid = ctrl.entityUuid.toString();
-        Ticket t = this.anchorTickets.remove("saved_drone:" + uuid);
-        if (t != null) {
-            try { ForgeChunkManager.releaseTicket(t); } catch (Throwable ignored) {}
+        release(this.anchorTickets.remove("saved_drone:" + uuid));
+        release(this.anchorTickets.remove("drone:" + uuid));
+    }
+
+    // ------------------------------------------------------------------
+    // Ticket application
+    // ------------------------------------------------------------------
+
+    /**
+     * Applies a high-to-low priority plan to a ticket.
+     *
+     * @return number of chunks explicitly loaded during this call
+     */
+    private int applyTicketChunks(WorldServer world, Ticket ticket, List<ChunkCoordIntPair> plan,
+                                  boolean playerAware, int loadBudget) {
+        if (world == null || ticket == null || plan == null || plan.isEmpty()) return 0;
+        int depth = ticket.getChunkListDepth();
+        if (depth <= 0 || depth > MAX_CHUNKS) depth = MAX_CHUNKS;
+        List<ChunkCoordIntPair> desired = plan.size() > depth ? plan.subList(0, depth) : plan;
+        Set<ChunkCoordIntPair> desiredSet = new HashSet<ChunkCoordIntPair>(desired);
+
+        Map<ChunkCoordIntPair, Long> pending = this.releaseAt.get(ticket);
+        if (pending == null) {
+            pending = new java.util.HashMap<ChunkCoordIntPair, Long>();
+            this.releaseAt.put(ticket, pending);
         }
-        t = this.anchorTickets.remove("drone:" + uuid);
-        if (t != null) {
-            try { ForgeChunkManager.releaseTicket(t); } catch (Throwable ignored) {}
+        Set<ChunkCoordIntPair> loaded = this.explicitLoads.get(ticket);
+        if (loaded == null) {
+            loaded = new HashSet<ChunkCoordIntPair>();
+            this.explicitLoads.put(ticket, loaded);
+        }
+
+        long now = world.func_72820_D();
+        Set<ChunkCoordIntPair> current = new HashSet<ChunkCoordIntPair>(ticket.getChunkList());
+        List<ChunkCoordIntPair> releaseNow = new ArrayList<ChunkCoordIntPair>();
+        for (ChunkCoordIntPair old : current) {
+            if (desiredSet.contains(old)) {
+                pending.remove(old);
+                continue;
+            }
+            if (playerAware && isPlayerManaged(world, old.field_77276_a, old.field_77275_b)) {
+                // Vanilla owns it now; our claim is redundant.
+                releaseNow.add(old);
+                continue;
+            }
+            Long due = pending.get(old);
+            if (due == null) {
+                pending.put(old, Long.valueOf(now + RELEASE_GRACE_TICKS));
+            } else if (now >= due.longValue()) {
+                releaseNow.add(old);
+            }
+        }
+        pending.keySet().retainAll(current);
+        for (ChunkCoordIntPair old : releaseNow) {
+            pending.remove(old);
+            loaded.remove(old);
+            unforce(ticket, old);
+        }
+
+        int loads = 0;
+        Set<ChunkCoordIntPair> held = new HashSet<ChunkCoordIntPair>(ticket.getChunkList());
+        for (int i = desired.size() - 1; i >= 0; i--) {
+            ChunkCoordIntPair pair = desired.get(i);
+            if (playerAware && isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) {
+                if (held.remove(pair)) {
+                    loaded.remove(pair);
+                    unforce(ticket, pair);
+                }
+                continue;
+            }
+            if (!held.contains(pair)) {
+                while (held.size() >= depth) {
+                    ChunkCoordIntPair evict = firstNotIn(ticket.getChunkList(), desiredSet);
+                    if (evict == null) break;
+                    pending.remove(evict);
+                    loaded.remove(evict);
+                    unforce(ticket, evict);
+                    held.remove(evict);
+                }
+                if (held.size() >= depth) continue;
+                force(ticket, pair);
+                held.add(pair);
+            }
+            reorder(ticket, pair);
+            if (loadBudget > 0 && !loaded.contains(pair)) {
+                loaded.add(pair);
+                world.func_72938_d(pair.field_77276_a, pair.field_77275_b);
+                loadBudget--;
+                loads++;
+            }
+        }
+        return loads;
+    }
+
+    private static int loadHotChunks(WorldServer world, List<ChunkCoordIntPair> plan, int budget) {
+        int loaded = 0;
+        for (ChunkCoordIntPair pair : plan) {
+            if (budget <= 0) break;
+            world.func_72938_d(pair.field_77276_a, pair.field_77275_b);
+            budget--;
+            loaded++;
+        }
+        return loaded;
+    }
+
+    private static ChunkCoordIntPair firstNotIn(Collection<ChunkCoordIntPair> chunks,
+                                                Set<ChunkCoordIntPair> keep) {
+        for (ChunkCoordIntPair pair : chunks) {
+            if (!keep.contains(pair)) return pair;
+        }
+        return null;
+    }
+
+    private static void force(Ticket ticket, ChunkCoordIntPair pair) {
+        try {
+            ForgeChunkManager.forceChunk(ticket, pair);
+        } catch (Throwable ignored) {
         }
     }
 
+    private static void unforce(Ticket ticket, ChunkCoordIntPair pair) {
+        try {
+            ForgeChunkManager.unforceChunk(ticket, pair);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void reorder(Ticket ticket, ChunkCoordIntPair pair) {
+        try {
+            ForgeChunkManager.reorderChunk(ticket, pair);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void release(Ticket ticket) {
+        if (ticket == null) return;
+        try {
+            ForgeChunkManager.releaseTicket(ticket);
+        } catch (Throwable ignored) {
+        }
+        this.releaseAt.remove(ticket);
+        this.explicitLoads.remove(ticket);
+        this.droneTickets.values().remove(ticket);
+        this.anchorTickets.values().remove(ticket);
+        this.restoredEntityTickets.values().remove(ticket);
+    }
+
+    // ------------------------------------------------------------------
+    // Player ownership
+    // ------------------------------------------------------------------
+
     /**
-     * True when a player's normal chunk view already owns this chunk. The mod must
-     * not force or unforce those chunks: it would fight vanilla's player chunk
-     * manager (e.g. dropping chunks the user is standing in).
+     * True when a player's vanilla chunk view already keeps this chunk loaded.
+     * Uses the exact view distance used by {@code PlayerManager.updatePlayerPertinentChunks};
+     * no margin, so we never hand a chunk back to vanilla one chunk early.
      */
     private static boolean isPlayerManaged(World world, int cx, int cz) {
-        if (!(world instanceof WorldServer) || world.field_73010_i == null) return false;
-        int view = viewDistanceChunks() + 1;
-        for (Object o : world.field_73010_i) {
+        if (!(world instanceof WorldServer)) return false;
+        List<?> players = world.field_73010_i;
+        if (players == null || players.isEmpty()) return false;
+        int view = viewDistanceChunks();
+        for (Object o : players) {
             if (!(o instanceof EntityPlayerMP)) continue;
             EntityPlayerMP p = (EntityPlayerMP) o;
             if (p.field_70170_p != world) continue;
             int pcx = MathHelper.func_76128_c(p.field_70165_t) >> 4;
             int pcz = MathHelper.func_76128_c(p.field_70161_v) >> 4;
-            if (Math.abs(pcx - cx) <= view && Math.abs(pcz - cz) <= view) {
-                return true;
-            }
+            if (Math.abs(pcx - cx) <= view && Math.abs(pcz - cz) <= view) return true;
         }
         return false;
     }
@@ -364,170 +621,35 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         return 10;
     }
 
-    public synchronized void releaseDroneTicket(DroneController ctrl) {
-        if (ctrl == null) return;
-        Ticket ticket = this.droneTickets.remove(ctrl.id);
-        if (ticket != null) {
-            try {
-                ForgeChunkManager.releaseTicket(ticket);
-            } catch (Throwable ignored) {
-            }
-        }
-        if (ctrl.entityUuid != null) {
-            String uuid = ctrl.entityUuid.toString();
-            Ticket savedTicket = this.anchorTickets.remove("saved_drone:" + uuid);
-            if (savedTicket != null) {
-                try {
-                    ForgeChunkManager.releaseTicket(savedTicket);
-                } catch (Throwable ignored) {
-                }
-            }
-            Ticket liveAnchor = this.anchorTickets.remove("drone:" + uuid);
-            if (liveAnchor != null) {
-                try {
-                    ForgeChunkManager.releaseTicket(liveAnchor);
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-        ctrl.forcedChunkX = Integer.MIN_VALUE;
-        ctrl.forcedChunkZ = Integer.MIN_VALUE;
-        ctrl.forcedDim = Integer.MIN_VALUE;
-    }
-
-    public synchronized void pinChunk(World world, int cx, int cz) {
-        if (!(world instanceof WorldServer)) return;
-        WorldServer ws = (WorldServer) world;
-        try {
-            int dim = ws.field_73011_w != null ? ws.field_73011_w.field_76574_g : 0;
-            Ticket ticket = this.rollingTickets.get(dim);
-            if (ticket != null && ticket.world != ws) {
-                try { ForgeChunkManager.releaseTicket(ticket); } catch (Throwable ignored) {}
-                ticket = null;
-                this.rollingOrder.remove(dim);
-            }
-            Deque<ChunkCoordIntPair> queue = this.rollingOrder.get(dim);
-
-            // A chunk inside a player's view is vanilla-owned. Release our pin if
-            // we had one, and never pin it again while the player is there.
-            if (ticket != null && queue != null) {
-                java.util.Iterator<ChunkCoordIntPair> it = queue.iterator();
-                while (it.hasNext()) {
-                    ChunkCoordIntPair pinned = it.next();
-                    if (isPlayerManaged(world, pinned.field_77276_a, pinned.field_77275_b)) {
-                        try { ForgeChunkManager.unforceChunk(ticket, pinned); } catch (Throwable ignored) {}
-                        it.remove();
-                    }
-                }
-            }
-            if (isPlayerManaged(world, cx, cz)) return;
-
-            ws.field_73059_b.func_73158_c(cx, cz);
-            if (ticket == null) {
-                ticket = ForgeChunkManager.requestTicket(this.mod, ws, ForgeChunkManager.Type.NORMAL);
-                if (ticket == null) return;
-                this.rollingTickets.put(dim, ticket);
-            }
-            if (queue == null) {
-                queue = new ArrayDeque<ChunkCoordIntPair>();
-                this.rollingOrder.put(dim, queue);
-            }
-            ChunkCoordIntPair pair = new ChunkCoordIntPair(cx, cz);
-            if (queue.contains(pair)) return;
-            int cap = Math.min(ROLLING_MAX_CHUNKS, Math.max(9, ticket.getMaxChunkListDepth()));
-            while (queue.size() >= cap) {
-                ChunkCoordIntPair evicted = queue.pollFirst();
-                if (evicted != null) {
-                    try { ForgeChunkManager.unforceChunk(ticket, evicted); } catch (Throwable ignored) {}
-                }
-            }
-            ForgeChunkManager.forceChunk(ticket, pair);
-            queue.addLast(pair);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    public static void ensureChunkLoadedStatic(World world, double x, double z) {
-        if (world instanceof WorldServer) {
-            try {
-                int cx = MathHelper.func_76128_c(x) >> 4;
-                int cz = MathHelper.func_76128_c(z) >> 4;
-                DroneChunkLoader loader = instance;
-                if (loader != null) {
-                    loader.pinChunk(world, cx, cz);
-                } else {
-                    ((WorldServer) world).field_73059_b.func_73158_c(cx, cz);
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    private static void forceGridOnTicket(World world, Ticket ticket, int cx, int cz, int radius) {
-        applyTicketChunks(world, ticket, buildGrid(cx, cz, radius), true);
-    }
-
-    private static Set<ChunkCoordIntPair> buildGrid(int cx, int cz, int radius) {
-        Set<ChunkCoordIntPair> desired = new LinkedHashSet<ChunkCoordIntPair>();
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-                desired.add(new ChunkCoordIntPair(cx + dx, cz + dz));
-            }
-        }
-        return desired;
-    }
+    // ------------------------------------------------------------------
+    // Helpers used by navigation
+    // ------------------------------------------------------------------
 
     /**
-     * Applies a desired chunk set to a ticket.
-     *
-     * @param playerAware when true, chunks inside a player's view radius are left
-     *                    entirely to vanilla: never forced by us and never
-     *                    unforced by us.
+     * Loads the chunk under a coordinate on demand. This deliberately does not create
+     * a rolling ticket: the drone's own ticket already covers the path plan. Loading
+     * here makes the active waypoint readable before the drone enters it.
      */
-    private static void applyTicketChunks(World world, Ticket ticket, Set<ChunkCoordIntPair> desired, boolean playerAware) {
-        if (world == null || ticket == null || desired == null) return;
+    public static void ensureChunkLoadedStatic(World world, double x, double z) {
+        if (!(world instanceof WorldServer)) return;
         try {
-            Set<ChunkCoordIntPair> current = new HashSet<ChunkCoordIntPair>(ticket.getChunkList());
-            for (ChunkCoordIntPair old : current) {
-                boolean playerOwns = playerAware && isPlayerManaged(world, old.field_77276_a, old.field_77275_b);
-                if (desired.contains(old) && !playerOwns) continue;
-                // Either the drone no longer needs it, or a player now owns it.
-                // In both cases remove OUR ticket; vanilla keeps player chunks
-                // loaded, so the chunk itself must never be unloaded here.
-                if (!desired.contains(old) && playerAware && playerOwns) continue;
-                try { ForgeChunkManager.unforceChunk(ticket, old); } catch (Throwable ignored) {}
-            }
+            int cx = MathHelper.func_76128_c(x) >> 4;
+            int cz = MathHelper.func_76128_c(z) >> 4;
+            world.func_72938_d(cx, cz);
         } catch (Throwable ignored) {
-        }
-        Set<ChunkCoordIntPair> already = new HashSet<ChunkCoordIntPair>();
-        try {
-            already.addAll(ticket.getChunkList());
-        } catch (Throwable ignored) {
-        }
-        for (ChunkCoordIntPair pair : desired) {
-            if (playerAware && isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) continue;
-            if (already.contains(pair)) continue;
-            try {
-                // Canonical Forge 1.7.10 pattern (same as OpenComputers'
-                // ChunkloaderUpgradeHandler): forceChunk only. Calling
-                // ChunkProviderServer.loadChunk here caused sync loads inside the
-                // world-load callback and load/unload thrash at ticket edges.
-                // On-demand loads (A* / the drone) bring the chunk in; the ticket
-                // then protects it from the unload queue.
-                ForgeChunkManager.forceChunk(ticket, pair);
-            } catch (Throwable ignored) {
-            }
         }
     }
 
-    private static void loadGridImmediate(WorldServer world, int cx, int cz, int radius) {
+    private static List<ChunkCoordIntPair> buildGrid(int cx, int cz, int radius) {
+        List<ChunkCoordIntPair> grid = new ArrayList<ChunkCoordIntPair>();
+        Set<ChunkCoordIntPair> seen = new HashSet<ChunkCoordIntPair>();
+        addChunk(grid, seen, cx, cz);
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                try {
-                    world.field_73059_b.func_73158_c(cx + dx, cz + dz);
-                } catch (Throwable ignored) {
-                }
+                if (dx == 0 && dz == 0) continue;
+                addChunk(grid, seen, cx + dx, cz + dz);
             }
         }
+        return grid;
     }
 }

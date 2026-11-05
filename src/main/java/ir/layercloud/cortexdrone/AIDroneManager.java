@@ -199,6 +199,12 @@ public class AIDroneManager {
     public void setDroneMode(DroneController ctrl, Mode newMode, String reason) {
         if (ctrl == null) return;
         Mode old = ctrl.mode;
+        // A real mode transition means the previous task is over. Any parked
+        // self-rescue queue is merged back so internal transitions (DROP/DEPOSIT)
+        // can resume mining; explicit new commands reset queues themselves.
+        if (newMode != old) {
+            ctrl.clearSelfRescue(true);
+        }
         ctrl.mode = newMode;
         ctrl.pathWaypoints.clear();
         ctrl.pathIndex = 0;

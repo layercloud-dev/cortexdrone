@@ -11,13 +11,18 @@ import net.minecraft.world.WorldServer;
  * Player-owned chunk policy used by DroneChunkLoader.
  *
  * <p>A chunk is protected when Forge currently reports it as watched by a
- * player (exact, event-driven) or when it lies inside any player's view radius
- * plus a small border margin. Protected chunks are never forced, loaded,
- * re-ordered, unforced or released by the drone.</p>
+ * player (exact, event-driven) or when it lies inside any player's view radius.
+ * The drone never forces or explicitly loads a protected chunk. It may keep or
+ * drop its own redundant ticket claim on one; vanilla's PlayerManager keeps the
+ * chunk loaded independently, and {@code unforceChunk} cannot unload a
+ * player-watched chunk.</p>
  */
 public final class PlayerChunkOwnership {
-    /** Border/deferred chunks can outlive the nominal view radius briefly. */
-    public static final int PROTECTION_MARGIN = 2;
+    /** Chunks exactly inside the server view square are vanilla-owned. The
+     *  event-driven watch set covers border chunks that outlive the square by
+     *  a tick; do not extend protection past the square, or a drone flying at
+     *  the edge can enter a chunk neither vanilla nor the drone loads. */
+    public static final int PROTECTION_MARGIN = 0;
 
     private PlayerChunkOwnership() {
     }

@@ -15,6 +15,7 @@ public class ChunkCacheContext {
     private final int baseChunkZ;
     private final int gridSize;
     private final Chunk[][] chunks;
+    private final boolean[][] resolved;
     // Memoized passability lookups: A*/Theta* revisits the same voxel hundreds of times.
     private final java.util.HashMap<Long, Boolean> passableCache = new java.util.HashMap<Long, Boolean>(512);
     private final java.util.HashMap<Long, Block> blockCache = new java.util.HashMap<Long, Block>(512);
@@ -25,14 +26,25 @@ public class ChunkCacheContext {
         this.baseChunkX = (centerX >> 4) - chunkRadius;
         this.baseChunkZ = (centerZ >> 4) - chunkRadius;
         this.chunks = new Chunk[this.gridSize][this.gridSize];
-        for (int dx = 0; dx < this.gridSize; dx++) {
-            for (int dz = 0; dz < this.gridSize; dz++) {
-                try {
-                    this.chunks[dx][dz] = world.func_72964_e(this.baseChunkX + dx, this.baseChunkZ + dz);
-                } catch (Throwable ignored) {
-                }
+        this.resolved = new boolean[this.gridSize][this.gridSize];
+    }
+
+    /**
+     * Loads a chunk only when pathfinding actually reads it. The old eager
+     * 7x7 preload generated/loaded up to 49 chunks per repath, including
+     * chunks the search never touched, and then left them to vanilla's
+     * unload queue.
+     */
+    private Chunk chunkAt(int gridX, int gridZ) {
+        if (!this.resolved[gridX][gridZ]) {
+            try {
+                this.chunks[gridX][gridZ] = this.world.func_72964_e(
+                    this.baseChunkX + gridX, this.baseChunkZ + gridZ);
+            } catch (Throwable ignored) {
             }
+            this.resolved[gridX][gridZ] = true;
         }
+        return this.chunks[gridX][gridZ];
     }
 
     static long pack(int x, int y, int z) {
@@ -44,7 +56,7 @@ public class ChunkCacheContext {
         int cx = (x >> 4) - this.baseChunkX;
         int cz = (z >> 4) - this.baseChunkZ;
         if (cx >= 0 && cx < this.gridSize && cz >= 0 && cz < this.gridSize) {
-            Chunk c = this.chunks[cx][cz];
+            Chunk c = chunkAt(cx, cz);
             if (c != null) {
                 long key = pack(x, y, z);
                 Block cached = this.blockCache.get(key);

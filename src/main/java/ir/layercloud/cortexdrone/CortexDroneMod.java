@@ -9,6 +9,7 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import ir.layercloud.cortexdrone.harness.PlayerChunkWatchRegistry;
 import java.io.File;
@@ -131,14 +132,23 @@ public class CortexDroneMod {
     @SubscribeEvent
     public void onChunkWatch(ChunkWatchEvent.Watch event) {
         if (event != null && event.player != null) {
-            PlayerChunkWatchRegistry.watch(event.player.field_70170_p, event.chunk);
+            PlayerChunkWatchRegistry.watch(event.player.field_70170_p,
+                event.player.func_110124_au(), event.chunk);
         }
     }
 
     @SubscribeEvent
     public void onChunkUnwatch(ChunkWatchEvent.UnWatch event) {
         if (event != null && event.player != null) {
-            PlayerChunkWatchRegistry.unwatch(event.player.field_70170_p, event.chunk);
+            PlayerChunkWatchRegistry.unwatch(event.player.field_70170_p,
+                event.player.func_110124_au(), event.chunk);
+        }
+    }
+
+    @SubscribeEvent
+    public void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event != null && event.player != null) {
+            PlayerChunkWatchRegistry.clearPlayer(event.player.func_110124_au());
         }
     }
 

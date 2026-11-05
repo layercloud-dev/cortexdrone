@@ -412,7 +412,6 @@ public class FlightPathfinder {
             double stepDist = droneInOpenSky ? 16.0 : 24.0;
             effGx = d.field_70165_t + (gx - d.field_70165_t) / horizDist * stepDist;
             effGz = d.field_70161_v + (gz - d.field_70161_v) / horizDist * stepDist;
-            ensureChunkLoaded(world, effGx, effGz);
             if (droneInOpenSky) {
                 int topSub = world.func_72976_f(MathHelper.func_76128_c(effGx), MathHelper.func_76128_c(effGz));
                 effGy = Math.max(gy, Math.max(topSub, topCur) + 4.5);
@@ -487,7 +486,6 @@ public class FlightPathfinder {
         double[] activeWp = ctrl.pathIndex < ctrl.pathWaypoints.size()
             ? ctrl.pathWaypoints.get(ctrl.pathIndex)
             : new double[]{effGx, effGy, effGz};
-        ensureChunkLoaded(world, activeWp[0], activeWp[2]);
         int awx = MathHelper.func_76128_c(activeWp[0]);
         int away = MathHelper.func_76128_c(activeWp[1]);
         int awz = MathHelper.func_76128_c(activeWp[2]);

@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import lombok.experimental.UtilityClass;
 
 /**
  * Word-boundary lexical & structural item/block matcher and relevance scorer.
@@ -12,6 +13,7 @@ import java.util.Set;
  * without substring false positives (e.g. "chest" never matches "chestplate", and base
  * materials do not accidentally match derivative shapes like stairs/slabs/bricks unless requested).
  */
+@UtilityClass
 public final class LexicalItemMatcher {
     private static final Set<String> DERIVATIVE_SHAPE_TOKENS = new HashSet<String>(Arrays.asList(
         "stairs", "stair", "slab", "slabs", "wall", "walls", "fence", "gate",
@@ -27,9 +29,6 @@ public final class LexicalItemMatcher {
     private static final Set<String> FILLED_LIQUID_MODIFIERS = new HashSet<String>(Arrays.asList(
         "water", "lava", "milk", "oil", "fuel", "acid", "blood", "sludge", "toxic", "coolant", "cryotheum", "pyrotheum"
     ));
-
-    private LexicalItemMatcher() {
-    }
 
     /**
      * Splits any camelCase, snake_case, namespace:id, or display name string into lowercase word tokens.

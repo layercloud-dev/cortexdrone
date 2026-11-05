@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -17,14 +18,10 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityChest;
 import net.minecraft.world.World;
 
+@RequiredArgsConstructor
 public class ChestSorter {
     private final DroneLogger logger;
     private final InventoryService inventoryService;
-
-    public ChestSorter(DroneLogger logger, InventoryService inventoryService) {
-        this.logger = logger;
-        this.inventoryService = inventoryService;
-    }
 
     public JsonObject sortNearbyChests(World world, DroneController ctrl, EntityPlayerMP player, int radius, String mode) {
         int r = Math.max(4, Math.min(48, radius));

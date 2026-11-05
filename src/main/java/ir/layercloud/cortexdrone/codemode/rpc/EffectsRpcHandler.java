@@ -11,6 +11,7 @@ import ir.layercloud.cortexdrone.model.LedEffectEngine;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -21,6 +22,7 @@ import net.minecraft.world.WorldServer;
  * Handles drone telemetry, chat, LED colors/effects, particle bursts,
  * musical notes/sound effects, and RLM skill library queries.
  */
+@RequiredArgsConstructor
 public class EffectsRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "get_drone", "say", "set_status_text", "set_led", "led_effect",
@@ -29,10 +31,6 @@ public class EffectsRpcHandler implements RpcHandler {
     };
 
     private final AIDroneManager manager;
-
-    public EffectsRpcHandler(AIDroneManager manager) {
-        this.manager = manager;
-    }
 
     @Override
     public String[] getSupportedMethods() {
@@ -47,7 +45,7 @@ public class EffectsRpcHandler implements RpcHandler {
         World world = d.field_70170_p;
 
         if (m.equals("get_drone")) {
-            if (args.has("loopId") && args.get("loopId").getAsInt() > 0 && args.get("loopId").getAsInt() != ctrl.activeLoopId.get()) {
+            if (args.has("loopId") && args.get("loopId").getAsInt() > 0 && ctrl.isLoopCancelled(args.get("loopId").getAsInt())) {
                 res.addProperty("aborted", true);
             }
             res.addProperty("id", ctrl.id);
@@ -215,7 +213,7 @@ public class EffectsRpcHandler implements RpcHandler {
             SkillLibrary.SkillEntry s = this.manager.getSkillLibrary().saveSkill(name, desc, code, tags);
             res.addProperty("saved", s != null);
             if (s != null) {
-                res.addProperty("name", s.name);
+                res.addProperty("name", s.getName());
             }
             return res;
         }

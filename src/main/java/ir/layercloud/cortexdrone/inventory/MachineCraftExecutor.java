@@ -12,6 +12,8 @@ import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -29,6 +31,7 @@ import net.minecraft.world.WorldServer;
  * The tick loop mirrors SmeltingService: fly to standoff, load input slots,
  * poll output slots, extract, and finish when the machine is done.
  */
+@RequiredArgsConstructor
 public class MachineCraftExecutor {
     private final AIDroneManager manager;
     private final DroneLogger logger;
@@ -36,25 +39,12 @@ public class MachineCraftExecutor {
     private final InventoryService inventoryService;
     private final MachineRecipeService recipeService;
 
-    public MachineCraftExecutor(
-        AIDroneManager manager,
-        DroneLogger logger,
-        FlightPathfinder pathfinder,
-        InventoryService inventoryService,
-        MachineRecipeService recipeService
-    ) {
-        this.manager = manager;
-        this.logger = logger;
-        this.pathfinder = pathfinder;
-        this.inventoryService = inventoryService;
-        this.recipeService = recipeService;
-    }
-
+    @Data
     private static class LoadResult {
-        boolean ok;
-        int loadedItems;
-        int loadedStacks;
-        String detail;
+        private boolean ok;
+        private int loadedItems;
+        private int loadedStacks;
+        private String detail;
     }
 
     private static final int MAX_RECIPE_DURATION_CACHE = 64;
@@ -114,9 +104,9 @@ public class MachineCraftExecutor {
 
         IInventory droneInv = ctrl.drone.mainInventory();
         AvailabilityCheck ac = checkAvailability(droneInv, recipe, wanted);
-        if (!ac.sufficient) {
+        if (!ac.isSufficient()) {
             res.addProperty("ok", false);
-            res.addProperty("error", "Insufficient ingredients in drone inventory. Missing: " + ac.missingSummary);
+            res.addProperty("error", "Insufficient ingredients in drone inventory. Missing: " + ac.getMissingSummary());
             res.add("recipe", recipe);
             res.addProperty("machine", machine);
             res.add("machinePos", describePos(chosen));
@@ -124,15 +114,15 @@ public class MachineCraftExecutor {
         }
 
         LoadResult load = loadRecipeIntoMachine(chosen, ctrl, recipe, wanted);
-        res.addProperty("loaded", load.ok);
-        res.addProperty("loadedItems", load.loadedItems);
-        res.addProperty("loadedStacks", load.loadedStacks);
-        if (!load.ok) {
+        res.addProperty("loaded", load.isOk());
+        res.addProperty("loadedItems", load.getLoadedItems());
+        res.addProperty("loadedStacks", load.getLoadedStacks());
+        if (!load.isOk()) {
             res.addProperty("ok", false);
-            res.addProperty("error", load.detail);
+            res.addProperty("error", load.getDetail());
         }
 
-        if (load.ok) {
+        if (load.isOk()) {
             this.manager.setDroneMode(ctrl, Mode.MACHINE, "MachineCraft " + machine + " producing " + f + " x" + wanted);
             ctrl.drone.lightColor_$eq(0x00CCFF);
             ctrl.drone.statusText_$eq("Machine\n" + AIDroneManager.trimStatus(f));
@@ -274,15 +264,16 @@ public class MachineCraftExecutor {
         return meta == 0 || meta == st.func_77960_j() || in.has("meta") == false;
     }
 
+    @Data
     private static class AvailabilityCheck {
-        boolean sufficient;
-        String missingSummary = "";
+        private boolean sufficient;
+        private String missingSummary = "";
     }
 
     private AvailabilityCheck checkAvailability(IInventory inv, JsonObject recipe, int wanted) {
         AvailabilityCheck ac = new AvailabilityCheck();
         if (!recipe.has("inputs")) {
-            ac.sufficient = true;
+            ac.setSufficient(true);
             return ac;
         }
         JsonArray inputs = recipe.getAsJsonArray("inputs");
@@ -299,23 +290,23 @@ public class MachineCraftExecutor {
                 missing.append(label).append(" ").append(amt).append("(have ").append(have).append(") ");
             }
         }
-        ac.sufficient = ok;
-        ac.missingSummary = missing.toString().trim();
+        ac.setSufficient(ok);
+        ac.setMissingSummary(missing.toString().trim());
         return ac;
     }
 
     private LoadResult loadRecipeIntoMachine(TileEntity machine, DroneController ctrl, JsonObject recipe, int wanted) {
         LoadResult lr = new LoadResult();
-        lr.detail = "No writable input slots";
+        lr.setDetail("No writable input slots");
         if (!(machine instanceof IInventory)) {
-            lr.detail = "Machine tile is not an IInventory";
+            lr.setDetail("Machine tile is not an IInventory");
             return lr;
         }
         IInventory machineInv = (IInventory) machine;
         IInventory droneInv = ctrl.drone.mainInventory();
         List<Integer> inputSlots = inputSlotIndices(machineInv, recipe);
         if (inputSlots.isEmpty()) {
-            lr.detail = "Machine has no input slots accepting recipe ingredients (checked func_94041_b / func_94128_d)";
+            lr.setDetail("Machine has no input slots accepting recipe ingredients (checked func_94041_b / func_94128_d)");
             return lr;
         }
         JsonArray inputs = recipe.has("inputs") ? recipe.getAsJsonArray("inputs") : new JsonArray();
@@ -342,11 +333,11 @@ public class MachineCraftExecutor {
                 }
             }
             if (remaining > 0) {
-                lr.detail = "Could not place all of ingredient " + (in.has("displayName") ? in.get("displayName").getAsString() : "?")
-                    + " (short " + remaining + "); machine input slot rejected stack (func_94041_b)";
-                lr.loadedItems = loadedItems;
-                lr.loadedStacks = loadedStacks;
-                lr.ok = false;
+                lr.setDetail("Could not place all of ingredient " + (in.has("displayName") ? in.get("displayName").getAsString() : "?")
+                    + " (short " + remaining + "); machine input slot rejected stack (func_94041_b)");
+                lr.setLoadedItems(loadedItems);
+                lr.setLoadedStacks(loadedStacks);
+                lr.setOk(false);
                 machineInv.func_70296_d();
                 return lr;
             }
@@ -355,10 +346,10 @@ public class MachineCraftExecutor {
         ensureFluids(machine, ctrl, recipe);
         machineInv.func_70296_d();
         machine.func_70296_d();
-        lr.ok = true;
-        lr.loadedItems = loadedItems;
-        lr.loadedStacks = loadedStacks;
-        lr.detail = "Loaded " + loadedItems + " items into " + loadedStacks + " stack(s)";
+        lr.setOk(true);
+        lr.setLoadedItems(loadedItems);
+        lr.setLoadedStacks(loadedStacks);
+        lr.setDetail("Loaded " + loadedItems + " items into " + loadedStacks + " stack(s)");
         return lr;
     }
 

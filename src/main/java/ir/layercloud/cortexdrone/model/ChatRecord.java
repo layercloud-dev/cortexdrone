@@ -1,11 +1,13 @@
 package ir.layercloud.cortexdrone.model;
 
 import com.google.gson.JsonObject;
+import lombok.Value;
 
+@Value
 public class ChatRecord {
-    public final long timestamp;
-    public final String sender;
-    public final String message;
+    long timestamp;
+    String sender;
+    String message;
 
     public ChatRecord(String sender, String message) {
         this.timestamp = System.currentTimeMillis();

@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.inventory;
 
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
@@ -13,9 +14,8 @@ import net.minecraft.item.ItemTool;
  * Dynamically inspects tools and weapons in the drone's inventory for dig speed,
  * Efficiency, Fortune, Silk Touch, Sharpness/Smite, and Fire Aspect enchantments.
  */
+@UtilityClass
 public final class ToolInspector {
-    private ToolInspector() {
-    }
 
     public static int getBestFortuneLevel(IInventory inv) {
         if (inv == null) return 0;

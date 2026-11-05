@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
@@ -21,27 +23,19 @@ import net.minecraft.world.World;
  */
 public class StructureArchitect {
 
+    @Getter
+    @RequiredArgsConstructor
     public static class StructurePlan {
-        public final int x1;
-        public final int z1;
-        public final int x2;
-        public final int z2;
-        public final int floorY;
-        public final int maxY;
-        public final String doorSide;
-        public final List<int[]> clearBlocks = new ArrayList<int[]>();
-        public final List<BuildTask> buildTasks = new ArrayList<BuildTask>();
-        public final Map<String, Integer> materialCounts = new LinkedHashMap<String, Integer>();
-
-        public StructurePlan(int x1, int z1, int x2, int z2, int floorY, int maxY, String doorSide) {
-            this.x1 = x1;
-            this.z1 = z1;
-            this.x2 = x2;
-            this.z2 = z2;
-            this.floorY = floorY;
-            this.maxY = maxY;
-            this.doorSide = doorSide;
-        }
+        private final int x1;
+        private final int z1;
+        private final int x2;
+        private final int z2;
+        private final int floorY;
+        private final int maxY;
+        private final String doorSide;
+        private final List<int[]> clearBlocks = new ArrayList<int[]>();
+        private final List<BuildTask> buildTasks = new ArrayList<BuildTask>();
+        private final Map<String, Integer> materialCounts = new LinkedHashMap<String, Integer>();
 
         public void addTask(int x, int y, int z, String blockFilter, int meta, boolean replace) {
             this.buildTasks.add(new BuildTask(x, y, z, blockFilter, meta, replace, null));

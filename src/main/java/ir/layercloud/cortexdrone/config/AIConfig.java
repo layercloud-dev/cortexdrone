@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Synchronized;
 
 public class AIConfig {
     public String apiUrl = envOrDefault("CORTEXDRONE_API_URL", "http://127.0.0.1:7002/v1/chat/completions");
@@ -59,7 +60,8 @@ public class AIConfig {
         return fallback;
     }
 
-    public static synchronized AIConfig load(File configFile, Gson gson) {
+    @Synchronized
+    public static AIConfig load(File configFile, Gson gson) {
         if (configFile == null || !configFile.exists()) {
             return new AIConfig();
         }
@@ -99,7 +101,8 @@ public class AIConfig {
         }
     }
 
-    public synchronized void save(File configFile, Gson gson, Collection<DroneController> controllers) {
+    @Synchronized
+    public void save(File configFile, Gson gson, Collection<DroneController> controllers) {
         if (configFile == null) return;
         try {
             Map<String, SavedDroneInfo> byUuid = new LinkedHashMap<String, SavedDroneInfo>();
@@ -147,7 +150,8 @@ public class AIConfig {
         return o + ":" + n;
     }
 
-    public synchronized SavedLocation saveLocation(String owner, String name, double x, double y, double z, String tags) {
+    @Synchronized
+    public SavedLocation saveLocation(String owner, String name, double x, double y, double z, String tags) {
         if (name == null || name.trim().isEmpty()) return null;
         if (this.savedLocations == null) {
             this.savedLocations = new LinkedHashMap<String, SavedLocation>();
@@ -171,7 +175,8 @@ public class AIConfig {
         return loc;
     }
 
-    public synchronized SavedLocation getLocation(String owner, String query) {
+    @Synchronized
+    public SavedLocation getLocation(String owner, String query) {
         if (query == null || query.trim().isEmpty() || this.savedLocations == null) return null;
         String q = query.trim().toLowerCase();
         String qUnderscore = q.replace(' ', '_');
@@ -200,7 +205,8 @@ public class AIConfig {
         return bestFallback;
     }
 
-    public synchronized List<SavedLocation> listLocations(String owner) {
+    @Synchronized
+    public List<SavedLocation> listLocations(String owner) {
         List<SavedLocation> out = new ArrayList<SavedLocation>();
         if (this.savedLocations == null) return out;
         Map<String, SavedLocation> dedup = new LinkedHashMap<String, SavedLocation>();
@@ -215,7 +221,8 @@ public class AIConfig {
         return out;
     }
 
-    public synchronized boolean deleteLocation(String owner, String name) {
+    @Synchronized
+    public boolean deleteLocation(String owner, String name) {
         if (name == null || this.savedLocations == null) return false;
         boolean removed = false;
         if (owner != null) {
@@ -225,7 +232,8 @@ public class AIConfig {
         return removed;
     }
 
-    public synchronized void setPlayerBase(String playerName, double x, double y, double z) {
+    @Synchronized
+    public void setPlayerBase(String playerName, double x, double y, double z) {
         if (playerName == null || playerName.trim().isEmpty()) return;
         if (this.playerBases == null) {
             this.playerBases = new HashMap<String, double[]>();
@@ -233,7 +241,8 @@ public class AIConfig {
         this.playerBases.put(playerName.trim().toLowerCase(), new double[]{x, y, z});
     }
 
-    public synchronized double[] getPlayerBase(String playerName) {
+    @Synchronized
+    public double[] getPlayerBase(String playerName) {
         if (playerName == null || this.playerBases == null) return null;
         double[] coords = this.playerBases.get(playerName.trim().toLowerCase());
         return (coords != null && coords.length >= 3) ? coords : null;

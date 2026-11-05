@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import lombok.experimental.UtilityClass;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLiving;
@@ -25,6 +26,7 @@ import net.minecraftforge.common.BiomeDictionary;
  * Dynamic entity hostility/type classifier and Forge BiomeDictionary matcher.
  * Uses EnumCreatureType, EntityList, SharedMonsterAttributes, and BiomeGenBase registries.
  */
+@UtilityClass
 public final class EntityAndBiomeClassifier {
     private static volatile Set<String> cachedBiomeTokens = Collections.emptySet();
     private static Method entityIsCreatureTypeMethod = null;
@@ -34,9 +36,6 @@ public final class EntityAndBiomeClassifier {
             entityIsCreatureTypeMethod = Entity.class.getMethod("isCreatureType", EnumCreatureType.class, boolean.class);
         } catch (Throwable ignored) {
         }
-    }
-
-    private EntityAndBiomeClassifier() {
     }
 
     public static boolean isCreatureOfType(EntityLivingBase el, EnumCreatureType type) {

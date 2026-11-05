@@ -12,6 +12,7 @@ import ir.layercloud.cortexdrone.world.WorldScanner;
 import java.util.ArrayList;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -20,6 +21,7 @@ import net.minecraft.world.World;
  * Handles 3D flight navigation, velocity nudges, follow/stay/come modes,
  * breadcrumb trail queries/backtracking, cave escape, and player airlift.
  */
+@RequiredArgsConstructor
 public class NavigationRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "move_to", "goto", "set_velocity", "nudge", "follow", "stay", "stop",
@@ -30,12 +32,6 @@ public class NavigationRpcHandler implements RpcHandler {
     private final AIDroneManager manager;
     private final FlightPathfinder pathfinder;
     private final WorldScanner worldScanner;
-
-    public NavigationRpcHandler(AIDroneManager manager, FlightPathfinder pathfinder, WorldScanner worldScanner) {
-        this.manager = manager;
-        this.pathfinder = pathfinder;
-        this.worldScanner = worldScanner;
-    }
 
     @Override
     public String[] getSupportedMethods() {
@@ -79,6 +75,8 @@ public class NavigationRpcHandler implements RpcHandler {
         }
 
         if (m.equals("stay") || m.equals("stop")) {
+            int callerLoopId = args.has("loopId") ? args.get("loopId").getAsInt() : 0;
+            ctrl.cancelOtherLoops(callerLoopId);
             ctrl.clearAllTaskQueues();
             ctrl.goalX = d.field_70165_t;
             ctrl.goalY = d.field_70163_u;

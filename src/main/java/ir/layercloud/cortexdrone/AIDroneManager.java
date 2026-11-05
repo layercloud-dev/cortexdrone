@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import li.cil.oc.common.entity.Drone;
+import lombok.Getter;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
@@ -48,6 +49,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.ServerChatEvent;
 
+@Getter
 public class AIDroneManager {
     private final CortexDroneMod mod;
     private File configFile;
@@ -130,26 +132,6 @@ public class AIDroneManager {
         this.tickProfiler = new TickProfiler(this.logger);
         this.httpServer = new DroneHttpServer(this, this.logger);
     }
-
-    public CortexDroneMod getMod() { return this.mod; }
-    public AIConfig getConfig() { return this.config; }
-    public DroneLogger getLogger() { return this.logger; }
-    public DroneChunkLoader getChunkLoader() { return this.chunkLoader; }
-    public TickProfiler getTickProfiler() { return this.tickProfiler; }
-    public FlightPathfinder getPathfinder() { return this.pathfinder; }
-    public WorldScanner getWorldScanner() { return this.worldScanner; }
-    public InventoryService getInventoryService() { return this.inventoryService; }
-    public ChestSorter getChestSorter() { return this.chestSorter; }
-    public SmeltingService getSmeltingService() { return this.smeltingService; }
-    public MiningService getMiningService() { return this.miningService; }
-    public BuildingService getBuildingService() { return this.buildingService; }
-    public CombatService getCombatService() { return this.combatService; }
-    public DocLookupService getDocLookupService() { return this.docLookupService; }
-    public SkillLibrary getSkillLibrary() { return this.skillLibrary; }
-    public CodeModeRuntime getCodeModeRuntime() { return this.codeModeRuntime; }
-    public RpcDispatcher getRpcDispatcher() { return this.rpcDispatcher; }
-    public LlmAgentService getAgentService() { return this.agentService; }
-    public Map<Integer, DroneController> getControllersById() { return this.controllersById; }
 
     public void onServerStarting(FMLServerStartingEvent event, File worldDir) {
         this.configFile = new File(worldDir, "layercloud-ai.json");
@@ -657,6 +639,7 @@ public class AIDroneManager {
         this.logger.log("CMD", ctrl, "Pure Code Mode instruction from " + senderName + " (loopId=" + myLoopId + ")", "prompt=\"" + prompt + "\"");
 
         final JsonObject worldContext = this.agentService.buildDroneContextForLlm(player, ctrl);
+        ctrl.registerLoop(myLoopId);
         CortexDroneMod.HTTP_POOL.submit(new Runnable() {
             @Override
             public void run() {

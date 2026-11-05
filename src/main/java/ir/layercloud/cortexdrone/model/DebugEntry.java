@@ -3,15 +3,17 @@ package ir.layercloud.cortexdrone.model;
 import com.google.gson.JsonObject;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import lombok.Value;
 
+@Value
 public class DebugEntry {
-    public final long timestamp;
-    public final String time;
-    public final String category;
-    public final int droneId;
-    public final String droneName;
-    public final String message;
-    public final String details;
+    long timestamp;
+    String time;
+    String category;
+    int droneId;
+    String droneName;
+    String message;
+    String details;
 
     public DebugEntry(String category, int droneId, String droneName, String message, String details) {
         this.timestamp = System.currentTimeMillis();

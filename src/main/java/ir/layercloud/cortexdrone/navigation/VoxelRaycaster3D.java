@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.navigation;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -11,9 +12,8 @@ import net.minecraft.world.World;
  * Visits every voxel intersected by a 3D ray in exact order without oversampling or skipping corners,
  * and tracks the exact entry face normal (faceX, faceY, faceZ).
  */
+@UtilityClass
 public final class VoxelRaycaster3D {
-    private VoxelRaycaster3D() {
-    }
 
     /**
      * Exact 3D DDA line-of-sight passability check using ChunkCacheContext (for Theta* pathfinding).

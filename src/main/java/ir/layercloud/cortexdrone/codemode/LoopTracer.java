@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.codemode;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
+import lombok.experimental.UtilityClass;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
@@ -10,9 +11,8 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * impossible to miss: every turn gets a TRACE line, supersession is both
  * logged and spoken, and error/trace snippets never leak a full API key.
  */
+@UtilityClass
 public final class LoopTracer {
-    private LoopTracer() {
-    }
 
     public static String maskKey(String key) {
         if (key == null || key.isEmpty()) return "<empty>";

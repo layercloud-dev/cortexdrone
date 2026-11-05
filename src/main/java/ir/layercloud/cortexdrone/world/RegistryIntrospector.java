@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockChest;
 import net.minecraft.block.BlockCrops;
@@ -66,6 +67,7 @@ import net.minecraftforge.oredict.OreDictionary;
  * Dynamic runtime introspection over Forge's OreDictionary, FluidRegistry, BiomeDictionary,
  * EntityList, and Block/Item/TileEntity hierarchies. Eliminates hardcoded item/ore/mob/machine lists.
  */
+@UtilityClass
 public final class RegistryIntrospector {
     private static final Random PROBE_RANDOM = new Random(42L);
     private static final Map<Integer, Boolean> ORE_BLOCK_CACHE = new ConcurrentHashMap<Integer, Boolean>();
@@ -100,9 +102,6 @@ public final class RegistryIntrospector {
             entityIsCreatureTypeMethod = Entity.class.getMethod("isCreatureType", EnumCreatureType.class, boolean.class);
         } catch (Throwable ignored) {
         }
-    }
-
-    private RegistryIntrospector() {
     }
 
     public static int blockCacheKey(Block b, int meta) {

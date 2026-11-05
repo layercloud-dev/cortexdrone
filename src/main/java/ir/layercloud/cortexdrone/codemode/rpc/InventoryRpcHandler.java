@@ -13,6 +13,7 @@ import ir.layercloud.cortexdrone.world.ItemClassifier;
 import ir.layercloud.cortexdrone.world.WorldScanner;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
@@ -26,6 +27,7 @@ import net.minecraft.world.World;
 /**
  * Handles player, chest, furnace, crafting, smelting, and fluid inventory RPCs.
  */
+@RequiredArgsConstructor
 public class InventoryRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "get_player", "get_player_inventory", "take_from_player", "give_to_player",
@@ -42,18 +44,6 @@ public class InventoryRpcHandler implements RpcHandler {
     private final InventoryService inventoryService;
     private final ChestSorter chestSorter;
     private final SmeltingService smeltingService;
-
-    public InventoryRpcHandler(
-        AIDroneManager manager,
-        InventoryService inventoryService,
-        ChestSorter chestSorter,
-        SmeltingService smeltingService
-    ) {
-        this.manager = manager;
-        this.inventoryService = inventoryService;
-        this.chestSorter = chestSorter;
-        this.smeltingService = smeltingService;
-    }
 
     @Override
     public String[] getSupportedMethods() {

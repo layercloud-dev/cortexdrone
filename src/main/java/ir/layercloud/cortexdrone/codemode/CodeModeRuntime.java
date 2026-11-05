@@ -13,18 +13,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
+@RequiredArgsConstructor
 public class CodeModeRuntime {
     private static final String HARNESS_TEMPLATE = loadSdkBundle();
 
     private final DroneLogger logger;
     private final AIConfig config;
-
-    public CodeModeRuntime(DroneLogger logger, AIConfig config) {
-        this.logger = logger;
-        this.config = config;
-    }
 
     private static String loadSdkBundle() {
         String[] modules = new String[]{
@@ -160,7 +157,7 @@ public class CodeModeRuntime {
                 if (proc.waitFor(Math.min(250L, remaining), TimeUnit.MILLISECONDS)) {
                     break;
                 }
-                if ((loopId > 0 && ctrl.activeLoopId.get() != loopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                if ((loopId > 0 && ctrl.isLoopCancelled(loopId)) || ctrl.drone == null || ctrl.drone.field_70128_L) {
                     superseded = true;
                     break;
                 }

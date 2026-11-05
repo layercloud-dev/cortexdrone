@@ -70,6 +70,43 @@ final class AgentLoopHeuristics {
         return compact.length() > 200 ? compact.substring(0, 200) : compact;
     }
 
+    static boolean shouldStopBeforeExecute(JsonObject plan, String code, boolean isMalformed) {
+        if (isMalformed || plan == null) return false;
+        if (plan.has("stop") && !plan.get("stop").isJsonNull() && plan.get("stop").getAsBoolean()) return true;
+        if (plan.has("stopPrevious") && !plan.get("stopPrevious").isJsonNull() && plan.get("stopPrevious").getAsBoolean()) return true;
+        return codeCallsStop(code);
+    }
+
+    static void executePreCodeModeStop(
+        ir.layercloud.cortexdrone.model.DroneController ctrl,
+        net.minecraft.entity.player.EntityPlayerMP player,
+        int myLoopId,
+        int turn,
+        ir.layercloud.cortexdrone.config.DroneLogger logger,
+        RpcDispatcher rpcDispatcher
+    ) {
+        int cancelledLoops = ctrl.cancelOtherLoops(myLoopId);
+        JsonObject stopArgs = new JsonObject();
+        stopArgs.addProperty("loopId", myLoopId);
+        rpcDispatcher.executeOnMainThread(ctrl, player, "clear_queues", stopArgs);
+        logger.log("CODEMODE", ctrl, "Harness executed pre-CodeMode stop before Turn " + turn,
+            "loopId=" + myLoopId + " cancelledLoops=" + cancelledLoops);
+        if (cancelledLoops > 0) {
+            long waitUntil = System.currentTimeMillis() + 350L;
+            while (ctrl.activeScriptCount.get() > 0 && System.currentTimeMillis() < waitUntil) {
+                try { Thread.sleep(50L); } catch (InterruptedException ignored) { break; }
+            }
+        }
+    }
+
+    static boolean codeCallsStop(String code) {
+        if (code == null || code.isEmpty()) return false;
+        String c = code.toLowerCase();
+        return c.contains("drone.stop(") || c.contains("drone.clearqueues(")
+            || c.contains("rpc('stop'") || c.contains("rpc(\"stop\"")
+            || c.contains("rpc('clear_queues'") || c.contains("rpc(\"clear_queues\"");
+    }
+
     static boolean codeMentionsPhysicalAction(String code) {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();

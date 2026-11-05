@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
@@ -16,12 +17,9 @@ import net.minecraft.tileentity.TileEntityFurnace;
  * Handles item transfers between the drone and player inventories
  * (`takeFromPlayerInventory`, `giveToPlayerInventory`, `moveInventorySlot`).
  */
+@RequiredArgsConstructor
 public class PlayerInventoryOps {
     private final DroneLogger logger;
-
-    public PlayerInventoryOps(DroneLogger logger) {
-        this.logger = logger;
-    }
 
     public int takeFromPlayerInventory(DroneController ctrl, EntityPlayerMP player, String filter, int maxCount) {
         if (ctrl == null || ctrl.drone == null || player == null || player.field_71071_by == null) return 0;

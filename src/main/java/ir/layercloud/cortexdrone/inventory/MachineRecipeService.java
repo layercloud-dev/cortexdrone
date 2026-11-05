@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
@@ -29,6 +30,7 @@ import net.minecraft.world.World;
  * {@link MachineRecipeParser}; ranking, filtering, and ingredient
  * extraction live in {@link MachineRecipeRanker}.
  */
+@RequiredArgsConstructor
 public class MachineRecipeService {
     // Recipe JSON is re-read from disk on every call; cache it for a few seconds
     // so repeated HUD/lookup calls in the same tick window do not thrash I/O.
@@ -37,10 +39,6 @@ public class MachineRecipeService {
     private long cachedRecipesAtMs = -1L;
 
     private final InventoryService inventoryService;
-
-    public MachineRecipeService(InventoryService inventoryService) {
-        this.inventoryService = inventoryService;
-    }
 
     static class NormalizedRecipe {
         String machine;

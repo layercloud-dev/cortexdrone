@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import java.util.Arrays;
+import lombok.Getter;
 
 /**
  * Lightweight server-tick profiler for CortexDrone TPS diagnosis.
@@ -25,10 +26,15 @@ public final class TickProfiler {
     private int sampleCount = 0;
     private int sampleIndex = 0;
     private volatile long lastDurationNanos = 0L;
+    @Getter
     private volatile long ticksMeasured = 0L;
+    @Getter
     private volatile long overThresholdCount = 0L;
+    @Getter
     private volatile long lastWarnWallMs = 0L;
+    @Getter
     private volatile double warnThresholdMs = DEFAULT_WARN_MS;
+    @Getter
     private volatile long warnCooldownMs = DEFAULT_COOLDOWN_MS;
 
     public TickProfiler(DroneLogger logger) {
@@ -78,14 +84,6 @@ public final class TickProfiler {
         this.warnCooldownMs = envLong(ENV_COOLDOWN_MS, DEFAULT_COOLDOWN_MS);
     }
 
-    public double getWarnThresholdMs() {
-        return this.warnThresholdMs;
-    }
-
-    public long getWarnCooldownMs() {
-        return this.warnCooldownMs;
-    }
-
     public double getLastMs() {
         return this.lastDurationNanos / 1000000.0;
     }
@@ -124,18 +122,6 @@ public final class TickProfiler {
         double avgMs = getAvgMs();
         if (avgMs <= 0.0) return 20.0;
         return Math.min(20.0, 1000.0 / avgMs);
-    }
-
-    public long getTicksMeasured() {
-        return this.ticksMeasured;
-    }
-
-    public long getOverThresholdCount() {
-        return this.overThresholdCount;
-    }
-
-    public long getLastWarnWallMs() {
-        return this.lastWarnWallMs;
     }
 
     public int getSampleCount() {

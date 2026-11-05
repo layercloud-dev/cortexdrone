@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityLivingBase;
@@ -23,12 +24,10 @@ import net.minecraft.world.World;
  * dynamic Forge runtime introspection (RegistryIntrospector) and word-boundary
  * lexical scoring (LexicalItemMatcher).
  */
+@UtilityClass
 public final class ItemClassifier {
     private static final Map<Integer, String> BLOCK_DISP_CACHE = new ConcurrentHashMap<Integer, String>();
     private static final Map<Integer, String> BLOCK_ID_CACHE = new ConcurrentHashMap<Integer, String>();
-
-    private ItemClassifier() {
-    }
 
     public static List<String> getOreDictNames(ItemStack stack) {
         return RegistryIntrospector.getOreDictNames(stack);

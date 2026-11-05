@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -32,6 +33,7 @@ import net.minecraft.world.biome.BiomeGenBase;
  * are expensive; avoid them when a cached nearby-resource summary can serve the
  * caller. On-demand {@code world.scanBlocks} time-slices at 2-4ms per slice.</p>
  */
+@RequiredArgsConstructor
 public class WorldScanner {
     // Cheap to recompute; don't re-run a full cube scan for a stale telemetry hint.
     // A drone moving >4 blocks (centre bucket) misses the cache; a block change
@@ -48,11 +50,6 @@ public class WorldScanner {
         new java.util.HashMap<Long, java.util.Map<String, int[]>>();
     private final java.util.Map<Long, Long> nearbyResourceExpiry =
         new java.util.HashMap<Long, Long>();
-
-    public WorldScanner(DroneLogger logger, AIConfig config) {
-        this.logger = logger;
-        this.config = config;
-    }
 
     public JsonObject scanRoom3D(World world, int startX, int startY, int startZ, int maxRadius) {
         return RoomScanner.scanRoom3D(world, startX, startY, startZ, maxRadius);

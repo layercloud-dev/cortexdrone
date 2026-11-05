@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemFood;
@@ -26,13 +27,10 @@ import net.minecraft.item.ItemTool;
 import net.minecraft.item.crafting.FurnaceRecipes;
 import net.minecraft.tileentity.TileEntityFurnace;
 
+@RequiredArgsConstructor
 public class DocLookupService {
     private final InventoryService inventoryService;
     private final Map<String, String> webDocCache = new ConcurrentHashMap<String, String>();
-
-    public DocLookupService(InventoryService inventoryService) {
-        this.inventoryService = inventoryService;
-    }
 
     @SuppressWarnings("unchecked")
     public JsonObject lookup(String rawQuery, String rawModId, boolean includeWeb) {

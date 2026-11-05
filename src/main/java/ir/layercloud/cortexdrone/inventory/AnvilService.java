@@ -8,6 +8,8 @@ import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -29,23 +31,12 @@ import net.minecraft.world.World;
  * — reports the exact blocker (tier, overlay, ingredients) via droneSay and
  * the returned JSON so the LLM must surface it. No hardcoded recipe lists.
  */
+@RequiredArgsConstructor
 public class AnvilService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final InventoryService inventoryService;
     private final MachineRecipeService recipeService;
-
-    public AnvilService(
-        AIDroneManager manager,
-        DroneLogger logger,
-        InventoryService inventoryService,
-        MachineRecipeService recipeService
-    ) {
-        this.manager = manager;
-        this.logger = logger;
-        this.inventoryService = inventoryService;
-        this.recipeService = recipeService;
-    }
 
     public static final String ANVIL_BLOCK_SUBSTR = "anvil";
     private static final int MAX_SEARCH_RADIUS = 64;
@@ -93,37 +84,37 @@ public class AnvilService {
             reportBlocker(owner, ctrl, "Anvil recipe '" + f + "' found but no anvil block is within " + r + "m. Place the required anvil tier first.");
             return res;
         }
-        res.addProperty("anvilX", loc.x);
-        res.addProperty("anvilY", loc.y);
-        res.addProperty("anvilZ", loc.z);
-        res.addProperty("anvilTier", loc.tier);
-        res.addProperty("anvilRegistryName", loc.registryName != null ? loc.registryName : "");
+        res.addProperty("anvilX", loc.getX());
+        res.addProperty("anvilY", loc.getY());
+        res.addProperty("anvilZ", loc.getZ());
+        res.addProperty("anvilTier", loc.getTier());
+        res.addProperty("anvilRegistryName", loc.getRegistryName() != null ? loc.getRegistryName() : "");
 
         int tierLower = recipe.has("tierLower") ? recipe.get("tierLower").getAsInt() : 0;
         int tierUpper = recipe.has("tierUpper") ? recipe.get("tierUpper").getAsInt() : -1;
         res.addProperty("recipeTierLower", tierLower);
         res.addProperty("recipeTierUpper", tierUpper);
-        boolean tierOk = (tierUpper < 0 || loc.tier <= tierUpper) && loc.tier >= tierLower;
+        boolean tierOk = (tierUpper < 0 || loc.getTier() <= tierUpper) && loc.getTier() >= tierLower;
         res.addProperty("tierOk", tierOk);
         if (!tierOk) {
             res.addProperty("ok", false);
-            res.addProperty("error", "Anvil tier " + loc.tier + " does not satisfy recipe tier range [" + tierLower + "," + tierUpper + "] for '" + f + "'. Need tier >= " + tierLower + (tierUpper >= 0 ? " and <= " + tierUpper : "") + ".");
-            reportBlocker(owner, ctrl, "Anvil tier " + loc.tier + " too low/high for '" + f + "' (needs " + tierLower + ".." + tierUpper + ").");
+            res.addProperty("error", "Anvil tier " + loc.getTier() + " does not satisfy recipe tier range [" + tierLower + "," + tierUpper + "] for '" + f + "'. Need tier >= " + tierLower + (tierUpper >= 0 ? " and <= " + tierUpper : "") + ".");
+            reportBlocker(owner, ctrl, "Anvil tier " + loc.getTier() + " too low/high for '" + f + "' (needs " + tierLower + ".." + tierUpper + ").");
             return res;
         }
 
         IInventory droneInv = ctrl.drone.mainInventory();
         AvailabilitySummary av = summarizeAvailability(world, ctrl, owner, recipe, r);
-        res.addProperty("ingredientsFound", av.foundCount);
-        res.addProperty("ingredientsTotal", av.totalCount);
-        res.addProperty("ingredientsSufficient", av.sufficient);
-        List<String> missing = av.missingLabels;
+        res.addProperty("ingredientsFound", av.getFoundCount());
+        res.addProperty("ingredientsTotal", av.getTotalCount());
+        res.addProperty("ingredientsSufficient", av.isSufficient());
+        List<String> missing = av.getMissingLabels();
         if (!missing.isEmpty()) {
             res.addProperty("ok", false);
             res.addProperty("error", "Missing anvil ingredients: " + join(missing));
             res.addProperty("missing", join(missing));
             res.addProperty("overlay", recipe.has("overlay") ? recipe.get("overlay").getAsString() : "");
-            reportBlocker(owner, ctrl, "Cannot drive anvil for '" + f + "': missing ingredients " + join(missing) + " (overlay=" + res.get("overlay").getAsString() + ", tier " + loc.tier + ").");
+            reportBlocker(owner, ctrl, "Cannot drive anvil for '" + f + "': missing ingredients " + join(missing) + " (overlay=" + res.get("overlay").getAsString() + ", tier " + loc.getTier() + ").");
             return res;
         }
 
@@ -162,20 +153,20 @@ public class AnvilService {
 
         res.addProperty("guiDrivable", false);
         GuiDriverAttempt gui = tryOpenAnvilContainer(world, ctrl, owner, loc, recipe);
-        res.addProperty("guiOpened", gui.opened);
-        res.addProperty("guiDetail", gui.detail);
-        if (gui.opened) {
-            int produced = completeSmithing(world, ctrl, owner, gui.container, recipe, av);
+        res.addProperty("guiOpened", gui.isOpened());
+        res.addProperty("guiDetail", gui.getDetail());
+        if (gui.isOpened()) {
+            int produced = completeSmithing(world, ctrl, owner, gui.getContainer(), recipe, av);
             res.addProperty("smithingProduced", produced);
         }
 
         JsonObject block = buildBlockerJson(loc, recipe, av, gui);
-        res.addProperty("ok", gui.opened);
-        if (!gui.opened) {
-            res.addProperty("error", "Anvil GUI cannot be driven via interact_block (GUI-only): " + gui.detail);
+        res.addProperty("ok", gui.isOpened());
+        if (!gui.isOpened()) {
+            res.addProperty("error", "Anvil GUI cannot be driven via interact_block (GUI-only): " + gui.getDetail());
             res.add("blocker", block);
-            reportBlocker(owner, ctrl, "Anvil at (" + loc.x + "," + loc.y + "," + loc.z + ") tier " + loc.tier
-                + " for '" + f + "': " + gui.detail
+            reportBlocker(owner, ctrl, "Anvil at (" + loc.getX() + "," + loc.getY() + "," + loc.getZ() + ") tier " + loc.getTier()
+                + " for '" + f + "': " + gui.getDetail()
                 + " Ingredients staged=" + staged + ". " + blockerSummary(block));
         } else {
             res.add("blocker", block);
@@ -184,13 +175,14 @@ public class AnvilService {
         return res;
     }
 
+    @Data
     private static class AnvilLocation {
-        int x;
-        int y;
-        int z;
-        int tier;
-        String registryName;
-        String displayName;
+        private int x;
+        private int y;
+        private int z;
+        private int tier;
+        private String registryName;
+        private String displayName;
     }
 
     private static boolean isChunkLoaded(World world, int x, int z) {
@@ -204,24 +196,27 @@ public class AnvilService {
         }
     }
 
+    @Data
     private static class AvailabilitySummary {
-        int foundCount;
-        int totalCount;
-        boolean sufficient;
-        List<String> missingLabels = new ArrayList<String>();
+        private int foundCount;
+        private int totalCount;
+        private boolean sufficient;
+        private List<String> missingLabels = new ArrayList<String>();
     }
 
+    @Data
     private static class GuiDriverAttempt {
-        boolean opened;
-        String detail = "";
-        ContainerHandle container;
+        private boolean opened;
+        private String detail = "";
+        private ContainerHandle container;
     }
 
+    @Data
     private static class ContainerHandle {
-        IInventory smithInput;
-        IInventory smithOutput;
-        int tier;
-        Object rawContainer;
+        private IInventory smithInput;
+        private IInventory smithOutput;
+        private int tier;
+        private Object rawContainer;
     }
 
     private AnvilLocation findAnvilBlock(World world, double x, double y, double z, int radius) {
@@ -306,17 +301,17 @@ public class AnvilService {
             if (b == null) return null;
             int meta = world.func_72805_g(x, y, z);
             AnvilLocation loc = new AnvilLocation();
-            loc.x = x;
-            loc.y = y;
-            loc.z = z;
+            loc.setX(x);
+            loc.setY(y);
+            loc.setZ(z);
             String reg = net.minecraft.block.Block.field_149771_c.func_148750_c(b);
-            loc.registryName = reg;
+            loc.setRegistryName(reg);
             try {
-                loc.displayName = ItemClassifier.getBlockDisplayName(b, meta);
+                loc.setDisplayName(ItemClassifier.getBlockDisplayName(b, meta));
             } catch (Throwable ignored) {
-                loc.displayName = reg != null ? reg : "";
+                loc.setDisplayName(reg != null ? reg : "");
             }
-            loc.tier = readTierField(b, meta);
+            loc.setTier(readTierField(b, meta));
             return loc;
         } catch (Throwable ignored) {
             return null;
@@ -344,9 +339,9 @@ public class AnvilService {
 
     private AvailabilitySummary summarizeAvailability(World world, DroneController ctrl, EntityPlayerMP owner, JsonObject recipe, int radius) {
         AvailabilitySummary av = new AvailabilitySummary();
-        av.missingLabels = new ArrayList<String>();
+        av.setMissingLabels(new ArrayList<String>());
         JsonArray inputs = recipe.has("inputs") ? recipe.getAsJsonArray("inputs") : new JsonArray();
-        av.totalCount = inputs.size();
+        av.setTotalCount(inputs.size());
         IInventory droneInv = ctrl.drone.mainInventory();
         int found = 0;
         for (int k = 0; k < inputs.size(); k++) {
@@ -356,11 +351,11 @@ public class AnvilService {
             if (countAvailable(world, ctrl, owner, droneInv, in, type, radius) >= amt) {
                 found++;
             } else {
-                av.missingLabels.add(labelForInput(in, type));
+                av.getMissingLabels().add(labelForInput(in, type));
             }
         }
-        av.foundCount = found;
-        av.sufficient = found >= av.totalCount && !av.missingLabels.isEmpty() == false;
+        av.setFoundCount(found);
+        av.setSufficient(found >= av.getTotalCount() && !av.getMissingLabels().isEmpty() == false);
         return av;
     }
 
@@ -465,39 +460,39 @@ public class AnvilService {
     private GuiDriverAttempt tryOpenAnvilContainer(World world, DroneController ctrl, EntityPlayerMP owner, AnvilLocation loc, JsonObject recipe) {
         GuiDriverAttempt g = new GuiDriverAttempt();
         ContainerHandle handle = new ContainerHandle();
-        g.container = handle;
-        handle.tier = loc.tier;
+        g.setContainer(handle);
+        handle.setTier(loc.getTier());
         try {
             Class<?> containerCls = tryLoad("com.hbm.inventory.container.ContainerAnvil");
             Class<?> anvilBlockCls = tryLoad("com.hbm.blocks.machine.NTMAnvil");
-            net.minecraft.block.Block b = world.func_147439_a(loc.x, loc.y, loc.z);
+            net.minecraft.block.Block b = world.func_147439_a(loc.getX(), loc.getY(), loc.getZ());
             if (b == null || (anvilBlockCls != null && !anvilBlockCls.isInstance(b))) {
-                g.detail = "Block at (" + loc.x + "," + loc.y + "," + loc.z + ") is not a com.hbm.blocks.machine.NTMAnvil instance (registry=" + loc.registryName + "). interact_block cannot open its inventory; TileEntity inventories do not exist for anvils.";
+                g.setDetail("Block at (" + loc.getX() + "," + loc.getY() + "," + loc.getZ() + ") is not a com.hbm.blocks.machine.NTMAnvil instance (registry=" + loc.getRegistryName() + "). interact_block cannot open its inventory; TileEntity inventories do not exist for anvils.");
                 return g;
             }
             if (containerCls == null) {
-                g.detail = "ContainerAnvil class not present (HBM NTM not loaded?) — GUI-only driver path unavailable.";
+                g.setDetail("ContainerAnvil class not present (HBM NTM not loaded?) — GUI-only driver path unavailable.");
                 return g;
             }
             Object container = null;
-            int[] ctorTiers = new int[]{loc.tier};
+            int[] ctorTiers = new int[]{loc.getTier()};
             try {
                 java.lang.reflect.Constructor<?> c = containerCls.getConstructor(net.minecraft.entity.player.InventoryPlayer.class, int.class);
                 net.minecraft.entity.player.EntityPlayer lp = ctrl.drone.player();
                 net.minecraft.entity.player.InventoryPlayer ipl = lp != null ? lp.field_71071_by : new net.minecraft.entity.player.InventoryPlayer(lp);
-                container = c.newInstance(ipl, loc.tier);
+                container = c.newInstance(ipl, loc.getTier());
             } catch (Throwable ctorErr) {
-                g.detail = "Could not instantiate ContainerAnvil(InventoryPlayer," + loc.tier + ") on server thread: " + ctorErr.getMessage() + ". Container construction requires a client-handled player context; spawning a fake GUI would never sync to a real viewer. GUI-only blocker stands.";
+                g.setDetail("Could not instantiate ContainerAnvil(InventoryPlayer," + loc.getTier() + ") on server thread: " + ctorErr.getMessage() + ". Container construction requires a client-handled player context; spawning a fake GUI would never sync to a real viewer. GUI-only blocker stands.");
             }
             if (container == null) return g;
             java.lang.reflect.Field inputF = containerCls.getField("input");
             java.lang.reflect.Field outputF = containerCls.getField("output");
             Object inputObj = inputF.get(container);
             Object outputObj = outputF.get(container);
-            if (inputObj instanceof IInventory) handle.smithInput = (IInventory) inputObj;
-            if (outputObj instanceof IInventory) handle.smithOutput = (IInventory) outputObj;
-            if (handle.smithInput == null) {
-                g.detail = "ContainerAnvil.input (InventoryBasic, 8 slots) not readable as IInventory — cannot stage smithing ingredients via GUI slots.";
+            if (inputObj instanceof IInventory) handle.setSmithInput((IInventory) inputObj);
+            if (outputObj instanceof IInventory) handle.setSmithOutput((IInventory) outputObj);
+            if (handle.getSmithInput() == null) {
+                g.setDetail("ContainerAnvil.input (InventoryBasic, 8 slots) not readable as IInventory — cannot stage smithing ingredients via GUI slots.");
                 return g;
             }
             try {
@@ -505,26 +500,26 @@ public class AnvilService {
                 if (fake instanceof net.minecraft.entity.player.EntityPlayer) {
                     net.minecraft.entity.player.EntityPlayer pl = (net.minecraft.entity.player.EntityPlayer) fake;
                     pl.field_71070_bA = (net.minecraft.inventory.Container) container;
-                    g.detail = "ContainerAnvil constructed on drone fake player; SmithingSlot.updateSmithing() will run when slots are written. Production requires closing/slot-click packet emulation which the anvil GUI does not accept from interact_block alone.";
-                    g.opened = true;
-                    handle.rawContainer = container;
+                    g.setDetail("ContainerAnvil constructed on drone fake player; SmithingSlot.updateSmithing() will run when slots are written. Production requires closing/slot-click packet emulation which the anvil GUI does not accept from interact_block alone.");
+                    g.setOpened(true);
+                    handle.setRawContainer(container);
                     return g;
                 }
-                g.detail = "Drone fake player unavailable for opening GUI container.";
+                g.setDetail("Drone fake player unavailable for opening GUI container.");
                 return g;
             } catch (Throwable ignored) {
-                g.detail = "Failed to bind ContainerAnvil to drone fake player container field (field_71070_bA).";
+                g.setDetail("Failed to bind ContainerAnvil to drone fake player container field (field_71070_bA).");
                 return g;
             }
         } catch (Throwable t) {
-            g.detail = "Exception while opening ContainerAnvil: " + t.getMessage();
+            g.setDetail("Exception while opening ContainerAnvil: " + t.getMessage());
             return g;
         }
     }
 
     private int completeSmithing(World world, DroneController ctrl, EntityPlayerMP owner, ContainerHandle handle, JsonObject recipe, AvailabilitySummary av) {
         int produced = 0;
-        if (handle == null || handle.smithInput == null || handle.smithOutput == null) return 0;
+        if (handle == null || handle.getSmithInput() == null || handle.getSmithOutput() == null) return 0;
         try {
             JsonArray inputs = recipe.has("inputs") ? recipe.getAsJsonArray("inputs") : new JsonArray();
             IInventory droneInv = ctrl.drone.mainInventory();
@@ -534,7 +529,7 @@ public class AnvilService {
                 return 0;
             }
             boolean hot = overlay.toUpperCase().contains("HOT");
-            for (int k = 0; k < inputs.size() && k < handle.smithInput.func_70302_i_(); k++) {
+            for (int k = 0; k < inputs.size() && k < handle.getSmithInput().func_70302_i_(); k++) {
                 JsonObject in = inputs.get(k).getAsJsonObject();
                 String type = in.has("type") ? in.get("type").getAsString() : "item";
                 int amt = in.has("amount") ? in.get("amount").getAsInt() : 1;
@@ -548,20 +543,20 @@ public class AnvilService {
                     if (hot) {
                         heatUpItem(copy);
                     }
-                    handle.smithInput.func_70299_a(k, copy);
+                    handle.getSmithInput().func_70299_a(k, copy);
                     droneInv.func_70298_a(di, take);
                     amt -= take;
                 }
             }
-            handle.smithInput.func_70296_d();
-            invokeUpdateSmithing(handle.rawContainer);
-            ItemStack outSt = handle.smithOutput.func_70301_a(0);
+            handle.getSmithInput().func_70296_d();
+            invokeUpdateSmithing(handle.getRawContainer());
+            ItemStack outSt = handle.getSmithOutput().func_70301_a(0);
             if (outSt != null && outSt.field_77994_a > 0) {
                 ItemStack copy = outSt.func_77946_l();
                 int ins = InventoryService.insertIntoInventory(droneInv, copy);
                 if (ins > 0) {
-                    handle.smithOutput.func_70298_a(0, ins);
-                    handle.smithInput.func_70295_k_();
+                    handle.getSmithOutput().func_70298_a(0, ins);
+                    handle.getSmithInput().func_70295_k_();
                     produced = ins;
                 }
             }
@@ -663,7 +658,7 @@ public class AnvilService {
             if (target == null || recipeIndex < 0) return 0;
             try {
                 java.lang.reflect.Method isTier = target.getClass().getMethod("isTierValid", int.class);
-                Boolean ok = (Boolean) isTier.invoke(target, loc.tier);
+                Boolean ok = (Boolean) isTier.invoke(target, loc.getTier());
                 if (ok == null || !ok.booleanValue()) return 0;
             } catch (Throwable ignored) {
             }
@@ -673,7 +668,7 @@ public class AnvilService {
                     java.lang.reflect.Constructor<?> c = containerCls.getConstructor(net.minecraft.entity.player.InventoryPlayer.class, int.class);
                     Object container = null;
                     try {
-                        container = c.newInstance(fake.field_71071_by, loc.tier);
+                        container = c.newInstance(fake.field_71071_by, loc.getTier());
                     } catch (Throwable ctorErr) {
                         return 0;
                     }
@@ -706,19 +701,19 @@ public class AnvilService {
     private JsonObject buildBlockerJson(AnvilLocation loc, JsonObject recipe, AvailabilitySummary av, GuiDriverAttempt gui) {
         JsonObject o = new JsonObject();
         o.addProperty("kind", "gui_only");
-        o.addProperty("anvilPos", loc.x + "," + loc.y + "," + loc.z);
-        o.addProperty("anvilTier", loc.tier);
+        o.addProperty("anvilPos", loc.getX() + "," + loc.getY() + "," + loc.getZ());
+        o.addProperty("anvilTier", loc.getTier());
         o.addProperty("recipeTierLower", recipe.has("tierLower") ? recipe.get("tierLower").getAsInt() : -1);
         o.addProperty("recipeTierUpper", recipe.has("tierUpper") ? recipe.get("tierUpper").getAsInt() : -1);
         o.addProperty("overlay", recipe.has("overlay") ? recipe.get("overlay").getAsString() : "");
-        o.addProperty("ingredientsFound", av.foundCount);
-        o.addProperty("ingredientsTotal", av.totalCount);
-        o.addProperty("ingredientsSufficient", av.sufficient);
+        o.addProperty("ingredientsFound", av.getFoundCount());
+        o.addProperty("ingredientsTotal", av.getTotalCount());
+        o.addProperty("ingredientsSufficient", av.isSufficient());
         JsonArray miss = new JsonArray();
-        for (String m : av.missingLabels) miss.add(new com.google.gson.JsonPrimitive(m));
+        for (String m : av.getMissingLabels()) miss.add(new com.google.gson.JsonPrimitive(m));
         o.add("missingIngredients", miss);
-        o.addProperty("guiOpened", gui.opened);
-        o.addProperty("detail", gui.detail);
+        o.addProperty("guiOpened", gui.isOpened());
+        o.addProperty("detail", gui.getDetail());
         o.addProperty("driverPath", "ContainerAnvil(InventoryBasic 8 slots + InventoryCraftResult 1 slot) opened via field_71070_bA on drone.player(); SmithingSlot.func_75218_e -> updateSmithing() -> AnvilSmithingRecipe.matches/getOutput; construction recipes require AnvilCraftPacket(recipeIndex,mode) from GUIAnvil click (packet bypasses container, consumes directly from InventoryPlayer.field_70462_a via InventoryUtil.doesPlayerHaveAStacks/giveChanceStacksToPlayer) and cannot be driven by interact_block alone");
         return o;
     }

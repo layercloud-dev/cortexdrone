@@ -3,18 +3,17 @@ package ir.layercloud.cortexdrone.navigation;
 import ir.layercloud.cortexdrone.model.BuildTask;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.experimental.UtilityClass;
 
 /**
  * Travelling Salesman Problem (TSP) 3D route optimizer using Nearest-Neighbor
  * construction followed by 2-Opt local search edge-uncrossing.
  * Minimizes total drone flight distance across mining, farming, and building queues.
  */
+@UtilityClass
 public final class TspRouteOptimizer {
     private static final int MAX_2OPT_POINTS = 32;
     private static final int MAX_2OPT_PASSES = 1;
-
-    private TspRouteOptimizer() {
-    }
 
     private static double dist3D(int[] a, int[] b) {
         double dx = a[0] - b[0];
@@ -115,8 +114,8 @@ public final class TspRouteOptimizer {
         int minY = Integer.MAX_VALUE;
         int maxY = Integer.MIN_VALUE;
         for (BuildTask t : tasks) {
-            if (t.y < minY) minY = t.y;
-            if (t.y > maxY) maxY = t.y;
+            if (t.getY() < minY) minY = t.getY();
+            if (t.getY() > maxY) maxY = t.getY();
         }
 
         List<BuildTask> optimized = new ArrayList<BuildTask>(tasks.size());
@@ -125,15 +124,15 @@ public final class TspRouteOptimizer {
         for (int y = minY; y <= maxY; y++) {
             List<BuildTask> layer = new ArrayList<BuildTask>();
             for (BuildTask t : tasks) {
-                if (t.y == y) layer.add(t);
+                if (t.getY() == y) layer.add(t);
             }
             if (layer.isEmpty()) continue;
             if (layer.size() <= 2) {
                 optimized.addAll(layer);
                 BuildTask last = layer.get(layer.size() - 1);
-                curX = last.x + 0.5;
-                curY = last.y + 0.5;
-                curZ = last.z + 0.5;
+                curX = last.getX() + 0.5;
+                curY = last.getY() + 0.5;
+                curZ = last.getZ() + 0.5;
                 continue;
             }
 
@@ -147,8 +146,8 @@ public final class TspRouteOptimizer {
                 for (int i = 0; i < n; i++) {
                     if (used[i]) continue;
                     BuildTask bt = layer.get(i);
-                    double dx = (bt.x + 0.5) - curX;
-                    double dz = (bt.z + 0.5) - curZ;
+                    double dx = (bt.getX() + 0.5) - curX;
+                    double dz = (bt.getZ() + 0.5) - curZ;
                     double dSq = dx * dx + dz * dz;
                     if (dSq < bestDistSq) {
                         bestDistSq = dSq;
@@ -159,9 +158,9 @@ public final class TspRouteOptimizer {
                 used[bestIdx] = true;
                 BuildTask chosen = layer.get(bestIdx);
                 layerTour.add(chosen);
-                curX = chosen.x + 0.5;
-                curY = chosen.y + 0.5;
-                curZ = chosen.z + 0.5;
+                curX = chosen.getX() + 0.5;
+                curY = chosen.getY() + 0.5;
+                curZ = chosen.getZ() + 0.5;
             }
 
             // 2-Opt pass within layer y
@@ -174,8 +173,8 @@ public final class TspRouteOptimizer {
                     for (int j = i + 2; j < optLen; j++) {
                         BuildTask c = layerTour.get(j);
                         BuildTask d = (j + 1 < optLen) ? layerTour.get(j + 1) : null;
-                        double curCost = Math.hypot(a.x - b.x, a.z - b.z) + (d != null ? Math.hypot(c.x - d.x, c.z - d.z) : 0.0);
-                        double newCost = Math.hypot(a.x - c.x, a.z - c.z) + (d != null ? Math.hypot(b.x - d.x, b.z - d.z) : 0.0);
+                        double curCost = Math.hypot(a.getX() - b.getX(), a.getZ() - b.getZ()) + (d != null ? Math.hypot(c.getX() - d.getX(), c.getZ() - d.getZ()) : 0.0);
+                        double newCost = Math.hypot(a.getX() - c.getX(), a.getZ() - c.getZ()) + (d != null ? Math.hypot(b.getX() - d.getX(), b.getZ() - d.getZ()) : 0.0);
                         if (newCost + 0.05 < curCost) {
                             reverseSubList(layerTour, i + 1, j);
                             b = layerTour.get(i + 1);
@@ -188,9 +187,9 @@ public final class TspRouteOptimizer {
 
             optimized.addAll(layerTour);
             BuildTask last = layerTour.get(layerTour.size() - 1);
-            curX = last.x + 0.5;
-            curY = last.y + 0.5;
-            curZ = last.z + 0.5;
+            curX = last.getX() + 0.5;
+            curY = last.getY() + 0.5;
+            curZ = last.getZ() + 0.5;
         }
 
         return optimized;

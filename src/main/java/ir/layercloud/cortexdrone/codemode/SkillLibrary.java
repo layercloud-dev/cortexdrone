@@ -14,15 +14,17 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Data;
 
 public class SkillLibrary {
+    @Data
     public static class SkillEntry {
-        public String name;
-        public String description;
-        public String code;
-        public String tags;
-        public int uses;
-        public long updatedAt;
+        private String name;
+        private String description;
+        private String code;
+        private String tags;
+        private int uses;
+        private long updatedAt;
     }
 
     private final File storageFile;
@@ -99,12 +101,12 @@ public class SkillLibrary {
     private void putInternal(String name, String description, String code, String tags) {
         String key = name.trim().toLowerCase().replace(' ', '_');
         SkillEntry s = new SkillEntry();
-        s.name = key;
-        s.description = description != null ? description.trim() : "";
-        s.code = code != null ? code.trim() : "";
-        s.tags = tags != null ? tags.trim() : "";
-        s.uses = 1;
-        s.updatedAt = System.currentTimeMillis();
+        s.setName(key);
+        s.setDescription(description != null ? description.trim() : "");
+        s.setCode(code != null ? code.trim() : "");
+        s.setTags(tags != null ? tags.trim() : "");
+        s.setUses(1);
+        s.setUpdatedAt(System.currentTimeMillis());
         this.skills.put(key, s);
     }
 
@@ -113,12 +115,12 @@ public class SkillLibrary {
         String key = name.trim().toLowerCase().replaceAll("[^a-z0-9_]+", "_");
         SkillEntry existing = this.skills.get(key);
         SkillEntry s = existing != null ? existing : new SkillEntry();
-        s.name = key;
-        s.description = description != null ? description.trim() : "";
-        s.code = code.trim();
-        s.tags = tags != null ? tags.trim() : "";
-        s.uses = (existing != null ? existing.uses + 1 : 1);
-        s.updatedAt = System.currentTimeMillis();
+        s.setName(key);
+        s.setDescription(description != null ? description.trim() : "");
+        s.setCode(code.trim());
+        s.setTags(tags != null ? tags.trim() : "");
+        s.setUses((existing != null ? existing.getUses() + 1 : 1));
+        s.setUpdatedAt(System.currentTimeMillis());
         this.skills.put(key, s);
         saveToDisk();
         return s;
@@ -144,9 +146,9 @@ public class SkillLibrary {
 
         for (SkillEntry s : all) {
             List<String> dToks = ir.layercloud.cortexdrone.world.LexicalItemMatcher.tokenize(
-                s.name + " " + s.name + " " + (s.tags != null ? s.tags + " " + s.tags : "") + " " + s.description
+                s.getName() + " " + s.getName() + " " + (s.getTags() != null ? s.getTags() + " " + s.getTags() : "") + " " + s.getDescription()
             );
-            docTokensMap.put(s.name, dToks);
+            docTokensMap.put(s.getName(), dToks);
             totalDocLen += dToks.size();
         }
         double avgDocLen = Math.max(1.0, totalDocLen / numDocs);
@@ -161,7 +163,7 @@ public class SkillLibrary {
             if (qt.length() < 3) continue;
             int docFreq = 0;
             for (SkillEntry s : all) {
-                if (ir.layercloud.cortexdrone.world.LexicalItemMatcher.tokenListContains(docTokensMap.get(s.name), qt)) {
+                if (ir.layercloud.cortexdrone.world.LexicalItemMatcher.tokenListContains(docTokensMap.get(s.getName()), qt)) {
                     docFreq++;
                 }
             }
@@ -169,7 +171,7 @@ public class SkillLibrary {
             double idf = Math.log(1.0 + (numDocs - docFreq + 0.5) / (docFreq + 0.5));
 
             for (SkillEntry s : all) {
-                List<String> dToks = docTokensMap.get(s.name);
+                List<String> dToks = docTokensMap.get(s.getName());
                 int tf = 0;
                 for (String dt : dToks) {
                     if (ir.layercloud.cortexdrone.world.LexicalItemMatcher.fuzzyTokenMatches(dt, qt)) {
@@ -179,25 +181,25 @@ public class SkillLibrary {
                 if (tf > 0) {
                     double docLen = dToks.size();
                     double termScore = idf * ((tf * (k1 + 1.0)) / (tf + k1 * (1.0 - b + b * (docLen / avgDocLen))));
-                    Double prev = bm25Scores.get(s.name);
-                    bm25Scores.put(s.name, (prev != null ? prev.doubleValue() : 0.0) + termScore);
+                    Double prev = bm25Scores.get(s.getName());
+                    bm25Scores.put(s.getName(), (prev != null ? prev.doubleValue() : 0.0) + termScore);
                 }
             }
         }
 
         for (SkillEntry s : all) {
-            if (bm25Scores.containsKey(s.name)) {
+            if (bm25Scores.containsKey(s.getName())) {
                 matched.add(s);
             }
         }
         Collections.sort(matched, new Comparator<SkillEntry>() {
             @Override
             public int compare(SkillEntry a, SkillEntry b) {
-                double sa = bm25Scores.containsKey(a.name) ? bm25Scores.get(a.name) : 0.0;
-                double sb = bm25Scores.containsKey(b.name) ? bm25Scores.get(b.name) : 0.0;
+                double sa = bm25Scores.containsKey(a.getName()) ? bm25Scores.get(a.getName()) : 0.0;
+                double sb = bm25Scores.containsKey(b.getName()) ? bm25Scores.get(b.getName()) : 0.0;
                 int cmp = Double.compare(sb, sa);
                 if (cmp != 0) return cmp;
-                return Long.compare(b.updatedAt, a.updatedAt);
+                return Long.compare(b.getUpdatedAt(), a.getUpdatedAt());
             }
         });
         return matched.subList(0, Math.min(Math.max(1, limit), matched.size()));
@@ -207,11 +209,11 @@ public class SkillLibrary {
         JsonArray arr = new JsonArray();
         for (SkillEntry s : list) {
             JsonObject o = new JsonObject();
-            o.addProperty("name", s.name);
-            o.addProperty("description", s.description);
-            o.addProperty("code", s.code);
-            o.addProperty("tags", s.tags);
-            o.addProperty("uses", s.uses);
+            o.addProperty("name", s.getName());
+            o.addProperty("description", s.getDescription());
+            o.addProperty("code", s.getCode());
+            o.addProperty("tags", s.getTags());
+            o.addProperty("uses", s.getUses());
             arr.add(o);
         }
         return arr;
@@ -225,8 +227,8 @@ public class SkillLibrary {
                 for (JsonElement item : el.getAsJsonArray()) {
                     if (item.isJsonObject()) {
                         SkillEntry s = CortexDroneMod.GSON.fromJson(item, SkillEntry.class);
-                        if (s != null && s.name != null) {
-                            this.skills.put(s.name, s);
+                        if (s != null && s.getName() != null) {
+                            this.skills.put(s.getName(), s);
                         }
                     }
                 }

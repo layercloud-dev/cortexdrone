@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.world.World;
 
@@ -19,6 +20,7 @@ import net.minecraft.world.World;
  * 3D interior flood-fill room scanner that identifies enclosed air volumes
  * and classifies surrounding floor, ceiling, and directional wall surfaces.
  */
+@UtilityClass
 public final class RoomScanner {
     private static final int[][] CARDINAL_DIRS = new int[][]{
         {1, 0, 0}, {-1, 0, 0},
@@ -29,9 +31,6 @@ public final class RoomScanner {
     private static final int[][] HORIZ_DIRS = new int[][]{
         {0, -1}, {0, 1}, {-1, 0}, {1, 0}
     };
-
-    private RoomScanner() {
-    }
 
     public static JsonObject scanRoom3D(World world, int startX, int startY, int startZ, int maxRadius) {
         int r = Math.min(24, Math.max(4, maxRadius));

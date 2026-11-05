@@ -1,18 +1,33 @@
 package ir.layercloud.cortexdrone.model;
 
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@Getter
+@ToString
+@EqualsAndHashCode
 public class BuildTask {
-    public final int x;
-    public final int y;
-    public final int z;
-    public String blockFilter;
-    public int meta;
-    public final boolean replaceExisting;
-    public final String targetFilter;
+    private final int x;
+    private final int y;
+    private final int z;
+
+    @Setter
+    private String blockFilter;
+
+    @Setter
+    private int meta;
+
+    private final boolean replaceExisting;
+    private final String targetFilter;
 
     public BuildTask(int x, int y, int z, String blockFilter, int meta) {
         this(x, y, z, blockFilter, meta, false, null);
     }
 
+    @Builder
     public BuildTask(int x, int y, int z, String blockFilter, int meta, boolean replaceExisting, String targetFilter) {
         this.x = x;
         this.y = y;

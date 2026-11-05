@@ -16,6 +16,8 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.Getter;
+import lombok.Setter;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumChatFormatting;
 
@@ -32,20 +34,11 @@ public class DroneLogger {
 
     private final Deque<DebugEntry> debugLog = new ArrayDeque<DebugEntry>();
     private final Deque<ChatRecord> recentChat = new ArrayDeque<ChatRecord>();
-    private final Set<String> debugSubscribers = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+    @Getter
+    private final Set<String> subscribers = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+    @Getter
+    @Setter
     private volatile File debugLogFile;
-
-    public void setDebugLogFile(File debugLogFile) {
-        this.debugLogFile = debugLogFile;
-    }
-
-    public File getDebugLogFile() {
-        return this.debugLogFile;
-    }
-
-    public Set<String> getSubscribers() {
-        return this.debugSubscribers;
-    }
 
     public void log(String category, DroneController ctrl, String message, String details) {
         final DebugEntry entry = new DebugEntry(
@@ -63,12 +56,12 @@ public class DroneLogger {
             }
         }
 
-        if (!this.debugSubscribers.isEmpty()) {
+        if (!this.subscribers.isEmpty()) {
             String chatLine = EnumChatFormatting.DARK_GRAY + "[DroneDebug:" + category + "] "
                 + EnumChatFormatting.AQUA + (ctrl != null ? ctrl.name : "Sys") + ": "
                 + EnumChatFormatting.GRAY + truncateForChat(message)
                 + (details != null && !details.isEmpty() ? EnumChatFormatting.DARK_GRAY + " (" + truncateForChat(details) + ")" : "");
-            for (String subPlayer : this.debugSubscribers) {
+            for (String subPlayer : this.subscribers) {
                 EntityPlayerMP p = CortexDroneMod.findPlayer(subPlayer);
                 if (p != null) {
                     CortexDroneMod.sendMsg(p, chatLine);
@@ -218,14 +211,14 @@ public class DroneLogger {
     // Full entries still land in the debug log FILE (toLogLine) for forensics.
     private static JsonObject truncatedJson(DebugEntry entry, int maxMessageChars, int maxDetailsChars) {
         JsonObject o = new JsonObject();
-        o.addProperty("timestamp", entry.timestamp);
-        o.addProperty("time", entry.time);
-        o.addProperty("category", entry.category);
-        o.addProperty("droneId", entry.droneId);
-        o.addProperty("droneName", entry.droneName);
-        o.addProperty("message", capText(entry.message, maxMessageChars));
-        if (entry.details != null && !entry.details.isEmpty()) {
-            o.addProperty("details", capText(entry.details, maxDetailsChars));
+        o.addProperty("timestamp", entry.getTimestamp());
+        o.addProperty("time", entry.getTime());
+        o.addProperty("category", entry.getCategory());
+        o.addProperty("droneId", entry.getDroneId());
+        o.addProperty("droneName", entry.getDroneName());
+        o.addProperty("message", capText(entry.getMessage(), maxMessageChars));
+        if (entry.getDetails() != null && !entry.getDetails().isEmpty()) {
+            o.addProperty("details", capText(entry.getDetails(), maxDetailsChars));
         }
         return o;
     }

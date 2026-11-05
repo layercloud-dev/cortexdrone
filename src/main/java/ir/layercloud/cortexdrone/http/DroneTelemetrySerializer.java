@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -28,14 +29,10 @@ import net.minecraft.util.AxisAlignedBB;
  * Serializes live server, player, and drone state/diagnostics into JSON snapshots
  * for `/state` and `/debug` HTTP endpoints.
  */
+@RequiredArgsConstructor
 public class DroneTelemetrySerializer {
     private final AIDroneManager manager;
     private final DroneLogger logger;
-
-    public DroneTelemetrySerializer(AIDroneManager manager, DroneLogger logger) {
-        this.manager = manager;
-        this.logger = logger;
-    }
 
     public JsonObject buildDebugJson() {
         JsonObject root = new JsonObject();

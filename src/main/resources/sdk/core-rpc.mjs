@@ -54,7 +54,7 @@ async function rpc(method, args = {}, opts = {}) {
       r = await fetch(`http://127.0.0.1:${HTTP_PORT}/rpc`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ droneId: DRONE_ID, player: PLAYER_NAME, method, args })
+        body: JSON.stringify({ droneId: DRONE_ID, loopId: typeof LOOP_ID === 'number' ? LOOP_ID : 0, player: PLAYER_NAME, method, args })
       });
       break;
     } catch (e) {

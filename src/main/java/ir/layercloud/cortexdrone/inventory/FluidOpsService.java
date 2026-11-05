@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -31,18 +32,12 @@ import net.minecraftforge.fluids.IFluidBlock;
  * powered by Forge's FluidRegistry and FluidContainerRegistry.
  * Supports Vanilla water/lava as well as any modded fluid block and container.
  */
+@RequiredArgsConstructor
 public class FluidOpsService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final InventoryService inventoryService;
-
-    public FluidOpsService(AIDroneManager manager, DroneLogger logger, FlightPathfinder pathfinder, InventoryService inventoryService) {
-        this.manager = manager;
-        this.logger = logger;
-        this.pathfinder = pathfinder;
-        this.inventoryService = inventoryService;
-    }
 
     public static boolean isEmptyBucketStack(ItemStack st) {
         return RegistryIntrospector.isEmptyFluidContainer(st);

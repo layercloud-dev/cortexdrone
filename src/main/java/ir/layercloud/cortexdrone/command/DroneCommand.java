@@ -13,20 +13,17 @@ import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.List;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.MathHelper;
 
+@RequiredArgsConstructor
 public class DroneCommand extends CortexDroneMod.BaseCmd {
     private final String cmdName;
     private final AIDroneManager manager;
-
-    public DroneCommand(String cmdName, AIDroneManager manager) {
-        this.cmdName = cmdName;
-        this.manager = manager;
-    }
 
     @Override
     public String func_71517_b() {
@@ -297,6 +294,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         }
 
         if (sub.equals("stay") || sub.equals("stop") || sub.equals("hover")) {
+            ctrl.cancelOtherLoops(0);
             ctrl.goalX = ctrl.drone.field_70165_t;
             ctrl.goalY = ctrl.drone.field_70163_u;
             ctrl.goalZ = ctrl.drone.field_70161_v;

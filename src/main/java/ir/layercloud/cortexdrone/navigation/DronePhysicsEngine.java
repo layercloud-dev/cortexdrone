@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.navigation;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
@@ -13,9 +14,8 @@ import net.minecraft.world.World;
  * 3D drone physics step integrator, follow-anchor solver, mining standoff calculator,
  * and tunnel obstruction locator.
  */
+@UtilityClass
 public final class DronePhysicsEngine {
-    private DronePhysicsEngine() {
-    }
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {
         int bx = MathHelper.func_76128_c(x);

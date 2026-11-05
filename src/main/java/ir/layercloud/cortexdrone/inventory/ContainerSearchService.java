@@ -12,6 +12,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
@@ -24,26 +26,17 @@ import net.minecraft.world.World;
  * Scans nearby chests/crates for specific item filters (instead of dumping all raw slots)
  * and ranks matching chests so the AI can decide which chest (x,y,z) to use.
  */
+@RequiredArgsConstructor
 public class ContainerSearchService {
+    @Value
     private static class ChestMatchResult {
-        final JsonObject chestJson;
-        final int bestScore;
-        final int totalMatching;
-        final double dist;
-
-        ChestMatchResult(JsonObject chestJson, int bestScore, int totalMatching, double dist) {
-            this.chestJson = chestJson;
-            this.bestScore = bestScore;
-            this.totalMatching = totalMatching;
-            this.dist = dist;
-        }
+        JsonObject chestJson;
+        int bestScore;
+        int totalMatching;
+        double dist;
     }
 
     private final InventoryService inventoryService;
-
-    public ContainerSearchService(InventoryService inventoryService) {
-        this.inventoryService = inventoryService;
-    }
 
     /**
      * Searches all nearby storage containers for items matching `rawQuery` and returns only
@@ -155,15 +148,15 @@ public class ContainerSearchService {
         Collections.sort(matchedChests, new Comparator<ChestMatchResult>() {
             @Override
             public int compare(ChestMatchResult a, ChestMatchResult b) {
-                if (a.bestScore != b.bestScore) return Integer.compare(b.bestScore, a.bestScore);
-                if (a.totalMatching != b.totalMatching) return Integer.compare(b.totalMatching, a.totalMatching);
-                return Double.compare(a.dist, b.dist);
+                if (a.getBestScore() != b.getBestScore()) return Integer.compare(b.getBestScore(), a.getBestScore());
+                if (a.getTotalMatching() != b.getTotalMatching()) return Integer.compare(b.getTotalMatching(), a.getTotalMatching());
+                return Double.compare(a.getDist(), b.getDist());
             }
         });
 
         JsonArray chestsOut = new JsonArray();
         for (ChestMatchResult cm : matchedChests) {
-            chestsOut.add(cm.chestJson);
+            chestsOut.add(cm.getChestJson());
         }
 
         JsonObject totalsJson = new JsonObject();

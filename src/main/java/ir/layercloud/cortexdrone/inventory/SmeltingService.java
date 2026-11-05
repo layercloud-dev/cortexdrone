@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
@@ -22,18 +23,12 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
+@RequiredArgsConstructor
 public class SmeltingService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final InventoryService inventoryService;
-
-    public SmeltingService(AIDroneManager manager, DroneLogger logger, FlightPathfinder pathfinder, InventoryService inventoryService) {
-        this.manager = manager;
-        this.logger = logger;
-        this.pathfinder = pathfinder;
-        this.inventoryService = inventoryService;
-    }
 
     public List<TileEntity> findAllFurnaceTiles(final World world, final double x, final double y, final double z, int radius) {
         // Fast path: use loaded tile entities only — see InventoryService.findAllInventoryTiles.

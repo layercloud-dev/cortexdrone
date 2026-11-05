@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
@@ -21,9 +22,8 @@ import net.minecraft.world.World;
 /**
  * 3D 26-connected ore and resource vein clustering scanner backed by ChunkCacheContext.
  */
+@UtilityClass
 public final class VeinScanner {
-    private VeinScanner() {
-    }
 
     public static JsonObject scanConnectedVeins(World world, final int cx, final int cy, final int cz, int radius, String rawFilter) {
         JsonObject res = new JsonObject();

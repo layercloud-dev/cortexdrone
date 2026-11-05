@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
@@ -35,6 +36,7 @@ import net.minecraft.world.biome.BiomeGenBase;
  * Handles spatial world queries, 3D room/vein scans, build-site & blueprint planning,
  * entities, item drops, named locations, and registry/wiki documentation lookups.
  */
+@RequiredArgsConstructor
 public class WorldRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "get_block", "get_blocks_in_box", "get_top_y", "scan_room", "scan_blocks",
@@ -47,12 +49,6 @@ public class WorldRpcHandler implements RpcHandler {
     private final AIDroneManager manager;
     private final WorldScanner worldScanner;
     private final BuildingService buildingService;
-
-    public WorldRpcHandler(AIDroneManager manager, WorldScanner worldScanner, BuildingService buildingService) {
-        this.manager = manager;
-        this.worldScanner = worldScanner;
-        this.buildingService = buildingService;
-    }
 
     @Override
     public String[] getSupportedMethods() {

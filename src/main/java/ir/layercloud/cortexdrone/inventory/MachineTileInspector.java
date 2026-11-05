@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
@@ -22,9 +23,8 @@ import net.minecraft.world.World;
  * by class names, block registry identifiers, IInventory/IPower capability flags,
  * and power/fluid interfaces (all discovered via reflection/class hierarchy).
  */
+@UtilityClass
 public final class MachineTileInspector {
-    private MachineTileInspector() {
-    }
 
     public static final String[] MACHINE_KEYWORDS = new String[]{
         "anvil", "assembly", "chemical", "blast", "arc", "press", "shredder",

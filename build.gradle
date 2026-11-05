@@ -34,6 +34,9 @@ repositories {
 dependencies {
     // NOTE: compileOnly files(...) must NOT have a { } closure in Gradle 8.14 (it parses as a task/action and the files are dropped, causing 'package net.minecraft does not exist').
     compileOnly files(mcSrgFile.exists() ? mcSrgFile : forgeUniversal, ocFile, lwjglFile, guavaFile)
+    // Lombok is compile-time only: no Lombok classes are bundled into the mod jar.
+    compileOnly 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.projectlombok:lombok:1.18.38'
     testImplementation 'junit:junit:4.13.2'
 }
 

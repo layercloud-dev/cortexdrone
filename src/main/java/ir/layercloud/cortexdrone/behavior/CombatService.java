@@ -11,6 +11,7 @@ import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
@@ -22,16 +23,11 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
+@RequiredArgsConstructor
 public class CombatService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
-
-    public CombatService(AIDroneManager manager, DroneLogger logger, FlightPathfinder pathfinder) {
-        this.manager = manager;
-        this.logger = logger;
-        this.pathfinder = pathfinder;
-    }
 
     public EntityLivingBase findEntityById(World world, int entityId) {
         if (world == null || entityId <= 0) return null;

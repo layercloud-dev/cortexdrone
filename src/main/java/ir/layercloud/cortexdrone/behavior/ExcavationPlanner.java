@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
@@ -22,16 +23,11 @@ import net.minecraft.world.World;
  * Spatial excavation planner for box mining, rectangular volume clearing,
  * filtered resource/vein harvesting, and 26-connected neighbor propagation.
  */
+@RequiredArgsConstructor
 public class ExcavationPlanner {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final WorldScanner worldScanner;
-
-    public ExcavationPlanner(AIDroneManager manager, DroneLogger logger, WorldScanner worldScanner) {
-        this.manager = manager;
-        this.logger = logger;
-        this.worldScanner = worldScanner;
-    }
 
     public static boolean hasPassableNeighbor(World world, int x, int y, int z) {
         return ItemClassifier.isPassableVoxel(world, x + 1, y, z)

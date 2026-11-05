@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.world;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.navigation.VoxelRaycaster3D;
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
@@ -10,9 +11,8 @@ import net.minecraft.world.World;
 /**
  * 3D voxel raycaster (backed by Amanatides & Woo 3D DDA) and bounding-box support block detector.
  */
+@UtilityClass
 public final class PlayerTargetScanner {
-    private PlayerTargetScanner() {
-    }
 
     public static JsonObject raycastPlayerLook(World world, EntityPlayerMP player, double maxDist) {
         if (world == null || player == null) return null;

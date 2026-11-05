@@ -153,32 +153,32 @@ public class BuildingService {
 
         while (!ctrl.buildQueue.isEmpty()) {
             BuildTask peek = ctrl.buildQueue.peekFirst();
-            if (peek.replaceExisting) {
-                if (ItemClassifier.isProtectedFixture(world, peek.x, peek.y, peek.z)) {
+            if (peek.isReplaceExisting()) {
+                if (ItemClassifier.isProtectedFixture(world, peek.getX(), peek.getY(), peek.getZ())) {
                     ctrl.buildQueue.pollFirst();
                     continue;
                 }
-                Block curB = world.func_147439_a(peek.x, peek.y, peek.z);
-                int curM = world.func_72805_g(peek.x, peek.y, peek.z);
-                if (!world.func_147437_c(peek.x, peek.y, peek.z) && !ItemClassifier.isLiquidBlock(curB)) {
+                Block curB = world.func_147439_a(peek.getX(), peek.getY(), peek.getZ());
+                int curM = world.func_72805_g(peek.getX(), peek.getY(), peek.getZ());
+                if (!world.func_147437_c(peek.getX(), peek.getY(), peek.getZ()) && !ItemClassifier.isLiquidBlock(curB)) {
                     String curDisp = ItemClassifier.getBlockDisplayName(curB, curM);
                     String curId = ItemClassifier.getBlockIdentifier(curB, curM);
-                    if (ItemClassifier.matchesBlockOrItemName(curDisp, curId, curM, peek.blockFilter)
-                        && (peek.meta < 0 || curM == peek.meta)) {
+                    if (ItemClassifier.matchesBlockOrItemName(curDisp, curId, curM, peek.getBlockFilter())
+                        && (peek.getMeta() < 0 || curM == peek.getMeta())) {
                         ctrl.buildQueue.pollFirst();
                         d.statusText_$eq(buildStatusText(ctrl, d, false));
                         continue;
                     }
-                    if (peek.targetFilter != null && !peek.targetFilter.isEmpty()
-                        && !peek.targetFilter.equalsIgnoreCase("all") && !peek.targetFilter.equalsIgnoreCase("any")
-                        && !ItemClassifier.matchesBlockOrItemName(curDisp, curId, curM, peek.targetFilter)) {
+                    if (peek.getTargetFilter() != null && !peek.getTargetFilter().isEmpty()
+                        && !peek.getTargetFilter().equalsIgnoreCase("all") && !peek.getTargetFilter().equalsIgnoreCase("any")
+                        && !ItemClassifier.matchesBlockOrItemName(curDisp, curId, curM, peek.getTargetFilter())) {
                         ctrl.buildQueue.pollFirst();
                         continue;
                     }
                 }
                 break;
             } else {
-                if (ItemClassifier.isReplaceableBlock(world, peek.x, peek.y, peek.z)) {
+                if (ItemClassifier.isReplaceableBlock(world, peek.getX(), peek.getY(), peek.getZ())) {
                     break;
                 }
                 ctrl.buildQueue.pollFirst();
@@ -198,32 +198,32 @@ public class BuildingService {
             this.manager.setDroneMode(ctrl, !ctrl.mineQueue.isEmpty() ? Mode.MINE : Mode.FOLLOW, "Build queue completed");
             return;
         }
-        if (InventoryService.findPlaceableItemSlot(d.mainInventory(), task.blockFilter) < 0) {
-            int pulled = this.inventoryService.withdrawMatchingFromNearbyChests(world, ctrl, owner, task.blockFilter, 64);
+        if (InventoryService.findPlaceableItemSlot(d.mainInventory(), task.getBlockFilter()) < 0) {
+            int pulled = this.inventoryService.withdrawMatchingFromNearbyChests(world, ctrl, owner, task.getBlockFilter(), 64);
             if (pulled == 0 && owner != null) {
-                this.inventoryService.takeFromPlayerInventory(ctrl, owner, task.blockFilter, 64);
+                this.inventoryService.takeFromPlayerInventory(ctrl, owner, task.getBlockFilter(), 64);
             }
             // Try on-the-fly crafting (e.g., crafting planks from logs or stone bricks from stone)
-            if (InventoryService.findPlaceableItemSlot(d.mainInventory(), task.blockFilter) < 0) {
-                this.inventoryService.craftItem(world, ctrl, owner, task.blockFilter, 16);
+            if (InventoryService.findPlaceableItemSlot(d.mainInventory(), task.getBlockFilter()) < 0) {
+                this.inventoryService.craftItem(world, ctrl, owner, task.getBlockFilter(), 16);
             }
-            if (InventoryService.findPlaceableItemSlot(d.mainInventory(), task.blockFilter) < 0) {
-                String missingFilter = task.blockFilter;
+            if (InventoryService.findPlaceableItemSlot(d.mainInventory(), task.getBlockFilter()) < 0) {
+                String missingFilter = task.getBlockFilter();
                 // Substitute another solid building material in drone inventory if available so the structure finishes cleanly without holes!
                 String fallbackMat = findFallbackConstructionMaterial(d.mainInventory(), missingFilter);
                 if (fallbackMat != null) {
                     this.logger.log("BUILD", ctrl, "Substituting '" + fallbackMat + "' for exhausted '" + missingFilter + "'", "remaining=" + ctrl.buildQueue.size());
                     for (BuildTask bt : ctrl.buildQueue) {
-                        if (missingFilter != null && missingFilter.equalsIgnoreCase(bt.blockFilter)) {
-                            bt.blockFilter = fallbackMat;
-                            bt.meta = -1;
+                        if (missingFilter != null && missingFilter.equalsIgnoreCase(bt.getBlockFilter())) {
+                            bt.setBlockFilter(fallbackMat);
+                            bt.setMeta(-1);
                         }
                     }
                 } else {
                     java.util.Iterator<BuildTask> it = ctrl.buildQueue.iterator();
                     while (it.hasNext()) {
                         BuildTask bt = it.next();
-                        if (missingFilter != null && missingFilter.equalsIgnoreCase(bt.blockFilter)) {
+                        if (missingFilter != null && missingFilter.equalsIgnoreCase(bt.getBlockFilter())) {
                             it.remove();
                         }
                     }
@@ -238,22 +238,22 @@ public class BuildingService {
             }
         }
 
-        double[] standoff = FlightPathfinder.findMiningStandoff(world, d, task.x, task.y, task.z);
-        double sx = standoff != null ? standoff[0] : (task.x + 0.5);
-        double sy = standoff != null ? standoff[1] : (task.y + 1.35);
-        double sz = standoff != null ? standoff[2] : (task.z + 0.5);
+        double[] standoff = FlightPathfinder.findMiningStandoff(world, d, task.getX(), task.getY(), task.getZ());
+        double sx = standoff != null ? standoff[0] : (task.getX() + 0.5);
+        double sy = standoff != null ? standoff[1] : (task.getY() + 1.35);
+        double sz = standoff != null ? standoff[2] : (task.getZ() + 0.5);
 
-        double distToBlock = d.func_70011_f(task.x + 0.5, task.y + 0.5, task.z + 0.5);
+        double distToBlock = d.func_70011_f(task.getX() + 0.5, task.getY() + 0.5, task.getZ() + 0.5);
         if (distToBlock <= 4.0) {
             ctrl.buildQueue.pollFirst();
-            if (task.replaceExisting && !ItemClassifier.isReplaceableBlock(world, task.x, task.y, task.z)
-                && !ItemClassifier.isProtectedFixture(world, task.x, task.y, task.z)) {
-                Block oldBlock = world.func_147439_a(task.x, task.y, task.z);
-                int oldMeta = world.func_72805_g(task.x, task.y, task.z);
+            if (task.isReplaceExisting() && !ItemClassifier.isReplaceableBlock(world, task.getX(), task.getY(), task.getZ())
+                && !ItemClassifier.isProtectedFixture(world, task.getX(), task.getY(), task.getZ())) {
+                Block oldBlock = world.func_147439_a(task.getX(), task.getY(), task.getZ());
+                int oldMeta = world.func_72805_g(task.getX(), task.getY(), task.getZ());
                 int oldId = Block.func_149682_b(oldBlock);
-                List<ItemStack> drops = this.miningService.getBlockDrops(world, oldBlock, task.x, task.y, task.z, oldMeta, 0);
-                world.func_72926_e(2001, task.x, task.y, task.z, oldId + (oldMeta << 12));
-                world.func_147468_f(task.x, task.y, task.z);
+                List<ItemStack> drops = this.miningService.getBlockDrops(world, oldBlock, task.getX(), task.getY(), task.getZ(), oldMeta, 0);
+                world.func_72926_e(2001, task.getX(), task.getY(), task.getZ(), oldId + (oldMeta << 12));
+                world.func_147468_f(task.getX(), task.getY(), task.getZ());
                 if (drops != null) {
                     IInventory inv = d.mainInventory();
                     for (ItemStack drop : drops) {
@@ -268,17 +268,17 @@ public class BuildingService {
                     }
                 }
             }
-            boolean placed = placeBlockFromInventory(world, ctrl, owner, task.x, task.y, task.z, task.blockFilter, task.meta);
+            boolean placed = placeBlockFromInventory(world, ctrl, owner, task.getX(), task.getY(), task.getZ(), task.getBlockFilter(), task.getMeta());
             if (!placed) {
                 ctrl.buildHeadFailures++;
-                String taskKey = task.x + "," + task.y + "," + task.z + "|" + task.blockFilter;
+                String taskKey = task.getX() + "," + task.getY() + "," + task.getZ() + "|" + task.getBlockFilter();
                 // Head-of-queue invariant: the nominal cell is still empty/protected,
                 // so peekFirst is unaffected. Rotation must keep OTHER tasks ahead of
                 // this poison cell; addFirst would re-wedge the queue (same task, next
                 // tick, zero progress). Successive failures rotate it to the back.
                 if (ctrl.buildHeadFailures >= BUILD_MAX_HEAD_FAILURES) {
                     this.logger.log("BUILD", ctrl,
-                        String.format("Rotating poison task %s at (%d,%d,%d) to back of queue", task.blockFilter, task.x, task.y, task.z),
+                        String.format("Rotating poison task %s at (%d,%d,%d) to back of queue", task.getBlockFilter(), task.getX(), task.getY(), task.getZ()),
                         "taskKey=" + taskKey + " failures=" + ctrl.buildHeadFailures + " remaining=" + ctrl.buildQueue.size());
                     ctrl.buildQueue.addLast(task);
                     ctrl.buildHeadFailures = 0;
@@ -530,7 +530,7 @@ public class BuildingService {
         StructureArchitect.StructurePlan plan = this.structureArchitect.generateStructureBlueprint(world, player, ctrl, spec);
         ctrl.builtCount = 0;
         List<BuildTask> optimized = TspRouteOptimizer.optimizeBuildTasksByLayer(
-            plan.buildTasks,
+            plan.getBuildTasks(),
             ctrl.drone.field_70165_t,
             ctrl.drone.field_70163_u,
             ctrl.drone.field_70161_v

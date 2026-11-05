@@ -7,12 +7,12 @@ import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.behavior.BuildingService;
 import ir.layercloud.cortexdrone.behavior.CombatService;
-import ir.layercloud.cortexdrone.inventory.ChestSorter;
-import ir.layercloud.cortexdrone.inventory.SmeltingService;
 import ir.layercloud.cortexdrone.behavior.MiningService;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.inventory.ChestSorter;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
+import ir.layercloud.cortexdrone.inventory.SmeltingService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
@@ -129,6 +129,8 @@ public class LlmAgentService {
         ctx.addProperty("distToPlayerM", Math.round(Math.hypot(
             ctrl.drone.field_70165_t - refX, ctrl.drone.field_70163_u - refY) * 10.0) / 10.0);
         ctx.addProperty("droneMode", ctrl.mode.name());
+        ctx.addProperty("activeTaskRunning", ctrl.hasActiveTaskOrLoop(0));
+        ctx.addProperty("activeScriptCount", ctrl.activeScriptCount.get());
         ctx.addProperty("mineQueueSize", ctrl.mineQueue.size());
         ctx.addProperty("buildQueueSize", ctrl.buildQueue.size());
         ctx.addProperty("lastPathPartial", ctrl.lastPathPartial);
@@ -198,6 +200,7 @@ public class LlmAgentService {
             messages.add(mUser);
 
             boolean executedAnyAction = false;
+            boolean stoppedPrevInThisLoop = false;
             boolean hadSelfCorrection = false;
             boolean hadProgress = false;
             int inspectionTurns = 0;
@@ -211,9 +214,8 @@ public class LlmAgentService {
             LoopTracer.traceStart(this.logger, ctrl, myLoopId, userPrompt);
 
             for (int turn = 1; turn <= MAX_AGENT_TURNS; turn++) {
-                if (ctrl.activeLoopId.get() != myLoopId || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
                     LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
-                    LoopTracer.saySuperseded(this.manager, player, ctrl, userPrompt);
                     return;
                 }
                 if (System.currentTimeMillis() > loopDeadline) {
@@ -241,9 +243,8 @@ public class LlmAgentService {
                         "url=" + this.manager.getConfig().apiUrl + " key=" + maskKey(this.manager.getConfig().apiKey));
                     plan = null;
                 }
-                if (ctrl.activeLoopId.get() != myLoopId || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
                     LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
-                    LoopTracer.saySuperseded(this.manager, player, ctrl, userPrompt);
                     return;
                 }
                 if (plan == null) {
@@ -320,6 +321,11 @@ public class LlmAgentService {
                     });
                     return;
                 }
+                if (AgentLoopHeuristics.shouldStopBeforeExecute(plan, code, isMalformed) && !stoppedPrevInThisLoop) {
+                    stoppedPrevInThisLoop = true;
+                    executedAnyAction = true;
+                    AgentLoopHeuristics.executePreCodeModeStop(ctrl, player, myLoopId, turn, this.logger, this.rpcDispatcher);
+                }
                 if (isMalformed || (code.isEmpty() && fallbackTools == null && !executedAnyAction && AgentLoopHeuristics.promptExpectsActionQueue(userPrompt))) {
                     hadSelfCorrection = true;
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn + " malformed or missing JS code -> self-correcting", "thought=" + LoopTracer.snippet(thought, 200));
@@ -381,7 +387,7 @@ public class LlmAgentService {
                             public void run() {
                                 try {
                                     Thread.sleep(1200);
-                                    if (!jsFinished.get() && ctrl.activeLoopId.get() == myLoopId) {
+                                    if (!jsFinished.get() && !ctrl.isLoopCancelled(myLoopId)) {
                                         manager.getMod().queueMain(new Runnable() {
                                             @Override
                                             public void run() {
@@ -400,14 +406,12 @@ public class LlmAgentService {
                     JsonObject execRes = this.codeModeRuntime.executeJavaScript(ctrl, player, code, myLoopId, done);
                     jsFinished.set(true);
 
-                    if (ctrl.activeLoopId.get() != myLoopId || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                    if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
                         LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
-                        LoopTracer.saySuperseded(this.manager, player, ctrl, userPrompt);
                         return;
                     }
                     if (execRes.has("superseded") && execRes.get("superseded").getAsBoolean()) {
                         LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
-                        LoopTracer.saySuperseded(this.manager, player, ctrl, userPrompt);
                         return;
                     }
 
@@ -569,6 +573,8 @@ public class LlmAgentService {
             } catch (Throwable ignored) {
                 LoopTracer.sayError(this.manager, player, ctrl, errDetail);
             }
+        } finally {
+            ctrl.unregisterLoop(myLoopId);
         }
     }
 

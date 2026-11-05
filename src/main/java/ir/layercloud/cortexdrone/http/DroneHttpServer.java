@@ -151,6 +151,9 @@ public class DroneHttpServer {
                         EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : null;
                         String method = req.has("method") ? req.get("method").getAsString() : "";
                         JsonObject args = req.has("args") && req.get("args").isJsonObject() ? req.getAsJsonObject("args") : req;
+                        if (req.has("loopId") && !args.has("loopId")) {
+                            args.add("loopId", req.get("loopId"));
+                        }
                         // executeOnMainThread has its own per-method budget; the
                         // socket read adds ~1s. Log + 504 instead of silently hanging.
                         long rpcT0 = System.currentTimeMillis();

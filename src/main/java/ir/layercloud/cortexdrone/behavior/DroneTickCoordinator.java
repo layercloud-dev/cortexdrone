@@ -10,6 +10,7 @@ import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
@@ -22,6 +23,7 @@ import net.minecraft.world.WorldServer;
  * machine state maintenance, breadcrumb recording, velocity stuck recovery,
  * item vacuuming, auto-torch, mode state machine dispatch, and 20-FPS LED animations.
  */
+@RequiredArgsConstructor
 public class DroneTickCoordinator {
     private final AIDroneManager manager;
     private final DroneLogger logger;
@@ -31,26 +33,6 @@ public class DroneTickCoordinator {
     private final MiningService miningService;
     private final BuildingService buildingService;
     private final CombatService combatService;
-
-    public DroneTickCoordinator(
-        AIDroneManager manager,
-        DroneLogger logger,
-        FlightPathfinder pathfinder,
-        InventoryService inventoryService,
-        SmeltingService smeltingService,
-        MiningService miningService,
-        BuildingService buildingService,
-        CombatService combatService
-    ) {
-        this.manager = manager;
-        this.logger = logger;
-        this.pathfinder = pathfinder;
-        this.inventoryService = inventoryService;
-        this.smeltingService = smeltingService;
-        this.miningService = miningService;
-        this.buildingService = buildingService;
-        this.combatService = combatService;
-    }
 
     public void tickController(DroneController ctrl) {
         Drone d = ctrl.drone;

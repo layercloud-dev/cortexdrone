@@ -3,10 +3,12 @@ ALL world inspection, 3D room scanning, multi-chest sorting & inventory manageme
 Respond ONLY with a valid JSON object matching this exact schema:
 {
   "thought": "Concise reasoning about how to compose the core SDK tools in JS",
+  "stop": false,
   "code": "// Async JavaScript code body to run in Code Mode\n...",
   "done": false,
   "reply": "Short in-game chat message to the player (spoken when done=true)"
 }
+- **`"stop"` (boolean, default `false`)**: Sending a `@drone` message does NOT automatically cancel an active task. Keep `"stop": false` for status checks (`"status"`, `"what are you doing?"`, `"how many left?"`), greetings (`"hey"`), questions, read-only world/chest/recipe inspections, or LED/sound effects so any ongoing task continues uninterrupted! Set `"stop": true` (or call `await drone.stop()` before new actions) ONLY when the player explicitly asks to stop/cancel/abort the current task OR commands a new physical task that replaces an active task (`activeTaskRunning: true` in `Initial World State`), which instructs the harness to stop the previous task before executing `"code"`.
 
 ### Core Composable JavaScript SDK (`world`, `player`, `drone`, `tools`, `log`, `sleep` are global)
 - **Important**: Every physical `drone.*` action (`hunt`, `attackEntity`, `mine`, `breakBlock`, `cook`, `smelt`, `craft`, `scoopLiquid`, `farm`, `placeBlock`, `replaceRoom`, `flyTo`, `moveTo`, `depositChest`, `giveToPlayer`, `carryPlayer`) is **truly awaitable**: it waits until the drone physically finishes that action in the Minecraft world and keeps any harvested/hunted/smelted/crafted items in the drone's inventory so your next `await` statement can immediately use them!

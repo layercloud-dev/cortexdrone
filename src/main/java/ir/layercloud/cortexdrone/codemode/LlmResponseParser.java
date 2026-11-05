@@ -9,19 +9,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.experimental.UtilityClass;
 
 /**
  * Resilient parser and salvager for LLM Code Mode responses.
  * Strips `<think>...</think>` blocks, extracts balanced JSON objects, salvages
  * truncated or unescaped JavaScript code blocks, and sanitizes thoughts.
  */
+@UtilityClass
 public final class LlmResponseParser {
     private static final Pattern THINK_BLOCK_PATTERN = Pattern.compile("(?s)<think>(.*?)</think>");
     private static final Pattern THOUGHT_FIELD_PATTERN = Pattern.compile("\"thought\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
     private static final Pattern REPLY_FIELD_PATTERN = Pattern.compile("\"reply\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
     private static final Pattern DONE_FIELD_PATTERN = Pattern.compile("\"done\"\\s*:\\s*(true|false)");
+    private static final Pattern STOP_FIELD_PATTERN = Pattern.compile("\"stop\"\\s*:\\s*(true|false)");
     private static final Pattern CODE_STRICT_PATTERN = Pattern.compile("\"code\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
-    private static final Pattern NEXT_FIELD_PATTERN = Pattern.compile("\"\\s*,\\s*\"(?:done|reply|thought)\"\\s*:");
+    private static final Pattern NEXT_FIELD_PATTERN = Pattern.compile("\"\\s*,\\s*\"(?:done|reply|thought|stop)\"\\s*:");
     // Machine-config-only fast path: prose that names an HBM machine as the
     // blocker (Assembly Machine, Chemical Plant, Blast Furnace...) but never
     // emits a ```json block or "code" field must be salvaged as done:true in
@@ -45,9 +48,6 @@ public final class LlmResponseParser {
     private static final Pattern GENERIC_BLOCKER_PATTERN = Pattern.compile(
         "(?i)(\\bcannot\\b|\\bcan't\\b|\\bblocked\\b|\\bno (meteor|meteorite|block|item|chest|recipe)[^.\\n]{0,50}(found|nearby|available|in (chests|inventory))|"
         + "\\bnot (found|available|in chests)(\\b[^.\\n]{0,60})?\\band (nothing|nowhere))");
-
-    private LlmResponseParser() {
-    }
 
     public static String sanitizeThought(String rawThought, String fallbackReasoning) {
         String src = (rawThought != null && !rawThought.trim().isEmpty())
@@ -163,6 +163,10 @@ public final class LlmResponseParser {
         if (!extractedCode.isEmpty() || extractedDone != null) {
             JsonObject salvaged = new JsonObject();
             salvaged.addProperty("thought", sanitizeThought(extractedThought, reasoning));
+            Matcher mStop = STOP_FIELD_PATTERN.matcher(s);
+            if (mStop.find()) {
+                salvaged.addProperty("stop", Boolean.parseBoolean(mStop.group(1)));
+            }
             salvaged.addProperty("code", extractedCode);
             salvaged.addProperty("done", extractedDone != null ? extractedDone : false);
             salvaged.addProperty("reply", extractedReply);

@@ -114,6 +114,8 @@ public class DroneController {
     // Active Code Mode loop generation ID & running script counter
     public final AtomicInteger activeLoopId = new AtomicInteger(0);
     public final AtomicInteger activeScriptCount = new AtomicInteger(0);
+    private final java.util.Set<Integer> runningLoopIds = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<Integer, Boolean>());
+    private final java.util.Set<Integer> cancelledLoopIds = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<Integer, Boolean>());
     public volatile String lastThought = "";
     public final Deque<String> thoughtHistory = new ConcurrentLinkedDeque<String>();
 
@@ -165,6 +167,42 @@ public class DroneController {
 
     public boolean isScriptRunning() {
         return this.activeScriptCount.get() > 0;
+    }
+
+    public void registerLoop(int loopId) {
+        if (loopId > 0) this.runningLoopIds.add(loopId);
+    }
+
+    public void unregisterLoop(int loopId) {
+        if (loopId > 0) {
+            this.runningLoopIds.remove(loopId);
+            this.cancelledLoopIds.remove(loopId);
+        }
+    }
+
+    public boolean isLoopCancelled(int loopId) {
+        return loopId > 0 && this.cancelledLoopIds.contains(loopId);
+    }
+
+    public int cancelOtherLoops(int keepLoopId) {
+        int count = 0;
+        for (Integer id : this.runningLoopIds) {
+            if (id != null && id.intValue() != keepLoopId && this.cancelledLoopIds.add(id)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public boolean hasActiveTaskOrLoop(int excludeLoopId) {
+        for (Integer id : this.runningLoopIds) {
+            if (id != null && id.intValue() != excludeLoopId && !this.cancelledLoopIds.contains(id)) {
+                return true;
+            }
+        }
+        return this.activeScriptCount.get() > 0 || !this.mineQueue.isEmpty() || !this.buildQueue.isEmpty()
+            || !this.scoopQueue.isEmpty()
+            || (this.mode != Mode.FOLLOW && this.mode != Mode.STAY && this.mode != Mode.GUARD && this.mode != Mode.PATROL);
     }
 
     public static int hsvToRgbInt(float hDeg, float s, float v) {

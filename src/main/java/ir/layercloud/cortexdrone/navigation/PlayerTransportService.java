@@ -5,6 +5,7 @@ import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraft.util.MathHelper;
@@ -13,14 +14,10 @@ import net.minecraft.world.World;
 /**
  * Smooth entity-mounted & velocity-synchronized player airlift service (Mode.CARRY).
  */
+@RequiredArgsConstructor
 public class PlayerTransportService {
     private final AIDroneManager manager;
     private final FlightPathfinder pathfinder;
-
-    public PlayerTransportService(AIDroneManager manager, FlightPathfinder pathfinder) {
-        this.manager = manager;
-        this.pathfinder = pathfinder;
-    }
 
     public static double[] findSafeLandingSpot(World world, double gx, double gy, double gz) {
         int bx = MathHelper.func_76128_c(gx);

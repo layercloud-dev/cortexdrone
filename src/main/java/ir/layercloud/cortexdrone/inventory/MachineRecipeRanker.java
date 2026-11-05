@@ -5,6 +5,7 @@ import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import lombok.Value;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
@@ -121,7 +122,7 @@ final class MachineRecipeRanker {
         }
         BlockLike bl = toBlockLike(st);
         if (bl != null) {
-            for (String tag : ItemClassifier.getOreDictNames(bl.block, bl.meta)) {
+            for (String tag : ItemClassifier.getOreDictNames(bl.getBlock(), bl.getMeta())) {
                 String tkey = "dict:" + tag.toLowerCase();
                 totals.put(tkey, (totals.containsKey(tkey) ? totals.get(tkey) : 0) + st.field_77994_a);
             }
@@ -144,13 +145,10 @@ final class MachineRecipeRanker {
         }
     }
 
+    @Value
     private static class BlockLike {
-        final net.minecraft.block.Block block;
-        final int meta;
-        BlockLike(net.minecraft.block.Block block, int meta) {
-            this.block = block;
-            this.meta = meta;
-        }
+        net.minecraft.block.Block block;
+        int meta;
     }
 
     static IInventory findDroneInventory(World world, EntityPlayerMP player) {

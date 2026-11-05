@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -29,6 +31,7 @@ import net.minecraftforge.oredict.ShapelessOreRecipe;
  * Pass 1: Pull missing ingredients from nearby chests or player inventory.
  * Pass 2: Recursively sub-craft intermediate ingredients.
  */
+@RequiredArgsConstructor
 public class CraftingService {
     private static Field shapedItemsField = null;
     private static Field shapelessItemsField = null;
@@ -46,23 +49,14 @@ public class CraftingService {
         }
     }
 
+    @Value
     private static class ScoredRecipe {
-        final IRecipe recipe;
-        final int score;
-
-        ScoredRecipe(IRecipe recipe, int score) {
-            this.recipe = recipe;
-            this.score = score;
-        }
+        IRecipe recipe;
+        int score;
     }
 
     private final DroneLogger logger;
     private final InventoryService inventoryService;
-
-    public CraftingService(DroneLogger logger, InventoryService inventoryService) {
-        this.logger = logger;
-        this.inventoryService = inventoryService;
-    }
 
     @SuppressWarnings("unchecked")
     public static List<List<ItemStack>> extractRecipeIngredients(IRecipe recipe) {
@@ -131,9 +125,11 @@ public class CraftingService {
         return false;
     }
 
+    @Value
     private static class RecipeCacheEntry {
-        final java.util.List<IRecipe> ranked;
-        final long expiresAtMs;
+        java.util.List<IRecipe> ranked;
+        long expiresAtMs;
+
         RecipeCacheEntry(java.util.List<IRecipe> ranked, long ttlMs) {
             this.ranked = ranked;
             this.expiresAtMs = System.currentTimeMillis() + ttlMs;
@@ -147,8 +143,8 @@ public class CraftingService {
         if (filter == null || filter.trim().isEmpty()) return java.util.Collections.emptyList();
         String key = filter.trim().toLowerCase();
         RecipeCacheEntry cached = recipeRankCache.get(key);
-        if (cached != null && System.currentTimeMillis() < cached.expiresAtMs) {
-            return cached.ranked;
+        if (cached != null && System.currentTimeMillis() < cached.getExpiresAtMs()) {
+            return cached.getRanked();
         }
         java.util.List<IRecipe> ranked = findRankedMatchingRecipes(filter);
         // Cap total ranked list — LLM rarely inspects beyond 25 and craftItem only needs the first few.
@@ -182,12 +178,12 @@ public class CraftingService {
         Collections.sort(scored, new Comparator<ScoredRecipe>() {
             @Override
             public int compare(ScoredRecipe a, ScoredRecipe b) {
-                return Integer.compare(b.score, a.score);
+                return Integer.compare(b.getScore(), a.getScore());
             }
         });
         List<IRecipe> result = new ArrayList<IRecipe>(scored.size());
         for (ScoredRecipe sr : scored) {
-            result.add(sr.recipe);
+            result.add(sr.getRecipe());
         }
         return result;
     }

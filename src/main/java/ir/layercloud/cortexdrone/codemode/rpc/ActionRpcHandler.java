@@ -15,6 +15,7 @@ import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
@@ -25,6 +26,7 @@ import net.minecraft.world.World;
  * room/box block replacement, structure blueprint construction, farming,
  * liquid plugging, block interaction, auto-torch, hunting, and guard/patrol.
  */
+@RequiredArgsConstructor
 public class ActionRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "queue_mine", "mine_rect", "mine_box", "gather_distant", "long_range_gather",
@@ -39,20 +41,6 @@ public class ActionRpcHandler implements RpcHandler {
     private final MiningService miningService;
     private final BuildingService buildingService;
     private final CombatService combatService;
-
-    public ActionRpcHandler(
-        AIDroneManager manager,
-        InventoryService inventoryService,
-        MiningService miningService,
-        BuildingService buildingService,
-        CombatService combatService
-    ) {
-        this.manager = manager;
-        this.inventoryService = inventoryService;
-        this.miningService = miningService;
-        this.buildingService = buildingService;
-        this.combatService = combatService;
-    }
 
     @Override
     public String[] getSupportedMethods() {
@@ -75,6 +63,8 @@ public class ActionRpcHandler implements RpcHandler {
         World world = d.field_70170_p;
 
         if (m.equals("clear_queues")) {
+            int callerLoopId = args.has("loopId") ? args.get("loopId").getAsInt() : 0;
+            ctrl.cancelOtherLoops(callerLoopId);
             ctrl.clearAllTaskQueues();
             if (ctrl.mode != Mode.STAY && ctrl.mode != Mode.GUARD && ctrl.mode != Mode.PATROL) {
                 this.manager.setDroneMode(ctrl, Mode.FOLLOW, "RPC clear_queues");

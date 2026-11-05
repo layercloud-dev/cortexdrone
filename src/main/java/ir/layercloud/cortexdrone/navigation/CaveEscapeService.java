@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -26,14 +27,10 @@ import net.minecraft.world.World;
  * 3D breadcrumb backtracking and Baritone-inspired weighted A* dig-escape service
  * for autonomously exiting underground caves and tunnels.
  */
+@RequiredArgsConstructor
 public class CaveEscapeService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
-
-    public CaveEscapeService(AIDroneManager manager, DroneLogger logger) {
-        this.manager = manager;
-        this.logger = logger;
-    }
 
     private static boolean hasAdjacentLiquid(ChunkCacheContext bsi, int x, int y, int z) {
         int[][] dirs = new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};

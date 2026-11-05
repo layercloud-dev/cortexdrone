@@ -13,6 +13,7 @@ import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.navigation.TspRouteOptimizer;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.world.RegistryIntrospector;
 import ir.layercloud.cortexdrone.world.StructureArchitect;
 import ir.layercloud.cortexdrone.world.WorldScanner;
 import java.util.ArrayList;
@@ -64,6 +65,17 @@ public class BuildingService {
         }
         boolean prefix = ctrl != null && ctrl.mode == Mode.BUILD;
         return (prefix ? "Building\n" : "") + buildAnchorText(remaining);
+    }
+
+    private static boolean isSubstitutableBuildQuery(String f) {
+        if (f == null || f.trim().isEmpty()) return false;
+        String s = f.trim().toLowerCase();
+        String[] never = {"seed", "sapling", "crop", "plant", "torch", "bucket", "food", "hoe",
+            "pickaxe", "axe", "shovel", "sword", "shears", "flint", "door", "bed", "boat"};
+        for (String n : never) {
+            if (s.contains(n)) return false;
+        }
+        return !RegistryIntrospector.isLikelyCropOrPlantQuery(s);
     }
 
     private static String findFallbackConstructionMaterial(IInventory inv, String missingFilter) {
@@ -172,6 +184,7 @@ public class BuildingService {
         }
 
         if (ctrl.buildQueue.isEmpty()) {
+            ctrl.allowBuildSubstitution = false;
             if (!ctrl.isScriptRunning() && owner != null) {
                 this.manager.droneSay(owner, ctrl, "Finished building (" + ctrl.builtCount + " placed).");
             }
@@ -195,8 +208,13 @@ public class BuildingService {
             }
             if (InventoryService.findPlaceableItemSlot(d.mainInventory(), task.getBlockFilter()) < 0) {
                 String missingFilter = task.getBlockFilter();
-                // Substitute another solid building material in drone inventory if available so the structure finishes cleanly without holes!
-                String fallbackMat = findFallbackConstructionMaterial(d.mainInventory(), missingFilter);
+                // "Nothing appears from nowhere": substitution is opt-in and only ever
+                // for a structural material. A seed/crop/tool query must never be
+                // satisfied with an unrelated block (that is how Dirt used to appear in
+                // place of wheat_seeds / farmland).
+                String fallbackMat = (ctrl.allowBuildSubstitution && isSubstitutableBuildQuery(missingFilter))
+                    ? findFallbackConstructionMaterial(d.mainInventory(), missingFilter)
+                    : null;
                 if (fallbackMat != null) {
                     this.logger.log("BUILD", ctrl, "Substituting '" + fallbackMat + "' for exhausted '" + missingFilter + "'", "remaining=" + ctrl.buildQueue.size());
                     for (BuildTask bt : ctrl.buildQueue) {
@@ -443,72 +461,6 @@ public class BuildingService {
             this.manager.setDroneMode(ctrl, Mode.BUILD, "Plugging " + added + " liquid blocks");
         }
         return added;
-    }
-
-    public void tryPlaceAutoTorch(DroneController ctrl) {
-        Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        EntityPlayerMP owner = CortexDroneMod.findPlayer(ctrl.ownerName);
-        double refX = (owner != null && owner.field_70170_p == world && d.func_70032_d(owner) < 20.0)
-            ? owner.field_70165_t : d.field_70165_t;
-        double refY = (owner != null && owner.field_70170_p == world && d.func_70032_d(owner) < 20.0)
-            ? owner.field_70163_u : d.field_70163_u;
-        double refZ = (owner != null && owner.field_70170_p == world && d.func_70032_d(owner) < 20.0)
-            ? owner.field_70161_v : d.field_70161_v;
-
-        int bx = MathHelper.func_76128_c(refX);
-        int by = MathHelper.func_76128_c(refY);
-        int bz = MathHelper.func_76128_c(refZ);
-
-        for (int dy = 1; dy >= -4; dy--) {
-            int y = by + dy;
-            if (y <= 1) continue;
-            if (world.func_147437_c(bx, y, bz) && World.func_147466_a(world, bx, y - 1, bz)) {
-                int light = world.func_72957_l(bx, y, bz);
-                if (light <= 7) {
-                    if (InventoryService.consumeItemMatching(d.mainInventory(), "torch")
-                        || (owner != null && InventoryService.consumeItemMatching(owner.field_71071_by, "torch"))) {
-                        Block torchBlock = Blocks.field_150478_aa != null
-                            ? Blocks.field_150478_aa
-                            : Block.func_149684_b("torch");
-                        if (torchBlock != null) {
-                            world.func_147465_d(bx, y, bz, torchBlock, 5, 3);
-                            world.func_72908_a(bx + 0.5, y + 0.5, bz + 0.5, "dig.wood", 0.8f, 1.0f);
-                            this.logger.log("MINE", ctrl, String.format("Auto-placed torch at (%d,%d,%d)", bx, y, bz), "prevLight=" + light);
-                        }
-                    }
-                }
-                break;
-            }
-        }
-    }
-
-    public boolean placeTorchNow(DroneController ctrl, EntityPlayerMP player) {
-        Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        int bx = MathHelper.func_76128_c(player != null ? player.field_70165_t : d.field_70165_t);
-        int by = MathHelper.func_76128_c(player != null ? player.field_70163_u : d.field_70163_u);
-        int bz = MathHelper.func_76128_c(player != null ? player.field_70161_v : d.field_70161_v);
-
-        for (int dy = 1; dy >= -4; dy--) {
-            int y = by + dy;
-            if (y <= 1) continue;
-            if (world.func_147437_c(bx, y, bz) && World.func_147466_a(world, bx, y - 1, bz)) {
-                if (InventoryService.consumeItemMatching(d.mainInventory(), "torch")
-                    || (player != null && InventoryService.consumeItemMatching(player.field_71071_by, "torch"))) {
-                    Block torchBlock = Blocks.field_150478_aa != null
-                        ? Blocks.field_150478_aa
-                        : Block.func_149684_b("torch");
-                    if (torchBlock != null) {
-                        world.func_147465_d(bx, y, bz, torchBlock, 5, 3);
-                        world.func_72908_a(bx + 0.5, y + 0.5, bz + 0.5, "dig.wood", 0.8f, 1.0f);
-                        return true;
-                    }
-                }
-                break;
-            }
-        }
-        return false;
     }
 
     public JsonObject startBuildStructureTask(DroneController ctrl, EntityPlayerMP player, JsonObject spec) {

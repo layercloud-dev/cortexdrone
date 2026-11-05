@@ -32,7 +32,7 @@ public class ActionRpcHandler implements RpcHandler {
         "queue_mine", "mine_rect", "mine_box", "gather_distant",
         "mine_filter", "break_block", "queue_build", "build_box", "build_structure",
         "replace_room", "replace_box", "replace_blocks", "plug_liquids", "farm",
-        "fertilize", "interact_block", "torch", "hunt", "attack_entity", "guard",
+        "fertilize", "interact_block", "torch", "light", "hunt", "attack_entity", "guard",
         "patrol", "clear_queues", "chop", "use_item"
     };
 
@@ -80,25 +80,38 @@ public class ActionRpcHandler implements RpcHandler {
             }
             ctrl.mineExactQueueOnly = !args.has("exactOnly") || args.get("exactOnly").getAsBoolean();
             ctrl.returnToOwnerAfterMine = !args.has("deliver") || args.get("deliver").getAsBoolean();
+            String explicitFilter = args.has("filter") && !args.get("filter").isJsonNull()
+                ? args.get("filter").getAsString().trim() : "";
+            String firstBlockId = null;
             int added = 0;
             if (args.has("blocks") && args.get("blocks").isJsonArray()) {
                 for (JsonElement el : args.getAsJsonArray("blocks")) {
+                    int bx, by, bz;
                     if (el.isJsonArray()) {
                         JsonArray pt = el.getAsJsonArray();
-                        int bx = pt.get(0).getAsInt(), by = pt.get(1).getAsInt(), bz = pt.get(2).getAsInt();
-                        if (ItemClassifier.isMineableBlock(world, bx, by, bz)) {
-                            ctrl.mineQueue.addLast(new int[]{bx, by, bz});
-                            added++;
-                        }
+                        bx = pt.get(0).getAsInt(); by = pt.get(1).getAsInt(); bz = pt.get(2).getAsInt();
                     } else if (el.isJsonObject()) {
                         JsonObject pt = el.getAsJsonObject();
-                        int bx = pt.get("x").getAsInt(), by = pt.get("y").getAsInt(), bz = pt.get("z").getAsInt();
-                        if (ItemClassifier.isMineableBlock(world, bx, by, bz)) {
-                            ctrl.mineQueue.addLast(new int[]{bx, by, bz});
-                            added++;
-                        }
+                        bx = pt.get("x").getAsInt(); by = pt.get("y").getAsInt(); bz = pt.get("z").getAsInt();
+                    } else {
+                        continue;
                     }
+                    if (!ItemClassifier.isMineableBlock(world, bx, by, bz)) continue;
+                    if (firstBlockId == null) {
+                        // Neighbour vein propagation must be limited to the block type
+                        // the caller actually queued. Leaving a stale/empty mineFilter
+                        // made hematite neighbours get queued for an "iron only" task.
+                        firstBlockId = ItemClassifier.getBlockIdentifier(
+                            world.func_147439_a(bx, by, bz), world.func_72805_g(bx, by, bz));
+                    }
+                    ctrl.mineQueue.addLast(new int[]{bx, by, bz});
+                    added++;
                 }
+            }
+            if (!explicitFilter.isEmpty()) {
+                ctrl.mineFilter = explicitFilter;
+            } else if (firstBlockId != null) {
+                ctrl.mineFilter = firstBlockId;
             }
             if (!ctrl.mineQueue.isEmpty()) {
                 this.manager.setDroneMode(ctrl, Mode.MINE, "RPC queue_mine (+" + added + " blocks, total=" + ctrl.mineQueue.size() + ")");
@@ -169,6 +182,8 @@ public class ActionRpcHandler implements RpcHandler {
         }
 
         if (m.equals("queue_build")) {
+            ctrl.allowBuildSubstitution = args.has("substitute") && !args.get("substitute").isJsonNull()
+                && args.get("substitute").getAsBoolean();
             if (args.has("clear") && args.get("clear").getAsBoolean()) {
                 ctrl.buildQueue.clear();
             }
@@ -390,16 +405,46 @@ public class ActionRpcHandler implements RpcHandler {
                 return res;
             }
             boolean activated = false;
+            boolean itemUsed = false;
+            net.minecraft.entity.player.EntityPlayer fakePlayer = d.player();
+            if (fakePlayer == null) {
+                res.addProperty("ok", false);
+                res.addProperty("error", "No fake player on drone");
+                res.addProperty("activated", false);
+                return res;
+            }
+            net.minecraft.item.ItemStack held = null;
+            syncFakePlayerToDrone(fakePlayer, d);
+            if (fakePlayer.field_71071_by != null) {
+                int heldSlot = fakePlayer.field_71071_by.field_70461_c;
+                if (heldSlot >= 0 && heldSlot < fakePlayer.field_71071_by.func_70302_i_()) {
+                    held = fakePlayer.field_71071_by.func_70301_a(heldSlot);
+                }
+            }
+            int side = args.has("side") && !args.get("side").isJsonNull() ? args.get("side").getAsInt() : 1;
+            // Vanilla order: block activation first, then the held item's onItemUse.
             if (b != null) {
-                activated = b.func_149727_a(world, x, y, z, d.player(), 0, 0.5f, 0.5f, 0.5f);
+                activated = b.func_149727_a(world, x, y, z, fakePlayer, side, 0.5f, 0.5f, 0.5f);
+            }
+            if (!activated && held != null && held.func_77973_b() != null) {
+                try {
+                    itemUsed = held.func_77973_b().func_77648_a(held, fakePlayer, world, x, y, z, side, 0.5f, 0.5f, 0.5f);
+                } catch (Throwable ignored) {
+                }
             }
             res.addProperty("activated", activated);
+            res.addProperty("itemUsed", itemUsed);
+            if (held != null) res.addProperty("heldItem", held.func_82833_r());
+            res.addProperty("block", ItemClassifier.getBlockDisplayName(world.func_147439_a(x, y, z), world.func_72805_g(x, y, z)));
             return res;
         }
 
         if (m.equals("use_item")) {
-            // use_item = simulate player use of an item: doors, levers, eating, buckets (if present)
-            int slot = args.has("slot") && !args.get("slot").isJsonNull() ? args.get("slot").getAsInt() : 0;
+            // Simulate a player using an item. This used to go through
+            // Class.getMethod("onItemUse"/"onItemRightClick"), which never matches at
+            // runtime: Forge 1.7.10 classes are SRG-named (func_77648_a/func_77659_a),
+            // so every call silently failed and useItem always reported used=false.
+            // Call the real hooks directly and support an explicit target block.
             net.minecraft.entity.player.EntityPlayer fakePlayer = d.player();
             if (fakePlayer == null || fakePlayer.field_71071_by == null) {
                 res.addProperty("ok", false);
@@ -407,26 +452,34 @@ public class ActionRpcHandler implements RpcHandler {
                 res.addProperty("used", false);
                 return res;
             }
+            int slot = args.has("slot") && !args.get("slot").isJsonNull()
+                ? args.get("slot").getAsInt() : fakePlayer.field_71071_by.field_70461_c;
             if (args.has("item") && !args.get("item").isJsonNull()) {
                 String filter = args.get("item").getAsString();
-                java.util.List<net.minecraft.item.ItemStack> candidates = new java.util.ArrayList<>();
-                java.util.List<Integer> candidateSlots = new java.util.ArrayList<>();
-                // hotbar slot 0..8
-                for (int i = 0; i < 9 && i < fakePlayer.field_71071_by.func_70302_i_(); i++) {
-                    net.minecraft.item.ItemStack st = fakePlayer.field_71071_by.func_70301_a(i);
-                    if (st == null || st.func_77973_b() == null) continue;
-                    if (filter == null || filter.isEmpty() || ir.layercloud.cortexdrone.world.ItemClassifier.scoreBlockOrItemMatch(st.func_82833_r(), ir.layercloud.cortexdrone.world.ItemClassifier.getItemIdentifier(st), st.func_77960_j(), filter) > 0) {
-                        candidates.add(st);
-                        candidateSlots.add(i);
+                int found = -1;
+                // Prefer the hotbar (0..8), then fall back to the whole drone inventory.
+                int size = fakePlayer.field_71071_by.func_70302_i_();
+                for (int pass = 0; pass < 2 && found < 0; pass++) {
+                    int from = pass == 0 ? 0 : 9;
+                    int to = pass == 0 ? Math.min(9, size) : size;
+                    for (int i = from; i < to; i++) {
+                        net.minecraft.item.ItemStack st = fakePlayer.field_71071_by.func_70301_a(i);
+                        if (st == null || st.func_77973_b() == null) continue;
+                        if (filter.isEmpty() || ItemClassifier.scoreBlockOrItemMatch(
+                                st.func_82833_r(), ItemClassifier.getItemIdentifier(st),
+                                st.func_77960_j(), filter) > 0) {
+                            found = i;
+                            break;
+                        }
                     }
                 }
-                if (candidates.isEmpty()) {
+                if (found < 0) {
                     res.addProperty("ok", false);
-                    res.addProperty("error", "No matching item in drone hotbar for filter: " + filter);
+                    res.addProperty("error", "No matching item in drone inventory for filter: " + filter);
                     res.addProperty("used", false);
                     return res;
                 }
-                slot = candidateSlots.get(0);
+                slot = found;
             }
             net.minecraft.item.ItemStack stack = slot >= 0 && slot < fakePlayer.field_71071_by.func_70302_i_()
                 ? fakePlayer.field_71071_by.func_70301_a(slot) : null;
@@ -436,42 +489,68 @@ public class ActionRpcHandler implements RpcHandler {
                 res.addProperty("used", false);
                 return res;
             }
-            // Simulate holding the selected slot so Item.onItemUse sees the right held stack.
+            // Make sure the fake player actually holds the stack it is about to use.
             try {
-                fakePlayer.field_71071_by.field_70461_c = slot;
+                if (slot >= 0 && slot < 9) {
+                    fakePlayer.field_71071_by.field_70461_c = slot;
+                }
             } catch (Throwable ignored) {}
+            syncFakePlayerToDrone(fakePlayer, d);
 
-            // optimize: call the two common hooks by reflection (Forge signature-compatible).
+            int tx, ty, tz, side;
+            boolean hasTarget = args.has("x") && args.has("y") && args.has("z")
+                && !args.get("x").isJsonNull() && !args.get("y").isJsonNull() && !args.get("z").isJsonNull();
+            if (hasTarget) {
+                tx = args.get("x").getAsInt();
+                ty = args.get("y").getAsInt();
+                tz = args.get("z").getAsInt();
+            } else {
+                // No explicit target: click the top face of the block under the drone,
+                // which is exactly where a hovering player would right-click.
+                tx = MathHelper.func_76128_c(d.field_70165_t);
+                ty = MathHelper.func_76128_c(d.field_70163_u) - 1;
+                tz = MathHelper.func_76128_c(d.field_70161_v);
+            }
+            side = args.has("side") && !args.get("side").isJsonNull() ? args.get("side").getAsInt() : 1;
+
+            net.minecraft.item.Item item = stack.func_77973_b();
+            int beforeCount = stack.field_77994_a;
+            int beforeDamage = stack.func_77960_j();
             boolean used = false;
+            String method = "none";
             try {
-                java.lang.reflect.Method useMethod = stack.func_77973_b().getClass().getMethod("onItemUse", net.minecraft.item.ItemStack.class, net.minecraft.world.World.class, net.minecraft.entity.player.EntityPlayer.class);
-                Object result = useMethod.invoke(stack.func_77973_b(), stack, world, fakePlayer);
-                used = result instanceof Boolean ? ((Boolean) result).booleanValue() : result != null;
-            } catch (Throwable ignored) {}
-            // Fallback: many items handle use via onItemUseFirst / onItemRightClick
-            if (!used) {
+                used = item.func_77648_a(stack, fakePlayer, world, tx, ty, tz, side, 0.5f, 0.5f, 0.5f);
+                method = "onItemUse";
+            } catch (Throwable t) {
+                method = "onItemUse:error:" + t.getClass().getSimpleName();
+            }
+            if (!used && !hasTarget) {
                 try {
-                    java.lang.reflect.Method rc = stack.func_77973_b().getClass().getMethod("onItemRightClick", net.minecraft.item.ItemStack.class, net.minecraft.world.World.class, net.minecraft.entity.player.EntityPlayer.class);
-                    Object result = rc.invoke(stack.func_77973_b(), stack, world, fakePlayer);
-                    used = result instanceof Boolean ? ((Boolean) result).booleanValue() : result != null;
-                } catch (Throwable ignored) {}
+                    net.minecraft.item.ItemStack after = item.func_77659_a(stack, world, fakePlayer);
+                    used = after != null && (after != stack
+                        || after.field_77994_a != beforeCount
+                        || after.func_77960_j() != beforeDamage);
+                    method = "onItemRightClick";
+                } catch (Throwable t) {
+                    method = "onItemRightClick:error:" + t.getClass().getSimpleName();
+                }
             }
             res.addProperty("used", used);
+            res.addProperty("method", method);
             res.addProperty("slot", slot);
             res.addProperty("item", stack.func_82833_r());
+            res.addProperty("x", tx);
+            res.addProperty("y", ty);
+            res.addProperty("z", tz);
+            res.addProperty("side", side);
+            Block targetBlock = world.func_147439_a(tx, ty, tz);
+            res.addProperty("block", ItemClassifier.getBlockDisplayName(targetBlock, world.func_72805_g(tx, ty, tz)));
             return res;
         }
 
-        if (m.equals("torch")) {
-            if (args.has("enabled")) {
-                ctrl.autoTorch = args.get("enabled").getAsBoolean();
-            } else {
-                ctrl.autoTorch = !ctrl.autoTorch;
-            }
-            boolean placed = this.buildingService.placeTorchNow(ctrl, player);
-            res.addProperty("autoTorch", ctrl.autoTorch);
-            res.addProperty("placedNow", placed);
-            return res;
+        if (m.equals("torch") || m.equals("light")) {
+            // Torch-free illumination aura (kept under the legacy "torch" RPC name).
+            return this.manager.getLightingService().configure(ctrl, args);
         }
 
         if (m.equals("hunt")) {
@@ -527,5 +606,22 @@ public class ActionRpcHandler implements RpcHandler {
         res.addProperty("ok", false);
         res.addProperty("error", "Unhandled action RPC method: " + m);
         return res;
+    }
+
+    /**
+     * OC's agent FakePlayer keeps its own position; sync it to the drone so
+     * canPlayerEdit / reach / spawn-protection checks see the real location.
+     */
+    private static void syncFakePlayerToDrone(net.minecraft.entity.player.EntityPlayer fp, Drone d) {
+        if (fp == null || d == null) return;
+        try {
+            fp.field_70165_t = d.field_70165_t;
+            fp.field_70163_u = d.field_70163_u;
+            fp.field_70161_v = d.field_70161_v;
+            fp.field_71093_bK = d.field_71093_bK;
+            fp.field_70177_z = d.field_70177_z;
+            fp.field_70125_A = d.field_70125_A;
+        } catch (Throwable ignored) {
+        }
     }
 }

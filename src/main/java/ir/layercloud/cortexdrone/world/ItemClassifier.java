@@ -124,6 +124,11 @@ public final class ItemClassifier {
         return RegistryIntrospector.isCropOrPlantBlock(b);
     }
 
+    /** True only for real crops/reeds that may be auto-replanted after harvest. */
+    public static boolean isReplantableCrop(Block b) {
+        return RegistryIntrospector.isReplantableCropBlock(b);
+    }
+
     public static boolean isLikelyUndergroundQuery(String filter) {
         return RegistryIntrospector.isLikelyUndergroundQuery(filter);
     }

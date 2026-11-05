@@ -74,12 +74,12 @@ Respond ONLY with a valid JSON object matching this exact schema:
      - `await drone.mineRect(x1, y1, z1, x2, y2, z2, filter = 'all')` (supports negation like `'!skystone'`)
      - `await drone.mineBox(anchor = 'under_player', width = 3, height = 3, length = 3)`
      - `await drone.gatherDistant(target, maxRadius = 1200, count = 0, untilFull = false)`
-     - `await drone.farm(target = 'crop', radius = 48)` (harvests mature `IGrowable` crops & vertical stem plants and auto-replants via Forge `IPlantable`; pass `radius = 1000` for 1km farming!)
+     - `await drone.farm(target = 'crop', radius = 48)` (harvests mature `IGrowable` crops & vertical stem plants; auto-replant applies only to real crops/reeds and only consumes an actual seed/plant item - decorative grass/shrubs are never replaced, so plain harvesting leaves air. Pass `radius = 1000` for 1km farming!)
      - `await drone.chop(x, y, z)` (chain-chops the log column at `(x,y,z)` and collects drops; returns `{ queued }`)
      - `await drone.fertilize(radius = 12)` (applies Bone Meal to nearby `IGrowable` crops & saplings!)
-     - `await drone.interactBlock(x, y, z)` (right-click/activate a block: doors, levers, buttons, furnaces, machines; scoops source liquids)
-     - `await drone.useItem(slotOrFilter = 0, itemFilter?)` (uses held item: doors/food/buckets/bonemeal; matches hotbar slot or item filter)
-   - **Building, Architecture, Atomic Replacement & Liquids** (auto-pulls blocks/buckets from drone -> nearby chests -> player inventory, and auto-crafts or substitutes if a material runs out):
+     - `await drone.interactBlock(x, y, z, side?)` (right-click/activate a block: doors, levers, buttons, furnaces, machines; if the block itself does nothing it also runs the held item's use-on-block, so hoes can till; scoops source liquids)
+     - `await drone.useItem(slotOrFilter = 0, itemFilter?, x?, y?, z?, side?)` (uses an item; pass target coords to run the real onItemUse, e.g. `await drone.useItem('hoe', x, y, z)` to till soil; object form `drone.useItem({ item:'hoe', x, y, z, side:1 })`; returns `{used, method, item, slot, block}`)
+   - **Building, Architecture, Atomic Replacement & Liquids** (auto-pulls blocks/buckets from drone -> nearby chests -> player inventory; it never swaps in a different block unless you explicitly pass `substitute: true`. If a material is missing the task is dropped and reported instead of placing something unrequested):
      - `await drone.buildStructure({ style = 'house', width = 5, depth = 5, height = 3, floor = 'cobblestone', walls = 'cobblestone', corners = 'oak_log', roof = 'planks', roofStyle = 'flat' | 'pyramid', windows = true })` -> auto-locates a flat build pad, adapts foundation, and builds floor/corners/walls/doorway/windows/roof!
      - `await drone.placeBlock(x, y, z, blockFilter = 'any', meta = -1)` (auto-batched in loops!)
      - `await drone.placeMany([{x, y, z, block, meta, replace}, ...])`
@@ -115,7 +115,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
      - `await drone.moveOffset(dx, dy, dz)` | `await drone.setVelocity(vx, vy, vz)`
      - `await drone.getBreadcrumbs(limit = 64)` | `await drone.retraceBreadcrumbs(steps = 48, toSurface = true)` | `await drone.escapeCave()`
      - `await drone.carryPlayer(x?, y?, z?)` (mounts the player onto the drone and airlifts them smoothly to `(x,y,z)` or base!)
-     - `await drone.come()` | `await drone.follow(name?)` | `await drone.stay()` | `await drone.stop()` | `await drone.torch(enabled?)` | `await drone.say(msg)` | `await drone.setStatusText(text)`
+     - `await drone.come()` | `await drone.follow(name?)` | `await drone.stay()` | `await drone.stop()` | `await drone.say(msg)` | `await drone.setStatusText(text)`
+     - **Light (torch-free)**: `await drone.light(true)` turns on a moving light aura around the drone - it lights the area itself and uses **no torch item and places no block**. Toggle any time with `await drone.light(false)`, `await drone.light()` (toggle) or the legacy `await drone.torch(enabled?)`. Options: `await drone.light({ enabled: true, color: 'red' | '#FF9500' | [255,149,0], radius: 6, level: 14 })`; `drone.lightOff()` is shorthand for off. Colour defaults to normal white light. Turning the aura off restores the original world lighting.
    - **Fun LEDs, Rainbow, Aerobatics, Dance, Particles & Music**:
      - `await drone.setLed(color)` (accepts hex int `0xFF0055`, `'#FF0055'`, color names `'red'`, `'cyan'`, `'gold'`, `'purple'`, `'pink'`, `[r,g,b]`, `{h,s,v}`, or `'rainbow'`, `'disco'`, `'police'`, `'pulse'`, `'strobe'`, `'reset'`)
      - `await drone.ledEffect(effect = 'rainbow')` (`'rainbow'`, `'disco'`, `'police'`, `'pulse'`, `'strobe'`, `'off'`) | `await drone.rainbow(durationMs = 5000, stepMs = 80, keepOn = true)` | `hsvToRgb(h, s = 1, v = 1)`

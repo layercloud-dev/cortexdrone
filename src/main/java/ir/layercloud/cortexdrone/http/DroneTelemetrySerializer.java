@@ -173,6 +173,10 @@ public class DroneTelemetrySerializer {
             dj.addProperty("energy", d.globalBuffer());
             dj.addProperty("maxEnergy", d.globalBufferSize());
             dj.addProperty("autoTorch", ctrl.autoTorch);
+            dj.addProperty("lightActive", ctrl.autoTorch);
+            dj.addProperty("lightRadius", ctrl.lightRadius);
+            dj.addProperty("lightIntensity", ctrl.lightIntensity);
+            dj.addProperty("auraColor", String.format("0x%06X", ctrl.lightColor & 0xFFFFFF));
             dj.addProperty("mineQueueSize", ctrl.mineQueue.size());
             dj.addProperty("pathWaypointCount", ctrl.pathWaypoints.size());
 

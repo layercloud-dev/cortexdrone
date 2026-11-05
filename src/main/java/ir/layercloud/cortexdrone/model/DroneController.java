@@ -56,13 +56,32 @@ public class DroneController {
     // and the throttle never held — one STUCK line per tick for minutes.
     public String lastSolidKey = "";
     public int lastSolidLogTick = -10000;
+    // Per-waypoint hit counters: an A/B/A/B alternation of two blocked goals used
+    // to defeat the single lastSolidKey throttle, so escalation never fired and
+    // the drone hovered forever. Hits are counted per blocked waypoint instead.
+    public final Map<Long, Integer> solidWaypointHits = new HashMap<Long, Integer>();
+    public int solidLogTick = -10000;
+    public int solidEscalations = 0;
     public String lastPathLogKey = "";
     public int lastPathLogTick = -10000;
     public final Deque<int[]> navigationHistory = new ConcurrentLinkedDeque<int[]>();
     public int[] lastSurfaceAnchor = null;
 
     // Mining, building, farming, scooping & smelting state
+    // autoTorch == "illumination aura active". No torch item is consumed and no
+    // block is placed: the drone raises the surrounding block light directly and
+    // restores it when the aura is switched off.
     public boolean autoTorch = false;
+    public int lightRadius = 6;
+    public int lightIntensity = 14;
+    public int lightColor = 0xFFFFFF;
+    public int lightCooldown = 0;
+    public long lightAnchor = Long.MIN_VALUE;
+    // packed world position -> original block-light level, for exact restore
+    public final Map<Long, Integer> lightCells = new HashMap<Long, Integer>();
+    // Opt-in only. When false (default) a build never swaps in a different block
+    // than the one requested; the task is dropped and reported instead.
+    public boolean allowBuildSubstitution = false;
     public String mineFilter = "ores";
     public boolean mineExactQueueOnly = false;
     public boolean replantAfterHarvest = false;
@@ -120,7 +139,6 @@ public class DroneController {
     public final Deque<String> thoughtHistory = new ConcurrentLinkedDeque<String>();
 
     public int attackCooldown = 0;
-    public int torchCooldown = 0;
     public int pickupCooldown = 0;
     public int stuckTicks = 0;
     // Tick-rate pacing counters (kept on the controller: each drone ticks independently)
@@ -146,6 +164,11 @@ public class DroneController {
     public int forcedChunkX = Integer.MIN_VALUE;
     public int forcedChunkZ = Integer.MIN_VALUE;
     public int forcedDim = Integer.MIN_VALUE;
+    // Chunk-corridor plan generation tick (player-aware force loading).
+    public int lastChunkPlanTick = -1000;
+    public int lastChunkLogTick = -10000;
+    public int lastChunkManaged = -1;
+    public int lastChunkPlayerOwned = -1;
 
     public DroneController(int id, Drone drone, String name, String ownerName) {
         this.id = id;

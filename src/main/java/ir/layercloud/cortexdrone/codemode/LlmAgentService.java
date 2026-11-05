@@ -152,6 +152,8 @@ public class LlmAgentService {
     }
 
     public void runAgentLoop(final EntityPlayerMP player, final DroneController ctrl, final String userPrompt, final JsonObject worldContext, final int myLoopId) {
+        final AgentHeartbeat heartbeat = AgentHeartbeat.begin(this.manager, ctrl, player, userPrompt, myLoopId);
+        boolean completedOk = false;
         try {
             StringBuilder sysSb = new StringBuilder(SYSTEM_PROMPT_TEMPLATE);
             sysSb.append("\nInitial World State: ").append(worldContext.toString());
@@ -210,6 +212,7 @@ public class LlmAgentService {
 
                 final long turnStartMs = System.currentTimeMillis();
                 JsonObject plan;
+                messages = PromptCompactor.compactIfLarge(messages);
                 try {
                     plan = callOpenAiChatMessages(ctrl, messages);
                 } catch (Throwable ex) {
@@ -218,6 +221,12 @@ public class LlmAgentService {
                         "url=" + this.manager.getConfig().getApiUrl() + " key=" + maskKey(this.manager.getConfig().getApiKey()));
                     plan = null;
                 }
+                if (PromptCompactor.consumeContextOverflow()) {
+                    messages = PromptCompactor.compact(messages);
+                    heartbeat.noteCompaction();
+                    this.logger.log("HEARTBEAT", ctrl, "Context overflow -> compacted and retrying loop " + myLoopId, "turn=" + turn);
+                    continue;
+                }
                 if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
                     LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
                     return;
@@ -225,6 +234,9 @@ public class LlmAgentService {
                 if (plan == null) {
                     long elapsedMs = System.currentTimeMillis() - turnStartMs;
                     LoopTracer.traceTurn(this.logger, ctrl, myLoopId, turn, elapsedMs, true, false, "", "");
+                    if (heartbeat.retryAfterBackendFailure(messages, turn)) {
+                        continue;
+                    }
                     String detail = lastLlmError != null ? lastLlmError : "no response from LLM gateway";
                     this.logger.log("LLM", ctrl, "LLM backend failed on Turn " + turn
                         + " loopId=" + myLoopId + " elapsedMs=" + elapsedMs
@@ -277,6 +289,7 @@ public class LlmAgentService {
                     final String earlyReply = "Blocked: the searched recipe/item path is machine-config-only or empty. "
                         + "Next step: provide the exact machine + missing ingredient, or pick the cheap vanilla "
                         + "alternative, then re-request.";
+                    completedOk = true;
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn + " early-final forced done:true", "loopId=" + myLoopId);
                     this.manager.getMod().queueMain(new Runnable() {
                         @Override public void run() { manager.droneSay(player, ctrl, earlyReply); }
@@ -289,6 +302,7 @@ public class LlmAgentService {
                         + "machine-gated (AssemblyMachine/ChemicalPlant/BlastFurnace/Anvil GUI-only). "
                         + "Next step: set up/bring that machine + power/fuel and the missing ingredient(s), "
                         + "then re-request. (Last tool result named the exact machine/ingredient.)";
+                    completedOk = true;
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn
                         + " machine-config blocker seen -> immediate done:true (no re-query)", "");
                     this.manager.getMod().queueMain(new Runnable() {
@@ -340,6 +354,7 @@ public class LlmAgentService {
                         );
                         continue;
                     }
+                    completedOk = true;
                     if (!reply.isEmpty()) {
                         this.manager.getMod().queueMain(new Runnable() {
                             @Override
@@ -380,6 +395,7 @@ public class LlmAgentService {
 
                     JsonObject execRes = this.codeModeRuntime.executeJavaScript(ctrl, player, code, myLoopId, done);
                     jsFinished.set(true);
+                    heartbeat.observe(turn, code, execRes);
 
                     if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
                         LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
@@ -496,6 +512,11 @@ public class LlmAgentService {
                         continue;
                     }
 
+                    if (done && heartbeat.rejectIncompleteDone(reply)) {
+                        AgentLoopHeuristics.appendTurnFeedback(messages, thought, code, heartbeat.incompleteDoneFeedback());
+                        continue;
+                    }
+                    completedOk = true;
                     if (!reply.isEmpty()) {
                         this.manager.getMod().queueMain(new Runnable() {
                             @Override
@@ -507,7 +528,7 @@ public class LlmAgentService {
                     return;
                 } else {
                     if (done || turn == MAX_AGENT_TURNS) {
-                        final String fallbackReply = reply.isEmpty()
+                        completedOk = done; final String fallbackReply = reply.isEmpty()
                             ? "I couldn't form a valid action plan for that. Please rephrase or simplify the task."
                             : reply;
                         this.manager.getMod().queueMain(new Runnable() {
@@ -549,6 +570,7 @@ public class LlmAgentService {
                 LoopTracer.sayError(this.manager, player, ctrl, errDetail);
             }
         } finally {
+            heartbeat.onLoopExit(completedOk);
             ctrl.unregisterLoop(myLoopId);
         }
     }
@@ -620,6 +642,12 @@ public class LlmAgentService {
                 if (httpCode < 200 || httpCode >= 300) {
                     String errDetail = "LLM gateway HTTP " + httpCode + (rawBody.isEmpty() ? "" : " - " + rawBody.substring(0, Math.min(800, rawBody.length())));
                     lastLlmError = errDetail;
+                    String lowerErr = errDetail.toLowerCase();
+                    if (lowerErr.contains("context length") || lowerErr.contains("maximum context")
+                        || lowerErr.contains("too many tokens") || lowerErr.contains("context_length_exceeded")
+                        || lowerErr.contains("prompt is too long")) {
+                        PromptCompactor.markContextOverflow(); return lastMalformed;
+                    }
                     this.logger.log("LLM", ctrl, errDetail, "url=" + cfg.getApiUrl() + " key=" + maskKey(cfg.getApiKey()));
                     if (attempt < 3) continue;
                     return lastMalformed;

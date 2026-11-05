@@ -405,14 +405,30 @@ public class FlightPathfinder {
 
         if (!droneInOpenSky && goalOnSurface && (gy - d.field_70163_u > 6.0 || horizDist > 20.0)) {
             // Drone is underground trying to reach a surface goal: target surface exit above current position or last surface anchor first
+            boolean anchorUsable = false;
             if (ctrl.lastSurfaceAnchor != null && Math.hypot(ctrl.lastSurfaceAnchor[0] - d.field_70165_t, ctrl.lastSurfaceAnchor[2] - d.field_70161_v) <= 24.0) {
-                effGx = ctrl.lastSurfaceAnchor[0] + 0.5;
-                effGy = ctrl.lastSurfaceAnchor[1] + 1.0;
-                effGz = ctrl.lastSurfaceAnchor[2] + 0.5;
-            } else {
-                effGx = curBx + 0.5;
-                effGy = topCur + 2.5;
-                effGz = curBz + 0.5;
+                int ax = MathHelper.func_76128_c(ctrl.lastSurfaceAnchor[0]);
+                int ay = ctrl.lastSurfaceAnchor[1];
+                int az = MathHelper.func_76128_c(ctrl.lastSurfaceAnchor[2]);
+                // A stale breadcrumb can sit inside rock now; never fly at a solid anchor.
+                if (ItemClassifier.isPassableVoxel(world, ax, ay, az) && ItemClassifier.isPassableVoxel(world, ax, ay + 1, az)) {
+                    effGx = ctrl.lastSurfaceAnchor[0] + 0.5;
+                    effGy = ctrl.lastSurfaceAnchor[1] + 1.0;
+                    effGz = ctrl.lastSurfaceAnchor[2] + 0.5;
+                    anchorUsable = true;
+                }
+            }
+            if (!anchorUsable) {
+                int[] openAbove = findNearestPassableVoxel(world, curBx, Math.min(250, topCur + 2), curBz, 4);
+                if (openAbove != null) {
+                    effGx = openAbove[0] + 0.5;
+                    effGy = openAbove[1] + 0.35;
+                    effGz = openAbove[2] + 0.5;
+                } else {
+                    effGx = curBx + 0.5;
+                    effGy = Math.min(250, topCur + 2.5);
+                    effGz = curBz + 0.5;
+                }
             }
         } else if (horizDist > (droneInOpenSky ? 18.0 : 32.0)) {
             double stepDist = droneInOpenSky ? 16.0 : 24.0;
@@ -447,6 +463,14 @@ public class FlightPathfinder {
             ctrl.pathGoalY = effGy;
             ctrl.pathGoalZ = effGz;
             ctrl.repathCooldown = horizDist > 18.0 ? 8 : 12;
+            // Force the freshly-planned travel corridor NOW (not on the next tick):
+            // A* can read unloaded chunks on demand, but without a ticket vanilla
+            // is free to unload them again before the drone gets there.
+            DroneChunkLoader loader = DroneChunkLoader.getInstance();
+            if (loader != null) {
+                ctrl.lastChunkPlanTick = -1000;
+                loader.updateDroneTicket(ctrl);
+            }
 
             // If trapped underground with a partial path, trigger automatic breadcrumb backtrack or Baritone dig-escape
             if (!droneInOpenSky && ctrl.lastPathPartial && (ctrl.stuckTicks >= 6 || (goalOnSurface && gy - d.field_70163_u > 6.0))) {
@@ -480,14 +504,11 @@ public class FlightPathfinder {
         int awx = MathHelper.func_76128_c(activeWp[0]);
         int away = MathHelper.func_76128_c(activeWp[1]);
         int awz = MathHelper.func_76128_c(activeWp[2]);
-        // Foreign/stale waypoints (pre-restart NBT targets, hand-set move_to into solid blocks) point
-        // into collision territory; hovering beats grinding into the block forever.
-        // Recovery must NOT sit still: DoorCoordinator's stuck recovery dispatches
-        // "clear" after 18 stuck ticks, but that recovery never fires if we never
-        // clear pathWaypoints. So this solid-waypoint branch also force-clears its
-        // path, and after an identical solid target repeats twice we inject
-        // escapeCaveOrDigOut (dig-escape) so a waypoint genuinely sealed inside
-        // rock gets its way mined open instead of hovering forever.
+        // A waypoint that is inside collision territory must be recovered from, not
+        // hovered at. The previous throttle compared one `lastSolidKey`: when two
+        // different blocked goals alternated every tick (A/B/A/B) it saw "new key"
+        // each time, so it logged every tick and NEVER escalated — 15.6k STUCK lines
+        // and a permanently hovering drone. Count hits per blocked waypoint instead.
         if (!ItemClassifier.isPassableVoxel(world, awx, away, awz) || !ItemClassifier.isPassableVoxel(world, awx, away + 1, awz)) {
             FlightPathfinder.setDroneFlightTarget(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, 0.05f);
             d.field_70159_w *= 0.3;
@@ -496,33 +517,47 @@ public class FlightPathfinder {
             if (ctrl.stuckTicks < 6) {
                 ctrl.stuckTicks = 6;
             }
-            // Separate throttle slot: sharing lastStuckKey with DroneTickCoordinator
-            // made the two sites clobber each other's key every tick, so NEITHER
-            // throttle ever held and this line spammed once per tick (14.9k lines).
-            String solidKey = ctrl.id + "|solid:" + (int) (activeWp[0] * 4) + "," + (int) (activeWp[1] * 4) + "," + (int) (activeWp[2] * 4);
-            boolean solidRepeat = solidKey.equals(ctrl.lastSolidKey);
-            if (!solidRepeat || ctrl.tickClock - ctrl.lastSolidLogTick >= 120) {
-                this.logger.log("STUCK", ctrl, "Flight target inside solid block; hovering instead of grinding",
-                    String.format("wp=(%.2f,%.2f,%.2f)", activeWp[0], activeWp[1], activeWp[2]));
-                ctrl.lastSolidKey = solidKey;
+            long solidKey = packBlockPos(awx, away, awz);
+            Integer prevHits = ctrl.solidWaypointHits.get(Long.valueOf(solidKey));
+            int hits = (prevHits == null ? 0 : prevHits.intValue()) + 1;
+            ctrl.solidWaypointHits.put(Long.valueOf(solidKey), Integer.valueOf(hits));
+            if (ctrl.solidWaypointHits.size() > 64) {
+                ctrl.solidWaypointHits.clear();
+                ctrl.solidWaypointHits.put(Long.valueOf(solidKey), Integer.valueOf(hits));
+            }
+            // Clear the fatally stuck path so the next navigateToward replans.
+            ctrl.pathWaypoints.clear();
+            ctrl.pathIndex = 0;
+            ctrl.repathCooldown = 0;
+
+            // One log per drone per 4s max, regardless of how many goals alternate.
+            boolean logNow = ctrl.tickClock - ctrl.solidLogTick >= 80;
+            if (logNow) {
+                Block blockedAtWp = world.func_147439_a(awx, away, awz);
+                this.logger.log("STUCK", ctrl, "Blocked waypoint; recovering",
+                    String.format("wp=(%.2f,%.2f,%.2f) hits=%d block=%s mode=%s",
+                        activeWp[0], activeWp[1], activeWp[2], hits,
+                        ItemClassifier.getBlockDisplayName(blockedAtWp, world.func_72805_g(awx, away, awz)),
+                        ctrl.mode.name()));
+                ctrl.lastSolidKey = ctrl.id + "|solid:" + solidKey;
                 ctrl.lastSolidLogTick = ctrl.tickClock;
-                // NEW: recover, do not just hover. Clear the fatally stuck path
-                // so the next navigateToward replans, and on a repeat of the SAME
-                // solid waypoint escalate to the dig-escape: a target sealed in
-                // rock gets mined out. Distinct new solid targets only get the
-                // clear (avoiding mode churn across a rapid succession of
-                // unrelated solid waypoints). Caveat: escapeCaveOrDigOut sets
-                // Mode.MINE — it returns control when the dig queue drains.
-                ctrl.pathWaypoints.clear();
-                ctrl.pathIndex = 0;
-                ctrl.repathCooldown = 0;
-                if (solidRepeat) {
-                    this.logger.log("ESCAPE", ctrl, "Escalating repeated solid waypoint to dig-escape",
-                        String.format("wp=(%.2f,%.2f,%.2f)", activeWp[0], activeWp[1], activeWp[2]));
-                    escapeCaveOrDigOut(ctrl, null);
+                ctrl.solidLogTick = ctrl.tickClock;
+            }
+            // Escalate on the second hit of the SAME waypoint (or sooner if the
+            // generic stuck timer is high). Dig the blocking voxel out instead of
+            // hovering: this is the difference between "stuck" and "self-rescue".
+            if (hits >= 2 || ctrl.stuckTicks >= 12) {
+                int queued = this.caveEscapeService.digOutBlockedWaypoint(ctrl, awx, away, awz);
+                if (queued > 0) {
+                    ctrl.solidEscalations++;
+                    this.logger.log("ESCAPE", ctrl, "Digging out blocked waypoint",
+                        String.format("wp=(%.2f,%.2f,%.2f) queued=%d hits=%d escalation=%d",
+                            activeWp[0], activeWp[1], activeWp[2], queued, hits, ctrl.solidEscalations));
                 }
             }
         } else {
+            // Making progress again: forget old blocked-waypoint hit counts.
+            if (!ctrl.solidWaypointHits.isEmpty()) ctrl.solidWaypointHits.clear();
             setDroneFlightTarget(d, activeWp[0], activeWp[1], activeWp[2], accel);
         }
     }

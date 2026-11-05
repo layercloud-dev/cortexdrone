@@ -5,6 +5,7 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ir.layercloud.cortexdrone.behavior.BuildingService;
 import ir.layercloud.cortexdrone.behavior.CombatService;
 import ir.layercloud.cortexdrone.behavior.DroneTickCoordinator;
+import ir.layercloud.cortexdrone.behavior.LightingService;
 import ir.layercloud.cortexdrone.behavior.MiningService;
 import ir.layercloud.cortexdrone.codemode.CodeModeRuntime;
 import ir.layercloud.cortexdrone.codemode.LlmAgentService;
@@ -65,6 +66,7 @@ public class AIDroneManager {
     private final MiningService miningService;
     private final BuildingService buildingService;
     private final CombatService combatService;
+    private final LightingService lightingService;
     private final DocLookupService docLookupService;
     private SkillLibrary skillLibrary;
     private final CodeModeRuntime codeModeRuntime;
@@ -91,6 +93,7 @@ public class AIDroneManager {
         this.miningService = new MiningService(this, this.logger, this.pathfinder, this.worldScanner, this.inventoryService);
         this.buildingService = new BuildingService(this, this.logger, this.pathfinder, this.worldScanner, this.inventoryService, this.miningService);
         this.combatService = new CombatService(this, this.logger, this.pathfinder);
+        this.lightingService = new LightingService(this.logger);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));
         this.codeModeRuntime = new CodeModeRuntime(this.logger, this.config);
@@ -143,6 +146,11 @@ public class AIDroneManager {
 
     public void onServerStopping() {
         this.logger.log("SYSTEM", null, "Server stopping; saving AI drone config and stopping HTTP server", "");
+        for (DroneController ctrl : this.controllersById.values()) {
+            if (ctrl != null && !ctrl.lightCells.isEmpty()) {
+                this.lightingService.clearAura(ctrl);
+            }
+        }
         saveConfig();
         this.httpServer.stop();
     }
@@ -257,6 +265,11 @@ public class AIDroneManager {
     public void onServerTickEnd() {
         this.rpcDispatcher.onServerTickEnd();
         this.tickCounter++;
+        // Keep anchor ownership in sync with player movement: chunks inside a
+        // player's view are vanilla-owned; anchors re-claim them when players leave.
+        if (this.tickCounter % 20 == 0) {
+            this.chunkLoader.refreshAnchors();
+        }
         if (this.tickCounter % 40 == 0) {
             reconnectUnlinkedWorldDrones();
         }
@@ -522,6 +535,7 @@ public class AIDroneManager {
         double dz = dropTargetPlayer != null ? dropTargetPlayer.field_70161_v : d.field_70161_v;
 
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
+        this.lightingService.clearAura(ctrl);
         ctrl.despawned = true;
         this.chunkLoader.releaseDroneTicket(ctrl);
         UUID duid = d.func_110124_au();
@@ -608,7 +622,8 @@ public class AIDroneManager {
             d.field_70165_t, d.field_70163_u, d.field_70161_v, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ(),
             ctrl.pathIndex, ctrl.pathWaypoints.size()));
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "LED: " + EnumChatFormatting.AQUA + String.format("#%06X", d.lightColor() & 0xFFFFFF)
-            + EnumChatFormatting.YELLOW + " | Auto-Torch: " + EnumChatFormatting.WHITE + (ctrl.autoTorch ? "ON" : "OFF")
+            + EnumChatFormatting.YELLOW + " | Light Aura: " + EnumChatFormatting.WHITE + (ctrl.autoTorch ? "ON" : "OFF")
+            + (ctrl.autoTorch ? " (#" + String.format("%06X", ctrl.lightColor & 0xFFFFFF) + ", r=" + ctrl.lightRadius + ", level=" + ctrl.lightIntensity + ")" : "")
             + EnumChatFormatting.YELLOW + " | Energy: " + EnumChatFormatting.GREEN + d.globalBuffer() + "/" + d.globalBufferSize());
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "Inventory (8 slots): " + EnumChatFormatting.WHITE + InventoryService.formatInventorySummary(d.mainInventory()));
     }

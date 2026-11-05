@@ -48,7 +48,6 @@ public class DroneTickCoordinator {
         boolean machineRunningOk = (ctrl.tickClock % 40 == 1) ? this.manager.ensureMachineRunningState(d) : d.isRunning();
         ctrl.orbitAngle += 0.045f;
         if (ctrl.attackCooldown > 0) ctrl.attackCooldown--;
-        if (ctrl.torchCooldown > 0) ctrl.torchCooldown--;
         if (ctrl.pickupCooldown > 0) ctrl.pickupCooldown--;
         if (ctrl.repathCooldown > 0) ctrl.repathCooldown--;
 
@@ -114,9 +113,8 @@ public class DroneTickCoordinator {
             InventoryService.suckNearbyItems(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, 3.5);
         }
 
-        if (ctrl.autoTorch && ctrl.torchCooldown <= 0) {
-            ctrl.torchCooldown = 15;
-            this.buildingService.tryPlaceAutoTorch(ctrl);
+        if (ctrl.autoTorch || !ctrl.lightCells.isEmpty()) {
+            this.manager.getLightingService().tick(ctrl);
         }
 
         EntityPlayerMP owner = CortexDroneMod.findPlayer(ctrl.ownerName);

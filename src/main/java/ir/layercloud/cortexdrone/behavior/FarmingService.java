@@ -8,7 +8,6 @@ import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.navigation.TspRouteOptimizer;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
-import ir.layercloud.cortexdrone.world.RegistryIntrospector;
 import ir.layercloud.cortexdrone.world.WorldScanner;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -142,13 +141,18 @@ public class FarmingService {
      */
     public void tryReplantAt(World world, DroneController ctrl, int bx, int by, int bz, Block harvestedBlock, int harvestedMeta) {
         if (world == null || ctrl == null || ctrl.drone == null || !world.func_147437_c(bx, by, bz) || harvestedBlock == null) return;
+        // Hard guard: only real crops/reeds (or a felled log) may be replanted. This is
+        // what previously turned mined grass/tall-grass into an unrequested Shrub.
+        if (!ItemClassifier.isReplantableCrop(harvestedBlock) && !ItemClassifier.isLogBlock(harvestedBlock)) {
+            return;
+        }
         IInventory inv = ctrl.drone.mainInventory();
         Block below = world.func_147439_a(bx, by - 1, bz);
         if (below == null || below == Blocks.field_150350_a) return;
 
-        // 1) Tree log harvested on soil/grass -> plant matching sapling
+        // 1) Tree log harvested on soil/grass -> plant a sapling that actually exists
+        // in the drone inventory. Never fabricate a sapling out of thin air.
         if (ItemClassifier.isLogBlock(harvestedBlock)) {
-            Block defaultSapling = Blocks.field_150345_g != null ? Blocks.field_150345_g : Block.func_149684_b("sapling");
             int sapSlot = findSaplingSlot(inv);
             if (sapSlot >= 0) {
                 ItemStack sapStack = inv.func_70301_a(sapSlot);
@@ -162,13 +166,6 @@ public class FarmingService {
                     this.logger.log("FARM", ctrl, String.format("Planted %s at (%d,%d,%d)", sapStack.func_82833_r(), bx, by, bz), "");
                     return;
                 }
-            }
-            if (defaultSapling != null && defaultSapling.func_149742_c(world, bx, by, bz)) {
-                int normMeta = RegistryIntrospector.normalizeBlockMeta(harvestedBlock, harvestedMeta);
-                int sapMeta = harvestedBlock == Blocks.field_150363_s ? ((normMeta & 3) + 4) : (normMeta & 3);
-                world.func_147465_d(bx, by, bz, defaultSapling, sapMeta, 3);
-                world.func_72908_a(bx + 0.5, by + 0.5, bz + 0.5, "dig.grass", 0.8f, 1.0f);
-                this.logger.log("FARM", ctrl, String.format("Planted sapling at (%d,%d,%d)", bx, by, bz), "meta=" + sapMeta);
             }
             return;
         }

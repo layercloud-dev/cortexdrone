@@ -173,6 +173,57 @@ public class CaveEscapeService {
         return waypoints.size();
     }
 
+    /**
+     * Self-rescue for a blocked waypoint: queue the solid voxels that actually
+     * stop movement (the drone's own feet/head first, then the blocked waypoint)
+     * and hand control to the mining engine. Unlike {@link #escapeCaveOrDigOut}
+     * this cannot end in "no dig path found, keep hovering": it always has a
+     * concrete block to break.
+     */
+    public int digOutBlockedWaypoint(DroneController ctrl, int wx, int wy, int wz) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return 0;
+        Drone d = ctrl.drone;
+        World world = d.field_70170_p;
+        int sx = MathHelper.func_76128_c(d.field_70165_t);
+        int sy = MathHelper.func_76128_c(d.field_70163_u);
+        int sz = MathHelper.func_76128_c(d.field_70161_v);
+
+        int queued = 0;
+        // Add in reverse priority: addFirst() puts each next call in front, so the
+        // drone's own feet cell ends up first (it is the most urgent voxel).
+        queued += queueDig(ctrl, world, wx, wy + 1, wz);
+        queued += queueDig(ctrl, world, wx, wy, wz);
+        queued += queueDig(ctrl, world, sx, sy + 1, sz);
+        queued += queueDig(ctrl, world, sx, sy, sz);
+        if (queued == 0) return 0;
+
+        ctrl.mineFilter = "all";
+        ctrl.mineExactQueueOnly = true;
+        ctrl.mineUntilFull = false;
+        ctrl.mineTargetCount = 0;
+        ctrl.returnToOwnerAfterMine = false;
+        ctrl.currentMineTarget = null;
+        ctrl.currentMineStandoff = null;
+        ctrl.mineProgressTicks = 0;
+        ctrl.stuckTicks = 0;
+        ctrl.lastPathPartial = false;
+        ctrl.pathWaypoints.clear();
+        ctrl.pathIndex = 0;
+        ctrl.repathCooldown = 0;
+        this.manager.setDroneMode(ctrl, Mode.MINE, "Dig out blocked waypoint");
+        return queued;
+    }
+
+    private static int queueDig(DroneController ctrl, World world, int x, int y, int z) {
+        if (y <= 1 || y >= 255) return 0;
+        if (!ItemClassifier.isMineableBlock(world, x, y, z)) return 0;
+        for (int[] p : ctrl.mineQueue) {
+            if (p[0] == x && p[1] == y && p[2] == z) return 0;
+        }
+        ctrl.mineQueue.addFirst(new int[]{x, y, z});
+        return 1;
+    }
+
     public int escapeCaveOrDigOut(DroneController ctrl, EntityPlayerMP owner) {
         if (ctrl == null || ctrl.drone == null) return 0;
         Drone d = ctrl.drone;
@@ -239,7 +290,9 @@ public class CaveEscapeService {
                     }
                 }
             }
-            escapeWps.add(new double[]{bx + 0.5, by + 0.65, bz + 0.5});
+            if (step[3] == 0 && ItemClassifier.isPassableVoxel(world, bx, by, bz)) {
+                escapeWps.add(new double[]{bx + 0.5, by + 0.65, bz + 0.5});
+            }
         }
         if (queuedDigs > 0) {
             // GUARD/FOLLOW/GOTO never drain mineQueue -> the escape stalls forever in front of the

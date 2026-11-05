@@ -182,6 +182,12 @@ public class MiningService {
             Iterator<int[]> qIt = ctrl.mineQueue.iterator();
             while (qIt.hasNext()) {
                 int[] p = qIt.next();
+                // A temporarily unloaded chunk must NOT purge its queued targets:
+                // doing so silently truncates a mine task ("damaged logic") as soon
+                // as the drone crosses a chunk border. Keep them until loaded.
+                if (!world.func_72863_F().func_73149_a(p[0] >> 4, p[2] >> 4)) {
+                    continue;
+                }
                 if (!ItemClassifier.isMineableBlock(world, p[0], p[1], p[2])) {
                     qIt.remove();
                 }
@@ -195,6 +201,16 @@ public class MiningService {
                 if (p[1] > highestY) highestY = p[1];
             }
 
+            int curBx = MathHelper.func_76128_c(d.field_70165_t);
+            int curBy = MathHelper.func_76128_c(d.field_70163_u);
+            int curBz = MathHelper.func_76128_c(d.field_70161_v);
+            int topCur = world.func_72976_f(curBx, curBz);
+            boolean droneInOpenSky = world.func_72937_j(curBx, curBy, curBz) || d.field_70163_u >= topCur - 1;
+            // Surface digs are ordered top-down; underground work is ordered by
+            // proximity to the drone so a vertical shaft is consumed from the
+            // current level instead of the drone targeting the far surface lip.
+            int refY = droneInOpenSky ? highestY : curBy;
+
             int checked = 0;
             int scanned = 0;
             for (int[] p : ctrl.mineQueue) {
@@ -202,12 +218,19 @@ public class MiningService {
                 double[] st = FlightPathfinder.findMiningStandoff(world, d, p[0], p[1], p[2]);
                 if (st != null) {
                     double dist = d.func_70011_f(st[0], st[1], st[2]);
-                    double layerPenalty = ctrl.mineExactQueueOnly ? (highestY - p[1]) * 3.0 : 0.0;
-                    double losBonus = 0.0;
-                    if (checked < 24 && dist <= 18.0 && FlightPathfinder.isFlightLineClear(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, st[0], st[1], st[2])) {
-                        losBonus = -40.0;
+                    boolean losKnown = checked < 32 && dist <= 18.0;
+                    boolean hasLos = losKnown && FlightPathfinder.isFlightLineClear(
+                        world, d.field_70165_t, d.field_70163_u, d.field_70161_v, st[0], st[1], st[2]);
+                    if (losKnown) checked++;
+                    // An exposed cell is not reachable just because it has air next
+                    // to it. Underground, a target 20 blocks up with no line of sight
+                    // can only be reached by tunnelling: skip it here so the
+                    // tunnel branch below picks the nearest real obstruction.
+                    if (!droneInOpenSky && losKnown && !hasLos && Math.abs(p[1] - curBy) > 4) {
+                        continue;
                     }
-                    checked++;
+                    double layerPenalty = ctrl.mineExactQueueOnly ? Math.abs(refY - p[1]) * 3.0 : 0.0;
+                    double losBonus = hasLos ? -40.0 : 0.0;
                     double score = dist + layerPenalty + losBonus;
                     if (score < bestScore) {
                         bestScore = score;
@@ -314,15 +337,23 @@ public class MiningService {
         if (ctrl.currentMineStandoff == null || !hasPassableHeadroom(world, ctrl.currentMineStandoff)) {
             ctrl.currentMineStandoff = FlightPathfinder.findMiningStandoff(world, d, bx, by, bz);
             if (ctrl.currentMineStandoff == null) {
-                // Buried target with no reachable standoff: this target is
-                // temporarily unreachable, but bombarding the floor with a
-                // 4-tick crack loop never yields progress. Null-guard drop +
-                // crack-reset, then let the loop pick the next queued block.
-                world.func_147443_d(d.func_145782_y(), bx, by, bz, -1);
-                ctrl.currentMineTarget = null;
-                ctrl.mineProgressTicks = 0;
-                ctrl.stuckTicks = 0;
-                return;
+                // Entombed/adjacent target: the drone is inside (or flush against)
+                // the block it must break, so there is no standoff with headroom.
+                // Mine it from the current position instead of dropping the target
+                // (this is exactly what made "dig out of the rock" stall forever).
+                if (d.func_70011_f(bx + 0.5, by + 0.5, bz + 0.5) <= 2.2) {
+                    ctrl.currentMineStandoff = new double[]{d.field_70165_t, d.field_70163_u, d.field_70161_v};
+                } else {
+                    // Buried target with no reachable standoff: this target is
+                    // temporarily unreachable, but bombarding the floor with a
+                    // 4-tick crack loop never yields progress. Null-guard drop +
+                    // crack-reset, then let the loop pick the next queued block.
+                    world.func_147443_d(d.func_145782_y(), bx, by, bz, -1);
+                    ctrl.currentMineTarget = null;
+                    ctrl.mineProgressTicks = 0;
+                    ctrl.stuckTicks = 0;
+                    return;
+                }
             }
         }
 
@@ -427,7 +458,7 @@ public class MiningService {
                         }
                     }
                     InventoryService.suckNearbyItems(d, tx, ty, tz, 3.8);
-                    if (ctrl.replantAfterHarvest || ItemClassifier.isCropOrReedBlock(block)) {
+                    if (ctrl.replantAfterHarvest && ItemClassifier.isReplantableCrop(block)) {
                         this.farmingService.tryReplantAt(world, ctrl, bx, by, bz, block, meta);
                     }
                     this.logger.log("MINE", ctrl,

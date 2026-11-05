@@ -56,6 +56,12 @@ public class EffectsRpcHandler implements RpcHandler {
             res.addProperty("y", d.field_70163_u);
             res.addProperty("z", d.field_70161_v);
             res.addProperty("mode", ctrl.mode.name());
+            res.addProperty("lightActive", ctrl.autoTorch);
+            res.addProperty("lightRadius", ctrl.lightRadius);
+            res.addProperty("lightLevel", ctrl.lightIntensity);
+            res.addProperty("lightColor", String.format("0x%06X", ctrl.lightColor & 0xFFFFFF));
+            res.addProperty("solidEscalations", ctrl.solidEscalations);
+            res.addProperty("blockedWaypoints", ctrl.solidWaypointHits.size());
             res.addProperty("mineQueueSize", ctrl.mineQueue.size());
             res.addProperty("buildQueueSize", ctrl.buildQueue.size());
             res.addProperty("scoopQueueSize", ctrl.scoopQueue.size());

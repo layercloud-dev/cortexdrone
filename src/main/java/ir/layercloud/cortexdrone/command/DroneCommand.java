@@ -474,11 +474,18 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         }
 
         if (sub.equals("torch") || sub.equals("light")) {
-            boolean placed = this.manager.getBuildingService().placeTorchNow(ctrl, player);
-            ctrl.autoTorch = !ctrl.autoTorch;
+            JsonObject lightArgs = new JsonObject();
+            if (args.length >= 2) {
+                lightArgs.addProperty("color", joinArgs(args, 1));
+            } else {
+                lightArgs.addProperty("toggle", true);
+            }
+            JsonObject r = this.manager.getLightingService().configure(ctrl, lightArgs);
             this.manager.saveConfig();
-            this.manager.droneSay(player, ctrl, "Auto-torch mode " + (ctrl.autoTorch ? "ENABLED" : "DISABLED")
-                + (placed ? " (and placed a torch!)." : "."));
+            boolean on = r.has("active") && r.get("active").getAsBoolean();
+            this.manager.droneSay(player, ctrl, "Torch-free light aura " + (on ? "ENABLED" : "DISABLED")
+                + (on ? " (radius " + ctrl.lightRadius + ", level " + ctrl.lightIntensity
+                    + ", color " + String.format("#%06X", ctrl.lightColor & 0xFFFFFF) + ")" : "."));
             return;
         }
 

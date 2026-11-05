@@ -209,9 +209,13 @@ const drone = {
     const target = _isObj(radius) ? radius : (typeof radius === 'number' ? { radius } : { radius: 12 });
     return await rpc('fertilize', target);
   },
-  interactBlock: async (x, y, z) => {
+  interactBlock: async (x, y, z, side) => {
     await _flushBatches();
-    const target = _isObj(x) ? x : (Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : { x, y, z });
+    const target = _isObj(x)
+      ? x
+      : (Array.isArray(x)
+        ? { x: x[0], y: x[1], z: x[2], ...(typeof side === 'number' ? { side } : {}) }
+        : { x, y, z, ...(typeof side === 'number' ? { side } : {}) });
     const r = await rpc('interact_block', target);
     if (r && r.activated !== undefined) return r;
     try {
@@ -223,19 +227,35 @@ const drone = {
     } catch (e) { /* fall through with original result */ }
     return r;
   },
-  useItem: async (slotOrFilter = 0, itemFilter) => {
+  useItem: async (a = 0, b, c, d2, e) => {
     await _flushBatches();
-    const target = _isObj(slotOrFilter)
-      ? slotOrFilter
-      : (typeof slotOrFilter === 'number'
-        ? (itemFilter ? { slot: slotOrFilter, item: String(itemFilter) } : { slot: slotOrFilter })
-        : { item: String(slotOrFilter) });
+    // Accepted forms:
+    //   useItem({ item:'hoe', x, y, z, side })   useItem('hoe', x, y, z)
+    //   useItem(0, 'hoe', x, y, z)               useItem(0)  (current hotbar slot)
+    let target;
+    if (_isObj(a)) {
+      target = { ...a };
+    } else if (typeof a === 'number') {
+      target = { slot: a };
+      let rest = [b, c, d2, e];
+      if (typeof b === 'string') { target.item = b; rest = [c, d2, e]; }
+      if (typeof rest[0] === 'number') {
+        target.x = rest[0]; target.y = rest[1]; target.z = rest[2];
+        if (typeof rest[3] === 'number') target.side = rest[3];
+      }
+    } else {
+      target = { item: String(a) };
+      if (typeof b === 'number') {
+        target.x = b; target.y = c; target.z = d2;
+        if (typeof e === 'number') target.side = e;
+      }
+    }
     const r = await rpc('use_item', target);
     if (r && r.used !== undefined) return r;
     try {
       const st = await _waitIdle(20000);
       return { ...r, ...st };
-    } catch (e) {
+    } catch (e2) {
       return r;
     }
   },
@@ -372,7 +392,30 @@ const drone = {
     return r;
   },
   moveSlot: async (opts) => { await _flushBatches(); return await rpc('move_slot', opts || {}); },
-  torch: async (enabled) => { await _flushBatches(); return await rpc('torch', typeof enabled === 'boolean' ? { enabled } : (_isObj(enabled) ? enabled : {})); },
+  // Torch-free illumination aura. While active the drone lights the area itself;
+  // no torch item is used and no block is placed. Toggle any time, and optionally
+  // set a colour (hex/rgb/name), radius and light level:
+  //   await drone.light(true)                     // normal white light
+  //   await drone.light(false)                    // restore the world
+  //   await drone.light({ color: 'red' })         // enable + coloured glow
+  //   await drone.light({ enabled: true, radius: 8, level: 15, color: '#FF9500' })
+  light: async (enabled, opts = {}) => {
+    await _flushBatches();
+    let a;
+    if (_isObj(enabled)) a = { ...enabled };
+    else if (typeof enabled === 'boolean') a = { enabled, ...( _isObj(opts) ? opts : {} ) };
+    else if (typeof enabled === 'string') a = { enabled: true, color: enabled, ...( _isObj(opts) ? opts : {} ) };
+    else a = { toggle: true };
+    return await rpc('light', a);
+  },
+  lightOff: async () => { await _flushBatches(); return await rpc('light', { enabled: false }); },
+  // Legacy alias kept so old skills keep working; it now drives the aura, not torches.
+  torch: async (enabled) => {
+    await _flushBatches();
+    if (typeof enabled === 'boolean') return await rpc('light', { enabled });
+    if (_isObj(enabled)) return await rpc('light', enabled);
+    return await rpc('light', { toggle: true });
+  },
   follow: async (target) => { await _flushBatches(); return await rpc('follow', _isObj(target) ? target : (target ? { target } : {})); },
   stay: async () => { await _flushBatches(); _handledItems = true; return await rpc('stay', {}); },
   stop: async () => { await _flushBatches(); _handledItems = true; return await rpc('stop', {}); },

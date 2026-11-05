@@ -12,13 +12,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockChest;
+import net.minecraft.block.BlockCocoa;
 import net.minecraft.block.BlockCrops;
+import net.minecraft.block.BlockDeadBush;
+import net.minecraft.block.BlockDoublePlant;
+import net.minecraft.block.BlockFlower;
 import net.minecraft.block.BlockLeaves;
 import net.minecraft.block.BlockLiquid;
 import net.minecraft.block.BlockLog;
 import net.minecraft.block.BlockOre;
 import net.minecraft.block.BlockReed;
 import net.minecraft.block.BlockRotatedPillar;
+import net.minecraft.block.BlockSapling;
+import net.minecraft.block.BlockStem;
+import net.minecraft.block.BlockTallGrass;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
@@ -303,6 +310,31 @@ public final class RegistryIntrospector {
         if (b == null || b == Blocks.field_150350_a) return false;
         if (b instanceof BlockCrops || b instanceof BlockReed || b instanceof IPlantable) return true;
         return hasOreDictPrefix(b, 0, "crop", "reed", "seed", "listAllveggie", "listAllgrain");
+    }
+
+    /**
+     * A block that is safe to automatically replant after harvest: real crops and
+     * reeds only. Decorative IPlantable blocks (tall grass / shrub, ferns, flowers,
+     * dead bushes, saplings) are deliberately excluded - harvesting those must not
+     * conjure a replacement plant out of the drone's inventory.
+     */
+    public static boolean isReplantableCropBlock(Block b) {
+        if (b == null || b == Blocks.field_150350_a) return false;
+        if (isDecorativePlantBlock(b)) return false;
+        if (b instanceof BlockCrops || b instanceof BlockReed) return true;
+        if (b instanceof BlockStem || b instanceof BlockCocoa) return true;
+        return hasOreDictPrefix(b, 0, "crop", "reed", "listAllveggie", "listAllgrain");
+    }
+
+    private static boolean isDecorativePlantBlock(Block b) {
+        if (b instanceof BlockTallGrass || b instanceof BlockDeadBush
+            || b instanceof BlockFlower || b instanceof BlockDoublePlant
+            || b instanceof BlockSapling) {
+            return true;
+        }
+        String cls = b.getClass().getName().toLowerCase();
+        return cls.contains("tallgrass") || cls.contains("deadbush") || cls.contains("flower")
+            || cls.contains("doubleplant") || cls.contains("sapling") || cls.contains("shrub");
     }
 
     public static boolean isOreBlock(Block b, int meta) {

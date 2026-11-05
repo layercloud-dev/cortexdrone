@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
+import ir.layercloud.cortexdrone.harness.TaskSession;
 import li.cil.oc.common.entity.Drone;
 
 public class DroneController {
@@ -21,6 +22,15 @@ public class DroneController {
     public double goalX;
     public double goalY;
     public double goalZ;
+    // Master navigation route selected by the AI: auto | direct | tunnel | up.
+    // "up" routes via the surface first and then continues to the final goal.
+    public String navigationRoute = "auto";
+    public boolean navViaSurface = false;
+    public double navFinalX = Double.NaN;
+    public double navFinalY = Double.NaN;
+    public double navFinalZ = Double.NaN;
+    // Single task / single session state. The harness never queues instructions.
+    public final TaskSession task = new TaskSession();
     public double carryGoalX;
     public double carryGoalY;
     public double carryGoalZ;

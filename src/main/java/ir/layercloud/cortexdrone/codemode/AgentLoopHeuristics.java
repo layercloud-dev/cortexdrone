@@ -88,8 +88,8 @@ final class AgentLoopHeuristics {
         int cancelledLoops = ctrl.cancelOtherLoops(myLoopId);
         JsonObject stopArgs = new JsonObject();
         stopArgs.addProperty("loopId", myLoopId);
-        rpcDispatcher.executeOnMainThread(ctrl, player, "clear_queues", stopArgs);
-        logger.log("CODEMODE", ctrl, "Harness executed pre-CodeMode stop before Turn " + turn,
+        rpcDispatcher.executeOnMainThread(ctrl, player, "cancel", stopArgs);
+        logger.log("CODEMODE", ctrl, "Harness executed pre-CodeMode cancel before Turn " + turn,
             "loopId=" + myLoopId + " cancelledLoops=" + cancelledLoops);
         if (cancelledLoops > 0) {
             long waitUntil = System.currentTimeMillis() + 350L;
@@ -102,52 +102,27 @@ final class AgentLoopHeuristics {
     static boolean codeCallsStop(String code) {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();
-        return c.contains("drone.stop(") || c.contains("drone.clearqueues(")
-            || c.contains("rpc('stop'") || c.contains("rpc(\"stop\"")
-            || c.contains("rpc('clear_queues'") || c.contains("rpc(\"clear_queues\"");
+        return c.contains("drone.cancel(")
+            || c.contains("rpc('cancel'") || c.contains("rpc(\"cancel\"");
     }
 
     static boolean codeMentionsPhysicalAction(String code) {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();
-        return c.contains(".mine(") || c.contains(".minemany(") || c.contains(".minerect(")
-            || c.contains(".minebox(") || c.contains(".gatherdistant(") || c.contains(".breakblock(")
-            || c.contains(".craft(") || c.contains(".machinecraft(") || c.contains(".driveanvil(")
-            || c.contains(".cook(") || c.contains(".smelt(") || c.contains(".withdrawchest(")
-            || c.contains(".depositchest(") || c.contains(".givetoplayer(") || c.contains(".placeblock(")
-            || c.contains(".placemany(") || c.contains(".placebox(") || c.contains(".replaceblock(")
-            || c.contains(".replaceblocks(") || c.contains(".replacebox(") || c.contains(".replaceroom(")
-            || c.contains(".buildstructure(") || c.contains(".hunt(") || c.contains(".attackentity(")
-            || c.contains(".farm(") || c.contains(".chop(") || c.contains(".fertilize(")
-            || c.contains(".scoopliquid(") || c.contains(".placeliquid(") || c.contains(".plugliquids(")
-            || c.contains(".flyto(") || c.contains(".carryplayer(") || c.contains(".takefromplayer(")
-            || c.contains(".suckitems(") || c.contains(".interactblock(") || c.contains(".useitem(")
-            || c.contains(".sortchests(") || c.contains(".transfercontainers(");
+        return c.contains(".moveto(") || c.contains(".breakblock(") || c.contains(".placeblock(")
+            || c.contains(".interactblock(") || c.contains(".useitem(")
+            || c.contains(".transfer(") || c.contains(".craft(");
     }
 
     static boolean codeMentionsProgressAction(String code) {
-        if (code == null || code.isEmpty()) return false;
-        String c = code.toLowerCase();
-        return c.contains(".mine(") || c.contains(".minemany(") || c.contains(".minerect(")
-            || c.contains(".minebox(") || c.contains(".gatherdistant(") || c.contains(".breakblock(")
-            || c.contains(".craft(") || c.contains(".machinecraft(") || c.contains(".driveanvil(")
-            || c.contains(".cook(") || c.contains(".smelt(") || c.contains(".withdrawchest(")
-            || c.contains(".depositchest(") || c.contains(".givetoplayer(")
-            || c.contains(".placeblock(") || c.contains(".placemany(") || c.contains(".placebox(")
-            || c.contains(".replaceblock(") || c.contains(".replaceblocks(") || c.contains(".replacebox(")
-            || c.contains(".replaceroom(") || c.contains(".buildstructure(")
-            || c.contains(".hunt(") || c.contains(".attackentity(") || c.contains(".farm(")
-            || c.contains(".chop(") || c.contains(".fertilize(")
-            || c.contains(".scoopliquid(") || c.contains(".placeliquid(") || c.contains(".plugliquids(")
-            || c.contains(".takefromplayer(") || c.contains(".suckitems(")
-            || c.contains(".interactblock(") || c.contains(".useitem(") || c.contains(".sortchests(")
-            || c.contains(".transfercontainers(");
+        return codeMentionsPhysicalAction(code);
     }
 
     static boolean hasConcreteProgress(JsonObject execRes, String code) {
         if (execRes == null || !execRes.has("result") || !execRes.get("result").isJsonObject()) return false;
         JsonObject res = execRes.getAsJsonObject("result");
-        String[] counters = new String[]{"queued", "minedCount", "builtCount", "huntedCount", "smeltedCount", "scoopedCount", "crafted", "flyingToPlayer", "flyingToChest"};
+        String[] counters = new String[]{"started", "placed", "used", "activated", "broken",
+            "transferred", "moved", "withdrawn", "deposited", "crafted", "builtCount", "minedCount"};
         for (String k : counters) {
             if (res.has(k) && !res.get(k).isJsonNull()) {
                 JsonElement v = res.get(k);
@@ -155,15 +130,9 @@ final class AgentLoopHeuristics {
                 if (v.isJsonPrimitive() && v.getAsJsonPrimitive().isBoolean() && v.getAsBoolean()) return true;
             }
         }
-        if (res.has("transferred") && res.get("transferred").isJsonPrimitive()
-            && res.get("transferred").getAsInt() > 0) return true;
-        if (res.has("withdrawn") && res.get("withdrawn").isJsonPrimitive()
-            && res.get("withdrawn").getAsInt() > 0) return true;
-        if (res.has("deposited") && res.get("deposited").isJsonPrimitive()
-            && res.get("deposited").getAsInt() > 0) return true;
-        // Movement alone (flyTo/moveTo/goto) is exploration, not progress.
-        // The meteor hunt burned dozens of turns on flyTo+empty scan with
-        // counted-as-progress movement, so flyTo no longer resets streaks.
+        // Movement alone (moveTo/navigate) is still meaningful progress for the
+        // new split move-then-act contract, so treat a completed move as progress.
+        if (res.has("arrived") && res.get("arrived").isJsonPrimitive() && res.get("arrived").getAsBoolean()) return true;
         return codeMentionsProgressAction(code);
     }
 
@@ -231,9 +200,7 @@ final class AgentLoopHeuristics {
     static String queryFingerprint(String code) {
         if (code == null || code.isEmpty()) return "";
         String c = code.replaceAll("\\s+", " ");
-        String[] tools = new String[]{"kb.lookup", "world.getrecipes",
-            "world.finditeminchests", "world.finddistant",
-            "world.scanblocks", "world.finditem"};
+        String[] tools = new String[]{"drone.inspect", "drone.state"};
         for (String t : tools) {
             int idx = c.toLowerCase().indexOf(t);
             if (idx < 0) continue;
@@ -288,15 +255,19 @@ final class AgentLoopHeuristics {
             return false;
         }
         JsonObject res = execRes.getAsJsonObject("result");
-        if (!res.has("queued") || res.get("queued").getAsInt() != 0) {
-            return false;
+        boolean attempted = res.has("started") || res.has("placed") || res.has("used")
+            || res.has("activated") || res.has("transferred") || res.has("moved")
+            || res.has("withdrawn") || res.has("deposited") || res.has("crafted");
+        if (!attempted) return false;
+        boolean acted = res.has("arrived") && res.get("arrived").isJsonPrimitive() && res.get("arrived").getAsBoolean();
+        String[] flags = new String[]{"started", "placed", "used", "activated", "broken"};
+        for (String k : flags) {
+            if (res.has(k) && res.get(k).isJsonPrimitive() && res.get(k).getAsBoolean()) acted = true;
         }
-        int progressed = (res.has("minedCount") ? res.get("minedCount").getAsInt() : 0)
-            + (res.has("builtCount") ? res.get("builtCount").getAsInt() : 0)
-            + (res.has("huntedCount") ? res.get("huntedCount").getAsInt() : 0)
-            + (res.has("smeltedCount") ? res.get("smeltedCount").getAsInt() : 0)
-            + (res.has("scoopedCount") ? res.get("scoopedCount").getAsInt() : 0)
-            + (res.has("crafted") ? res.get("crafted").getAsInt() : 0);
-        return progressed == 0;
+        String[] nums = new String[]{"transferred", "moved", "withdrawn", "deposited", "crafted"};
+        for (String k : nums) {
+            if (res.has(k) && res.get(k).isJsonPrimitive() && res.get(k).getAsInt() > 0) acted = true;
+        }
+        return !acted;
     }
 }

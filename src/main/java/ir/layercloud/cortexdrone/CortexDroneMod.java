@@ -38,7 +38,7 @@ import net.minecraftforge.event.ServerChatEvent;
 public class CortexDroneMod {
     public static final String MODID = "cortexdrone";
     public static final String NAME = "CortexDrone";
-    public static final String VERSION = "1.3.0";
+    public static final String VERSION = "1.4.0";
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     /** Agent loops (LLM + JS engine). Never share with the HTTP server: a hung

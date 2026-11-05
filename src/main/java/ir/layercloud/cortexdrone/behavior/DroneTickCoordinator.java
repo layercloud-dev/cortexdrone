@@ -124,6 +124,10 @@ public class DroneTickCoordinator {
 
         dispatchModeBehavior(ctrl, d, world, owner);
 
+        if (ctrl.task.isActive() && ctrl.activeScriptCount.get() == 0 && !ctrl.hasActiveTaskOrLoop(0)) {
+            ctrl.task.complete();
+        }
+
         ctrl.ledEffectTick++;
         if (!ctrl.playerLookHold && (ctrl.customLedColor != null || (ctrl.ledEffect != null && !"NONE".equalsIgnoreCase(ctrl.ledEffect)))) {
             d.lightColor_$eq(ctrl.resolveEffectiveLedColor(d.lightColor()));
@@ -229,6 +233,19 @@ public class DroneTickCoordinator {
                 this.pathfinder.navigateToward(ctrl, ctrl.goalX, ctrl.goalY, ctrl.goalZ, 0.1f);
                 double dist = d.func_70011_f(ctrl.goalX, ctrl.goalY, ctrl.goalZ);
                 if (dist <= 0.85) {
+                    if (ctrl.navViaSurface && !Double.isNaN(ctrl.navFinalX)) {
+                        ctrl.navViaSurface = false;
+                        ctrl.goalX = ctrl.navFinalX;
+                        ctrl.goalY = ctrl.navFinalY;
+                        ctrl.goalZ = ctrl.navFinalZ;
+                        ctrl.pathWaypoints.clear();
+                        ctrl.pathIndex = 0;
+                        ctrl.pathGoalX = Double.NaN;
+                        ctrl.repathCooldown = 0;
+                        d.statusText_$eq("Route up\nContinuing");
+                        d.lightColor_$eq(0xFFCC00);
+                        break;
+                    }
                     this.manager.setDroneMode(ctrl, Mode.STAY, "Arrived at GOTO destination");
                     d.lightColor_$eq(0x00FFAA);
                     d.statusText_$eq("Arrived\n" + (int) Math.floor(ctrl.goalX) + "," + (int) Math.floor(ctrl.goalZ));

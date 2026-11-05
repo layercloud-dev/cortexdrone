@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.navigation;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.harness.PlayerChunkPolicy;
 import ir.layercloud.cortexdrone.model.BuildTask;
 import ir.layercloud.cortexdrone.model.DroneController;
 import java.util.ArrayList;
@@ -37,15 +38,15 @@ import net.minecraftforge.common.ForgeChunkManager.Ticket;
  *       a border.</li>
  * </ul>
  *
- * <p>Forge's {@code forceChunk} does <b>not</b> load a chunk; it only protects an
- * already-loaded chunk from the unload queue (see Forge's
- * {@code ChunkProviderServer.unloadQueuedChunks} patch). The manager therefore
- * explicitly loads a small, budgeted "hot" set around the drone and lets the rest
- * of the plan be protected if/when the drone reaches it.
+ * <p>Forge's {@code forceChunk} only protects an already-loaded chunk from the
+ * unload queue; it does not load one. The manager therefore explicitly loads a
+ * small, budgeted "hot" set around the drone and lets the rest of the plan be
+ * protected if/when the drone reaches it.
  *
- * <p>Player ownership is exact: chunks within a player's vanilla view distance are
- * left entirely to vanilla. The manager never forces, loads or unloads them, and
- * drops its own redundant claim when a player takes over.
+ * <p>Player ownership is exact and absolute: chunks within any player's vanilla
+ * view distance are left entirely to vanilla. The manager never forces, loads,
+ * re-orders, unforces, or unloads them, and never releases a player-owned chunk
+ * from its ticket while a player can keep it loaded.
  */
 public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     private static final int DRONE_CHUNK_RADIUS = 1;       // 3x3 around the drone
@@ -76,6 +77,9 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     /** Chunks this manager explicitly loaded; avoids re-loading them every update. */
     private final Map<Ticket, Set<ChunkCoordIntPair>> explicitLoads =
         new ConcurrentHashMap<Ticket, Set<ChunkCoordIntPair>>();
+    /** Tickets whose release is deferred because a player still owns a chunk in them. */
+    private final Set<Ticket> pendingPlayerSafeReleases =
+        java.util.Collections.newSetFromMap(new ConcurrentHashMap<Ticket, Boolean>());
 
     public DroneChunkLoader(CortexDroneMod mod, DroneLogger logger) {
         this.mod = mod;
@@ -90,7 +94,6 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     // ------------------------------------------------------------------
     // Forge callback
     // ------------------------------------------------------------------
-
     @Override
     public void ticketsLoaded(List<Ticket> tickets, World world) {
         if (tickets == null || world == null || !(world instanceof WorldServer)) return;
@@ -185,10 +188,11 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
 
     /**
      * Re-applies player ownership to every anchor. Chunks inside a player's view
-     * belong to vanilla; the anchor releases its claim while the player is there and
-     * re-claims (and explicitly loads) them when the player leaves.
+     * belong to vanilla; the anchor never touches them, and re-claims non-player
+     * chunks when the player leaves.
      */
     public synchronized void refreshAnchors() {
+        this.drainPendingPlayerSafeReleases();
         if (this.anchorTickets.isEmpty()) return;
         int budget = ANCHOR_LOAD_BUDGET;
         for (Map.Entry<String, Ticket> e : this.anchorTickets.entrySet()) {
@@ -478,8 +482,11 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
                 continue;
             }
             if (playerAware && isPlayerManaged(world, old.field_77276_a, old.field_77275_b)) {
-                // Vanilla owns it now; our claim is redundant.
-                releaseNow.add(old);
+                // Never unforce a chunk a player is keeping loaded. Leave our
+                // redundant ticket claim in place; it cannot unload the chunk
+                // while vanilla owns it, and it will be released once the
+                // player leaves and it is no longer desired.
+                pending.remove(old);
                 continue;
             }
             Long due = pending.get(old);
@@ -501,15 +508,13 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         for (int i = desired.size() - 1; i >= 0; i--) {
             ChunkCoordIntPair pair = desired.get(i);
             if (playerAware && isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) {
-                if (held.remove(pair)) {
-                    loaded.remove(pair);
-                    unforce(ticket, pair);
-                }
+                // Player-owned chunks are completely hands-off: no force, no
+                // unforce, no reorder, no explicit load. Vanilla keeps them.
                 continue;
             }
             if (!held.contains(pair)) {
                 while (held.size() >= depth) {
-                    ChunkCoordIntPair evict = firstNotIn(ticket.getChunkList(), desiredSet);
+                    ChunkCoordIntPair evict = firstNotIn(ticket.getChunkList(), desiredSet, playerAware ? world : null);
                     if (evict == null) break;
                     pending.remove(evict);
                     loaded.remove(evict);
@@ -535,6 +540,7 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         int loaded = 0;
         for (ChunkCoordIntPair pair : plan) {
             if (budget <= 0) break;
+            if (isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) continue;
             world.func_72938_d(pair.field_77276_a, pair.field_77275_b);
             budget--;
             loaded++;
@@ -543,9 +549,11 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     }
 
     private static ChunkCoordIntPair firstNotIn(Collection<ChunkCoordIntPair> chunks,
-                                                Set<ChunkCoordIntPair> keep) {
+                                                Set<ChunkCoordIntPair> keep, World world) {
         for (ChunkCoordIntPair pair : chunks) {
-            if (!keep.contains(pair)) return pair;
+            if (keep.contains(pair)) continue;
+            if (world != null && isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) continue;
+            return pair;
         }
         return null;
     }
@@ -573,15 +581,47 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
 
     private void release(Ticket ticket) {
         if (ticket == null) return;
-        try {
-            ForgeChunkManager.releaseTicket(ticket);
-        } catch (Throwable ignored) {
-        }
         this.releaseAt.remove(ticket);
         this.explicitLoads.remove(ticket);
         this.droneTickets.values().remove(ticket);
         this.anchorTickets.values().remove(ticket);
         this.restoredEntityTickets.values().remove(ticket);
+        // A Forge ticket release unforces every chunk in the ticket. If any chunk
+        // is currently player-owned, defer the release until no player can keep
+        // it loaded, so the drone can never touch/unload a player's chunks.
+        if (this.ticketHasPlayerManagedChunk(ticket)) {
+            this.pendingPlayerSafeReleases.add(ticket);
+            return;
+        }
+        this.releaseNow(ticket);
+    }
+
+    private void releaseNow(Ticket ticket) {
+        try {
+            ForgeChunkManager.releaseTicket(ticket);
+        } catch (Throwable ignored) {
+        }
+        this.pendingPlayerSafeReleases.remove(ticket);
+    }
+
+    private void drainPendingPlayerSafeReleases() {
+        if (this.pendingPlayerSafeReleases.isEmpty()) return;
+        List<Ticket> ready = new ArrayList<Ticket>();
+        for (Ticket ticket : this.pendingPlayerSafeReleases) {
+            if (ticket == null || !this.ticketHasPlayerManagedChunk(ticket)) ready.add(ticket);
+        }
+        for (Ticket ticket : ready) {
+            this.pendingPlayerSafeReleases.remove(ticket);
+            this.releaseNow(ticket);
+        }
+    }
+
+    private boolean ticketHasPlayerManagedChunk(Ticket ticket) {
+        if (ticket == null || !(ticket.world instanceof WorldServer)) return false;
+        for (ChunkCoordIntPair pair : ticket.getChunkList()) {
+            if (isPlayerManaged(ticket.world, pair.field_77276_a, pair.field_77275_b)) return true;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------
@@ -593,7 +633,7 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
      * Uses the exact view distance used by {@code PlayerManager.updatePlayerPertinentChunks};
      * no margin, so we never hand a chunk back to vanilla one chunk early.
      */
-    private static boolean isPlayerManaged(World world, int cx, int cz) {
+    public static boolean isPlayerManaged(World world, int cx, int cz) {
         if (!(world instanceof WorldServer)) return false;
         List<?> players = world.field_73010_i;
         if (players == null || players.isEmpty()) return false;
@@ -604,7 +644,7 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
             if (p.field_70170_p != world) continue;
             int pcx = MathHelper.func_76128_c(p.field_70165_t) >> 4;
             int pcz = MathHelper.func_76128_c(p.field_70161_v) >> 4;
-            if (Math.abs(pcx - cx) <= view && Math.abs(pcz - cz) <= view) return true;
+            if (PlayerChunkPolicy.isWithinViewDistance(pcx, pcz, cx, cz, view)) return true;
         }
         return false;
     }
@@ -626,15 +666,16 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     // ------------------------------------------------------------------
 
     /**
-     * Loads the chunk under a coordinate on demand. This deliberately does not create
-     * a rolling ticket: the drone's own ticket already covers the path plan. Loading
-     * here makes the active waypoint readable before the drone enters it.
+     * Loads the chunk under a coordinate on demand. Player-owned chunks are
+     * deliberately never touched: vanilla is already keeping those loaded, and
+     * this method must not create, force, reorder, or release their claims.
      */
     public static void ensureChunkLoadedStatic(World world, double x, double z) {
         if (!(world instanceof WorldServer)) return;
         try {
             int cx = MathHelper.func_76128_c(x) >> 4;
             int cz = MathHelper.func_76128_c(z) >> 4;
+            if (isPlayerManaged(world, cx, cz)) return;
             world.func_72938_d(cx, cz);
         } catch (Throwable ignored) {
         }

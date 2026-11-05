@@ -26,9 +26,7 @@ public class CodeModeRuntime {
     private static String loadSdkBundle() {
         String[] modules = new String[]{
             "/sdk/core-rpc.mjs",
-            "/sdk/world-api.mjs",
-            "/sdk/drone-actions.mjs",
-            "/sdk/drone-effects.mjs"
+            "/sdk/drone-actions.mjs"
         };
         StringBuilder sb = new StringBuilder();
         for (String mod : modules) {
@@ -75,11 +73,7 @@ public class CodeModeRuntime {
         File scriptFile = new File("/tmp/opencode/drone-codemode-" + ctrl.id + "-" + System.nanoTime() + ".mjs");
         ctrl.activeScriptCount.incrementAndGet();
         try {
-            String safeJsCode = jsCode != null ? jsCode
-                .replaceAll("((?:const|let|var)\\s+drone\\s*=[^;\\n]*?)\\bdrone\\.", "$1_droneApi.")
-                .replaceAll("((?:const|let|var)\\s+player\\s*=[^;\\n]*?)\\bplayer\\.", "$1_playerApi.")
-                .replaceAll("((?:const|let|var)\\s+world\\s*=[^;\\n]*?)\\bworld\\.", "$1_worldApi.")
-                : "";
+            String safeJsCode = jsCode != null ? jsCode : "";
             String pName = player != null ? player.func_70005_c_() : ctrl.ownerName;
             int port = (this.config != null && this.config.getHttpPort() > 0) ? this.config.getHttpPort() : 25580;
 
@@ -95,14 +89,6 @@ public class CodeModeRuntime {
                 + safeJsCode + "\n"
                 + "    })();\n"
                 + "    await _finalizeScript();\n"
-                + "    if (_flushedMineTotal > 0 || _flushedBuildTotal > 0) {\n"
-                + "      const totalQueued = _flushedMineTotal + _flushedBuildTotal;\n"
-                + "      if (result === undefined || result === null) {\n"
-                + "        result = { queued: totalQueued, queuedMine: _flushedMineTotal, queuedBuild: _flushedBuildTotal };\n"
-                + "      } else if (typeof result === 'object' && !Array.isArray(result) && result.queued === undefined) {\n"
-                + "        result.queued = totalQueued;\n"
-                + "      }\n"
-                + "    }\n"
                 + "    process.stdout.write(JSON.stringify({ ok: true, result: result ?? null, logs }) + '\\n', () => process.exit(0));\n"
                 + "  } catch (err) {\n"
                 + "    const msg = String(err && err.message || err);\n"

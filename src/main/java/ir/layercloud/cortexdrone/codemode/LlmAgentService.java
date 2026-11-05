@@ -104,17 +104,20 @@ public class LlmAgentService {
         ctx.addProperty("distToPlayerM", Math.round(Math.hypot(
             ctrl.drone.field_70165_t - refX, ctrl.drone.field_70163_u - refY) * 10.0) / 10.0);
         ctx.addProperty("droneMode", ctrl.mode.name());
-        ctx.addProperty("activeTaskRunning", ctrl.hasActiveTaskOrLoop(0));
+        ctx.addProperty("activeTaskRunning", ctrl.task.isActive() || ctrl.hasActiveTaskOrLoop(0));
         ctx.addProperty("activeScriptCount", ctrl.activeScriptCount.get());
-        ctx.addProperty("mineQueueSize", ctrl.mineQueue.size());
-        ctx.addProperty("buildQueueSize", ctrl.buildQueue.size());
+        ctx.addProperty("taskPrompt", ctrl.task.getPrompt());
+        ctx.addProperty("taskSummary", ctrl.task.getSummary());
+        ctx.addProperty("singleSession", true);
         ctx.addProperty("lastPathPartial", ctrl.lastPathPartial);
         ctx.addProperty("pathNodesExpanded", ctrl.lastPathNodesExpanded);
         if (!ctrl.lastThought.isEmpty()) ctx.addProperty("lastThought", ctrl.lastThought);
-        JsonObject queues = new JsonObject();
-        queues.addProperty("mineFilter", ctrl.mineFilter);
-        queues.addProperty("huntFilter", ctrl.huntFilter);
-        ctx.add("queues", queues);
+        JsonObject taskState = new JsonObject();
+        taskState.addProperty("mode", ctrl.mode.name());
+        taskState.addProperty("navigationRoute", ctrl.navigationRoute);
+        taskState.addProperty("activeBreakTarget", ctrl.currentMineTarget != null
+            ? (ctrl.currentMineTarget[0] + "," + ctrl.currentMineTarget[1] + "," + ctrl.currentMineTarget[2]) : "");
+        ctx.add("task", taskState);
 
         String ownerKey = player != null ? player.func_70005_c_() : ctrl.ownerName;
         List<AIConfig.SavedLocation> savedLocs = this.manager.getConfig().listLocations(ownerKey);
@@ -262,21 +265,7 @@ public class LlmAgentService {
 
                 boolean isMalformed = plan.has("malformed") && plan.get("malformed").getAsBoolean();
                 String code = "";
-                JsonArray fallbackTools = null;
                 if (plan.has("code") && !plan.get("code").isJsonNull()) code = plan.get("code").getAsString().trim();
-                if (code.isEmpty() && plan.has("tool_calls") && plan.get("tool_calls").isJsonArray()) {
-                    JsonArray tcs = plan.getAsJsonArray("tool_calls");
-                    for (JsonElement el : tcs) {
-                        if (el.isJsonObject() && el.getAsJsonObject().has("code") && !el.getAsJsonObject().get("code").isJsonNull()) {
-                            code = el.getAsJsonObject().get("code").getAsString().trim();
-                            break;
-                        }
-                    }
-                    if (code.isEmpty() && tcs.size() > 0) {
-                        fallbackTools = tcs;
-                    }
-                }
-                if (code.isEmpty() && fallbackTools == null && plan.has("actions") && plan.get("actions").isJsonArray()) { JsonArray acts = plan.getAsJsonArray("actions"); if (acts.size() > 0) fallbackTools = acts; }
 
                 boolean done = !isMalformed && plan.has("done") && !plan.get("done").isJsonNull() && plan.get("done").getAsBoolean();
                 final String reply = (!isMalformed && plan.has("reply") && !plan.get("reply").isJsonNull())
@@ -315,7 +304,7 @@ public class LlmAgentService {
                     executedAnyAction = true;
                     AgentLoopHeuristics.executePreCodeModeStop(ctrl, player, myLoopId, turn, this.logger, this.rpcDispatcher);
                 }
-                if (isMalformed || (code.isEmpty() && fallbackTools == null && !executedAnyAction && AgentLoopHeuristics.promptExpectsActionQueue(userPrompt))) {
+                if (isMalformed || (code.isEmpty() && !executedAnyAction && AgentLoopHeuristics.promptExpectsActionQueue(userPrompt))) {
                     hadSelfCorrection = true;
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn + " malformed or missing JS code -> self-correcting", "thought=" + LoopTracer.snippet(thought, 200));
                     if (turn < MAX_AGENT_TURNS) {
@@ -327,43 +316,6 @@ public class LlmAgentService {
                         );
                         continue;
                     }
-                }
-
-                if (code.isEmpty() && fallbackTools != null) {
-                    executedAnyAction = true;
-                    JsonArray toolResults = new JsonArray();
-                    for (JsonElement el : fallbackTools) {
-                        if (el.isJsonObject()) {
-                            JsonObject ao = el.getAsJsonObject();
-                            String tool = ao.has("tool") ? ao.get("tool").getAsString() : "";
-                            JsonObject args = ao.has("args") && ao.get("args").isJsonObject() ? ao.getAsJsonObject("args") : ao;
-                            toolResults.add(this.rpcDispatcher.executeOnMainThread(ctrl, player, tool, args));
-                        }
-                    }
-                    if (!done && turn < MAX_AGENT_TURNS) {
-                        JsonObject droneStatus = this.rpcDispatcher.executeOnMainThread(ctrl, player, "get_drone", new JsonObject());
-                        AgentLoopHeuristics.appendTurnFeedback(
-                            messages,
-                            thought,
-                            "",
-                            "Tool Call Results:\n"
-                                + AgentLoopHeuristics.truncateForPrompt(toolResults.toString(), 1800)
-                                + "\nCurrent Drone Status:\n"
-                                + AgentLoopHeuristics.truncateForPrompt(droneStatus.toString(), 1200)
-                                + "\nContinue with JavaScript `\"code\"`, or set `\"done\": true` and provide your final `\"reply\"`."
-                        );
-                        continue;
-                    }
-                    completedOk = true;
-                    if (!reply.isEmpty()) {
-                        this.manager.getMod().queueMain(new Runnable() {
-                            @Override
-                            public void run() {
-                                manager.droneSay(player, ctrl, reply);
-                            }
-                        });
-                    }
-                    return;
                 }
 
                 if (!code.isEmpty()) {
@@ -451,7 +403,7 @@ public class LlmAgentService {
                     }
 
                     if (!done && turn < MAX_AGENT_TURNS) {
-                        JsonObject droneStatus = this.rpcDispatcher.executeOnMainThread(ctrl, player, "get_drone", new JsonObject());
+                        JsonObject droneStatus = this.rpcDispatcher.executeOnMainThread(ctrl, player, "state", new JsonObject());
                         String feedback = "JS OK:\n"
                             + AgentLoopHeuristics.truncateForPrompt(execRes.toString(), 1800)
                             + "\nStatus:\n" + AgentLoopHeuristics.truncateForPrompt(droneStatus.toString(), 1200)

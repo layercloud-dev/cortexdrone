@@ -32,64 +32,64 @@ public class SkillLibrary {
 
     public SkillLibrary(File worldDir) {
         File dir = worldDir != null ? worldDir : new File(".");
-        this.storageFile = new File(dir, "layercloud-drone-skills.json");
+        this.storageFile = new File(dir, "layercloud-drone-skills-v2.json");
         loadFromDisk();
         seedDefaultsIfMissing();
     }
 
     private synchronized void seedDefaultsIfMissing() {
         boolean changed = false;
-        if (!this.skills.containsKey("hunt_cook_deposit")) {
+        if (!this.skills.containsKey("mine_and_deliver")) {
             putInternal(
-                "hunt_cook_deposit",
-                "Hunt animals for raw meat, cook all meat in the nearest furnace, and deposit into a target chest or deliver to player",
-                "await drone.hunt('cow|pig|sheep|chicken', 32);\nawait drone.cook('meat', 64);\nawait drone.depositChest();",
-                "hunt cook meat beef porkchop mutton furnace chest food"
+                "mine_and_deliver",
+                "Inspect matching blocks, move to each one, break it with the single-block primitive, then deliver to the player",
+                "const f = await drone.inspect('blocks', { filter: 'iron_ore', radius: 24 });\nfor (const b of (f.blocks || []).slice(0, 8)) {\n  await drone.breakBlock(b.x, b.y, b.z, { route: 'auto' });\n}\nconst p = await drone.inspect('player', {});\nawait drone.moveTo(p.blockX, p.blockY + 2, p.blockZ);\nreturn await drone.transfer('give', { filter: 'all', count: 512 });",
+                "mine ore break block deliver player iron stone"
             );
             changed = true;
         }
-        if (!this.skills.containsKey("crate_to_chest_sort")) {
+        if (!this.skills.containsKey("store_items")) {
             putInternal(
-                "crate_to_chest_sort",
-                "Transfer all items from crates into chests, auto-craft/place extra chests if full, and sort all chests by category",
-                "return await drone.transferContainers('crate', 'chest', 32, true);",
-                "crate chest transfer move sort storage"
+                "store_items",
+                "Fly to a chest and deposit the drone inventory with the generic transfer primitive",
+                "const c = await drone.inspect('chests', { radius: 24 });\nif (!c.chests || !c.chests.length) return { blocker: 'no chest within 24m' };\nconst t = c.chests[0];\nawait drone.moveTo({ standoffOf: t, route: 'auto' });\nreturn await drone.transfer('deposit', { x: t.x, y: t.y, z: t.z });",
+                "chest deposit store items inventory storage"
             );
             changed = true;
         }
-        if (!this.skills.containsKey("craft_place_double_chest")) {
+        if (!this.skills.containsKey("place_double_chest")) {
             putInternal(
-                "craft_place_double_chest",
-                "Craft vanilla chests from wood/planks and place adjacent pairs next to the player to form double chests",
-                "const p = await player.get();\nawait drone.craft('planks', 16);\nawait drone.craft('chest', 2);\nawait drone.placeBlock(p.blockX + 1, p.blockY, p.blockZ, 'minecraft:chest');\nawait drone.placeBlock(p.blockX + 1, p.blockY, p.blockZ + 1, 'minecraft:chest');",
+                "place_double_chest",
+                "Craft chests then place two adjacent chest blocks using the single-block placement primitive",
+                "const p = await drone.inspect('player', {});\nawait drone.craft('chest', 2);\nawait drone.placeBlock(p.blockX + 1, p.blockY, p.blockZ, 'chest');\nawait drone.placeBlock(p.blockX + 2, p.blockY, p.blockZ, 'chest');\nreturn { placed: 2 };",
                 "craft place double chest planks wood"
             );
             changed = true;
         }
-        if (!this.skills.containsKey("escape_cave_and_return")) {
+        if (!this.skills.containsKey("return_to_player")) {
             putInternal(
-                "escape_cave_and_return",
-                "Retrace session 3D breadcrumbs or auto-dig out of an underground cave/tunnel and return to the player",
-                "await drone.escapeCave();\nawait drone.come();",
-                "stuck cave underground tunnel escape backtrack breadcrumb dig"
+                "return_to_player",
+                "Navigate back to the owner using the auto route (the navigator flies, tunnels, or digs up as needed) and wait for arrival",
+                "const p = await drone.inspect('player', {});\nreturn await drone.moveTo(p.blockX, p.blockY + 2, p.blockZ, { route: 'auto' });",
+                "return come back player escape cave underground tunnel navigate"
             );
             changed = true;
         }
-        if (!this.skills.containsKey("rainbow_dance_show")) {
+        if (!this.skills.containsKey("rainbow_show")) {
             putInternal(
-                "rainbow_dance_show",
-                "Cycle rainbow LED colors in a loop while performing a choreographed dance, figure-8 flight, musical notes, and particle effects",
-                "await drone.rainbow(3000, 80, true);\nawait drone.dance(5000);\nawait drone.fireworks(3);",
-                "rainbow led color dance disco party spin flip trick fun music"
+                "rainbow_show",
+                "Generate a rainbow LED loop in Code Mode instead of using a pre-made dance tool",
+                "for (let i = 0; i < 40; i++) {\n  await drone.effect('led', { color: hsvToRgb((i * 18) % 360, 1, 1) });\n  await sleep(100);\n}\nreturn { ok: true, colors: 40 };",
+                "rainbow led color light fun music show"
             );
             changed = true;
         }
-        if (!this.skills.containsKey("build_house_or_cabin")) {
+        if (!this.skills.containsKey("build_wall")) {
             putInternal(
-                "build_house_or_cabin",
-                "Automatically locate a flat build site near the player and construct a complete house/cabin with foundation, floor, corners, walls, doorway, windows, and roof",
-                "const site = await world.findBuildSite(5, 5, 22);\nawait drone.mineRect(site.x1, site.floorY + 1, site.z1, site.x2, site.floorY + 5, site.z2, 'all,!air');\nawait drone.buildStructure({ x1: site.x1, z1: site.z1, x2: site.x2, z2: site.z2, floorY: site.floorY, height: 3, floor: 'cobblestone', walls: 'cobblestone', corners: 'oak_log', roof: 'planks', doorSide: site.doorSide, windows: true });",
-                "build house cabin shelter home room cobblestone wood planks roof"
+                "build_wall",
+                "Inspect a line of target coordinates and place blocks one at a time with the placement primitive",
+                "const p = await drone.inspect('player', {});\nlet placed = 0;\nfor (let dx = 0; dx < 5; dx++) {\n  const r = await drone.placeBlock(p.blockX + dx, p.blockY, p.blockZ + 2, 'cobblestone');\n  if (r.placed) placed++;\n}\nreturn { placed };",
+                "build wall place cobblestone shelter home"
             );
             changed = true;
         }

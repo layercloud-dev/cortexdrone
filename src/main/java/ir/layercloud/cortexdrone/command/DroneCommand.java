@@ -32,7 +32,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
 
     @Override
     public String func_71518_a(ICommandSender sender) {
-        return "/" + this.cmdName + " <spawn|link|despawn|list|status|follow|come|stay|goto|guard|cover|patrol|mine|farm|hunt|cook|smelt|sort|carry|setbase|scoop|plug|replace|take|give|torch|drop|chest|debug|config|prompt...>";
+        return "/" + this.cmdName + " <spawn|link|despawn|list|status|follow|come|stay|goto|guard|cover|patrol|setbase|carry|take|give|torch|drop|chest|debug|config|js|mine|farm|hunt|cook|smelt|sort|scoop|plug|replace...>";
     }
 
     @Override
@@ -103,16 +103,13 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         }
 
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v1.3.0 (Modular Code Mode Engine) Commands ===");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v1.4.0 (Master-Tool Harness) Commands ===");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone follow [player] | come | stay | goto <x> <y> <z> | carry [x y z] | setbase");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone guard [player] | cover [player] | patrol [radius] | hunt [mob] [count]");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone mine <target> | farm [crop] | scoop [lava|water] [count]");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone cook [item] | smelt [item] | sort [radius]");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone replace <floor|walls|ceiling|all> <block|held>");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone take <item> [count] | give [item] [count] | drop | chest");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone torch | plug [radius] | debug [on|off|tail|clear]");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - Chat naturally with your drone!");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone guard [player] | cover [player] | patrol [radius] | take | give | drop | chest");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone mine|farm|hunt|cook|smelt|sort|scoop|plug|replace ..." + EnumChatFormatting.GRAY + " (composed by the AI)");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone torch | js <code> | debug [on|off|tail|clear]");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
             return;
         }
 
@@ -347,21 +344,10 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             return;
         }
 
-        if (sub.equals("sort")) {
-            int rad = (args.length >= 2 && MiningService.isNumericFilter(args[1])) ? Integer.parseInt(args[1]) : 28;
-            JsonObject sr = this.manager.getChestSorter().sortNearbyChests(ctrl.drone.field_70170_p, ctrl, player, rad, "all");
-            this.manager.droneSay(player, ctrl, "Sorted " + sr.get("chestsSorted").getAsInt() + " chest(s) and consolidated " + sr.get("stacksMerged").getAsInt() + " partial stack(s)!");
-            return;
-        }
-
-        if (sub.equals("cook") || sub.equals("smelt")) {
-            String filter = args.length >= 2 ? joinArgs(args, 1) : (sub.equals("cook") ? "meat" : "ores");
-            int count = this.manager.getSmeltingService().startSmeltTask(ctrl, player, filter, 64);
-            if (count > 0) {
-                this.manager.droneSay(player, ctrl, "Cooking/smelting " + count + " '" + filter + "' item(s) in the nearest furnace and delivering to you!");
-            } else {
-                this.manager.droneSay(player, ctrl, "No smeltable '" + filter + "' items or furnace found within 36m.");
-            }
+        // All composite physical commands are natural-language tasks now. The
+        // agent composes them from the master primitives; no pre-made tool path.
+        if (isMasterComposedCommand(sub)) {
+            this.manager.handleNaturalInstruction(player, ctrl, joinArgs(args, 0));
             return;
         }
 
@@ -381,7 +367,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         }
 
         if (sub.equals("js") || sub.equals("eval") || sub.equals("code")) {
-            final String code = args.length >= 2 ? joinArgs(args, 1) : "return await drone.getStatus();";
+            final String code = args.length >= 2 ? joinArgs(args, 1) : "return await drone.state();";
             final DroneController fCtrl = ctrl;
             final EntityPlayerMP fPlayer = player;
             CortexDroneMod.HTTP_POOL.submit(new Runnable() {
@@ -399,36 +385,6 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             return;
         }
 
-        if (sub.equals("plug")) {
-            int r = args.length >= 2 && MiningService.isNumericFilter(args[1]) ? Integer.parseInt(args[1]) : 8;
-            int cx = MathHelper.func_76128_c(player.field_70165_t);
-            int cy = MathHelper.func_76128_c(player.field_70163_u);
-            int cz = MathHelper.func_76128_c(player.field_70161_v);
-            int count = this.manager.getBuildingService().plugLiquidsInBox(ctrl, cx - r, cy - r, cz - r, cx + r, cy + r, cz + r, "any");
-            this.manager.droneSay(player, ctrl, "Queued " + count + " liquid block(s) within " + r + "m to plug!");
-            return;
-        }
-
-        if (sub.equals("scoop") || sub.equals("bucket")) {
-            String type = args.length >= 2 ? args[1] : "lava";
-            int count = (args.length >= 3 && MiningService.isNumericFilter(args[2])) ? Integer.parseInt(args[2]) : 1;
-            int sources = this.manager.getInventoryService().startScoopLiquidTask(ctrl, player, type, count);
-            if (sources > 0) {
-                this.manager.droneSay(player, ctrl, "Found " + sources + " source '" + type + "' block(s)! Scooping " + count + " bucket(s) and delivering to you.");
-            } else {
-                this.manager.droneSay(player, ctrl, "No source '" + type + "' blocks found within 36m.");
-            }
-            return;
-        }
-
-        if (sub.equals("replace")) {
-            String surface = args.length >= 2 ? args[1] : "floor";
-            String blockFilter = args.length >= 3 ? joinArgs(args, 2) : "held";
-            int queued = this.manager.getBuildingService().startReplaceRoomTask(ctrl, player, surface, blockFilter, null, -1);
-            this.manager.droneSay(player, ctrl, "Queued " + queued + " room '" + surface + "' block(s) to replace with '" + ItemClassifier.resolveHeldFilter(player, blockFilter) + "'!");
-            return;
-        }
-
         if (sub.equals("take")) {
             String filter = args.length >= 2 ? joinArgs(args, 1) : "held";
             int taken = this.manager.getInventoryService().takeFromPlayerInventory(ctrl, player, ItemClassifier.resolveHeldFilter(player, filter), 512);
@@ -440,36 +396,6 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             String filter = args.length >= 2 ? joinArgs(args, 1) : "all";
             int given = this.manager.getInventoryService().giveToPlayerInventory(ctrl, player, filter, 512);
             this.manager.droneSay(player, ctrl, "Gave " + given + " item(s) matching '" + filter + "' to your inventory.");
-            return;
-        }
-
-        if (sub.equals("hunt") || sub.equals("kill")) {
-            String filter = args.length >= 2 ? args[1] : "sheep|cow|pig";
-            int count = (args.length >= 3 && MiningService.isNumericFilter(args[2])) ? Integer.parseInt(args[2]) : 10;
-            int nearby = this.manager.getCombatService().startHuntTask(ctrl, player, filter, count);
-            this.manager.droneSay(player, ctrl, "Hunting up to " + count + " '" + filter + "' (" + nearby + " found within 80m)!");
-            return;
-        }
-
-        if (sub.equals("farm") || sub.equals("replant")) {
-            String target = args.length >= 2 ? joinArgs(args, 1) : "sugarcane";
-            int count = this.manager.getMiningService().startFarmingTask(ctrl, player, target, 48);
-            if (count > 0) {
-                this.manager.droneSay(player, ctrl, "Found " + count + " '" + target + "' block(s)! Harvesting & auto-replanting now.");
-            } else {
-                this.manager.droneSay(player, ctrl, "No '" + target + "' blocks found within 48 blocks.");
-            }
-            return;
-        }
-
-        if (sub.equals("mine") || sub.equals("dig") || sub.equals("harvest")) {
-            String target = args.length >= 2 ? joinArgs(args, 1) : "ores";
-            int count = this.manager.getMiningService().startMiningTask(ctrl, player, target, 0, false);
-            if (count > 0 && !ctrl.returnToOwnerAfterMine) {
-                this.manager.droneSay(player, ctrl, "Found " + count + " '" + target + "' block(s)! Pathfinding & mining now.");
-            } else if (count == 0) {
-                this.manager.droneSay(player, ctrl, "No matching '" + target + "' blocks found within 1,200 blocks.");
-            }
             return;
         }
 
@@ -524,6 +450,16 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
 
         String fullPrompt = joinArgs(args, 0);
         this.manager.handleNaturalInstruction(player, fullPrompt);
+    }
+
+    private static boolean isMasterComposedCommand(String sub) {
+        return sub.equals("mine") || sub.equals("dig") || sub.equals("harvest")
+            || sub.equals("farm") || sub.equals("replant")
+            || sub.equals("hunt") || sub.equals("kill")
+            || sub.equals("cook") || sub.equals("smelt")
+            || sub.equals("sort") || sub.equals("plug")
+            || sub.equals("scoop") || sub.equals("bucket")
+            || sub.equals("replace");
     }
 
     private static double parseCoord(double base, String raw) {

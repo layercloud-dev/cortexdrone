@@ -178,6 +178,10 @@ public class DroneTelemetrySerializer {
             dj.addProperty("lightIntensity", ctrl.lightIntensity);
             dj.addProperty("auraColor", String.format("0x%06X", ctrl.lightColor & 0xFFFFFF));
             dj.addProperty("mineQueueSize", ctrl.mineQueue.size());
+            dj.addProperty("taskActive", ctrl.task.isActive());
+            dj.addProperty("taskSummary", ctrl.task.getSummary());
+            dj.addProperty("taskAgeMs", ctrl.task.getAgeMs());
+            dj.addProperty("navigationRoute", ctrl.navigationRoute);
             dj.addProperty("pathWaypointCount", ctrl.pathWaypoints.size());
 
             JsonArray invArr = new JsonArray();

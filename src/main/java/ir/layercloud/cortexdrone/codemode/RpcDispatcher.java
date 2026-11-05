@@ -8,12 +8,8 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.behavior.BuildingService;
 import ir.layercloud.cortexdrone.behavior.CombatService;
 import ir.layercloud.cortexdrone.behavior.MiningService;
-import ir.layercloud.cortexdrone.codemode.rpc.ActionRpcHandler;
-import ir.layercloud.cortexdrone.codemode.rpc.EffectsRpcHandler;
-import ir.layercloud.cortexdrone.codemode.rpc.InventoryRpcHandler;
-import ir.layercloud.cortexdrone.codemode.rpc.NavigationRpcHandler;
+import ir.layercloud.cortexdrone.codemode.rpc.MasterRpcHandler;
 import ir.layercloud.cortexdrone.codemode.rpc.RpcHandler;
-import ir.layercloud.cortexdrone.codemode.rpc.WorldRpcHandler;
 import ir.layercloud.cortexdrone.inventory.ChestSorter;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.inventory.SmeltingService;
@@ -84,11 +80,12 @@ public class RpcDispatcher {
         CombatService combatService
     ) {
         this.manager = manager;
-        registerHandler(new WorldRpcHandler(manager, worldScanner, buildingService));
-        registerHandler(new NavigationRpcHandler(manager, pathfinder, worldScanner));
-        registerHandler(new InventoryRpcHandler(manager, inventoryService, chestSorter, smeltingService));
-        registerHandler(new ActionRpcHandler(manager, inventoryService, miningService, buildingService, combatService));
-        registerHandler(new EffectsRpcHandler(manager));
+        // Single master tool surface. Legacy handlers remain internal delegates
+        // inside MasterRpcHandler; they are deliberately NOT registered as tools.
+        registerHandler(new MasterRpcHandler(
+            manager, worldScanner, pathfinder, inventoryService, chestSorter,
+            smeltingService, miningService, buildingService, combatService
+        ));
     }
 
     public void registerHandler(RpcHandler handler) {
@@ -240,7 +237,10 @@ public class RpcDispatcher {
     }
 
     private static boolean isLargeScan(String method, JsonObject args) {
-        if (!"scan_blocks".equals(method)) return false;
+        if (!"inspect".equals(method)) return false;
+        String op = args != null && args.has("op") && !args.get("op").isJsonNull()
+            ? args.get("op").getAsString().trim().toLowerCase() : "";
+        if (!"blocks".equals(op) && !"scanblocks".equals(op)) return false;
         int radius = parseIntField(args, "radius", -1);
         // Radius > default cap counts as large. The WorldRpcHandler also
         // confirms the capped radius; here we only route.
@@ -248,14 +248,20 @@ public class RpcDispatcher {
     }
 
     private static long getTimeoutForMethod(String method, JsonObject args) {
-        // Avoid a flat 8s wait for everything: cheap world queries get tight
-        // budgets matching the time-slice budget, while world-mutating ops
-        // keep the longer horizon they already had.
-        if ("scan_blocks".equals(method)) return 2500L;
-        if ("get_blocks_in_box".equals(method) || "scan_veins".equals(method)) return 2500L;
-        if ("scan_room".equals(method)) return 2500L;
-        if ("find_distant".equals(method)) return 2500L;
-        if ("get_entities".equals(method) || "get_drops".equals(method)) return 2500L;
+        // Avoid a flat 8s wait for everything: cheap read-only inspection gets a
+        // tight budget while world-mutating primitives keep their longer horizon.
+        if ("inspect".equals(method)) {
+            String op = args != null && args.has("op") && !args.get("op").isJsonNull()
+                ? args.get("op").getAsString().trim().toLowerCase() : "";
+            if ("blocks".equals(op) || "scanblocks".equals(op) || "box".equals(op)
+                || "veins".equals(op) || "scanveins".equals(op)
+                || "room".equals(op) || "scanroom".equals(op)
+                || "distant".equals(op) || "finddistant".equals(op)
+                || "entities".equals(op) || "getentities".equals(op)
+                || "drops".equals(op) || "getdrops".equals(op)) {
+                return 2500L;
+            }
+        }
         return 8000L;
     }
 

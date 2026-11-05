@@ -1,241 +1,115 @@
+// ---------------------------------------------------------------------------
+// Master tool surface. There are no monolithic "mine/harvest/build/farm" tools.
+// Every physical behavior is composed by the AI from:
+//   inspect -> moveTo (navigator chooses fly/tunnel/up route) -> break/place/
+//   interact/use -> repeat.
+// Every primitive waits until its own physical action finishes.
+// ---------------------------------------------------------------------------
 const drone = {
-  getStatus: async () => { await _flushBatches(); const st = await rpc('get_drone', { loopId: typeof LOOP_ID === 'number' ? LOOP_ID : 0 }); return Object.assign(Object.create(drone), st); },
-  waitUntilIdle: async (maxWaitMs = 150000) => {
-    await _flushBatches();
-    return await _waitIdle(maxWaitMs);
-  },
-  flyTo: async (x, y, z, maxWaitMs = 45000) => {
-    await _flushBatches();
-    const target = Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : (_isObj(x) ? x : { x, y, z });
-    const r = await rpc('move_to', target);
-    const st = await _waitTask(
-      (s) => s.mode !== 'GOTO' || Math.hypot((s.x || 0) - target.x, (s.y || 0) - target.y, (s.z || 0) - target.z) <= 2.2,
-      maxWaitMs
-    );
-    return { ...r, ...st };
-  },
-  breakBlock: async (x, y, z) => {
-    await _flushBatches();
-    const target = Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : (_isObj(x) ? x : { x, y, z });
-    const r = await rpc('break_block', target);
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, broken: st.minedCount || 1, ...st };
+  state: (opts = {}) => rpc('state', _isObj(opts) ? opts : {}),
+
+  inspect: async (op, args = {}) => {
+    let request;
+    if (_isObj(op)) { request = { ...op }; }
+    else { request = { ...( _isObj(args) ? args : {} ), op: String(op || 'block') }; }
+    const key = String(request.op || 'block').toLowerCase();
+    let r = await rpc('inspect', request, { raw: true });
+    if (_isPendingScan(r)) return _awaitScanJob(r.jobId, request.radius || 24);
+    if (key === 'blocks' || key === 'scanblocks') {
+      return _normalizeScanResult(r, request.radius || 24);
     }
     return r;
   },
-  mine: async (x, y, z) => {
-    if (typeof x === 'string' || (_isObj(x) && (x.target || x.filter) && x.x === undefined)) {
-      await _flushBatches();
-      const args = _isObj(x)
-        ? { target: x.target || x.filter, count: x.count || x.maxCount || 0, untilFull: !!x.untilFull }
-        : { target: x, ...(typeof y === 'number' ? { count: y } : {}), ...(typeof z === 'boolean' ? { untilFull: z } : {}) };
-      const r = await rpc('mine_filter', args);
-      if (r && r.queued > 0) {
-        _gatheredItems = true;
-        const st = await _waitIdle();
-        return { ...r, ...st };
+
+  // route: 'auto' (fly, dig self-rescue when blocked), 'tunnel' (carve a
+  // corridor), 'up' (route through the surface first), 'direct' (fly only).
+  // Resolves only after the navigator arrives or the route gives up.
+  moveTo: async (x, y, z, opts = {}) => {
+    let args;
+    if (_isObj(x)) args = { ...x };
+    else if (Array.isArray(x)) args = { x: x[0], y: x[1], z: x[2] };
+    else args = { x, y, z };
+    if (opts && _isObj(opts)) Object.assign(args, opts);
+    if (!args.route) args.route = 'auto';
+    const r = await rpc('navigate', args);
+    if (!r || r.ok === false) return r;
+    const maxWaitMs = Number(args.maxWaitMs || 60000);
+    const st = await _waitUntil((s) => s.mode !== 'GOTO' || s.arrived === true, maxWaitMs);
+    return { ...r, ...st, arrived: st.mode !== 'GOTO' || st.arrived === true };
+  },
+
+  // Break exactly one explicit block. If out of reach the primitive returns
+  // the navigator's standoff; the SDK moves there, then calls the break again.
+  breakBlock: async (x, y, z, opts = {}) => {
+    const target = _isObj(x) ? { ...x } : (Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : { x, y, z });
+    const route = (opts && opts.route) || 'auto';
+    const maxWaitMs = Number((opts && opts.maxWaitMs) || 120000);
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const r = await rpc('break_block', target);
+      if (r && r.needsMovement && r.standoff) {
+        const mv = await drone.moveTo(r.standoff, { route, maxWaitMs });
+        if (!mv || mv.ok === false) return mv || r;
+        continue;
+      }
+      if (r && r.ok === false && /standoff/i.test(String(r.error || ''))) {
+        // Fully buried target with no exposed standoff: carve toward it, then
+        // retry the single-block break once the navigator has arrived.
+        const mv = await drone.moveTo({ x: target.x, y: target.y, z: target.z, route: 'tunnel', maxWaitMs });
+        if (!mv || mv.ok === false) return { ...r, movement: mv };
+        continue;
+      }
+      if (r && r.started) {
+        const st = await _waitUntil((s) => s.mode !== 'MINE' && !s.activeBreakTarget, maxWaitMs);
+        return { ...r, ...st, broken: !st.activeBreakTarget };
       }
       return r;
     }
-    if (Array.isArray(x)) { _mineBatch.push([x[0], x[1], x[2]]); }
-    else if (_isObj(x)) { _mineBatch.push([x.x, x.y, x.z]); }
-    else { _mineBatch.push([x, y, z]); }
-    return { ok: true, buffered: _mineBatch.length };
+    return { ok: false, error: 'Could not reach break target after navigation attempts' };
   },
-  mineMany: async (blocks, exactOnly = true) => {
-    await _flushBatches();
-    const r = await rpc('queue_mine', _isObj(blocks) ? { deliver: false, ...blocks } : { blocks, exactOnly, deliver: false });
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  mineRect: async (x1, y1, z1, x2, y2, z2, filter = 'all') => {
-    await _flushBatches();
-    const r = await rpc('mine_rect', _isObj(x1) ? x1 : { x1, y1, z1, x2, y2, z2, filter });
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  mineBox: async (anchor = 'under_player', width = 3, height = 3, length = 3) => {
-    await _flushBatches();
-    const r = await rpc('mine_box', _isObj(anchor) ? anchor : { anchor, width, height, length });
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  gatherDistant: async (target = 'jungle', maxRadius = 1200, count = 0, untilFull = false) => {
-    await _flushBatches();
-    const r = await rpc('gather_distant', _isObj(target) ? target : { target, maxRadius, count, untilFull });
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  placeBlock: async (x, y, z, block = 'any', meta = -1) => {
-    if (_isObj(x)) { _buildBatch.push({ x: x.x, y: x.y, z: x.z, block: x.block || x.with || 'any', meta: x.meta ?? -1, replace: !!x.replace }); }
-    else if (Array.isArray(x)) { _buildBatch.push({ x: x[0], y: x[1], z: x[2], block: y || 'any', meta: z ?? -1, replace: false }); }
-    else { _buildBatch.push({ x, y, z, block, meta, replace: false }); }
-    return { ok: true, buffered: _buildBatch.length };
-  },
-  placeMany: async (tasks, block = 'any', meta = -1) => {
-    await _flushBatches();
-    const r = await rpc('queue_build', _isObj(tasks) ? tasks : { tasks, block, meta });
-    if (r && r.queued > 0) {
-      _handledItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  placeBox: async (x1, y1, z1, x2, y2, z2, block = 'any', hollow = false, meta = -1) => {
-    await _flushBatches();
-    const r = await rpc('build_box', _isObj(x1) ? x1 : { x1, y1, z1, x2, y2, z2, block, hollow, meta });
-    if (r && r.queued > 0) {
-      _handledItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  buildStructure: async (spec = {}) => {
-    await _flushBatches();
-    const opts = _isObj(spec) ? spec : { block: String(spec) };
-    const r = await rpc('build_structure', opts);
-    if (r && r.buildCount > 0) {
-      _handledItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  replaceBlock: async (x, y, z, block = 'any', meta = -1) => {
-    if (_isObj(x)) { _buildBatch.push({ x: x.x, y: x.y, z: x.z, block: x.block || x.with || 'any', meta: x.meta ?? -1, replace: true, ...(x.onlyReplace ? { onlyReplace: x.onlyReplace } : {}) }); }
-    else if (Array.isArray(x)) { _buildBatch.push({ x: x[0], y: x[1], z: x[2], block: y || 'any', meta: z ?? -1, replace: true }); }
-    else { _buildBatch.push({ x, y, z, block, meta, replace: true }); }
-    return { ok: true, buffered: _buildBatch.length };
-  },
-  replaceBlocks: async (blocks, block = 'any', meta = -1) => {
-    await _flushBatches();
-    const r = await rpc('replace_blocks', _isObj(blocks) ? blocks : { blocks, block, meta });
-    if (r && r.queued > 0) {
-      _handledItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  replaceBox: async (x1, y1, z1, x2, y2, z2, block = 'any', onlyReplace = null, meta = -1) => {
-    await _flushBatches();
-    const r = await rpc('replace_box', _isObj(x1) ? x1 : { x1, y1, z1, x2, y2, z2, block, ...(onlyReplace ? { onlyReplace } : {}), meta });
-    if (r && r.queued > 0) {
-      _handledItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  replaceRoom: async (surface = 'floor', block = 'any', onlyReplace = null, meta = -1) => {
-    await _flushBatches();
-    const r = await rpc('replace_room', _isObj(surface) ? surface : { surface, block, ...(onlyReplace ? { onlyReplace } : {}), meta });
-    if (r && r.queued > 0) {
-      _handledItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  plugLiquids: async (opts = 12) => {
-    await _flushBatches();
-    const r = await rpc('plug_liquids', typeof opts === 'number' ? { radius: opts } : (opts || {}));
-    if (r && r.queued > 0) {
-      _handledItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  scoopLiquid: async (type = 'lava', count = 1) => {
-    await _flushBatches();
-    const r = await rpc('scoop_liquid', _isObj(type) ? type : { type, count });
-    if (r && (r.queued > 0 || r.scooped > 0)) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  placeLiquid: async (x, y, z, type = 'water') => {
-    await _flushBatches();
-    _handledItems = true;
-    return await rpc('place_liquid', _isObj(x) ? x : (Array.isArray(x) ? { x: x[0], y: x[1], z: x[2], type: y || 'water' } : { x, y, z, type }));
-  },
-  clearQueues: async () => { _mineBatch.length = 0; _buildBatch.length = 0; return await rpc('clear_queues', {}); },
-  farm: async (target = 'crop', radius = 48) => {
-    await _flushBatches();
-    const r = await rpc('farm', _isObj(target) ? target : { target, radius });
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, harvested: r.harvested ?? r.queued, ...st };
-    }
-    return r;
-  },
-  chop: async (x, y, z) => {
-    await _flushBatches();
-    const target = _isObj(x) ? x : (Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : { x, y, z });
-    const r = await rpc('chop', target);
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  fertilize: async (radius = 12) => {
-    await _flushBatches();
-    const target = _isObj(radius) ? radius : (typeof radius === 'number' ? { radius } : { radius: 12 });
-    return await rpc('fertilize', target);
-  },
-  interactBlock: async (x, y, z, side) => {
-    await _flushBatches();
-    const target = _isObj(x)
-      ? x
-      : (Array.isArray(x)
-        ? { x: x[0], y: x[1], z: x[2], ...(typeof side === 'number' ? { side } : {}) }
-        : { x, y, z, ...(typeof side === 'number' ? { side } : {}) });
-    const r = await rpc('interact_block', target);
-    if (r && r.activated !== undefined) return r;
-    try {
-      const st = await _waitTask((s) => Math.hypot((s.x || 0) - (target.x || 0), (s.y || 0) - (target.y || 0), (s.z || 0) - (target.z || 0)) <= 4.5, 30000);
-      if (st && !st.aborted) {
-        const r2 = await rpc('interact_block', target);
-        return { ...r2, moved: true };
-      }
-    } catch (e) { /* fall through with original result */ }
-    return r;
-  },
-  useItem: async (a = 0, b, c, d2, e) => {
-    await _flushBatches();
-    // Accepted forms:
-    //   useItem({ item:'hoe', x, y, z, side })   useItem('hoe', x, y, z)
-    //   useItem(0, 'hoe', x, y, z)               useItem(0)  (current hotbar slot)
+
+  // Place exactly one explicit block from drone/chest/player inventory.
+  placeBlock: async (x, y, z, block = 'any', meta = -1, opts = {}) => {
     let target;
-    if (_isObj(a)) {
-      target = { ...a };
-    } else if (typeof a === 'number') {
+    if (_isObj(x)) target = { ...x };
+    else if (Array.isArray(x)) target = { x: x[0], y: x[1], z: x[2], block: y || 'any', meta: z ?? -1 };
+    else target = { x, y, z, block, meta };
+    if (opts && _isObj(opts)) Object.assign(target, opts);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = await rpc('place_block', target);
+      if (r && r.needsMovement && r.standoff) {
+        const mv = await drone.moveTo(r.standoff, { route: target.route || 'auto' });
+        if (!mv || mv.ok === false) return mv || r;
+        continue;
+      }
+      return r;
+    }
+    return { ok: false, error: 'Could not reach placement target' };
+  },
+
+  interactBlock: async (x, y, z, side, opts = {}) => {
+    let target;
+    if (_isObj(x)) target = { ...x };
+    else if (Array.isArray(x)) target = { x: x[0], y: x[1], z: x[2], ...(typeof side === 'number' ? { side } : {}) };
+    else target = { x, y, z, ...(typeof side === 'number' ? { side } : {}) };
+    if (opts && _isObj(opts)) Object.assign(target, opts);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = await rpc('interact_block', target);
+      if (r && r.needsMovement && r.standoff) {
+        const mv = await drone.moveTo(r.standoff, { route: target.route || 'auto' });
+        if (!mv || mv.ok === false) return mv || r;
+        continue;
+      }
+      return r;
+    }
+    return { ok: false, error: 'Could not reach interaction target' };
+  },
+
+  // Uses an item (hoe, bucket, food, tool...). Accepts an object, a slot, or
+  // an item filter plus optional target block coordinates.
+  useItem: async (a = 0, b, c, d2, e) => {
+    let target;
+    if (_isObj(a)) target = { ...a };
+    else if (typeof a === 'number') {
       target = { slot: a };
       let rest = [b, c, d2, e];
       if (typeof b === 'string') { target.item = b; rest = [c, d2, e]; }
@@ -250,200 +124,48 @@ const drone = {
         if (typeof e === 'number') target.side = e;
       }
     }
-    const r = await rpc('use_item', target);
-    if (r && r.used !== undefined) return r;
-    try {
-      const st = await _waitIdle(20000);
-      return { ...r, ...st };
-    } catch (e2) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = await rpc('use_item', target);
+      if (r && r.needsMovement && r.standoff) {
+        const mv = await drone.moveTo(r.standoff, { route: target.route || 'auto' });
+        if (!mv || mv.ok === false) return mv || r;
+        continue;
+      }
       return r;
     }
+    return { ok: false, error: 'Could not reach item-use target' };
   },
-  attackEntity: async (target = 'hostile') => {
-    await _flushBatches();
-    const args = typeof target === 'number' ? { id: target } : (_isObj(target) ? target : { filter: String(target) });
-    const r = await rpc('attack_entity', args);
-    if (r && r.started) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, killed: (st.huntedCount || 0) > 0, ...st };
-    }
-    return r;
-  },
-  hunt: async (filter = 'sheep|cow|pig', count = 10) => {
-    await _flushBatches();
-    const r = await rpc('hunt', _isObj(filter) ? filter : { filter, count });
-    if (r && r.nearbyMatching > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
+
+  // Generic inventory primitive. op: move | give | take | drop | withdraw | deposit | suck
+  transfer: async (opOrOpts, args = {}) => {
+    const r = _isObj(opOrOpts)
+      ? await rpc('transfer', opOrOpts)
+      : await rpc('transfer', { ...( _isObj(args) ? args : {} ), op: String(opOrOpts || 'move') });
+    if (r && (r.flyingToPlayer || r.flyingToChest || r.queued > 0 || r.mode === 'DROP' || r.mode === 'DEPOSIT')) {
+      const st = await _waitIdle(60000);
       return { ...r, ...st };
     }
     return r;
   },
-  cook: async (filter = 'meat', count = 64) => {
-    await _flushBatches();
-    const r = await rpc('cook', _isObj(filter) ? filter : { filter, count });
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  smelt: async (filter = 'ores', count = 64) => {
-    await _flushBatches();
-    const r = await rpc('smelt', _isObj(filter) ? filter : { filter, count });
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
+
   craft: async (filter = 'planks', count = 1) => {
-    await _flushBatches();
-    const r = await rpc('craft', _isObj(filter) ? filter : { filter, count });
-    if (r && r.crafted > 0) {
-      _gatheredItems = true;
-    }
-    return r;
+    return await rpc('craft', _isObj(filter) ? filter : { filter, count });
   },
-  machineCraft: async (filter = 'plate_iron', machine = '', count = 1, radius = 32) => {
-    await _flushBatches();
-    const r = await rpc('machine_craft', _isObj(filter) ? filter : { filter, ...(machine ? { machine } : {}), count, radius });
-    if (r && r.loaded) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
+
+  // Visual/audio/chat effect primitive. kind: led | ledEffect | particles | sound | note | status | say
+  effect: async (kind = 'led', args = {}) => {
+    if (_isObj(kind)) return await rpc('effect', kind);
+    return await rpc('effect', { ...( _isObj(args) ? args : {} ), kind: String(kind) });
   },
-  driveAnvil: async (filter = 'plate_iron', radius = 32) => {
-    await _flushBatches();
-    const r = await rpc('anvil_drive', _isObj(filter) ? filter : { filter, radius });
-    if (r && (r.guiOpened || r.constructionProduced > 0)) {
-      _gatheredItems = true;
-    }
-    return r;
+
+  // Optional reusable-skill memory. op: search | list | save
+  skills: async (op = 'search', args = {}) => {
+    if (_isObj(op)) return await rpc('skills', op);
+    return await rpc('skills', { ...( _isObj(args) ? args : {} ), op: String(op) });
   },
-  suckItems: async (radius = 8) => {
-    await _flushBatches();
-    return await rpc('suck_items', _isObj(radius) ? radius : { radius });
-  },
-  sortChests: async (radius = 24, mode = 'all') => { await _flushBatches(); return await rpc('sort_chests', _isObj(radius) ? radius : { radius, mode }); },
-  transferContainers: async (from = 'crate', to = 'chest', radius = 32, sortAfter = true) => { await _flushBatches(); _handledItems = true; return await rpc('transfer_containers', _isObj(from) ? from : { from, to, radius, sortAfter }); },
-  carryPlayer: async (x, y, z) => {
-    await _flushBatches();
-    const r = await rpc('carry_player', Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : (_isObj(x) ? x : (typeof x === 'number' ? { x, y, z } : {})));
-    if (r && r.queued > 0) {
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  getBreadcrumbs: (limit = 64) => _isObj(limit) ? rpc('get_breadcrumbs', limit) : rpc('get_breadcrumbs', { limit }),
-  retraceBreadcrumbs: async (steps = 48, toSurface = true) => {
-    await _flushBatches();
-    const r = await rpc('retrace_breadcrumbs', _isObj(steps) ? steps : { steps, toSurface });
-    if (r && r.waypointsQueued > 0) {
-      const st = await _waitIdle(35000);
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  escapeCave: async () => {
-    await _flushBatches();
-    const r = await rpc('escape_cave', {});
-    if (r && r.steps > 0) {
-      const st = await _waitIdle(35000);
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  takeFromPlayer: async (filter = 'any', count = 512, playerName) => {
-    await _flushBatches();
-    return await rpc('take_from_player', _isObj(filter) ? filter : { filter, count, ...(playerName ? { player: playerName } : {}) });
-  },
-  giveToPlayer: async (filter = 'all', count = 512, playerName) => {
-    await _flushBatches();
-    _handledItems = true;
-    const r = await rpc('give_to_player', _isObj(filter) ? filter : { filter, count, ...(playerName ? { player: playerName } : {}) });
-    if (r && r.flyingToPlayer) {
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  withdrawChest: async (a = 'any', b = 64, c, d, e) => {
-    await _flushBatches();
-    _gatheredItems = true;
-    if (_isObj(a)) return await rpc('withdraw_chest', a);
-    if (typeof a === 'number') return await rpc('withdraw_chest', { x: a, y: b, z: c, filter: d || 'any', count: e ?? 64 });
-    return await rpc('withdraw_chest', { filter: a, count: b, ...(typeof c === 'number' ? { x: c, y: d, z: e } : {}) });
-  },
-  depositChest: async (x, y, z) => {
-    await _flushBatches();
-    _handledItems = true;
-    const r = await rpc('deposit_chest', _isObj(x) ? x : (typeof x === 'number' ? { x, y, z } : {}));
-    if (r && r.flyingToChest) {
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  moveSlot: async (opts) => { await _flushBatches(); return await rpc('move_slot', opts || {}); },
-  // Torch-free illumination aura. While active the drone lights the area itself;
-  // no torch item is used and no block is placed. Toggle any time, and optionally
-  // set a colour (hex/rgb/name), radius and light level:
-  //   await drone.light(true)                     // normal white light
-  //   await drone.light(false)                    // restore the world
-  //   await drone.light({ color: 'red' })         // enable + coloured glow
-  //   await drone.light({ enabled: true, radius: 8, level: 15, color: '#FF9500' })
-  light: async (enabled, opts = {}) => {
-    await _flushBatches();
-    let a;
-    if (_isObj(enabled)) a = { ...enabled };
-    else if (typeof enabled === 'boolean') a = { enabled, ...( _isObj(opts) ? opts : {} ) };
-    else if (typeof enabled === 'string') a = { enabled: true, color: enabled, ...( _isObj(opts) ? opts : {} ) };
-    else a = { toggle: true };
-    return await rpc('light', a);
-  },
-  lightOff: async () => { await _flushBatches(); return await rpc('light', { enabled: false }); },
-  // Legacy alias kept so old skills keep working; it now drives the aura, not torches.
-  torch: async (enabled) => {
-    await _flushBatches();
-    if (typeof enabled === 'boolean') return await rpc('light', { enabled });
-    if (_isObj(enabled)) return await rpc('light', enabled);
-    return await rpc('light', { toggle: true });
-  },
-  follow: async (target) => { await _flushBatches(); return await rpc('follow', _isObj(target) ? target : (target ? { target } : {})); },
-  stay: async () => { await _flushBatches(); _handledItems = true; return await rpc('stay', {}); },
-  stop: async () => { await _flushBatches(); _handledItems = true; return await rpc('stop', {}); },
-  come: async () => {
-    await _flushBatches();
-    const r = await rpc('come', {});
-    const st = await _waitIdle(20000);
-    return { ...r, ...st };
-  },
-  guard: async (target, filter) => { await _flushBatches(); return await rpc('guard', _isObj(target) ? target : { ...(target ? { target } : {}), ...(filter ? { filter } : {}) }); },
-  patrol: async (radius = 36, filter = 'hostile|mutant') => {
-    await _flushBatches();
-    const r = await rpc('patrol', _isObj(radius) ? radius : (typeof radius === 'string' ? { filter: radius, radius: typeof filter === 'number' ? filter : 36 } : { radius, filter }));
-    if (r && !r.ok) return r;
-    try {
-      const st = await _waitTask((s) => s.mode === 'PATROL', 30000);
-      return { ...r, ...st };
-    } catch (e) {
-      return r;
-    }
-  },
-  drop: async (filter = 'all') => {
-    await _flushBatches();
-    _handledItems = true;
-    const r = await rpc('drop', _isObj(filter) ? filter : { filter });
-    const st = await _waitIdle();
-    return { ...r, ...st };
-  },
-  say: (message) => rpc('say', _isObj(message) ? message : { message: String(message) }),
-  setStatusText: (text) => rpc('set_status_text', _isObj(text) ? text : { text: String(text) })
+
+  cancel: () => rpc('cancel', { loopId: typeof LOOP_ID === 'number' ? LOOP_ID : 0 })
 };
+
+// Single canonical global. No alias objects, no second tool name.
+globalThis.drone = drone;

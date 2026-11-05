@@ -556,23 +556,56 @@ public class MiningService {
         this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Self-rescue complete");
     }
 
-    public int startBoxMiningTask(DroneController ctrl, EntityPlayerMP player, String anchor, int widthX, int heightY, int lengthZ) {
-        if (ctrl != null) ctrl.clearSelfRescue(false);
-        return this.excavationPlanner.startBoxMiningTask(ctrl, player, anchor, widthX, heightY, lengthZ);
+    /**
+     * Master primitive: break exactly one explicit block. There is no filter,
+     * no count, no neighbour propagation and no queued backlog. The AI chooses
+     * the coordinates with {@code inspect}; navigation is a separate primitive.
+     */
+    public boolean startSingleBlockTask(DroneController ctrl, EntityPlayerMP player, int x, int y, int z) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return false;
+        Drone d = ctrl.drone;
+        World world = d.field_70170_p;
+        if (!ItemClassifier.isMineableBlock(world, x, y, z)) return false;
+        if (ctrl.currentMineTarget != null) {
+            world.func_147443_d(d.func_145782_y(), ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2], -1);
+        }
+        ctrl.clearSelfRescue(false);
+        ctrl.mineQueue.clear();
+        ctrl.currentMineTarget = new int[]{x, y, z};
+        double[] standoff = FlightPathfinder.findMiningStandoff(world, d, x, y, z);
+        if (standoff == null && d.func_70011_f(x + 0.5, y + 0.5, z + 0.5) <= 2.2) {
+            standoff = new double[]{d.field_70165_t, d.field_70163_u, d.field_70161_v};
+        }
+        ctrl.currentMineStandoff = standoff;
+        ctrl.mineFilter = "all";
+        ctrl.mineExactQueueOnly = true;
+        ctrl.mineTargetCount = 0;
+        ctrl.mineMatchedCount = 0;
+        ctrl.minedCount = 0;
+        ctrl.returnToOwnerAfterMine = false;
+        ctrl.mineUntilFull = false;
+        ctrl.replantAfterHarvest = false;
+        ctrl.mineProgressTicks = 0;
+        ctrl.stuckTicks = 0;
+        ctrl.lastPathPartial = false;
+        ctrl.pathWaypoints.clear();
+        ctrl.pathIndex = 0;
+        ctrl.repathCooldown = 0;
+        this.manager.setDroneMode(ctrl, Mode.MINE, "Master break_block (" + x + "," + y + "," + z + ")");
+        d.lightColor_$eq(0x00FF66);
+        d.statusText_$eq("Break block\n" + x + "," + y + "," + z);
+        return true;
     }
 
-    public int startRectMiningTask(DroneController ctrl, EntityPlayerMP player, int x1, int y1, int z1, int x2, int y2, int z2, String filter) {
-        if (ctrl != null) ctrl.clearSelfRescue(false);
-        return this.excavationPlanner.startRectMiningTask(ctrl, player, x1, y1, z1, x2, y2, z2, filter);
+    /**
+     * Master primitive: place exactly one explicit block from drone/chest/player
+     * inventory. No blueprint, no queue and no hidden substitution.
+     */
+    public boolean placeSingleBlock(DroneController ctrl, EntityPlayerMP player, int x, int y, int z, String filter, int meta) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return false;
+        String resolved = ItemClassifier.resolveHeldFilter(player, filter);
+        return this.manager.getBuildingService().placeBlockFromInventory(
+            ctrl.drone.field_70170_p, ctrl, player, x, y, z, resolved, meta);
     }
 
-    public int startFarmingTask(DroneController ctrl, EntityPlayerMP player, String rawTarget, int radiusOverride) {
-        if (ctrl != null) ctrl.clearSelfRescue(false);
-        return this.farmingService.startFarmingTask(ctrl, player, rawTarget, radiusOverride);
-    }
-
-    public int startMiningTask(DroneController ctrl, EntityPlayerMP refPlayer, String rawTarget, int maxCount, boolean untilFull) {
-        if (ctrl != null) ctrl.clearSelfRescue(false);
-        return this.excavationPlanner.startMiningTask(ctrl, refPlayer, rawTarget, maxCount, untilFull);
-    }
 }

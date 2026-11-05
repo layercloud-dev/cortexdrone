@@ -449,6 +449,14 @@ public class FlightPathfinder {
                 + (effGz - ctrl.pathGoalZ) * (effGz - ctrl.pathGoalZ)
         );
 
+        String route = ctrl.navigationRoute != null ? ctrl.navigationRoute : "auto";
+        if ("tunnel".equals(route) && ctrl.mode == Mode.GOTO
+            && !isFlightLineClear(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, effGx, effGy, effGz)) {
+            int dug = this.caveEscapeService.digTowardTarget(
+                ctrl, MathHelper.func_76128_c(effGx), MathHelper.func_76128_c(effGy), MathHelper.func_76128_c(effGz));
+            if (dug > 0) return;
+        }
+
         boolean needsRepath = ctrl.pathWaypoints.isEmpty()
             || (ctrl.pathIndex >= ctrl.pathWaypoints.size() && ctrl.repathCooldown <= 0)
             || (distGoalMove > 0.85 && ctrl.repathCooldown <= 0)
@@ -473,7 +481,8 @@ public class FlightPathfinder {
             }
 
             // If trapped underground with a partial path, trigger automatic breadcrumb backtrack or Baritone dig-escape
-            if (!droneInOpenSky && ctrl.lastPathPartial && (ctrl.stuckTicks >= 6 || (goalOnSurface && gy - d.field_70163_u > 6.0))) {
+            if (!"direct".equals(route) && !"tunnel".equals(route) && !droneInOpenSky && ctrl.lastPathPartial
+                && (ctrl.stuckTicks >= 6 || (goalOnSurface && gy - d.field_70163_u > 6.0))) {
                 escapeCaveOrDigOut(ctrl, null);
             }
         }

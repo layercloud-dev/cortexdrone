@@ -258,6 +258,74 @@ public class CaveEscapeService {
         return 1;
     }
 
+    /**
+     * Explicit tunnel route used by the master navigation primitive. It plans a
+     * weighted dig path to the requested destination, hands the blocking cells
+     * to the single-action miner, and restores the caller's GOTO goal afterwards.
+     */
+    public int digTowardTarget(DroneController ctrl, int gx, int gy, int gz) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return 0;
+        if (ctrl.escapeResume != null) return 0;
+        Drone d = ctrl.drone;
+        World world = d.field_70170_p;
+        int sx = MathHelper.func_76128_c(d.field_70165_t);
+        int sy = MathHelper.func_76128_c(d.field_70163_u);
+        int sz = MathHelper.func_76128_c(d.field_70161_v);
+        List<int[]> digPath = findDigEscapePath(world, ctrl, sx, sy, sz, gx, gy, gz, false);
+        if (digPath.isEmpty()) return 0;
+
+        DroneController.TaskSnapshot pending = new DroneController.TaskSnapshot();
+        pending.mode = ctrl.mode;
+        pending.goalX = ctrl.goalX;
+        pending.goalY = ctrl.goalY;
+        pending.goalZ = ctrl.goalZ;
+        pending.mineFilter = ctrl.mineFilter;
+        pending.mineExactQueueOnly = ctrl.mineExactQueueOnly;
+        pending.mineUntilFull = ctrl.mineUntilFull;
+        pending.returnToOwnerAfterMine = ctrl.returnToOwnerAfterMine;
+        pending.mineTargetCount = ctrl.mineTargetCount;
+        pending.minedCount = ctrl.minedCount;
+        pending.mineMatchedCount = ctrl.mineMatchedCount;
+        pending.mineTarget = ctrl.currentMineTarget;
+        pending.mineStandoff = ctrl.currentMineStandoff;
+        pending.mineQueue = new ArrayList<int[]>(ctrl.mineQueue);
+        ctrl.mineQueue.clear();
+
+        int queued = 0;
+        // queueDig adds at the front; walking the path backwards preserves the
+        // planner's start-to-destination order in the final single-action queue.
+        for (int i = digPath.size() - 1; i >= 0; i--) {
+            int[] step = digPath.get(i);
+            if (step[3] == 1) {
+                queued += queueDig(ctrl, world, step[0], step[1], step[2]);
+            }
+        }
+        if (queued == 0) {
+            ctrl.mineQueue.addAll(pending.mineQueue);
+            return 0;
+        }
+
+        ctrl.mineFilter = "all";
+        ctrl.mineExactQueueOnly = true;
+        ctrl.mineUntilFull = false;
+        ctrl.mineTargetCount = 0;
+        ctrl.returnToOwnerAfterMine = false;
+        ctrl.currentMineTarget = null;
+        ctrl.currentMineStandoff = null;
+        ctrl.mineProgressTicks = 0;
+        ctrl.stuckTicks = 0;
+        ctrl.lastPathPartial = false;
+        ctrl.pathWaypoints.clear();
+        ctrl.pathIndex = 0;
+        ctrl.repathCooldown = 0;
+        this.manager.setDroneMode(ctrl, Mode.MINE, "Tunnel route: break through " + queued + " block(s) toward ("
+            + gx + "," + gy + "," + gz + ")");
+        ctrl.escapeResume = pending;
+        this.logger.log("PATH", ctrl, "Tunnel route planned",
+            "queuedDigs=" + queued + " goal=(" + gx + "," + gy + "," + gz + ")");
+        return queued;
+    }
+
     public int escapeCaveOrDigOut(DroneController ctrl, EntityPlayerMP owner) {
         if (ctrl == null || ctrl.drone == null) return 0;
         Drone d = ctrl.drone;

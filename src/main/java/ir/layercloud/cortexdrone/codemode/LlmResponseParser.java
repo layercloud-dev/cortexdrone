@@ -307,7 +307,7 @@ public final class LlmResponseParser {
                 if (!combinedReasoning.isEmpty()) fenced.addProperty("_reasoning", combinedReasoning);
                 return fenced;
             }
-            // Fenced JS code body (```js ... await drone.mine(...) ... ```) with no JSON
+            // Fenced JS code body (```js ... await drone.breakBlock(...) ... ```) with no JSON
             // wrapper: package it as executable code instead of losing the turn.
             if (body.contains("await ") || body.contains("return ") || body.contains("function") || body.contains("const ")) {
                 JsonObject o = new JsonObject();

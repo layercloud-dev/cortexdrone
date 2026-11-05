@@ -9,21 +9,7 @@ const _killTimer = setTimeout(() => {
 }, 175000);
 _killTimer.unref();
 
-const _mineBatch = [];
-const _buildBatch = [];
-let _flushedMineTotal = 0;
-let _flushedBuildTotal = 0;
-let _gatheredItems = false;
-let _handledItems = false;
-
-// Cap what an LLM sees: huge tool payloads (full chest contents, thousand-block scans) blow up the
-// prompt window, cause the model to spiral into essay mode and starve the 20 TPS server tick.
-// Recursively keep every field, but truncate arrays at 24 entries (with counts) and long strings at 1200 chars.
-// Callers can bypass with opts.raw=true (world-api does local fn filtering before the LLM sees the payload).
-// NOTE: _capSize only runs when JSON length > 24000 (default rpc path). For payloads between ~4KB
-// (typical kb.lookup / getRecipes result) and the 24KB threshold the FULL payload reaches the LLM
-// untruncated — this was the prompt-window blowup behind repeated essay-mode drift. So the result
-// is ALWAYS capped here; an explicit large cap (see rpc) preserves the old behaviour for raw callers.
+// Cap what an LLM sees: huge inspection payloads blow up the prompt window.
 function _capSize(value, depth = 0) {
   if (value == null) return value;
   if (typeof value === 'string') return value.length > 1200 ? value.slice(0, 1200) + `…(+${value.length - 1200} chars)` : value;
@@ -35,7 +21,7 @@ function _capSize(value, depth = 0) {
     if (depth > 5) return '[…]';
     const out = {};
     for (const k of Object.keys(value)) {
-      if (k === 'summary') { out[k] = value[k]; continue; } // summaries are already compact strings
+      if (k === 'summary') { out[k] = value[k]; continue; }
       out[k] = _capSize(value[k], depth + 1);
     }
     return out;
@@ -63,9 +49,6 @@ async function rpc(method, args = {}, opts = {}) {
   const data = await r.json();
   let out = (data && typeof data === 'object') ? data : { ok: false, error: 'Empty RPC response' };
   if (!opts || !opts.raw) {
-    // Always cap small recipe/chest payloads too; the old >24000 gate let 4-20KB
-    // kb.lookup/getRecipes dumps through untruncated. Keep a high escape hatch for
-    // callers that explicitly need the full body via opts.raw=true.
     const cap = (opts && typeof opts.cap === 'number') ? opts.cap : 8000;
     if (_jsonLen(out) > cap) {
       out = _capSize(out);
@@ -75,59 +58,36 @@ async function rpc(method, args = {}, opts = {}) {
   return out;
 }
 
-// Batched RPC: queue multiple independent inspections into one HTTP round-trip.
-// Dispatches in parallel via Promise.all instead of serial awaits so a turn that
-// needs kb.lookup + getRecipes + findItemInChests costs ~1 round-trip of latency.
-async function rpcBatch(calls) {
-  if (!Array.isArray(calls) || calls.length <= 1) {
-    return calls && calls[0] ? await rpc(calls[0][0], calls[0][1] || {}) : {};
-  }
-  return Promise.all(calls.map(([m, a]) => {
-    try { return rpc(m, a || {}); } catch (e) { return { ok: false, error: String(e) }; }
-  }));
+// Low-level RPC stays private to the SDK. Code Mode only gets the `drone`
+// master-tool surface, so arbitrary legacy RPC names cannot be called directly.
+
+async function _state() {
+  return await rpc('state', { loopId: typeof LOOP_ID === 'number' ? LOOP_ID : 0 });
 }
-globalThis.rpcBatch = rpcBatch; globalThis.rpc = rpc;
 
-const _ACTIVE_TASK_MODES = new Set(['MINE', 'BUILD', 'SCOOP', 'SMELT', 'MACHINE', 'CARRY', 'GOTO', 'HUNT', 'DROP', 'DEPOSIT']);
-
-// Adaptive poll backoff: starts 400ms and grows to a 2000ms cap.
-// A slow task polling get_drone every 200ms floods the 8s main-thread latch with
-// cheap but contending RPCs. A task that is actually idle exits as soon as the
-// predicate flips; the 2s cap keeps steady-state polling to ~0.5 RPC/s/drone.
-async function _waitTask(predicateFn, maxWaitMs = 150000) {
+// Wait for the one active action/session to satisfy a predicate. There is no
+// task queue: a script is blocked on the physical action it just started.
+async function _waitUntil(predicateFn, maxWaitMs = 150000) {
   const t0 = Date.now();
-  let pollMs = 400;
+  let pollMs = 250;
   while (Date.now() - t0 < maxWaitMs) {
-    const st = await rpc('get_drone', { loopId: typeof LOOP_ID === 'number' ? LOOP_ID : 0 });
-    if (st && st.aborted) {
-      throw new Error('SUPERSEDED');
-    }
-    if (!st || st.ok === false || predicateFn(st)) {
-      return st || {};
-    }
+    const st = await _state();
+    if (st && st.aborted) throw new Error('SUPERSEDED');
+    if (!st || st.ok === false || predicateFn(st)) return st || {};
     await new Promise(r => setTimeout(r, pollMs));
-    pollMs = Math.min(2000, Math.round(pollMs * pollMs / 400));
+    pollMs = Math.min(1500, Math.round(pollMs * 1.5 + pollMs * pollMs / 800));
   }
-  return await rpc('get_drone', { loopId: typeof LOOP_ID === 'number' ? LOOP_ID : 0 });
+  return await _state();
 }
 
 async function _waitIdle(maxWaitMs = 60000) {
-  return await _waitTask(
-    (st) =>
-      (st.mineQueueSize || 0) === 0 &&
-      (st.buildQueueSize || 0) === 0 &&
-      (st.scoopQueueSize || 0) === 0 &&
-      !_ACTIVE_TASK_MODES.has(st.mode),
+  return await _waitUntil(
+    (st) => ['FOLLOW', 'STAY', 'GUARD', 'PATROL'].includes(st.mode) && !st.activeBreakTarget,
     maxWaitMs
   );
 }
 
-// --- scanBlocks auto-poll for large time-sliced scans (radius reset above threshold) ---
-// RpcDispatcher queues large scans (radius > 32) and returns a pending/queued stub
-// with jobId instead of the final shape. This helper polls poll_scan until done or
-// the timeout, then normalizes every path to {count, blocks, scannedVoxels, truncated,
-// radius, done, jobId} so sync and async scanBlocks are byte-equivalent.
-
+// --- scanBlocks auto-poll for large time-sliced inspections ---
 const _SCAN_POLL_TIMEOUT_MS = 30000;
 const _SCAN_POLL_INITIAL_MS = 250;
 const _SCAN_POLL_MAX_MS = 2000;
@@ -183,48 +143,13 @@ async function _awaitScanJob(jobId, fallbackRadius, timeoutMs = _SCAN_POLL_TIMEO
     pollMs = Math.min(_SCAN_POLL_MAX_MS, Math.round(pollMs * 1.5 + pollMs * pollMs / 400));
     if (r && r.aborted) throw new Error('SUPERSEDED');
   }
-  // Timeout or poll error: return whatever the server last reported, normalized.
   return _normalizeScanResult(last, fallbackRadius);
 }
 
-async function _flushBatches() {
-  if (_mineBatch.length > 0) {
-    const blocks = _mineBatch.splice(0, _mineBatch.length);
-    const r = await rpc('queue_mine', { blocks, exactOnly: true, deliver: false });
-    const q = (r && typeof r.queued === 'number') ? r.queued : blocks.length;
-    _flushedMineTotal += q;
-    if (q > 0) {
-      _gatheredItems = true;
-      await _waitIdle();
-    }
-  }
-  if (_buildBatch.length > 0) {
-    const tasks = _buildBatch.splice(0, _buildBatch.length);
-    const r = await rpc('queue_build', { tasks });
-    const q = (r && typeof r.queued === 'number') ? r.queued : tasks.length;
-    _flushedBuildTotal += q;
-    if (q > 0) {
-      _handledItems = true;
-      await _waitIdle();
-    }
-  }
-}
-
+// All master primitives await their own physical completion. Kept as a stable
+// hook for the runtime wrapper; intentionally does not drain an instruction queue.
 async function _finalizeScript() {
-  await _flushBatches();
-  if (_gatheredItems || _flushedMineTotal > 0 || _flushedBuildTotal > 0) {
-    await _waitIdle(60000);
-  }
-  const finalTurn = typeof IS_FINAL_TURN === 'boolean' ? IS_FINAL_TURN : true;
-  if (finalTurn && _gatheredItems && !_handledItems) {
-    const st = await rpc('get_drone', { loopId: typeof LOOP_ID === 'number' ? LOOP_ID : 0 });
-    if (st && !st.aborted && (st.totalItems || 0) > 0 && st.mode === 'FOLLOW') {
-      const dr = await rpc('give_to_player', { filter: 'all', count: 512 });
-      if (dr && dr.flyingToPlayer) {
-        await _waitIdle(60000);
-      }
-    }
-  }
+  return;
 }
 
 function hsvToRgb(hDeg, s = 1, v = 1) {

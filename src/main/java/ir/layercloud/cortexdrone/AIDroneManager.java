@@ -14,6 +14,7 @@ import ir.layercloud.cortexdrone.codemode.SkillLibrary;
 import ir.layercloud.cortexdrone.command.DroneCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.harness.TaskCoordinator;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.inventory.ChestSorter;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
@@ -75,6 +76,7 @@ public class AIDroneManager {
     private final DroneTickCoordinator tickCoordinator;
     private final TickProfiler tickProfiler;
     private final DroneHttpServer httpServer;
+    private final TaskCoordinator taskCoordinator;
 
     private final AtomicInteger nextDroneId = new AtomicInteger(1);
     private final Map<Integer, DroneController> controllersById = new ConcurrentHashMap<Integer, DroneController>();
@@ -127,6 +129,7 @@ public class AIDroneManager {
         );
         this.tickProfiler = new TickProfiler(this.logger);
         this.httpServer = new DroneHttpServer(this, this.logger);
+        this.taskCoordinator = new TaskCoordinator(this);
     }
 
     public void onServerStarting(FMLServerStartingEvent event, File worldDir) {
@@ -136,7 +139,7 @@ public class AIDroneManager {
         loadConfig();
         this.chunkLoader.forceSavedStateChunks(this.config);
         reconnectUnlinkedWorldDrones();
-        this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION + " (Modular Pure Code Mode Engine) initialized", "worldDir=" + worldDir.getAbsolutePath());
+        this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION + " (Master-Tool Code Mode Harness) initialized", "worldDir=" + worldDir.getAbsolutePath());
 
         event.registerServerCommand(new DroneCommand("drone", this));
         event.registerServerCommand(new DroneCommand("ai", this));
@@ -209,6 +212,12 @@ public class AIDroneManager {
         ctrl.pathWaypoints.clear();
         ctrl.pathIndex = 0;
         ctrl.pathGoalX = Double.NaN;
+        if (newMode != Mode.GOTO) {
+            ctrl.navViaSurface = false;
+            ctrl.navFinalX = Double.NaN;
+            ctrl.navFinalY = Double.NaN;
+            ctrl.navFinalZ = Double.NaN;
+        }
         if (newMode != Mode.FOLLOW) {
             ctrl.hasAnchor = false;
         }
@@ -647,18 +656,6 @@ public class AIDroneManager {
     }
 
     public void handleNaturalInstruction(final EntityPlayerMP player, final DroneController ctrl, final String prompt) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70128_L) return;
-        final int myLoopId = ctrl.activeLoopId.incrementAndGet();
-        String senderName = player != null ? player.func_70005_c_() : ctrl.ownerName;
-        this.logger.log("CMD", ctrl, "Pure Code Mode instruction from " + senderName + " (loopId=" + myLoopId + ")", "prompt=\"" + prompt + "\"");
-
-        final JsonObject worldContext = this.agentService.buildDroneContextForLlm(player, ctrl);
-        ctrl.registerLoop(myLoopId);
-        CortexDroneMod.HTTP_POOL.submit(new Runnable() {
-            @Override
-            public void run() {
-                agentService.runAgentLoop(player, ctrl, prompt, worldContext, myLoopId);
-            }
-        });
+        this.taskCoordinator.handle(player, ctrl, prompt);
     }
 }

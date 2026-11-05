@@ -24,7 +24,7 @@ import net.minecraft.world.WorldServer;
  * Handles drone telemetry, chat, LED colors/effects, particle bursts,
  * musical notes/sound effects, and RLM skill library queries.
  */
-public class EffectActionService implements Action {
+public class EffectActionService implements Action<EffectActionContext> {
     private final AIDroneManager manager;
     private final LightingAura lightingAura;
 
@@ -41,6 +41,32 @@ public class EffectActionService implements Action {
         return new String[]{"set_led", "led_effect", "spawn_particles", "play_sound", "play_note", "say", "set_status_text"};
     }
 
+    @Override
+    public EffectActionContext createContext(DroneController ctrl, EntityPlayerMP player,
+                                             String operation) {
+        return new EffectActionContext(ctrl, player, operation);
+    }
+
+    /** Telemetry read used by {@code state}; not a mutating master operation. */
+    public JsonObject status(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
+        return invokeStandalone(ctrl, player, "get_drone", args);
+    }
+
+    /** Skill-library queries used by {@code skills}; not master operations. */
+    public JsonObject skills(DroneController ctrl, EntityPlayerMP player, String operation, JsonObject args) {
+        return invokeStandalone(ctrl, player, operation, args);
+    }
+
+    private JsonObject invokeStandalone(DroneController ctrl, EntityPlayerMP player,
+                                        String operation, JsonObject args) {
+        EffectActionContext context = new EffectActionContext(ctrl, player, operation);
+        try {
+            return handle(context, operation, args);
+        } finally {
+            context.complete();
+        }
+    }
+
     public JsonObject configureLight(DroneController ctrl, JsonObject args) {
         return this.lightingAura.configure(ctrl, args);
     }
@@ -53,9 +79,17 @@ public class EffectActionService implements Action {
         this.lightingAura.clearAura(ctrl);
     }
 
-    public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String m, JsonObject args) {
+    public JsonObject handle(EffectActionContext context, String m, JsonObject args) {
+        DroneController ctrl = context.controller();
+        EntityPlayerMP player = context.player();
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) {
+            res.addProperty("ok", false);
+            res.addProperty("error", "No active drone or world");
+            return res;
+        }
+        context.effect(m);
         Drone d = ctrl.drone;
         World world = d.field_70170_p;
 

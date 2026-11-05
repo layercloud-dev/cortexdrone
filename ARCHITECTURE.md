@@ -17,15 +17,24 @@ Removed from the tool surface:
 - the legacy tool-call fallback in the agent loop
 
 The entire `behavior` package was removed. Operational code now lives in the
-categorized `action` package behind the common `Action` interface and an
-`ActionRegistry` that resolves master operations to their owning category:
+categorized `action` package behind the generic `Action<C extends ActionContext>`
+interface and an `ActionRegistry` that resolves master operations to their
+owning category. Each category owns a context type that lives for one operation:
 
-- `action.movement.NavigationService` — route selection and breadcrumbs
-- `action.block.BlockActionService` — one-block break and one-block place
-- `action.interact.InteractionActionService` — block interaction and item use
-- `action.effect.EffectActionService` — LED, lighting aura, particles, sounds, notes, chat/status
+- `action.movement.MovementRpcAdapter` + `MovementActionContext` — route selection and breadcrumbs
+- `action.block.BlockActionService` + `BlockActionContext` — one-block break and one-block place
+- `action.interact.InteractionActionService` + `InteractionActionContext` — block interaction and item use
+- `action.effect.EffectActionService` + `EffectActionContext` — LED, lighting aura, particles, sounds, notes, chat/status
 - `action.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
+
+A context is active while its operation runs and is discarded when the call
+returns unless the action calls `retain()`. Retained contexts are ticked by
+`ActionRegistry` and removed when they complete: a movement context lives until
+the navigator arrives, changes mode or is replaced by a newer navigation
+generation; a block-break context lives until that exact block is no longer the
+active mining target. `AIDroneManager.clearActionState` cancels both controller
+state and all live contexts.
 
 Navigation services are split into `navigation/service`,
 `navigation/raytrace` and the immutable `navigation/NavContext` request

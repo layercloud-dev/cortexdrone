@@ -66,7 +66,7 @@ public class MasterRpcHandler implements RpcHandler {
     }
 
     private JsonObject state(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
-        JsonObject res = this.manager.getEffectService().handle(ctrl, player, "get_drone", args);
+        JsonObject res = this.manager.getEffectService().status(ctrl, player, args);
         String summary = ctrl.task.getSummary();
         res.addProperty("activeTask", ctrl.task.isActive());
         res.addProperty("taskPrompt", ctrl.task.getPrompt());
@@ -237,13 +237,13 @@ public class MasterRpcHandler implements RpcHandler {
         else if (op.equals("list")) method = "list_skills";
         else if (op.equals("save")) method = "save_skill";
         else return error("Unknown skills op: " + op);
-        return this.manager.getEffectService().handle(ctrl, player, method, args);
+        return this.manager.getEffectService().skills(ctrl, player, method, args);
     }
 
     private JsonObject cancel(DroneController ctrl, JsonObject args) {
         int callerLoopId = intValue(args, "loopId", 0);
         int cancelled = ctrl.cancelOtherLoops(callerLoopId);
-        ctrl.clearActionState();
+        this.manager.clearActionState(ctrl);
         ctrl.task.cancel();
         ctrl.navViaSurface = false;
         ctrl.navFinalX = Double.NaN;

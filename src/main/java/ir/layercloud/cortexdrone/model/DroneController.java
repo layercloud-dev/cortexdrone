@@ -25,6 +25,9 @@ public class DroneController {
     // Master navigation route selected by the AI: auto | direct | tunnel | up | down.
     // "up" routes via the surface first and then continues to the final goal.
     public String navigationRoute = "auto";
+    // Incremented for every accepted movement request. Action contexts use it
+    // to tell whether their navigation generation is still the live one.
+    public int navigationGeneration = 0;
     public boolean navViaSurface = false;
     public double navFinalX = Double.NaN;
     public double navFinalY = Double.NaN;

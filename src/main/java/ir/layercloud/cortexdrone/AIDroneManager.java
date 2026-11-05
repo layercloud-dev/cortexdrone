@@ -185,6 +185,13 @@ public class AIDroneManager {
         return resRef.get();
     }
 
+    /** Clears controller task state and every live action context. */
+    public void clearActionState(DroneController ctrl) {
+        if (ctrl == null) return;
+        this.actionRegistry.cancelAll(ctrl);
+        ctrl.clearActionState();
+    }
+
     public void setDroneMode(DroneController ctrl, Mode newMode, String reason) {
         if (ctrl == null) return;
         Mode old = ctrl.mode;
@@ -598,7 +605,7 @@ public class AIDroneManager {
         ctrl.goalX = gx;
         ctrl.goalY = gy;
         ctrl.goalZ = gz;
-        ctrl.clearActionState();
+        clearActionState(ctrl);
         setDroneMode(ctrl, Mode.GOTO, "Come in front of player for interaction");
         droneSay(player, ctrl, "Coming right in front of you and holding position so you can access my inventory!");
     }

@@ -33,7 +33,7 @@ import net.minecraft.world.WorldServer;
  * path used by the navigator's tunnel/self-rescue. There is no filter/count
  * search, no farming, no neighbour propagation and no AI instruction queue.
  */
-public class BlockActionService implements Action {
+public class BlockActionService implements Action<BlockActionContext> {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
@@ -67,12 +67,24 @@ public class BlockActionService implements Action {
     public String[] operations() { return new String[]{"break_block", "place_block"}; }
 
     @Override
-    public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String operation, JsonObject args) {
+    public BlockActionContext createContext(DroneController ctrl, EntityPlayerMP player,
+                                            String operation) {
+        return new BlockActionContext(ctrl, player, operation);
+    }
+
+    @Override
+    public JsonObject handle(BlockActionContext context, String operation, JsonObject args) {
+        DroneController ctrl = context.controller();
+        EntityPlayerMP player = context.player();
         JsonObject res = new JsonObject();
         if (args == null) args = new JsonObject();
         if ("break_block".equals(operation)) {
             if (!args.has("x") || !args.has("y") || !args.has("z")) { res.addProperty("ok", false); res.addProperty("error", "break_block requires x/y/z"); return res; }
-            boolean started = startSingleBlockTask(ctrl, player, args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
+            int x = args.get("x").getAsInt();
+            int y = args.get("y").getAsInt();
+            int z = args.get("z").getAsInt();
+            boolean started = startSingleBlockTask(ctrl, player, x, y, z);
+            if (started) context.trackBreak(x, y, z);
             res.addProperty("ok", started); res.addProperty("started", started);
             if (!started) res.addProperty("error", "Could not start single-block break");
             return res;

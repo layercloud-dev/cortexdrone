@@ -88,6 +88,7 @@ final class MovementSupport {
         double gx = target.x;
         double gy = target.y;
         double gz = target.z;
+        ctrl.navigationGeneration++;
         ctrl.navigationRoute = route;
         ctrl.navViaSurface = false;
         ctrl.navFinalX = Double.NaN;

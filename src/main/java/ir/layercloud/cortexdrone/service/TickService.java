@@ -122,6 +122,7 @@ public class TickService {
         }
 
         dispatchModeBehavior(ctrl, d, world, owner);
+        this.manager.getActionRegistry().tick(ctrl);
 
         if (ctrl.task.isActive() && ctrl.activeScriptCount.get() == 0 && !ctrl.hasActiveTaskOrLoop(0)) {
             ctrl.task.complete();

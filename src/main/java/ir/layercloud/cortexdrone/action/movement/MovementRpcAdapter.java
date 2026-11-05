@@ -13,7 +13,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * JsonObject: it parses arguments, calls typed executors and serializes their
  * MovementResult.
  */
-public class MovementRpcAdapter implements Action {
+public class MovementRpcAdapter implements Action<MovementActionContext> {
     private final MovementActionRegistry actions = new MovementActionRegistry();
 
     public MovementRpcAdapter(AIDroneManager manager) {
@@ -33,9 +33,17 @@ public class MovementRpcAdapter implements Action {
     }
 
     @Override
-    public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String operation, JsonObject args) {
-        MovementRequest request = parse(ctrl, player, args);
-        return toJson(this.actions.execute(operation, request));
+    public MovementActionContext createContext(DroneController ctrl, EntityPlayerMP player,
+                                               String operation) {
+        return new MovementActionContext(ctrl, player, operation);
+    }
+
+    @Override
+    public JsonObject handle(MovementActionContext context, String operation, JsonObject args) {
+        MovementRequest request = parse(context.controller(), context.player(), args);
+        MovementResult result = this.actions.execute(operation, request);
+        context.markStarted(result);
+        return toJson(result);
     }
 
     private static MovementRequest parse(DroneController ctrl, EntityPlayerMP player, JsonObject args) {

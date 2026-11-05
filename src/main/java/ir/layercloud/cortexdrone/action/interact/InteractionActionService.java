@@ -26,7 +26,7 @@ import net.minecraft.world.World;
  * surface: the AI composes them from navigate + break/place/interact/use.
  */
 @RequiredArgsConstructor
-public class InteractionActionService implements Action {
+public class InteractionActionService implements Action<InteractionActionContext> {
     private final InventoryService inventoryService;
 
     @Override
@@ -36,7 +36,15 @@ public class InteractionActionService implements Action {
     public String[] operations() { return new String[]{"interact_block", "use_item"}; }
 
     @Override
-    public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String m, JsonObject args) {
+    public InteractionActionContext createContext(DroneController ctrl, EntityPlayerMP player,
+                                                  String operation) {
+        return new InteractionActionContext(ctrl, player, operation);
+    }
+
+    @Override
+    public JsonObject handle(InteractionActionContext context, String m, JsonObject args) {
+        DroneController ctrl = context.controller();
+        EntityPlayerMP player = context.player();
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);
         if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) {
@@ -57,6 +65,7 @@ public class InteractionActionService implements Action {
                 return res;
             }
             int x = args.get("x").getAsInt(), y = args.get("y").getAsInt(), z = args.get("z").getAsInt();
+            context.targetBlock(x, y, z);
             Block b = world.func_147439_a(x, y, z);
             if (ItemClassifier.isLiquidBlock(b) && world.func_72805_g(x, y, z) == 0) {
                 boolean scooped = this.inventoryService.scoopLiquidAt(world, ctrl, player, x, y, z);
@@ -93,6 +102,9 @@ public class InteractionActionService implements Action {
                 return res;
             }
             if (args.has("entityId") || args.has("attack")) {
+                int entityId = args.has("entityId") ? args.get("entityId").getAsInt()
+                    : args.get("attack").getAsInt();
+                context.targetEntity(entityId);
                 return attackEntity(ctrl, d, world, fakePlayer, args);
             }
             int slot = args.has("slot") && !args.get("slot").isJsonNull()

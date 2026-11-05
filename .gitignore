@@ -1,0 +1,5 @@
+classes/
+mods/
+*.jar
+*.log
+*.class

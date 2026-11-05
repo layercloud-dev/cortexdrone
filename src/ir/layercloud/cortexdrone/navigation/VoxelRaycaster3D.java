@@ -1,0 +1,219 @@
+package ir.layercloud.cortexdrone.navigation;
+
+import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.world.ItemClassifier;
+import net.minecraft.block.Block;
+import net.minecraft.util.MathHelper;
+import net.minecraft.world.World;
+
+/**
+ * Amanatides & Woo (1987) "A Fast Voxel Traversal Algorithm for Ray Tracing" (3D DDA).
+ * Visits every voxel intersected by a 3D ray in exact order without oversampling or skipping corners,
+ * and tracks the exact entry face normal (faceX, faceY, faceZ).
+ */
+public final class VoxelRaycaster3D {
+    private VoxelRaycaster3D() {
+    }
+
+    /**
+     * Exact 3D DDA line-of-sight passability check using ChunkCacheContext (for Theta* pathfinding).
+     */
+    public static boolean isLineClear(ChunkCacheContext bsi, double x0, double y0, double z0, double x1, double y1, double z1) {
+        int x = MathHelper.func_76128_c(x0);
+        int y = MathHelper.func_76128_c(y0);
+        int z = MathHelper.func_76128_c(z0);
+        int endX = MathHelper.func_76128_c(x1);
+        int endY = MathHelper.func_76128_c(y1);
+        int endZ = MathHelper.func_76128_c(z1);
+
+        if (x == endX && y == endY && z == endZ) {
+            return bsi.isPassable(x, y, z);
+        }
+
+        double dx = x1 - x0;
+        double dy = y1 - y0;
+        double dz = z1 - z0;
+
+        int stepX = dx > 0.0 ? 1 : (dx < 0.0 ? -1 : 0);
+        int stepY = dy > 0.0 ? 1 : (dy < 0.0 ? -1 : 0);
+        int stepZ = dz > 0.0 ? 1 : (dz < 0.0 ? -1 : 0);
+
+        double tDeltaX = stepX != 0 ? Math.abs(1.0 / dx) : Double.MAX_VALUE;
+        double tDeltaY = stepY != 0 ? Math.abs(1.0 / dy) : Double.MAX_VALUE;
+        double tDeltaZ = stepZ != 0 ? Math.abs(1.0 / dz) : Double.MAX_VALUE;
+
+        double tMaxX = stepX > 0 ? (x + 1.0 - x0) * tDeltaX : (stepX < 0 ? (x0 - x) * tDeltaX : Double.MAX_VALUE);
+        double tMaxY = stepY > 0 ? (y + 1.0 - y0) * tDeltaY : (stepY < 0 ? (y0 - y) * tDeltaY : Double.MAX_VALUE);
+        double tMaxZ = stepZ > 0 ? (z + 1.0 - z0) * tDeltaZ : (stepZ < 0 ? (z0 - z) * tDeltaZ : Double.MAX_VALUE);
+
+        int maxSteps = Math.abs(endX - x) + Math.abs(endY - y) + Math.abs(endZ - z) + 3;
+        for (int step = 0; step < maxSteps; step++) {
+            if (!bsi.isPassable(x, y, z)) {
+                return false;
+            }
+            if (x == endX && y == endY && z == endZ) {
+                return true;
+            }
+            if (tMaxX < tMaxY && tMaxX < tMaxZ) {
+                x += stepX;
+                tMaxX += tDeltaX;
+            } else if (tMaxY < tMaxZ) {
+                y += stepY;
+                tMaxY += tDeltaY;
+            } else {
+                z += stepZ;
+                tMaxZ += tDeltaZ;
+            }
+        }
+        return bsi.isPassable(endX, endY, endZ);
+    }
+
+    /**
+     * Fat-ray line-of-sight: runs the exact DDA along the center ray AND six offset rays so a
+     * smoothed flight segment can never graze through a solid corner of the drone's 0.72-block
+     * corridor. Use this for Theta* shortcutting - the center-line check alone let the drone clip
+     * deepslate/obsidian walls when A* said "COMPLETE" and velocity was then hard-blocked.
+     */
+    public static boolean isFatLineClear(ChunkCacheContext bsi, double x0, double y0, double z0, double x1, double y1, double z1) {
+        double[][] offsets = new double[][]{{0.30, 0.0, 0.0}, {-0.30, 0.0, 0.0}, {0.0, 0.0, 0.30}, {0.0, 0.0, -0.30}, {0.0, 0.28, 0.0}, {0.0, -0.22, 0.0}};
+        for (double[] o : offsets) {
+            if (!isLineClear(bsi, x0 + o[0], y0 + o[1], z0 + o[2], x1 + o[0], y1 + o[1], z1 + o[2])) {
+                return false;
+            }
+        }
+        return isLineClear(bsi, x0, y0, z0, x1, y1, z1);
+    }
+
+    /**
+     * Fat-ray line-of-sight directly against World (used for the final waypoint shortcut).
+     */
+    public static boolean isFatLineClear(World world, double x0, double y0, double z0, double x1, double y1, double z1) {
+        double[][] offsets = new double[][]{{0.30, 0.0, 0.0}, {-0.30, 0.0, 0.0}, {0.0, 0.0, 0.30}, {0.0, 0.0, -0.30}, {0.0, 0.28, 0.0}, {0.0, -0.22, 0.0}};
+        for (double[] o : offsets) {
+            if (!isLineClear(world, x0 + o[0], y0 + o[1], z0 + o[2], x1 + o[0], y1 + o[1], z1 + o[2])) {
+                return false;
+            }
+        }
+        return isLineClear(world, x0, y0, z0, x1, y1, z1);
+    }
+
+    /**
+     * Exact 3D DDA line-of-sight passability check directly against World.
+     */
+    public static boolean isLineClear(World world, double x0, double y0, double z0, double x1, double y1, double z1) {
+        int x = MathHelper.func_76128_c(x0);
+        int y = MathHelper.func_76128_c(y0);
+        int z = MathHelper.func_76128_c(z0);
+        int endX = MathHelper.func_76128_c(x1);
+        int endY = MathHelper.func_76128_c(y1);
+        int endZ = MathHelper.func_76128_c(z1);
+
+        if (x == endX && y == endY && z == endZ) {
+            return ItemClassifier.isPassableVoxel(world, x, y, z);
+        }
+
+        double dx = x1 - x0;
+        double dy = y1 - y0;
+        double dz = z1 - z0;
+
+        int stepX = dx > 0.0 ? 1 : (dx < 0.0 ? -1 : 0);
+        int stepY = dy > 0.0 ? 1 : (dy < 0.0 ? -1 : 0);
+        int stepZ = dz > 0.0 ? 1 : (dz < 0.0 ? -1 : 0);
+
+        double tDeltaX = stepX != 0 ? Math.abs(1.0 / dx) : Double.MAX_VALUE;
+        double tDeltaY = stepY != 0 ? Math.abs(1.0 / dy) : Double.MAX_VALUE;
+        double tDeltaZ = stepZ != 0 ? Math.abs(1.0 / dz) : Double.MAX_VALUE;
+
+        double tMaxX = stepX > 0 ? (x + 1.0 - x0) * tDeltaX : (stepX < 0 ? (x0 - x) * tDeltaX : Double.MAX_VALUE);
+        double tMaxY = stepY > 0 ? (y + 1.0 - y0) * tDeltaY : (stepY < 0 ? (y0 - y) * tDeltaY : Double.MAX_VALUE);
+        double tMaxZ = stepZ > 0 ? (z + 1.0 - z0) * tDeltaZ : (stepZ < 0 ? (z0 - z) * tDeltaZ : Double.MAX_VALUE);
+
+        int maxSteps = Math.abs(endX - x) + Math.abs(endY - y) + Math.abs(endZ - z) + 3;
+        for (int step = 0; step < maxSteps; step++) {
+            if (!ItemClassifier.isPassableVoxel(world, x, y, z)) {
+                return false;
+            }
+            if (x == endX && y == endY && z == endZ) {
+                return true;
+            }
+            if (tMaxX < tMaxY && tMaxX < tMaxZ) {
+                x += stepX;
+                tMaxX += tDeltaX;
+            } else if (tMaxY < tMaxZ) {
+                y += stepY;
+                tMaxY += tDeltaY;
+            } else {
+                z += stepZ;
+                tMaxZ += tDeltaZ;
+            }
+        }
+        return ItemClassifier.isPassableVoxel(world, endX, endY, endZ);
+    }
+
+    /**
+     * Exact 3D DDA voxel raycast returning the first solid non-liquid block hit and the adjacent air face.
+     */
+    public static JsonObject raycastSolidBlock(World world, double eyeX, double eyeY, double eyeZ, double dirX, double dirY, double dirZ, double maxDist) {
+        if (world == null) return null;
+        double limit = Math.min(128.0, Math.max(4.0, maxDist));
+        int x = MathHelper.func_76128_c(eyeX);
+        int y = MathHelper.func_76128_c(eyeY);
+        int z = MathHelper.func_76128_c(eyeZ);
+
+        int stepX = dirX > 0.0 ? 1 : (dirX < 0.0 ? -1 : 0);
+        int stepY = dirY > 0.0 ? 1 : (dirY < 0.0 ? -1 : 0);
+        int stepZ = dirZ > 0.0 ? 1 : (dirZ < 0.0 ? -1 : 0);
+
+        double tDeltaX = stepX != 0 ? Math.abs(1.0 / dirX) : Double.MAX_VALUE;
+        double tDeltaY = stepY != 0 ? Math.abs(1.0 / dirY) : Double.MAX_VALUE;
+        double tDeltaZ = stepZ != 0 ? Math.abs(1.0 / dirZ) : Double.MAX_VALUE;
+
+        double tMaxX = stepX > 0 ? (x + 1.0 - eyeX) * tDeltaX : (stepX < 0 ? (eyeX - x) * tDeltaX : Double.MAX_VALUE);
+        double tMaxY = stepY > 0 ? (y + 1.0 - eyeY) * tDeltaY : (stepY < 0 ? (eyeY - y) * tDeltaY : Double.MAX_VALUE);
+        double tMaxZ = stepZ > 0 ? (z + 1.0 - eyeZ) * tDeltaZ : (stepZ < 0 ? (eyeZ - z) * tDeltaZ : Double.MAX_VALUE);
+
+        int prevX = x, prevY = y, prevZ = z;
+        double dist = 0.0;
+        int maxSteps = (int) Math.ceil(limit * 3.0) + 4;
+
+        for (int step = 0; step < maxSteps && dist <= limit; step++) {
+            if (y > 0 && y < 255 && !world.func_147437_c(x, y, z)) {
+                Block b = world.func_147439_a(x, y, z);
+                if (b != null && !ItemClassifier.isLiquidBlock(b)) {
+                    int meta = world.func_72805_g(x, y, z);
+                    JsonObject hit = new JsonObject();
+                    hit.addProperty("x", x);
+                    hit.addProperty("y", y);
+                    hit.addProperty("z", z);
+                    hit.addProperty("name", ItemClassifier.getBlockDisplayName(b, meta));
+                    String reg = Block.field_149771_c.func_148750_c(b);
+                    hit.addProperty("registryName", reg != null ? reg : "");
+                    hit.addProperty("id", Block.func_149682_b(b));
+                    hit.addProperty("meta", meta);
+                    hit.addProperty("distance", Math.round(dist * 10.0) / 10.0);
+                    hit.addProperty("faceX", prevX);
+                    hit.addProperty("faceY", prevY);
+                    hit.addProperty("faceZ", prevZ);
+                    return hit;
+                }
+            }
+            prevX = x;
+            prevY = y;
+            prevZ = z;
+            if (tMaxX < tMaxY && tMaxX < tMaxZ) {
+                dist = tMaxX;
+                x += stepX;
+                tMaxX += tDeltaX;
+            } else if (tMaxY < tMaxZ) {
+                dist = tMaxY;
+                y += stepY;
+                tMaxY += tDeltaY;
+            } else {
+                dist = tMaxZ;
+                z += stepZ;
+                tMaxZ += tDeltaZ;
+            }
+        }
+        return null;
+    }
+}

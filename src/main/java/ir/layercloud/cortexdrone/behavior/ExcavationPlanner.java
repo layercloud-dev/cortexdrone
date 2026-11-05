@@ -57,6 +57,7 @@ public class ExcavationPlanner {
         ctrl.currentMineStandoff = null;
         ctrl.mineProgressTicks = 0;
         ctrl.minedCount = 0;
+        ctrl.mineMatchedCount = 0;
 
         int px = MathHelper.func_76128_c(player != null ? player.field_70165_t : d.field_70165_t);
         int py = MathHelper.func_76128_c(player != null ? player.field_70163_u : d.field_70163_u);
@@ -128,6 +129,7 @@ public class ExcavationPlanner {
         ctrl.currentMineStandoff = null;
         ctrl.mineProgressTicks = 0;
         ctrl.minedCount = 0;
+        ctrl.mineMatchedCount = 0;
 
         for (int cx = (minX >> 4); cx <= (maxX >> 4); cx++) {
             for (int cz = (minZ >> 4); cz <= (maxZ >> 4); cz++) {
@@ -184,6 +186,7 @@ public class ExcavationPlanner {
         ctrl.currentMineStandoff = null;
         ctrl.mineProgressTicks = 0;
         ctrl.minedCount = 0;
+        ctrl.mineMatchedCount = 0;
 
         if (MiningService.isNumericFilter(target)) {
             int size = Math.min(11, Math.max(1, Integer.parseInt(target)));

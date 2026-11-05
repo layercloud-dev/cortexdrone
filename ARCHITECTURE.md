@@ -31,9 +31,10 @@ Navigation services are split into `navigation/service`,
 `navigation/raytrace` and the immutable `navigation/NavContext` request
 snapshot. Movement actions stay in `action/movement` and call those services:
 `NavigateAction`, `TunnelAction`, `DigUpAction`, `DigDownAction` and
-`BreadcrumbAction`. Path planning, escape and transport services consume a
-`NavContext` instead of mixing mutable controller fields from different
-requests.
+`BreadcrumbAction`. They are typed `MovementAction` executors returning
+`MovementResult`; `MovementRpcAdapter` is the only JSON boundary. Path planning,
+escape and transport services consume a `NavContext` instead of mixing mutable
+controller fields from different requests.
 
 The legacy one-shot executors (`AnvilService`, `MachineCraftExecutor`,
 `SmeltingService`, `ChestSorter`) and their batch queues (fluid scoop/place,

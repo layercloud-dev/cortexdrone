@@ -582,18 +582,18 @@ final class MachineRecipeParser {
 
     static String displayNameFor(String reg, int meta) {
         try {
-            Item item = (Item) Item.field_150901_e.func_82594_a(reg);
+            Item item = (Item) Item.itemRegistry.getObject(reg);
             if (item != null) {
                 ItemStack st = new ItemStack(item, 1, meta);
-                return st.func_82833_r();
+                return st.getDisplayName();
             }
-            Object blockObj = net.minecraft.block.Block.field_149771_c.func_82594_a(reg);
+            Object blockObj = net.minecraft.block.Block.blockRegistry.getObject(reg);
             if (blockObj instanceof net.minecraft.block.Block) {
                 net.minecraft.block.Block b = (net.minecraft.block.Block) blockObj;
-                Item item2 = Item.func_150898_a(b);
+                Item item2 = Item.getItemFromBlock(b);
                 if (item2 != null) {
                     ItemStack st = new ItemStack(item2, 1, meta);
-                    return st.func_82833_r();
+                    return st.getDisplayName();
                 }
             }
         } catch (Throwable ignored) {

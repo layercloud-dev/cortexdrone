@@ -315,14 +315,14 @@ public class DroneHttpServer {
         EntityPlayerMP player = playerName != null ? CortexDroneMod.findPlayer(playerName) : null;
 
         if (player == null) {
-            MinecraftServer srv = MinecraftServer.func_71276_C();
-            if (srv != null && srv.func_71203_ab() != null && srv.func_71203_ab().field_72404_b != null
-                && !srv.func_71203_ab().field_72404_b.isEmpty()) {
-                Object first = srv.func_71203_ab().field_72404_b.get(0);
+            MinecraftServer srv = MinecraftServer.getServer();
+            if (srv != null && srv.getConfigurationManager() != null && srv.getConfigurationManager().playerEntityList != null
+                && !srv.getConfigurationManager().playerEntityList.isEmpty()) {
+                Object first = srv.getConfigurationManager().playerEntityList.get(0);
                 if (first instanceof EntityPlayerMP) {
                     player = (EntityPlayerMP) first;
                     if (playerName == null) {
-                        playerName = player.func_70005_c_();
+                        playerName = player.getCommandSenderName();
                     }
                 }
             }
@@ -347,25 +347,25 @@ public class DroneHttpServer {
                 res.addProperty("name", ctrl.name);
                 return res;
             }
-            MinecraftServer srv = MinecraftServer.func_71276_C();
-            if (srv != null && srv.field_71305_c != null && srv.field_71305_c.length > 0 && srv.field_71305_c[0] != null) {
-                WorldServer ws = srv.field_71305_c[0];
-                double sx = req.has("x") ? req.get("x").getAsDouble() : ws.func_72861_E().field_71574_a + 0.5;
-                double sy = req.has("y") ? req.get("y").getAsDouble() : ws.func_72861_E().field_71572_b + 2.0;
-                double sz = req.has("z") ? req.get("z").getAsDouble() : ws.func_72861_E().field_71573_c + 0.5;
+            MinecraftServer srv = MinecraftServer.getServer();
+            if (srv != null && srv.worldServers != null && srv.worldServers.length > 0 && srv.worldServers[0] != null) {
+                WorldServer ws = srv.worldServers[0];
+                double sx = req.has("x") ? req.get("x").getAsDouble() : ws.getSpawnPoint().posX + 0.5;
+                double sy = req.has("y") ? req.get("y").getAsDouble() : ws.getSpawnPoint().posY + 2.0;
+                double sz = req.has("z") ? req.get("z").getAsDouble() : ws.getSpawnPoint().posZ + 0.5;
                 Drone drone = new Drone(ws);
                 String dName = customName != null ? customName : "AI-Drone";
                 String owner = explicitPlayer && playerName != null ? playerName : "Server";
                 drone.setName(dName);
                 drone.ownerName_$eq(owner);
-                drone.func_70107_b(sx, sy, sz);
+                drone.setPosition(sx, sy, sz);
                 drone.preparePowerUp();
                 drone.inventorySize_$eq(8);
                 drone.lightColor_$eq(0x00FFFF);
                 drone.statusText_$eq("AI Ready");
                 FlightPathfinder.setDroneFlightTarget(drone, sx, sy, sz, 0.1f);
                 this.manager.ensureMachineRunningState(drone);
-                ws.func_72838_d(drone);
+                ws.spawnEntityInWorld(drone);
                 DroneController ctrl = this.manager.registerDroneController(drone, dName, owner);
                 ctrl.mode = Mode.STAY;
                 this.manager.saveConfig();

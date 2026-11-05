@@ -45,7 +45,7 @@ public class MasterRpcHandler implements RpcHandler {
     @Override
     public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String m, JsonObject args) {
         if (args == null) args = new JsonObject();
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) {
             return error("No active drone or world");
         }
         if ("state".equals(m)) return state(ctrl, player, args);
@@ -78,9 +78,9 @@ public class MasterRpcHandler implements RpcHandler {
         for (String note : ctrl.task.getNotes()) notes.add(new JsonPrimitive(note));
         res.add("taskNotes", notes);
         double distGoal = Double.isNaN(ctrl.goalX) ? -1.0
-            : Math.sqrt((ctrl.drone.field_70165_t - ctrl.goalX) * (ctrl.drone.field_70165_t - ctrl.goalX)
-                + (ctrl.drone.field_70163_u - ctrl.goalY) * (ctrl.drone.field_70163_u - ctrl.goalY)
-                + (ctrl.drone.field_70161_v - ctrl.goalZ) * (ctrl.drone.field_70161_v - ctrl.goalZ));
+            : Math.sqrt((ctrl.drone.posX - ctrl.goalX) * (ctrl.drone.posX - ctrl.goalX)
+                + (ctrl.drone.posY - ctrl.goalY) * (ctrl.drone.posY - ctrl.goalY)
+                + (ctrl.drone.posZ - ctrl.goalZ) * (ctrl.drone.posZ - ctrl.goalZ));
         res.addProperty("distanceToGoal", Math.round(distGoal * 100.0) / 100.0);
         res.addProperty("arrived", ctrl.mode != Mode.GOTO || (distGoal >= 0.0 && distGoal <= 1.0));
         if (ctrl.currentMineTarget != null) {
@@ -135,11 +135,11 @@ public class MasterRpcHandler implements RpcHandler {
         int x = intValue(args, "x", 0);
         int y = intValue(args, "y", 0);
         int z = intValue(args, "z", 0);
-        World world = ctrl.drone.field_70170_p;
+        World world = ctrl.drone.worldObj;
         if (!ItemClassifier.isMineableBlock(world, x, y, z)) {
             return error("Block at (" + x + "," + y + "," + z + ") is not mineable/air");
         }
-        double dist = ctrl.drone.func_70011_f(x + 0.5, y + 0.5, z + 0.5);
+        double dist = ctrl.drone.getDistance(x + 0.5, y + 0.5, z + 0.5);
         if (dist > REACH) {
             JsonObject res = needsMovement(ctrl, x, y, z, "break", dist);
             if (res != null) return res;
@@ -154,11 +154,11 @@ public class MasterRpcHandler implements RpcHandler {
         int x = intValue(args, "x", 0);
         int y = intValue(args, "y", 0);
         int z = intValue(args, "z", 0);
-        World world = ctrl.drone.field_70170_p;
+        World world = ctrl.drone.worldObj;
         if (!ItemClassifier.isReplaceableBlock(world, x, y, z)) {
             return error("Target (" + x + "," + y + "," + z + ") is already occupied/protected");
         }
-        double dist = ctrl.drone.func_70011_f(x + 0.5, y + 0.5, z + 0.5);
+        double dist = ctrl.drone.getDistance(x + 0.5, y + 0.5, z + 0.5);
         if (dist > REACH) {
             JsonObject res = needsMovement(ctrl, x, y, z, "place", dist);
             if (res != null) return res;
@@ -176,7 +176,7 @@ public class MasterRpcHandler implements RpcHandler {
         int x = intValue(args, "x", 0);
         int y = intValue(args, "y", 0);
         int z = intValue(args, "z", 0);
-        double dist = ctrl.drone.func_70011_f(x + 0.5, y + 0.5, z + 0.5);
+        double dist = ctrl.drone.getDistance(x + 0.5, y + 0.5, z + 0.5);
         if (dist > REACH) {
             JsonObject res = needsMovement(ctrl, x, y, z, "interact", dist);
             if (res != null) return res;
@@ -189,7 +189,7 @@ public class MasterRpcHandler implements RpcHandler {
             int x = intValue(args, "x", 0);
             int y = intValue(args, "y", 0);
             int z = intValue(args, "z", 0);
-            double dist = ctrl.drone.func_70011_f(x + 0.5, y + 0.5, z + 0.5);
+            double dist = ctrl.drone.getDistance(x + 0.5, y + 0.5, z + 0.5);
             if (dist > REACH) {
                 JsonObject res = needsMovement(ctrl, x, y, z, "use", dist);
                 if (res != null) return res;
@@ -249,9 +249,9 @@ public class MasterRpcHandler implements RpcHandler {
         ctrl.navFinalX = Double.NaN;
         ctrl.navFinalY = Double.NaN;
         ctrl.navFinalZ = Double.NaN;
-        ctrl.goalX = ctrl.drone.field_70165_t;
-        ctrl.goalY = ctrl.drone.field_70163_u;
-        ctrl.goalZ = ctrl.drone.field_70161_v;
+        ctrl.goalX = ctrl.drone.posX;
+        ctrl.goalY = ctrl.drone.posY;
+        ctrl.goalZ = ctrl.drone.posZ;
         this.manager.setDroneMode(ctrl, Mode.STAY, "Master cancel");
         JsonObject res = ok();
         res.addProperty("cancelled", true);
@@ -260,7 +260,7 @@ public class MasterRpcHandler implements RpcHandler {
     }
 
     private JsonObject needsMovement(DroneController ctrl, int x, int y, int z, String action, double dist) {
-        World world = ctrl.drone.field_70170_p;
+        World world = ctrl.drone.worldObj;
         double[] st = FlightPathfinder.findMiningStandoff(world, ctrl.drone, x, y, z);
         if (st == null) {
             int[] open = FlightPathfinder.findNearestPassableVoxel(world, x, y + 1, z, 3);

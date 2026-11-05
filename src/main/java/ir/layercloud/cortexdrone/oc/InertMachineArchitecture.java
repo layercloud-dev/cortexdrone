@@ -75,6 +75,6 @@ public final class InertMachineArchitecture implements Architecture {
     @Override
     public void save(NBTTagCompound nbt) {
         // inert: replaces the upstream NPE dereference with a clean save
-        nbt.func_74778_a("cortexdrone_inert_architecture", "1");
+        nbt.setString("cortexdrone_inert_architecture", "1");
     }
 }

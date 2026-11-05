@@ -41,14 +41,14 @@ public final class MovementActionContext extends ActionContextBase {
     @Override
     protected void onTick() {
         DroneController ctrl = controller();
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70128_L) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.isDead) {
             complete();
             return;
         }
         this.ticks++;
-        this.lastX = ctrl.drone.field_70165_t;
-        this.lastY = ctrl.drone.field_70163_u;
-        this.lastZ = ctrl.drone.field_70161_v;
+        this.lastX = ctrl.drone.posX;
+        this.lastY = ctrl.drone.posY;
+        this.lastZ = ctrl.drone.posZ;
         double dx = this.lastX - this.goalX;
         double dy = this.lastY - this.goalY;
         double dz = this.lastZ - this.goalZ;

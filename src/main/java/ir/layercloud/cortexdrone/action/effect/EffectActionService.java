@@ -84,14 +84,14 @@ public class EffectActionService implements Action<EffectActionContext> {
         EntityPlayerMP player = context.player();
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) {
             res.addProperty("ok", false);
             res.addProperty("error", "No active drone or world");
             return res;
         }
         context.effect(m);
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
+        World world = d.worldObj;
 
         if (m.equals("get_drone")) {
             if (args.has("loopId") && args.get("loopId").getAsInt() > 0 && ctrl.isLoopCancelled(args.get("loopId").getAsInt())) {
@@ -101,9 +101,9 @@ public class EffectActionService implements Action<EffectActionContext> {
             res.addProperty("name", ctrl.name);
             res.addProperty("owner", ctrl.ownerName);
             res.addProperty("lastThought", ctrl.lastThought != null ? ctrl.lastThought : "");
-            res.addProperty("x", d.field_70165_t);
-            res.addProperty("y", d.field_70163_u);
-            res.addProperty("z", d.field_70161_v);
+            res.addProperty("x", d.posX);
+            res.addProperty("y", d.posY);
+            res.addProperty("z", d.posZ);
             res.addProperty("mode", ctrl.mode.name());
             res.addProperty("lightActive", ctrl.autoTorch);
             res.addProperty("lightRadius", ctrl.lightRadius);
@@ -125,11 +125,11 @@ public class EffectActionService implements Action<EffectActionContext> {
             int usedSlots = 0;
             int totalItems = 0;
             if (inv != null) {
-                for (int i = 0; i < inv.func_70302_i_(); i++) {
-                    ItemStack st = inv.func_70301_a(i);
-                    if (st != null && st.field_77994_a > 0) {
+                for (int i = 0; i < inv.getSizeInventory(); i++) {
+                    ItemStack st = inv.getStackInSlot(i);
+                    if (st != null && st.stackSize > 0) {
                         usedSlots++;
-                        totalItems += st.field_77994_a;
+                        totalItems += st.stackSize;
                         invArr.add(ItemClassifier.itemStackToJson(i, st));
                     }
                 }
@@ -231,9 +231,9 @@ public class EffectActionService implements Action<EffectActionContext> {
             int count = args.has("count") ? Math.min(80, Math.max(1, args.get("count").getAsInt())) : 12;
             double spread = args.has("spread") ? args.get("spread").getAsDouble() : 0.35;
             double speed = args.has("speed") ? args.get("speed").getAsDouble() : 0.05;
-            double px = args.has("x") ? args.get("x").getAsDouble() : d.field_70165_t;
-            double py = args.has("y") ? args.get("y").getAsDouble() : (d.field_70163_u + 0.35);
-            double pz = args.has("z") ? args.get("z").getAsDouble() : d.field_70161_v;
+            double px = args.has("x") ? args.get("x").getAsDouble() : d.posX;
+            double py = args.has("y") ? args.get("y").getAsDouble() : (d.posY + 0.35);
+            double pz = args.has("z") ? args.get("z").getAsDouble() : d.posZ;
             if (world instanceof WorldServer) {
                 ((WorldServer) world).func_147487_a(type, px, py, pz, count, spread, spread, spread, speed);
             }
@@ -255,7 +255,7 @@ public class EffectActionService implements Action<EffectActionContext> {
             } else {
                 pitch = args.has("pitch") ? args.get("pitch").getAsFloat() : 1.0f;
             }
-            world.func_72908_a(d.field_70165_t, d.field_70163_u, d.field_70161_v, sound, volume, pitch);
+            world.playSoundEffect(d.posX, d.posY, d.posZ, sound, volume, pitch);
             res.addProperty("sound", sound);
             res.addProperty("pitch", pitch);
             return res;

@@ -88,7 +88,7 @@ final class AgentHeartbeat {
         if (this.emptyResponses > 3) return false;
         this.logger.log("HEARTBEAT", this.ctrl, "Retrying loop " + this.loopId + " after backend failure",
             "attempt=" + this.emptyResponses + " turn=" + turn);
-        return this.ctrl.drone != null && !this.ctrl.drone.field_70128_L;
+        return this.ctrl.drone != null && !this.ctrl.drone.isDead;
     }
 
     /**
@@ -131,7 +131,7 @@ final class AgentHeartbeat {
                 "turns=" + this.lastTurn + " hadProgress=" + this.hadProgress);
             return;
         }
-        if (this.ctrl == null || this.ctrl.drone == null || this.ctrl.drone.field_70128_L) return;
+        if (this.ctrl == null || this.ctrl.drone == null || this.ctrl.drone.isDead) return;
         if (this.ctrl.isLoopCancelled(this.loopId)) {
             this.logger.log("HEARTBEAT", this.ctrl, "Loop " + this.loopId + " was cancelled; no resurrection", "");
             return;
@@ -171,7 +171,7 @@ final class AgentHeartbeat {
                 } catch (InterruptedException ignored) {
                     return;
                 }
-                if (ctrl.drone == null || ctrl.drone.field_70128_L) return;
+                if (ctrl.drone == null || ctrl.drone.isDead) return;
                 if (ctrl.activeLoopId.get() != expectedGeneration) return;
                 logger.log("HEARTBEAT", ctrl, "Resurrecting abandoned job as a compacted continuation loop",
                     "fromLoop=" + loopId);
@@ -200,9 +200,9 @@ final class AgentHeartbeat {
         if (this.ctrl == null || this.ctrl.drone == null) return "drone unavailable";
         StringBuilder sb = new StringBuilder();
         sb.append("mode=").append(this.ctrl.mode != null ? this.ctrl.mode.name() : "?");
-        sb.append(" pos=(").append(Math.round(this.ctrl.drone.field_70165_t)).append(',')
-            .append(Math.round(this.ctrl.drone.field_70163_u)).append(',')
-            .append(Math.round(this.ctrl.drone.field_70161_v)).append(')');
+        sb.append(" pos=(").append(Math.round(this.ctrl.drone.posX)).append(',')
+            .append(Math.round(this.ctrl.drone.posY)).append(',')
+            .append(Math.round(this.ctrl.drone.posZ)).append(')');
         sb.append(" mineQueue=").append(this.ctrl.mineQueue.size());
         sb.append(" inventory=").append(countInventory()).append(" items");
         if (this.lastExec != null) {
@@ -224,9 +224,9 @@ final class AgentHeartbeat {
             net.minecraft.inventory.IInventory inv = this.ctrl.drone.mainInventory();
             if (inv == null) return 0;
             int total = 0;
-            for (int i = 0; i < inv.func_70302_i_(); i++) {
-                net.minecraft.item.ItemStack st = inv.func_70301_a(i);
-                if (st != null && st.field_77994_a > 0) total += st.field_77994_a;
+            for (int i = 0; i < inv.getSizeInventory(); i++) {
+                net.minecraft.item.ItemStack st = inv.getStackInSlot(i);
+                if (st != null && st.stackSize > 0) total += st.stackSize;
             }
             return total;
         } catch (Throwable ignored) {

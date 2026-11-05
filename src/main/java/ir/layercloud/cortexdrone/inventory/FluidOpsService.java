@@ -34,10 +34,10 @@ public class FluidOpsService {
     private static int countEmptyBuckets(IInventory inv) {
         if (inv == null) return 0;
         int count = 0;
-        for (int i = 0; i < inv.func_70302_i_(); i++) {
-            ItemStack st = inv.func_70301_a(i);
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
             if (isEmptyBucketStack(st)) {
-                count += st.field_77994_a;
+                count += st.stackSize;
             }
         }
         return count;
@@ -45,11 +45,11 @@ public class FluidOpsService {
 
     private static ItemStack findFirstEmptyContainer(IInventory inv) {
         if (inv == null) return null;
-        for (int i = 0; i < inv.func_70302_i_(); i++) {
-            ItemStack st = inv.func_70301_a(i);
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
             if (isEmptyBucketStack(st)) {
-                ItemStack single = st.func_77946_l();
-                single.field_77994_a = 1;
+                ItemStack single = st.copy();
+                single.stackSize = 1;
                 return single;
             }
         }
@@ -58,11 +58,11 @@ public class FluidOpsService {
 
     private static boolean consumeEmptyBucket(IInventory inv) {
         if (inv == null) return false;
-        for (int i = 0; i < inv.func_70302_i_(); i++) {
-            ItemStack st = inv.func_70301_a(i);
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
             if (isEmptyBucketStack(st)) {
-                inv.func_70298_a(i, 1);
-                inv.func_70296_d();
+                inv.decrStackSize(i, 1);
+                inv.markDirty();
                 return true;
             }
         }
@@ -77,21 +77,21 @@ public class FluidOpsService {
                     new FluidStack(fluid, FluidContainerRegistry.BUCKET_VOLUME),
                     emptyContainer
                 );
-                if (filled != null && filled.func_77973_b() != null) {
+                if (filled != null && filled.getItem() != null) {
                     return filled;
                 }
             } catch (Throwable ignored) {
             }
         }
-        boolean isLava = b.func_149688_o() == Material.field_151587_i || ItemClassifier.getBlockIdentifier(b).contains("lava");
-        Item fallback = (Item) Item.field_150901_e.func_82594_a(isLava ? "minecraft:lava_bucket" : "minecraft:water_bucket");
+        boolean isLava = b.getMaterial() == Material.lava || ItemClassifier.getBlockIdentifier(b).contains("lava");
+        Item fallback = (Item) Item.itemRegistry.getObject(isLava ? "minecraft:lava_bucket" : "minecraft:water_bucket");
         return fallback != null ? new ItemStack(fallback, 1, 0) : null;
     }
 
     public boolean scoopLiquidAt(World world, DroneController ctrl, EntityPlayerMP owner, int x, int y, int z) {
         if (world == null || ctrl == null || ctrl.drone == null) return false;
-        Block b = world.func_147439_a(x, y, z);
-        int meta = world.func_72805_g(x, y, z);
+        Block b = world.getBlock(x, y, z);
+        int meta = world.getBlockMetadata(x, y, z);
         if (!ItemClassifier.isLiquidBlock(b)) return false;
         if (b instanceof IFluidBlock) {
             if (!((IFluidBlock) b).canDrain(world, x, y, z)) return false;
@@ -116,17 +116,17 @@ public class FluidOpsService {
         if (b instanceof IFluidBlock) {
             ((IFluidBlock) b).drain(world, x, y, z, true);
         } else {
-            world.func_147468_f(x, y, z);
+            world.setBlockToAir(x, y, z);
         }
-        world.func_72908_a(x + 0.5, y + 0.5, z + 0.5, "game.neutral.swim", 0.6f, 1.0f);
+        world.playSoundEffect(x + 0.5, y + 0.5, z + 0.5, "game.neutral.swim", 0.6f, 1.0f);
 
         int ins = InventoryService.insertIntoInventory(inv, filledStack);
-        if (ins == 0 && owner != null && owner.field_71071_by != null) {
-            owner.field_71071_by.func_70441_a(filledStack);
+        if (ins == 0 && owner != null && owner.inventory != null) {
+            owner.inventory.addItemStackToInventory(filledStack);
             InventoryService.syncPlayerInventory(owner);
         }
         ctrl.scoopedCount++;
-        this.logger.log("SCOOP", ctrl, String.format("Scooped %s at (%d,%d,%d)", filledStack.func_82833_r(), x, y, z), "scooped=" + ctrl.scoopedCount);
+        this.logger.log("SCOOP", ctrl, String.format("Scooped %s at (%d,%d,%d)", filledStack.getDisplayName(), x, y, z), "scooped=" + ctrl.scoopedCount);
         return true;
     }
 }

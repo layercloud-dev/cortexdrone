@@ -57,9 +57,9 @@ public class ContainerSearchService {
         boolean matchAll = query.isEmpty() || query.equalsIgnoreCase("all") || query.equalsIgnoreCase("any") || query.equals("*");
         int r = Math.min(64, Math.max(4, radius));
 
-        List<TileEntity> tiles = this.inventoryService.findAllInventoryTiles(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, r);
-        if (owner != null && owner.field_70170_p == world) {
-            List<TileEntity> ownerTiles = this.inventoryService.findAllInventoryTiles(world, owner.field_70165_t, owner.field_70163_u, owner.field_70161_v, r);
+        List<TileEntity> tiles = this.inventoryService.findAllInventoryTiles(world, d.posX, d.posY, d.posZ, r);
+        if (owner != null && owner.worldObj == world) {
+            List<TileEntity> ownerTiles = this.inventoryService.findAllInventoryTiles(world, owner.posX, owner.posY, owner.posZ, r);
             for (TileEntity ote : ownerTiles) {
                 if (!tiles.contains(ote)) {
                     tiles.add(ote);
@@ -74,8 +74,8 @@ public class ContainerSearchService {
         for (TileEntity te : tiles) {
             if (!(te instanceof IInventory)) continue;
             IInventory inv = (IInventory) te;
-            int bx = te.field_145851_c, by = te.field_145848_d, bz = te.field_145849_e;
-            int totalSlots = inv.func_70302_i_();
+            int bx = te.xCoord, by = te.yCoord, bz = te.zCoord;
+            int totalSlots = inv.getSizeInventory();
             int usedSlots = 0;
             int matchingInChest = 0;
             int bestChestScore = 0;
@@ -84,26 +84,26 @@ public class ContainerSearchService {
             Map<String, JsonObject> aggregatedByItem = new LinkedHashMap<String, JsonObject>();
 
             for (int i = 0; i < totalSlots; i++) {
-                ItemStack st = inv.func_70301_a(i);
-                if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
+                ItemStack st = inv.getStackInSlot(i);
+                if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
                 usedSlots++;
 
-                String disp = st.func_82833_r();
+                String disp = st.getDisplayName();
                 String fullId = ItemClassifier.getItemIdentifier(st);
-                int meta = st.func_77960_j();
+                int meta = st.getItemDamage();
                 int score = matchAll ? 50 : ItemClassifier.scoreBlockOrItemMatch(disp, fullId, meta, query);
                 if (score <= 0) continue;
 
-                matchingInChest += st.field_77994_a;
+                matchingInChest += st.stackSize;
                 if (score > bestChestScore) bestChestScore = score;
 
                 String itemKey = (disp != null ? disp : "Item") + ":" + meta;
-                totalsByItem.put(disp, (totalsByItem.containsKey(disp) ? totalsByItem.get(disp) : 0) + st.field_77994_a);
+                totalsByItem.put(disp, (totalsByItem.containsKey(disp) ? totalsByItem.get(disp) : 0) + st.stackSize);
 
                 // Aggregate stacks of the same item within the chest so 27 stacks of Cobblestone become 1 concise entry
                 JsonObject existing = aggregatedByItem.get(itemKey);
                 if (existing != null) {
-                    existing.addProperty("count", existing.get("count").getAsInt() + st.field_77994_a);
+                    existing.addProperty("count", existing.get("count").getAsInt() + st.stackSize);
                     existing.addProperty("stacks", existing.get("stacks").getAsInt() + 1);
                 } else {
                     JsonObject slotMatch = ItemClassifier.itemStackToJson(i, st);
@@ -122,11 +122,11 @@ public class ContainerSearchService {
             }
 
             grandTotalMatching += matchingInChest;
-            Block b = world.func_147439_a(bx, by, bz);
-            int bMeta = world.func_72805_g(bx, by, bz);
+            Block b = world.getBlock(bx, by, bz);
+            int bMeta = world.getBlockMetadata(bx, by, bz);
             String bName = ItemClassifier.getBlockDisplayName(b, bMeta);
-            String bReg = b != null ? Block.field_149771_c.func_148750_c(b) : "";
-            double dist = Math.round(d.func_70011_f(bx + 0.5, by + 0.5, bz + 0.5) * 10.0) / 10.0;
+            String bReg = b != null ? Block.blockRegistry.getNameForObject(b) : "";
+            double dist = Math.round(d.getDistance(bx + 0.5, by + 0.5, bz + 0.5) * 10.0) / 10.0;
 
             JsonObject co = new JsonObject();
             co.addProperty("x", bx);
@@ -200,11 +200,11 @@ public class ContainerSearchService {
         JsonArray droneMatches = new JsonArray();
         IInventory droneInv = ctrl.drone.mainInventory();
         if (droneInv != null) {
-            for (int i = 0; i < droneInv.func_70302_i_(); i++) {
-                ItemStack st = droneInv.func_70301_a(i);
-                if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
-                if (matchAll || ItemClassifier.matchesBlockOrItemName(st.func_82833_r(), ItemClassifier.getItemIdentifier(st), st.func_77960_j(), query)) {
-                    inDroneCount += st.field_77994_a;
+            for (int i = 0; i < droneInv.getSizeInventory(); i++) {
+                ItemStack st = droneInv.getStackInSlot(i);
+                if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
+                if (matchAll || ItemClassifier.matchesBlockOrItemName(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), query)) {
+                    inDroneCount += st.stackSize;
                     droneMatches.add(ItemClassifier.itemStackToJson(i, st));
                 }
             }
@@ -212,12 +212,12 @@ public class ContainerSearchService {
 
         int inPlayerCount = 0;
         JsonArray playerMatches = new JsonArray();
-        if (owner != null && owner.field_71071_by != null) {
+        if (owner != null && owner.inventory != null) {
             for (int i = 0; i < 36; i++) {
-                ItemStack st = owner.field_71071_by.func_70301_a(i);
-                if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
-                if (matchAll || ItemClassifier.matchesBlockOrItemName(st.func_82833_r(), ItemClassifier.getItemIdentifier(st), st.func_77960_j(), query)) {
-                    inPlayerCount += st.field_77994_a;
+                ItemStack st = owner.inventory.getStackInSlot(i);
+                if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
+                if (matchAll || ItemClassifier.matchesBlockOrItemName(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), query)) {
+                    inPlayerCount += st.stackSize;
                     playerMatches.add(ItemClassifier.itemStackToJson(i, st));
                 }
             }

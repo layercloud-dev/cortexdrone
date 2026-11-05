@@ -18,7 +18,7 @@ public final class ChunkAccess {
     public static boolean isLoaded(World world, int chunkX, int chunkZ) {
         if (!(world instanceof WorldServer)) return false;
         try {
-            return ((WorldServer) world).field_73059_b.func_73149_a(chunkX, chunkZ);
+            return ((WorldServer) world).theChunkProviderServer.chunkExists(chunkX, chunkZ);
         } catch (Throwable ignored) {
             return false;
         }
@@ -29,6 +29,6 @@ public final class ChunkAccess {
     }
 
     public static boolean isBlockLoaded(World world, double x, double z) {
-        return isLoaded(world, MathHelper.func_76128_c(x) >> 4, MathHelper.func_76128_c(z) >> 4);
+        return isLoaded(world, MathHelper.floor_double(x) >> 4, MathHelper.floor_double(z) >> 4);
     }
 }

@@ -40,7 +40,7 @@ public class ChunkCacheContext {
             int cz = this.baseChunkZ + gridZ;
             if (ChunkAccess.isLoaded(this.world, cx, cz)) {
                 try {
-                    this.chunks[gridX][gridZ] = this.world.func_72964_e(cx, cz);
+                    this.chunks[gridX][gridZ] = this.world.getChunkFromChunkCoords(cx, cz);
                 } catch (Throwable ignored) {
                 }
             }
@@ -54,7 +54,7 @@ public class ChunkCacheContext {
     }
 
     public Block getBlock(int x, int y, int z) {
-        if (y <= 0 || y >= 256) return Blocks.field_150357_h;
+        if (y <= 0 || y >= 256) return Blocks.bedrock;
         int cx = (x >> 4) - this.baseChunkX;
         int cz = (z >> 4) - this.baseChunkZ;
         if (cx >= 0 && cx < this.gridSize && cz >= 0 && cz < this.gridSize) {
@@ -63,18 +63,18 @@ public class ChunkCacheContext {
                 long key = pack(x, y, z);
                 Block cached = this.blockCache.get(key);
                 if (cached != null) return cached;
-                Block b = c.func_150810_a(x & 15, y, z & 15);
+                Block b = c.getBlock(x & 15, y, z & 15);
                 if (b != null) this.blockCache.put(key, b);
                 return b;
             }
             // Unknown/unloaded chunk: treat it as solid so A* never plans a
             // route through a chunk the AI is not allowed to load.
-            return Blocks.field_150357_h;
+            return Blocks.bedrock;
         }
         if (!ChunkAccess.isBlockLoaded(this.world, x, z)) {
-            return Blocks.field_150357_h;
+            return Blocks.bedrock;
         }
-        return this.world.func_147439_a(x, y, z);
+        return this.world.getBlock(x, y, z);
     }
 
     public boolean isPassable(int x, int y, int z) {
@@ -84,10 +84,10 @@ public class ChunkCacheContext {
         if (cached != null) return cached.booleanValue();
         Block b = getBlock(x, y, z);
         boolean pass;
-        if (b == null || b == Blocks.field_150350_a) pass = true;
+        if (b == null || b == Blocks.air) pass = true;
         else if (ItemClassifier.isLiquidBlock(b)) pass = true;
-        else if (b.func_149655_b(this.world, x, y, z)) pass = true;
-        else pass = b.func_149668_a(this.world, x, y, z) == null;
+        else if (b.getBlocksMovement(this.world, x, y, z)) pass = true;
+        else pass = b.getCollisionBoundingBoxFromPool(this.world, x, y, z) == null;
         if (this.passableCache.size() < 32768) this.passableCache.put(key, Boolean.valueOf(pass));
         return pass;
     }

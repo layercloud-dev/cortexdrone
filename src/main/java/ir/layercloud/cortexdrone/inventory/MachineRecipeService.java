@@ -245,9 +245,9 @@ public class MachineRecipeService {
 
     private static File resolveConfigDirectory() {
         try {
-            net.minecraft.server.MinecraftServer srv = net.minecraft.server.MinecraftServer.func_71276_C();
+            net.minecraft.server.MinecraftServer srv = net.minecraft.server.MinecraftServer.getServer();
             if (srv != null) {
-                File f = srv.func_71209_f("config");
+                File f = srv.getFile("config");
                 if (f != null && f.isDirectory()) return f;
             }
         } catch (Throwable ignored) {

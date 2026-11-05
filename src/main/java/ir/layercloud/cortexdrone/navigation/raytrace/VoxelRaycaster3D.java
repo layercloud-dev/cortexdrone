@@ -19,12 +19,12 @@ public final class VoxelRaycaster3D {
      * Exact 3D DDA line-of-sight passability check using ChunkCacheContext (for Theta* pathfinding).
      */
     public static boolean isLineClear(ChunkCacheContext bsi, double x0, double y0, double z0, double x1, double y1, double z1) {
-        int x = MathHelper.func_76128_c(x0);
-        int y = MathHelper.func_76128_c(y0);
-        int z = MathHelper.func_76128_c(z0);
-        int endX = MathHelper.func_76128_c(x1);
-        int endY = MathHelper.func_76128_c(y1);
-        int endZ = MathHelper.func_76128_c(z1);
+        int x = MathHelper.floor_double(x0);
+        int y = MathHelper.floor_double(y0);
+        int z = MathHelper.floor_double(z0);
+        int endX = MathHelper.floor_double(x1);
+        int endY = MathHelper.floor_double(y1);
+        int endZ = MathHelper.floor_double(z1);
 
         if (x == endX && y == endY && z == endZ) {
             return bsi.isPassable(x, y, z);
@@ -101,12 +101,12 @@ public final class VoxelRaycaster3D {
      * Exact 3D DDA line-of-sight passability check directly against World.
      */
     public static boolean isLineClear(World world, double x0, double y0, double z0, double x1, double y1, double z1) {
-        int x = MathHelper.func_76128_c(x0);
-        int y = MathHelper.func_76128_c(y0);
-        int z = MathHelper.func_76128_c(z0);
-        int endX = MathHelper.func_76128_c(x1);
-        int endY = MathHelper.func_76128_c(y1);
-        int endZ = MathHelper.func_76128_c(z1);
+        int x = MathHelper.floor_double(x0);
+        int y = MathHelper.floor_double(y0);
+        int z = MathHelper.floor_double(z0);
+        int endX = MathHelper.floor_double(x1);
+        int endY = MathHelper.floor_double(y1);
+        int endZ = MathHelper.floor_double(z1);
 
         if (x == endX && y == endY && z == endZ) {
             return ItemClassifier.isPassableVoxel(world, x, y, z);
@@ -156,9 +156,9 @@ public final class VoxelRaycaster3D {
     public static JsonObject raycastSolidBlock(World world, double eyeX, double eyeY, double eyeZ, double dirX, double dirY, double dirZ, double maxDist) {
         if (world == null) return null;
         double limit = Math.min(128.0, Math.max(4.0, maxDist));
-        int x = MathHelper.func_76128_c(eyeX);
-        int y = MathHelper.func_76128_c(eyeY);
-        int z = MathHelper.func_76128_c(eyeZ);
+        int x = MathHelper.floor_double(eyeX);
+        int y = MathHelper.floor_double(eyeY);
+        int z = MathHelper.floor_double(eyeZ);
 
         int stepX = dirX > 0.0 ? 1 : (dirX < 0.0 ? -1 : 0);
         int stepY = dirY > 0.0 ? 1 : (dirY < 0.0 ? -1 : 0);
@@ -177,18 +177,18 @@ public final class VoxelRaycaster3D {
         int maxSteps = (int) Math.ceil(limit * 3.0) + 4;
 
         for (int step = 0; step < maxSteps && dist <= limit; step++) {
-            if (y > 0 && y < 255 && !world.func_147437_c(x, y, z)) {
-                Block b = world.func_147439_a(x, y, z);
+            if (y > 0 && y < 255 && !world.isAirBlock(x, y, z)) {
+                Block b = world.getBlock(x, y, z);
                 if (b != null && !ItemClassifier.isLiquidBlock(b)) {
-                    int meta = world.func_72805_g(x, y, z);
+                    int meta = world.getBlockMetadata(x, y, z);
                     JsonObject hit = new JsonObject();
                     hit.addProperty("x", x);
                     hit.addProperty("y", y);
                     hit.addProperty("z", z);
                     hit.addProperty("name", ItemClassifier.getBlockDisplayName(b, meta));
-                    String reg = Block.field_149771_c.func_148750_c(b);
+                    String reg = Block.blockRegistry.getNameForObject(b);
                     hit.addProperty("registryName", reg != null ? reg : "");
-                    hit.addProperty("id", Block.func_149682_b(b));
+                    hit.addProperty("id", Block.getIdFromBlock(b));
                     hit.addProperty("meta", meta);
                     hit.addProperty("distance", Math.round(dist * 10.0) / 10.0);
                     hit.addProperty("faceX", prevX);

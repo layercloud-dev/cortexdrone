@@ -49,28 +49,28 @@ public final class EntityAndBiomeClassifier {
             } catch (Throwable ignored) {
             }
         }
-        Class<?> creatureClass = type.func_75598_a();
+        Class<?> creatureClass = type.getCreatureClass();
         return creatureClass != null && creatureClass.isAssignableFrom(el.getClass());
     }
 
     public static boolean isHostileEntity(EntityLivingBase el) {
-        if (el == null || el.field_70128_L || el.func_110143_aJ() <= 0.0f) return false;
+        if (el == null || el.isDead || el.getHealth() <= 0.0f) return false;
         if (el instanceof EntityPlayer) return false;
         if (el instanceof IMob || el instanceof EntityMob) return true;
         if (isCreatureOfType(el, EnumCreatureType.monster)) return true;
 
-        if (el instanceof EntityTameable && ((EntityTameable) el).func_70909_n()) {
+        if (el instanceof EntityTameable && ((EntityTameable) el).isTamed()) {
             return false;
         }
         if (el instanceof EntityLiving) {
             EntityLiving living = (EntityLiving) el;
-            if (living.func_70638_az() instanceof EntityPlayer || living.func_70643_av() instanceof EntityPlayer) {
+            if (living.getAttackTarget() instanceof EntityPlayer || living.getAITarget() instanceof EntityPlayer) {
                 return true;
             }
         }
         if (!(el instanceof EntityAnimal) && !(el instanceof IAnimals)) {
             try {
-                if (el.func_110140_aT() != null && el.func_110140_aT().func_111151_a(SharedMonsterAttributes.field_111264_e) != null) {
+                if (el.getAttributeMap() != null && el.getAttributeMap().getAttributeInstance(SharedMonsterAttributes.attackDamage) != null) {
                     return true;
                 }
             } catch (Throwable ignored) {
@@ -80,7 +80,7 @@ public final class EntityAndBiomeClassifier {
     }
 
     public static boolean isPassiveEntity(EntityLivingBase el) {
-        if (el == null || el.field_70128_L || el.func_110143_aJ() <= 0.0f) return false;
+        if (el == null || el.isDead || el.getHealth() <= 0.0f) return false;
         if (el instanceof EntityPlayer || isHostileEntity(el)) return false;
         return (el instanceof EntityAnimal)
             || (el instanceof IAnimals)
@@ -91,10 +91,10 @@ public final class EntityAndBiomeClassifier {
 
     public static String getEntityIdentifier(EntityLivingBase el) {
         if (el == null) return "";
-        String cmdName = el.func_70005_c_();
+        String cmdName = el.getCommandSenderName();
         String regName = null;
         try {
-            regName = EntityList.func_75621_b(el);
+            regName = EntityList.getEntityString(el);
         } catch (Throwable ignored) {
         }
         StringBuilder sb = new StringBuilder();
@@ -113,7 +113,7 @@ public final class EntityAndBiomeClassifier {
         List<String> qTokens = LexicalItemMatcher.tokenize(query);
         if (qTokens.isEmpty()) return false;
 
-        String bName = biome.field_76791_y != null ? biome.field_76791_y.toLowerCase() : "";
+        String bName = biome.biomeName != null ? biome.biomeName.toLowerCase() : "";
         List<String> biomeTokens = new ArrayList<String>(LexicalItemMatcher.tokenize(bName));
         try {
             BiomeDictionary.Type[] types = BiomeDictionary.getTypesForBiome(biome);
@@ -142,11 +142,11 @@ public final class EntityAndBiomeClassifier {
         if (!cachedBiomeTokens.isEmpty()) return cachedBiomeTokens;
         Set<String> tokens = new HashSet<String>();
         try {
-            BiomeGenBase[] allBiomes = BiomeGenBase.func_150565_n();
+            BiomeGenBase[] allBiomes = BiomeGenBase.getBiomeGenArray();
             if (allBiomes != null) {
                 for (BiomeGenBase b : allBiomes) {
-                    if (b != null && b.field_76791_y != null) {
-                        for (String w : LexicalItemMatcher.tokenize(b.field_76791_y)) {
+                    if (b != null && b.biomeName != null) {
+                        for (String w : LexicalItemMatcher.tokenize(b.biomeName)) {
                             if (w.length() >= 3) tokens.add(w);
                         }
                     }

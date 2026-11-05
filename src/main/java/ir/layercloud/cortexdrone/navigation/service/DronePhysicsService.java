@@ -18,16 +18,16 @@ import net.minecraft.world.World;
 public final class DronePhysicsService {
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {
-        int bx = MathHelper.func_76128_c(x);
-        int by = MathHelper.func_76128_c(y);
-        int bz = MathHelper.func_76128_c(z);
+        int bx = MathHelper.floor_double(x);
+        int by = MathHelper.floor_double(y);
+        int bz = MathHelper.floor_double(z);
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     if (!ItemClassifier.isPassableVoxel(world, bx + dx, by + dy, bz + dz)) {
-                        Block b = world.func_147439_a(bx + dx, by + dy, bz + dz);
+                        Block b = world.getBlock(bx + dx, by + dy, bz + dz);
                         if (b != null) {
-                            return b.func_149732_F() + "@(" + (bx + dx) + "," + (by + dy) + "," + (bz + dz) + ")";
+                            return b.getLocalizedName() + "@(" + (bx + dx) + "," + (by + dy) + "," + (bz + dz) + ")";
                         }
                     }
                 }
@@ -38,17 +38,17 @@ public final class DronePhysicsService {
 
     public static void clearNearbyLeafObstruction(World world, DroneController ctrl) {
         if (world == null || ctrl == null || ctrl.drone == null) return;
-        int bx = MathHelper.func_76128_c(ctrl.drone.field_70165_t);
-        int by = MathHelper.func_76128_c(ctrl.drone.field_70163_u);
-        int bz = MathHelper.func_76128_c(ctrl.drone.field_70161_v);
+        int bx = MathHelper.floor_double(ctrl.drone.posX);
+        int by = MathHelper.floor_double(ctrl.drone.posY);
+        int bz = MathHelper.floor_double(ctrl.drone.posZ);
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     int x = bx + dx, y = by + dy, z = bz + dz;
-                    if (y <= 1 || y >= 254 || world.func_147437_c(x, y, z)) continue;
-                    Block b = world.func_147439_a(x, y, z);
+                    if (y <= 1 || y >= 254 || world.isAirBlock(x, y, z)) continue;
+                    Block b = world.getBlock(x, y, z);
                     if (ItemClassifier.isLeafBlock(b)) {
-                        world.func_147468_f(x, y, z);
+                        world.setBlockToAir(x, y, z);
                     }
                 }
             }
@@ -67,19 +67,19 @@ public final class DronePhysicsService {
      *   drone arrives without oscillation and never walks into the floor (target is 3D, not ground-hugging).
      */
     public static void runServerSidePhysicsStep(Drone d, double maxVelOverride, DroneController ctrl) {
-        World w = d.field_70170_p;
-        boolean inLiquid = d.func_70090_H() || d.func_70058_J() || (w != null && ItemClassifier.isLiquidBlock(w.func_147439_a(
-            MathHelper.func_76128_c(d.field_70165_t),
-            MathHelper.func_76128_c(d.field_70163_u),
-            MathHelper.func_76128_c(d.field_70161_v)
+        World w = d.worldObj;
+        boolean inLiquid = d.isInWater() || d.handleLavaMovement() || (w != null && ItemClassifier.isLiquidBlock(w.getBlock(
+            MathHelper.floor_double(d.posX),
+            MathHelper.floor_double(d.posY),
+            MathHelper.floor_double(d.posZ)
         )));
-        double dx = (double) d.targetX() - d.field_70165_t;
-        double dy = (double) d.targetY() - d.field_70163_u;
-        double dz = (double) d.targetZ() - d.field_70161_v;
+        double dx = (double) d.targetX() - d.posX;
+        double dy = (double) d.targetY() - d.posY;
+        double dz = (double) d.targetZ() - d.posZ;
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        double vx = d.field_70159_w;
-        double vy = d.field_70181_x;
-        double vz = d.field_70179_y;
+        double vx = d.motionX;
+        double vy = d.motionY;
+        double vz = d.motionZ;
         double speedSq = vx * vx + vy * vy + vz * vz;
 
         if (distance > 0.0 && (distance > 0.005 || speedSq > 0.000025)) {
@@ -115,11 +115,11 @@ public final class DronePhysicsService {
             vy = 0.0;
             vz = 0.0;
         }
-        d.func_70091_d(vx, vy, vz);
+        d.moveEntity(vx, vy, vz);
         double drag = inLiquid ? 0.90 : (double) d.drag();
-        d.field_70159_w = vx * drag;
-        d.field_70181_x = vy * drag;
-        d.field_70179_y = vz * drag;
+        d.motionX = vx * drag;
+        d.motionY = vy * drag;
+        d.motionZ = vz * drag;
         if (ctrl != null) {
             ctrl.velX = vx;
             ctrl.velY = vy;
@@ -128,18 +128,18 @@ public final class DronePhysicsService {
     }
 
     public static boolean isPlayerLookingAtDrone(EntityPlayerMP player, Drone drone) {
-        if (player == null || drone == null || player.field_70170_p != drone.field_70170_p) return false;
-        double ex = player.field_70165_t;
-        double ey = player.field_70163_u + 1.62;
-        double ez = player.field_70161_v;
-        double dx = drone.field_70165_t - ex;
-        double dy = (drone.field_70163_u + 0.18) - ey;
-        double dz = drone.field_70161_v - ez;
+        if (player == null || drone == null || player.worldObj != drone.worldObj) return false;
+        double ex = player.posX;
+        double ey = player.posY + 1.62;
+        double ez = player.posZ;
+        double dx = drone.posX - ex;
+        double dy = (drone.posY + 0.18) - ey;
+        double dz = drone.posZ - ez;
         double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (dist < 0.2 || dist > 4.5) return false;
 
-        double yawRad = Math.toRadians(player.field_70177_z);
-        double pitchRad = Math.toRadians(player.field_70125_A);
+        double yawRad = Math.toRadians(player.rotationYaw);
+        double pitchRad = Math.toRadians(player.rotationPitch);
         double lx = -Math.sin(yawRad) * Math.cos(pitchRad);
         double ly = -Math.sin(pitchRad);
         double lz = Math.cos(yawRad) * Math.cos(pitchRad);
@@ -149,11 +149,11 @@ public final class DronePhysicsService {
     }
 
     public static double[] computeStableFollowAnchor(World world, EntityPlayerMP target, Drone d) {
-        double px = target.field_70165_t;
-        double py = target.field_70163_u + 1.65;
-        double pz = target.field_70161_v;
+        double px = target.posX;
+        double py = target.posY + 1.65;
+        double pz = target.posZ;
 
-        double baseAngle = Math.atan2(d.field_70161_v - pz, d.field_70165_t - px);
+        double baseAngle = Math.atan2(d.posZ - pz, d.posX - px);
         double[] offsets = new double[]{0.0, 0.55, -0.55, 1.1, -1.1, 1.65, -1.65, 2.2, -2.2, Math.PI};
         double[] radii = new double[]{2.2, 1.8, 2.7};
         double[] yOffsets = new double[]{0.0, 0.45, 0.85, -0.25};
@@ -165,9 +165,9 @@ public final class DronePhysicsService {
                     double cx = px + Math.cos(ang) * r;
                     double cy = py + yOff;
                     double cz = pz + Math.sin(ang) * r;
-                    int bx = MathHelper.func_76128_c(cx);
-                    int by = MathHelper.func_76128_c(cy);
-                    int bz = MathHelper.func_76128_c(cz);
+                    int bx = MathHelper.floor_double(cx);
+                    int by = MathHelper.floor_double(cy);
+                    int bz = MathHelper.floor_double(cz);
                     if (ItemClassifier.isPassableVoxel(world, bx, by, bz)
                         && FlightPathfinder.isFlightLineClear(world, px, py + 0.3, pz, cx, cy, cz)) {
                         return new double[]{cx, cy, cz};
@@ -175,7 +175,7 @@ public final class DronePhysicsService {
                 }
             }
         }
-        return new double[]{px, target.field_70163_u + 1.8, pz};
+        return new double[]{px, target.posY + 1.8, pz};
     }
 
     private static boolean hasHeadroom(World world, int x, int y, int z) {
@@ -202,7 +202,7 @@ public final class DronePhysicsService {
                 double cx = ax + 0.5;
                 double cy = ay + 0.35;
                 double cz = az + 0.5;
-                double distFromDrone = d.func_70011_f(cx, cy, cz);
+                double distFromDrone = d.getDistance(cx, cy, cz);
                 if (distFromDrone < bestScore) {
                     bestScore = distFromDrone;
                     best = new double[]{cx, cy, cz};
@@ -229,7 +229,7 @@ public final class DronePhysicsService {
                         double cy = ay + 0.35;
                         double cz = az + 0.5;
                         double distToBlock = Math.sqrt((cx - tx) * (cx - tx) + (cy - ty) * (cy - ty) + (cz - tz) * (cz - tz));
-                        double distFromDrone = d.func_70011_f(cx, cy, cz);
+                        double distFromDrone = d.getDistance(cx, cy, cz);
                         double score = distFromDrone + distToBlock * 0.5;
                         if (score < bestScore) {
                             bestScore = score;
@@ -245,9 +245,9 @@ public final class DronePhysicsService {
 
     public static int[] findBlockingTunnelBlock(World world, Drone d, int targetX, int targetY, int targetZ) {
         if (world == null || d == null) return null;
-        int cx = MathHelper.func_76128_c(d.field_70165_t);
-        int cy = MathHelper.func_76128_c(d.field_70163_u);
-        int cz = MathHelper.func_76128_c(d.field_70161_v);
+        int cx = MathHelper.floor_double(d.posX);
+        int cy = MathHelper.floor_double(d.posY);
+        int cz = MathHelper.floor_double(d.posZ);
 
         int maxSteps = 96;
         for (int step = 0; step < maxSteps; step++) {

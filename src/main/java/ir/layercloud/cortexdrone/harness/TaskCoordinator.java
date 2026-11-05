@@ -20,7 +20,7 @@ public final class TaskCoordinator {
     }
 
     public void handle(final EntityPlayerMP player, final DroneController ctrl, final String prompt) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70128_L) return;
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.isDead) return;
         String cleanPrompt = prompt != null ? prompt.trim() : "";
         boolean active = ctrl.task.isActive() || ctrl.hasActiveTaskOrLoop(0);
         TaskIntent intent = TaskIntentClassifier.classify(cleanPrompt, active);
@@ -65,7 +65,7 @@ public final class TaskCoordinator {
 
         final int myLoopId = ctrl.activeLoopId.incrementAndGet();
         ctrl.task.begin(myLoopId, cleanPrompt);
-        String senderName = player != null ? player.func_70005_c_() : ctrl.ownerName;
+        String senderName = player != null ? player.getCommandSenderName() : ctrl.ownerName;
         this.manager.getLogger().log("CMD", ctrl,
             "Master-tool session from " + senderName + " (loopId=" + myLoopId + ", intent=" + intent.name() + ")",
             "prompt=\"" + cleanPrompt + "\"");
@@ -93,9 +93,9 @@ public final class TaskCoordinator {
         ctrl.navFinalX = Double.NaN;
         ctrl.navFinalY = Double.NaN;
         ctrl.navFinalZ = Double.NaN;
-        ctrl.goalX = ctrl.drone.field_70165_t;
-        ctrl.goalY = ctrl.drone.field_70163_u;
-        ctrl.goalZ = ctrl.drone.field_70161_v;
+        ctrl.goalX = ctrl.drone.posX;
+        ctrl.goalY = ctrl.drone.posY;
+        ctrl.goalZ = ctrl.drone.posZ;
         this.manager.setDroneMode(ctrl, Mode.STAY, reason);
     }
 
@@ -112,7 +112,7 @@ public final class TaskCoordinator {
         sb.append(" Mode: ").append(ctrl.mode.name()).append('.');
         if (ctrl.drone != null) {
             sb.append(String.format(" Position: (%.1f, %.1f, %.1f).",
-                ctrl.drone.field_70165_t, ctrl.drone.field_70163_u, ctrl.drone.field_70161_v));
+                ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ));
         }
         if (ctrl.currentMineTarget != null) {
             sb.append(" Breaking block (").append(ctrl.currentMineTarget[0]).append(',')

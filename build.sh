@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Legacy manual javac build — replaced by the standard Gradle build.
-# This script is kept for compatibility and now delegates to Gradle.
+# Forge 1.7.10 / RetroFuturaGradle build.
 # Build configuration lives in:
-#   - settings.gradle   (project name)
-#   - gradle.properties (forgeDir, layercloudDir, modsDir, versions)
-#   - build.gradle      (source layout src/main/java, src/main/resources; validation; jar; deploy)
+#   - settings.gradle   (RFG plugin repository, toolchain resolver, project name)
+#   - gradle.properties (mod version, deploy folder, OpenComputers version, JDK 25)
+#   - build.gradle      (Minecraft/Forge, MCP mappings, validation, reobf, deploy)
 #
 # Usage:
-#   ./build.sh                              # full build (validate + jar + deploy)
-#   ./gradlew jar                           # just the jar
-#   ./gradlew validate                      # just validation
+#   ./build.sh                              # full build (validate + test + reobf + deploy)
+#   ./gradlew compileJava                   # compile against MCP-named Minecraft
+#   ./gradlew test                          # unit tests
+#   ./gradlew validate                      # structural + JS syntax checks
+#   ./gradlew reobfJar                      # production (SRG-named) jar
 #   ./gradlew clean build
 
 cd "$(dirname "$0")"
 
-# Gradle 8.14 requires JDK 17+ to run (not Java 25). Prefer JDK 21 if available.
-if [ -d /usr/lib/jvm/java-21-openjdk-amd64 ]; then
-  export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+# RetroFuturaGradle 2.x runs on Gradle 9.2 and requires a Java 25 daemon.
+if [ -d /usr/lib/jvm/graalvm-jdk-25 ]; then
+  export JAVA_HOME=/usr/lib/jvm/graalvm-jdk-25
   export PATH="$JAVA_HOME/bin:$PATH"
 fi
 

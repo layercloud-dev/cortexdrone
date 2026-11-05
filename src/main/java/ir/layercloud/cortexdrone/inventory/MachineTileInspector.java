@@ -60,8 +60,8 @@ public final class MachineTileInspector {
             return true;
         }
         if (world != null) {
-            Block b = world.func_147439_a(te.field_145851_c, te.field_145848_d, te.field_145849_e);
-            String reg = b != null ? Block.field_149771_c.func_148750_c(b) : "";
+            Block b = world.getBlock(te.xCoord, te.yCoord, te.zCoord);
+            String reg = b != null ? Block.blockRegistry.getNameForObject(b) : "";
             if (reg != null) {
                 String r = reg.toLowerCase();
                 for (String kw : MACHINE_KEYWORDS) {
@@ -73,7 +73,7 @@ public final class MachineTileInspector {
         String invName = "";
         try {
             if (te instanceof IInventory) {
-                invName = ((IInventory) te).func_145825_b() != null ? ((IInventory) te).func_145825_b().toLowerCase() : "";
+                invName = ((IInventory) te).getInventoryName() != null ? ((IInventory) te).getInventoryName().toLowerCase() : "";
             }
         } catch (Throwable ignored) {
         }
@@ -276,13 +276,13 @@ public final class MachineTileInspector {
         if (world == null) return out;
         double r2 = (double) radius * radius;
         String want = machineFilter == null ? "" : normalizeMachineAlias(machineFilter);
-        if (world.field_147482_g != null) {
-            for (Object o : world.field_147482_g) {
+        if (world.loadedTileEntityList != null) {
+            for (Object o : world.loadedTileEntityList) {
                 if (!(o instanceof TileEntity)) continue;
                 TileEntity te = (TileEntity) o;
-                int bx = te.field_145851_c;
-                int by = te.field_145848_d;
-                int bz = te.field_145849_e;
+                int bx = te.xCoord;
+                int by = te.yCoord;
+                int bz = te.zCoord;
                 double dx = bx + 0.5 - x;
                 double dy = by + 0.5 - y;
                 double dz = bz + 0.5 - z;
@@ -292,13 +292,13 @@ public final class MachineTileInspector {
                     String kind = machineKind(te);
                     String blockReg = "";
                     try {
-                        Block b = world.func_147439_a(bx, by, bz);
-                        blockReg = b != null ? Block.field_149771_c.func_148750_c(b) : "";
+                        Block b = world.getBlock(bx, by, bz);
+                        blockReg = b != null ? Block.blockRegistry.getNameForObject(b) : "";
                     } catch (Throwable ignored) {
                     }
                     String invName = "";
                     try {
-                        invName = ((IInventory) te).func_145825_b() != null ? ((IInventory) te).func_145825_b().toLowerCase() : "";
+                        invName = ((IInventory) te).getInventoryName() != null ? ((IInventory) te).getInventoryName().toLowerCase() : "";
                     } catch (Throwable ignored) {
                     }
                     boolean match = want.equals(kind) || normalizeMachineAlias(blockReg != null ? blockReg : "").equals(want)
@@ -317,10 +317,10 @@ public final class MachineTileInspector {
                 out.add(te);
             }
         }
-        if (out.isEmpty() && world.field_147482_g == null) {
-            int cx = MathHelper.func_76128_c(x);
-            int cy = MathHelper.func_76128_c(y);
-            int cz = MathHelper.func_76128_c(z);
+        if (out.isEmpty() && world.loadedTileEntityList == null) {
+            int cx = MathHelper.floor_double(x);
+            int cy = MathHelper.floor_double(y);
+            int cz = MathHelper.floor_double(z);
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dy = -radius; dy <= radius; dy++) {
                     for (int dz = -radius; dz <= radius; dz++) {
@@ -328,7 +328,7 @@ public final class MachineTileInspector {
                         int by = cy + dy;
                         int bz = cz + dz;
                         if (by < 1 || by > 254) continue;
-                        TileEntity te = world.func_147438_o(bx, by, bz);
+                        TileEntity te = world.getTileEntity(bx, by, bz);
                         if (te == null || !isMachineTile(world, te)) continue;
                         if (!want.isEmpty() && !want.equals(machineKind(te))) continue;
                         out.add(te);
@@ -342,12 +342,12 @@ public final class MachineTileInspector {
         java.util.Collections.sort(out, new Comparator<TileEntity>() {
             @Override
             public int compare(TileEntity a, TileEntity b) {
-                double da = (a.field_145851_c + 0.5 - fx) * (a.field_145851_c + 0.5 - fx)
-                    + (a.field_145848_d + 0.5 - fy) * (a.field_145848_d + 0.5 - fy)
-                    + (a.field_145849_e + 0.5 - fz) * (a.field_145849_e + 0.5 - fz);
-                double db = (b.field_145851_c + 0.5 - fx) * (b.field_145851_c + 0.5 - fx)
-                    + (b.field_145848_d + 0.5 - fy) * (b.field_145848_d + 0.5 - fy)
-                    + (b.field_145849_e + 0.5 - fz) * (b.field_145849_e + 0.5 - fz);
+                double da = (a.xCoord + 0.5 - fx) * (a.xCoord + 0.5 - fx)
+                    + (a.yCoord + 0.5 - fy) * (a.yCoord + 0.5 - fy)
+                    + (a.zCoord + 0.5 - fz) * (a.zCoord + 0.5 - fz);
+                double db = (b.xCoord + 0.5 - fx) * (b.xCoord + 0.5 - fx)
+                    + (b.yCoord + 0.5 - fy) * (b.yCoord + 0.5 - fy)
+                    + (b.zCoord + 0.5 - fz) * (b.zCoord + 0.5 - fz);
                 return Double.compare(da, db);
             }
         });
@@ -356,31 +356,31 @@ public final class MachineTileInspector {
 
     public static JsonObject describeMachineTile(World world, TileEntity te) {
         JsonObject o = new JsonObject();
-        o.addProperty("x", te.field_145851_c);
-        o.addProperty("y", te.field_145848_d);
-        o.addProperty("z", te.field_145849_e);
+        o.addProperty("x", te.xCoord);
+        o.addProperty("y", te.yCoord);
+        o.addProperty("z", te.zCoord);
         o.addProperty("kind", machineKind(te));
         o.addProperty("class", te.getClass().getName());
-        Block b = world != null ? world.func_147439_a(te.field_145851_c, te.field_145848_d, te.field_145849_e) : null;
-        int meta = world != null ? world.func_72805_g(te.field_145851_c, te.field_145848_d, te.field_145849_e) : 0;
-        String reg = b != null ? Block.field_149771_c.func_148750_c(b) : "";
+        Block b = world != null ? world.getBlock(te.xCoord, te.yCoord, te.zCoord) : null;
+        int meta = world != null ? world.getBlockMetadata(te.xCoord, te.yCoord, te.zCoord) : 0;
+        String reg = b != null ? Block.blockRegistry.getNameForObject(b) : "";
         o.addProperty("registryName", reg != null ? reg : "");
         o.addProperty("blockName", b != null ? ItemClassifier.getBlockDisplayName(b, meta) : "Unknown");
         o.addProperty("hasPower", hasPower(te));
         o.addProperty("hasFluid", hasFluid(te));
         if (te instanceof IInventory) {
             IInventory inv = (IInventory) te;
-            o.addProperty("slotCount", inv.func_70302_i_());
+            o.addProperty("slotCount", inv.getSizeInventory());
             int used = 0;
-            for (int i = 0; i < inv.func_70302_i_(); i++) {
-                net.minecraft.item.ItemStack st = inv.func_70301_a(i);
-                if (st != null && st.field_77994_a > 0) used++;
+            for (int i = 0; i < inv.getSizeInventory(); i++) {
+                net.minecraft.item.ItemStack st = inv.getStackInSlot(i);
+                if (st != null && st.stackSize > 0) used++;
             }
             o.addProperty("usedSlots", used);
             JsonArray items = new JsonArray();
-            for (int i = 0; i < inv.func_70302_i_(); i++) {
-                net.minecraft.item.ItemStack st = inv.func_70301_a(i);
-                if (st != null && st.field_77994_a > 0) items.add(ItemClassifier.itemStackToJson(i, st));
+            for (int i = 0; i < inv.getSizeInventory(); i++) {
+                net.minecraft.item.ItemStack st = inv.getStackInSlot(i);
+                if (st != null && st.stackSize > 0) items.add(ItemClassifier.itemStackToJson(i, st));
             }
             o.add("items", items);
         }

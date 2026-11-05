@@ -59,36 +59,36 @@ public class WorldRpcHandler implements RpcHandler {
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
+        World world = d.worldObj;
 
-        if (!world.field_72995_K && !ChunkAccess.isBlockLoaded(world,
-            MathHelper.func_76128_c(d.field_70165_t),
-            MathHelper.func_76128_c(d.field_70161_v))) {
+        if (!world.isRemote && !ChunkAccess.isBlockLoaded(world,
+            MathHelper.floor_double(d.posX),
+            MathHelper.floor_double(d.posZ))) {
             return chunkNotLoaded("drone chunk");
         }
 
         if (m.equals("get_block")) {
-            int x = args.has("x") ? args.get("x").getAsInt() : MathHelper.func_76128_c(d.field_70165_t);
-            int y = args.has("y") ? args.get("y").getAsInt() : MathHelper.func_76128_c(d.field_70163_u);
-            int z = args.has("z") ? args.get("z").getAsInt() : MathHelper.func_76128_c(d.field_70161_v);
+            int x = args.has("x") ? args.get("x").getAsInt() : MathHelper.floor_double(d.posX);
+            int y = args.has("y") ? args.get("y").getAsInt() : MathHelper.floor_double(d.posY);
+            int z = args.has("z") ? args.get("z").getAsInt() : MathHelper.floor_double(d.posZ);
             if (!ChunkAccess.isBlockLoaded(world, x, z)) {
                 return chunkNotLoaded("get_block");
             }
-            Block b = world.func_147439_a(x, y, z);
-            int meta = world.func_72805_g(x, y, z);
+            Block b = world.getBlock(x, y, z);
+            int meta = world.getBlockMetadata(x, y, z);
             res.addProperty("x", x);
             res.addProperty("y", y);
             res.addProperty("z", z);
-            res.addProperty("id", b != null ? Block.func_149682_b(b) : 0);
+            res.addProperty("id", b != null ? Block.getIdFromBlock(b) : 0);
             res.addProperty("meta", meta);
             res.addProperty("name", b != null ? ItemClassifier.getBlockDisplayName(b, meta) : "Air");
-            String reg = b != null ? Block.field_149771_c.func_148750_c(b) : "minecraft:air";
+            String reg = b != null ? Block.blockRegistry.getNameForObject(b) : "minecraft:air";
             res.addProperty("registryName", reg != null ? reg : "minecraft:air");
-            res.addProperty("isAir", world.func_147437_c(x, y, z));
+            res.addProperty("isAir", world.isAirBlock(x, y, z));
             res.addProperty("isLiquid", ItemClassifier.isLiquidBlock(b));
             res.addProperty("passable", ItemClassifier.isPassableVoxel(world, x, y, z));
-            res.addProperty("hardness", b != null ? b.func_149712_f(world, x, y, z) : 0.0f);
-            res.addProperty("light", world.func_72957_l(x, y, z));
+            res.addProperty("hardness", b != null ? b.getBlockHardness(world, x, y, z) : 0.0f);
+            res.addProperty("light", world.getBlockLightValue(x, y, z));
             return res;
         }
 
@@ -114,11 +114,11 @@ public class WorldRpcHandler implements RpcHandler {
                 for (int x = minX; x <= maxX; x++) {
                     for (int z = minZ; z <= maxZ; z++) {
                         totalVoxels++;
-                        boolean air = world.func_147437_c(x, y, z);
+                        boolean air = world.isAirBlock(x, y, z);
                         if (!air) nonAirCount++;
                         if (air && !includeAir) continue;
-                        Block b = world.func_147439_a(x, y, z);
-                        int meta = world.func_72805_g(x, y, z);
+                        Block b = world.getBlock(x, y, z);
+                        int meta = world.getBlockMetadata(x, y, z);
                         String bName = air ? "Air" : (b != null ? ItemClassifier.getBlockDisplayName(b, meta) : "Air");
                         counts.put(bName, (counts.containsKey(bName) ? counts.get(bName) : 0) + 1);
                         if (blocksArr.size() < 2500) {
@@ -127,9 +127,9 @@ public class WorldRpcHandler implements RpcHandler {
                             bo.addProperty("y", y);
                             bo.addProperty("z", z);
                             bo.addProperty("name", bName);
-                            String reg = (!air && b != null) ? Block.field_149771_c.func_148750_c(b) : "minecraft:air";
+                            String reg = (!air && b != null) ? Block.blockRegistry.getNameForObject(b) : "minecraft:air";
                             bo.addProperty("registryName", reg != null ? reg : "minecraft:air");
-                            bo.addProperty("id", b != null ? Block.func_149682_b(b) : 0);
+                            bo.addProperty("id", b != null ? Block.getIdFromBlock(b) : 0);
                             bo.addProperty("meta", meta);
                             bo.addProperty("isAir", air);
                             bo.addProperty("isLiquid", ItemClassifier.isLiquidBlock(b));
@@ -156,24 +156,24 @@ public class WorldRpcHandler implements RpcHandler {
             if (!ChunkAccess.isBlockLoaded(world, x, z)) {
                 return chunkNotLoaded("get_top_y");
             }
-            int topY = world.func_72976_f(x, z);
-            Block surf = world.func_147439_a(x, Math.max(1, topY - 1), z);
-            BiomeGenBase bio = world.func_72807_a(x, z);
+            int topY = world.getHeightValue(x, z);
+            Block surf = world.getBlock(x, Math.max(1, topY - 1), z);
+            BiomeGenBase bio = world.getBiomeGenForCoords(x, z);
             res.addProperty("x", x);
             res.addProperty("z", z);
             res.addProperty("topY", topY);
-            res.addProperty("surfaceBlock", surf != null ? ItemClassifier.getBlockDisplayName(surf, world.func_72805_g(x, Math.max(1, topY - 1), z)) : "Air");
-            res.addProperty("biome", bio != null && bio.field_76791_y != null ? bio.field_76791_y : "Unknown");
+            res.addProperty("surfaceBlock", surf != null ? ItemClassifier.getBlockDisplayName(surf, world.getBlockMetadata(x, Math.max(1, topY - 1), z)) : "Air");
+            res.addProperty("biome", bio != null && bio.biomeName != null ? bio.biomeName : "Unknown");
             return res;
         }
 
         if (m.equals("scan_room")) {
             int sx = args.has("x") ? args.get("x").getAsInt()
-                : MathHelper.func_76128_c(player != null ? player.field_70165_t : d.field_70165_t);
+                : MathHelper.floor_double(player != null ? player.posX : d.posX);
             int sy = args.has("y") ? args.get("y").getAsInt()
-                : MathHelper.func_76128_c((player != null ? player.field_70163_u : d.field_70163_u) + 0.5);
+                : MathHelper.floor_double((player != null ? player.posY : d.posY) + 0.5);
             int sz = args.has("z") ? args.get("z").getAsInt()
-                : MathHelper.func_76128_c(player != null ? player.field_70161_v : d.field_70161_v);
+                : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
             int maxR = args.has("maxRadius") ? args.get("maxRadius").getAsInt() : 18;
             if (!ChunkAccess.isBlockLoaded(world, sx, sz)) {
                 return chunkNotLoaded("scan_room");
@@ -184,9 +184,9 @@ public class WorldRpcHandler implements RpcHandler {
         if (m.equals("scan_blocks")) {
             String filter = args.has("filter") ? args.get("filter").getAsString() : "ores";
             int radius = args.has("radius") ? Math.min(64, Math.max(1, args.get("radius").getAsInt())) : 24;
-            final int cx = args.has("x") ? args.get("x").getAsInt() : MathHelper.func_76128_c(player != null ? player.field_70165_t : d.field_70165_t);
-            final int cy = args.has("y") ? args.get("y").getAsInt() : MathHelper.func_76128_c(player != null ? player.field_70163_u : d.field_70163_u);
-            final int cz = args.has("z") ? args.get("z").getAsInt() : MathHelper.func_76128_c(player != null ? player.field_70161_v : d.field_70161_v);
+            final int cx = args.has("x") ? args.get("x").getAsInt() : MathHelper.floor_double(player != null ? player.posX : d.posX);
+            final int cy = args.has("y") ? args.get("y").getAsInt() : MathHelper.floor_double(player != null ? player.posY : d.posY);
+            final int cz = args.has("z") ? args.get("z").getAsInt() : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
             int minY = args.has("minY") ? Math.max(1, args.get("minY").getAsInt())
                 : (!args.has("y") && ItemClassifier.isLikelyUndergroundQuery(filter) ? 1 : Math.max(1, cy - radius));
             int maxY = args.has("maxY") ? Math.min(254, args.get("maxY").getAsInt()) : Math.min(254, cy + radius);
@@ -196,9 +196,9 @@ public class WorldRpcHandler implements RpcHandler {
                 for (int y = minY; y <= maxY; y++) {
                     for (int z = cz - radius; z <= cz + radius; z++) {
                         if (!ChunkAccess.isBlockLoaded(world, x, z)) continue;
-                        if (world.func_147437_c(x, y, z)) continue;
-                        Block b = world.func_147439_a(x, y, z);
-                        int meta = world.func_72805_g(x, y, z);
+                        if (world.isAirBlock(x, y, z)) continue;
+                        Block b = world.getBlock(x, y, z);
+                        int meta = world.getBlockMetadata(x, y, z);
                         boolean match = filter.equalsIgnoreCase("liquid") ? ItemClassifier.isLiquidBlock(b) : ItemClassifier.matchesMineFilter(b, meta, filter);
                         if (match) {
                             int distSq = (x - cx) * (x - cx) + (y - cy) * (y - cy) + (z - cz) * (z - cz);
@@ -218,15 +218,15 @@ public class WorldRpcHandler implements RpcHandler {
             for (int i = 0; i < limit; i++) {
                 int[] mpt = matched.get(i);
                 int x = mpt[0], y = mpt[1], z = mpt[2], meta = mpt[3];
-                Block b = world.func_147439_a(x, y, z);
+                Block b = world.getBlock(x, y, z);
                 JsonObject bo = new JsonObject();
                 bo.addProperty("x", x);
                 bo.addProperty("y", y);
                 bo.addProperty("z", z);
                 bo.addProperty("name", ItemClassifier.getBlockDisplayName(b, meta));
-                String reg = b != null ? Block.field_149771_c.func_148750_c(b) : "";
+                String reg = b != null ? Block.blockRegistry.getNameForObject(b) : "";
                 bo.addProperty("registryName", reg != null ? reg : "");
-                bo.addProperty("id", b != null ? Block.func_149682_b(b) : 0);
+                bo.addProperty("id", b != null ? Block.getIdFromBlock(b) : 0);
                 bo.addProperty("meta", meta);
                 bo.addProperty("dist", Math.round(Math.sqrt(mpt[4]) * 10.0) / 10.0);
                 arr.add(bo);
@@ -239,9 +239,9 @@ public class WorldRpcHandler implements RpcHandler {
         if (m.equals("scan_veins")) {
             String filter = args.has("filter") ? args.get("filter").getAsString() : "ores";
             int radius = args.has("radius") ? Math.min(48, Math.max(4, args.get("radius").getAsInt())) : 28;
-            int cx = args.has("x") ? args.get("x").getAsInt() : MathHelper.func_76128_c(player != null ? player.field_70165_t : d.field_70165_t);
-            int cy = args.has("y") ? args.get("y").getAsInt() : MathHelper.func_76128_c(player != null ? player.field_70163_u : d.field_70163_u);
-            int cz = args.has("z") ? args.get("z").getAsInt() : MathHelper.func_76128_c(player != null ? player.field_70161_v : d.field_70161_v);
+            int cx = args.has("x") ? args.get("x").getAsInt() : MathHelper.floor_double(player != null ? player.posX : d.posX);
+            int cy = args.has("y") ? args.get("y").getAsInt() : MathHelper.floor_double(player != null ? player.posY : d.posY);
+            int cz = args.has("z") ? args.get("z").getAsInt() : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
             if (!ChunkAccess.isBlockLoaded(world, cx, cz)) {
                 return chunkNotLoaded("scan_veins");
             }
@@ -251,9 +251,9 @@ public class WorldRpcHandler implements RpcHandler {
         if (m.equals("find_distant")) {
             String target = args.has("target") ? args.get("target").getAsString() : "jungle";
             int maxR = args.has("maxRadius") ? Math.min(1500, Math.max(64, args.get("maxRadius").getAsInt())) : 1200;
-            double sx = player != null ? player.field_70165_t : d.field_70165_t;
-            double sy = player != null ? player.field_70163_u : d.field_70163_u;
-            double sz = player != null ? player.field_70161_v : d.field_70161_v;
+            double sx = player != null ? player.posX : d.posX;
+            double sy = player != null ? player.posY : d.posY;
+            double sz = player != null ? player.posZ : d.posZ;
             if (!ChunkAccess.isBlockLoaded(world, sx, sz)) {
                 return chunkNotLoaded("find_distant");
             }
@@ -275,8 +275,8 @@ public class WorldRpcHandler implements RpcHandler {
                 res.addProperty("y", first[1]);
                 res.addProperty("z", first[2]);
                 res.addProperty("distance", Math.round(Math.hypot(first[0] - sx, first[2] - sz)));
-                BiomeGenBase bio = world.func_72807_a(first[0], first[2]);
-                res.addProperty("biome", bio != null && bio.field_76791_y != null ? bio.field_76791_y : "Unknown");
+                BiomeGenBase bio = world.getBiomeGenForCoords(first[0], first[2]);
+                res.addProperty("biome", bio != null && bio.biomeName != null ? bio.biomeName : "Unknown");
             }
             return res;
         }
@@ -284,11 +284,11 @@ public class WorldRpcHandler implements RpcHandler {
         if (m.equals("get_entities")) {
             int radius = args.has("radius") ? Math.min(180, Math.max(4, args.get("radius").getAsInt())) : 64;
             String filter = args.has("filter") ? args.get("filter").getAsString() : "all";
-            double cx = player != null ? player.field_70165_t : d.field_70165_t;
-            double cy = player != null ? player.field_70163_u : d.field_70163_u;
-            double cz = player != null ? player.field_70161_v : d.field_70161_v;
-            AxisAlignedBB box = AxisAlignedBB.func_72330_a(cx - radius, Math.max(1.0, cy - 32.0), cz - radius, cx + radius, Math.min(254.0, cy + 32.0), cz + radius);
-            List<?> list = world.func_72872_a(EntityLivingBase.class, box);
+            double cx = player != null ? player.posX : d.posX;
+            double cy = player != null ? player.posY : d.posY;
+            double cz = player != null ? player.posZ : d.posZ;
+            AxisAlignedBB box = AxisAlignedBB.getBoundingBox(cx - radius, Math.max(1.0, cy - 32.0), cz - radius, cx + radius, Math.min(254.0, cy + 32.0), cz + radius);
+            List<?> list = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
             JsonArray arr = new JsonArray();
             if (list != null) {
                 for (Object o : list) {
@@ -296,16 +296,16 @@ public class WorldRpcHandler implements RpcHandler {
                         EntityLivingBase el = (EntityLivingBase) o;
                         if (ItemClassifier.matchesEntityFilter(el, filter)) {
                             JsonObject eo = new JsonObject();
-                            eo.addProperty("id", el.func_145782_y());
-                            eo.addProperty("name", el.func_70005_c_());
+                            eo.addProperty("id", el.getEntityId());
+                            eo.addProperty("name", el.getCommandSenderName());
                             eo.addProperty("type", el.getClass().getSimpleName());
                             eo.addProperty("hostile", ItemClassifier.isHostileOrMutantEntity(el));
                             eo.addProperty("animal", el instanceof EntityAnimal);
-                            eo.addProperty("health", el.func_110143_aJ());
-                            eo.addProperty("x", Math.round(el.field_70165_t * 10.0) / 10.0);
-                            eo.addProperty("y", Math.round(el.field_70163_u * 10.0) / 10.0);
-                            eo.addProperty("z", Math.round(el.field_70161_v * 10.0) / 10.0);
-                            eo.addProperty("dist", Math.round(el.func_70011_f(cx, cy, cz) * 10.0) / 10.0);
+                            eo.addProperty("health", el.getHealth());
+                            eo.addProperty("x", Math.round(el.posX * 10.0) / 10.0);
+                            eo.addProperty("y", Math.round(el.posY * 10.0) / 10.0);
+                            eo.addProperty("z", Math.round(el.posZ * 10.0) / 10.0);
+                            eo.addProperty("dist", Math.round(el.getDistance(cx, cy, cz) * 10.0) / 10.0);
                             arr.add(eo);
                         }
                     }
@@ -320,28 +320,28 @@ public class WorldRpcHandler implements RpcHandler {
             int radius = args.has("radius") ? Math.min(128, Math.max(2, args.get("radius").getAsInt())) : 32;
             String filter = args.has("filter") ? args.get("filter").getAsString() : "all";
             boolean matchAll = filter.equalsIgnoreCase("all") || filter.equalsIgnoreCase("any") || filter.equals("*");
-            AxisAlignedBB box = AxisAlignedBB.func_72330_a(
-                d.field_70165_t - radius, Math.max(1.0, d.field_70163_u - 24.0), d.field_70161_v - radius,
-                d.field_70165_t + radius, Math.min(254.0, d.field_70163_u + 24.0), d.field_70161_v + radius
+            AxisAlignedBB box = AxisAlignedBB.getBoundingBox(
+                d.posX - radius, Math.max(1.0, d.posY - 24.0), d.posZ - radius,
+                d.posX + radius, Math.min(254.0, d.posY + 24.0), d.posZ + radius
             );
-            List<?> list = world.func_72872_a(EntityItem.class, box);
+            List<?> list = world.getEntitiesWithinAABB(EntityItem.class, box);
             JsonArray arr = new JsonArray();
             if (list != null) {
                 for (Object o : list) {
                     if (o instanceof EntityItem) {
                         EntityItem ei = (EntityItem) o;
-                        if (ei.field_70128_L) continue;
-                        ItemStack st = ei.func_92059_d();
-                        if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
-                        if (!matchAll && !ItemClassifier.matchesBlockOrItemName(st.func_82833_r(), ItemClassifier.getItemIdentifier(st), st.func_77960_j(), filter)) {
+                        if (ei.isDead) continue;
+                        ItemStack st = ei.getEntityItem();
+                        if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
+                        if (!matchAll && !ItemClassifier.matchesBlockOrItemName(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), filter)) {
                             continue;
                         }
                         JsonObject io = ItemClassifier.itemStackToJson(-1, st);
-                        io.addProperty("entityId", ei.func_145782_y());
-                        io.addProperty("x", Math.round(ei.field_70165_t * 10.0) / 10.0);
-                        io.addProperty("y", Math.round(ei.field_70163_u * 10.0) / 10.0);
-                        io.addProperty("z", Math.round(ei.field_70161_v * 10.0) / 10.0);
-                        io.addProperty("dist", Math.round(d.func_70032_d(ei) * 10.0) / 10.0);
+                        io.addProperty("entityId", ei.getEntityId());
+                        io.addProperty("x", Math.round(ei.posX * 10.0) / 10.0);
+                        io.addProperty("y", Math.round(ei.posY * 10.0) / 10.0);
+                        io.addProperty("z", Math.round(ei.posZ * 10.0) / 10.0);
+                        io.addProperty("dist", Math.round(d.getDistanceToEntity(ei) * 10.0) / 10.0);
                         arr.add(io);
                     }
                 }
@@ -375,7 +375,7 @@ public class WorldRpcHandler implements RpcHandler {
 
         if (m.equals("get_location")) {
             EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
-            String ownerKey = p != null ? p.func_70005_c_() : ctrl.ownerName;
+            String ownerKey = p != null ? p.getCommandSenderName() : ctrl.ownerName;
             String name = args.has("name") ? args.get("name").getAsString()
                 : (args.has("query") ? args.get("query").getAsString() : "base");
             AIConfig.SavedLocation loc = this.manager.getConfig().getLocation(ownerKey, name);
@@ -404,7 +404,7 @@ public class WorldRpcHandler implements RpcHandler {
 
         if (m.equals("list_locations")) {
             EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
-            String ownerKey = p != null ? p.func_70005_c_() : ctrl.ownerName;
+            String ownerKey = p != null ? p.getCommandSenderName() : ctrl.ownerName;
             List<AIConfig.SavedLocation> list = this.manager.getConfig().listLocations(ownerKey);
             JsonArray arr = new JsonArray();
             for (AIConfig.SavedLocation loc : list) {
@@ -415,7 +415,7 @@ public class WorldRpcHandler implements RpcHandler {
                 lo.addProperty("y", loc.getY());
                 lo.addProperty("z", loc.getZ());
                 lo.addProperty("tags", loc.getTags() != null ? loc.getTags() : "");
-                lo.addProperty("dist", Math.round(d.func_70011_f(loc.getX(), loc.getY(), loc.getZ()) * 10.0) / 10.0);
+                lo.addProperty("dist", Math.round(d.getDistance(loc.getX(), loc.getY(), loc.getZ()) * 10.0) / 10.0);
                 arr.add(lo);
             }
             res.addProperty("count", arr.size());

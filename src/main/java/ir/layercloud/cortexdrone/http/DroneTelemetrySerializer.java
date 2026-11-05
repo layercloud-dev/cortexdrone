@@ -46,20 +46,20 @@ public class DroneTelemetrySerializer {
         JsonArray dronesDiag = new JsonArray();
         for (DroneController ctrl : this.manager.getControllersById().values()) {
             Drone d = ctrl.drone;
-            if (d == null || d.field_70128_L) continue;
+            if (d == null || d.isDead) continue;
             JsonObject dj = new JsonObject();
             dj.addProperty("id", ctrl.id);
-            dj.addProperty("entityId", d.func_145782_y());
+            dj.addProperty("entityId", d.getEntityId());
             dj.addProperty("name", ctrl.name);
             dj.addProperty("owner", ctrl.ownerName);
             dj.addProperty("lastThought", ctrl.lastThought != null ? ctrl.lastThought : "");
             dj.addProperty("mode", ctrl.mode.name());
-            dj.addProperty("x", Math.round(d.field_70165_t * 100.0) / 100.0);
-            dj.addProperty("y", Math.round(d.field_70163_u * 100.0) / 100.0);
-            dj.addProperty("z", Math.round(d.field_70161_v * 100.0) / 100.0);
-            dj.addProperty("vx", Math.round(d.field_70159_w * 1000.0) / 1000.0);
-            dj.addProperty("vy", Math.round(d.field_70181_x * 1000.0) / 1000.0);
-            dj.addProperty("vz", Math.round(d.field_70179_y * 1000.0) / 1000.0);
+            dj.addProperty("x", Math.round(d.posX * 100.0) / 100.0);
+            dj.addProperty("y", Math.round(d.posY * 100.0) / 100.0);
+            dj.addProperty("z", Math.round(d.posZ * 100.0) / 100.0);
+            dj.addProperty("vx", Math.round(d.motionX * 1000.0) / 1000.0);
+            dj.addProperty("vy", Math.round(d.motionY * 1000.0) / 1000.0);
+            dj.addProperty("vz", Math.round(d.motionZ * 1000.0) / 1000.0);
             dj.addProperty("targetX", d.targetX());
             dj.addProperty("targetY", d.targetY());
             dj.addProperty("targetZ", d.targetZ());
@@ -87,8 +87,8 @@ public class DroneTelemetrySerializer {
                 mt.addProperty("x", ctrl.currentMineTarget[0]);
                 mt.addProperty("y", ctrl.currentMineTarget[1]);
                 mt.addProperty("z", ctrl.currentMineTarget[2]);
-                Block b = d.field_70170_p.func_147439_a(ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2]);
-                mt.addProperty("block", b != null ? b.func_149732_F() : "air");
+                Block b = d.worldObj.getBlock(ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2]);
+                mt.addProperty("block", b != null ? b.getLocalizedName() : "air");
                 dj.add("currentMineTarget", mt);
             }
             if (ctrl.currentMineStandoff != null) {
@@ -123,22 +123,22 @@ public class DroneTelemetrySerializer {
         root.addProperty("modVersion", CortexDroneMod.VERSION);
         root.addProperty("timestamp", System.currentTimeMillis());
 
-        MinecraftServer srv = MinecraftServer.func_71276_C();
+        MinecraftServer srv = MinecraftServer.getServer();
         JsonArray playersArr = new JsonArray();
-        if (srv != null && srv.func_71203_ab() != null && srv.func_71203_ab().field_72404_b != null) {
-            List<?> pList = new ArrayList<Object>(srv.func_71203_ab().field_72404_b);
+        if (srv != null && srv.getConfigurationManager() != null && srv.getConfigurationManager().playerEntityList != null) {
+            List<?> pList = new ArrayList<Object>((java.util.Collection<?>) srv.getConfigurationManager().playerEntityList);
             for (Object o : pList) {
                 if (o instanceof EntityPlayerMP) {
                     EntityPlayerMP p = (EntityPlayerMP) o;
                     JsonObject po = new JsonObject();
-                    po.addProperty("name", p.func_70005_c_());
-                    po.addProperty("dimension", p.field_71093_bK);
-                    po.addProperty("x", Math.round(p.field_70165_t * 100.0) / 100.0);
-                    po.addProperty("y", Math.round(p.field_70163_u * 100.0) / 100.0);
-                    po.addProperty("z", Math.round(p.field_70161_v * 100.0) / 100.0);
-                    po.addProperty("yaw", Math.round(p.field_70177_z * 10.0f) / 10.0f);
-                    po.addProperty("pitch", Math.round(p.field_70125_A * 10.0f) / 10.0f);
-                    po.addProperty("health", p.func_110143_aJ());
+                    po.addProperty("name", p.getCommandSenderName());
+                    po.addProperty("dimension", p.dimension);
+                    po.addProperty("x", Math.round(p.posX * 100.0) / 100.0);
+                    po.addProperty("y", Math.round(p.posY * 100.0) / 100.0);
+                    po.addProperty("z", Math.round(p.posZ * 100.0) / 100.0);
+                    po.addProperty("yaw", Math.round(p.rotationYaw * 10.0f) / 10.0f);
+                    po.addProperty("pitch", Math.round(p.rotationPitch * 10.0f) / 10.0f);
+                    po.addProperty("health", p.getHealth());
                     po.addProperty("authenticated", this.manager.getMod().isAuthenticated(p));
                     playersArr.add(po);
                 }
@@ -149,19 +149,19 @@ public class DroneTelemetrySerializer {
         JsonArray dronesArr = new JsonArray();
         for (DroneController ctrl : this.manager.getControllersById().values()) {
             Drone d = ctrl.drone;
-            if (d == null || d.field_70128_L) continue;
+            if (d == null || d.isDead) continue;
             JsonObject dj = new JsonObject();
             dj.addProperty("id", ctrl.id);
-            dj.addProperty("entityId", d.func_145782_y());
-            dj.addProperty("uuid", d.func_110124_au() != null ? d.func_110124_au().toString() : "");
+            dj.addProperty("entityId", d.getEntityId());
+            dj.addProperty("uuid", d.getUniqueID() != null ? d.getUniqueID().toString() : "");
             dj.addProperty("name", ctrl.name);
             dj.addProperty("owner", ctrl.ownerName);
             dj.addProperty("lastThought", ctrl.lastThought != null ? ctrl.lastThought : "");
             dj.addProperty("targetPlayer", ctrl.targetPlayerName);
-            dj.addProperty("dimension", d.field_71093_bK);
-            dj.addProperty("x", Math.round(d.field_70165_t * 100.0) / 100.0);
-            dj.addProperty("y", Math.round(d.field_70163_u * 100.0) / 100.0);
-            dj.addProperty("z", Math.round(d.field_70161_v * 100.0) / 100.0);
+            dj.addProperty("dimension", d.dimension);
+            dj.addProperty("x", Math.round(d.posX * 100.0) / 100.0);
+            dj.addProperty("y", Math.round(d.posY * 100.0) / 100.0);
+            dj.addProperty("z", Math.round(d.posZ * 100.0) / 100.0);
             dj.addProperty("targetX", d.targetX());
             dj.addProperty("targetY", d.targetY());
             dj.addProperty("targetZ", d.targetZ());
@@ -187,17 +187,17 @@ public class DroneTelemetrySerializer {
             JsonArray invArr = new JsonArray();
             IInventory inv = d.mainInventory();
             if (inv != null) {
-                int size = inv.func_70302_i_();
+                int size = inv.getSizeInventory();
                 for (int i = 0; i < size; i++) {
-                    ItemStack st = inv.func_70301_a(i);
-                    if (st != null && st.field_77994_a > 0) {
+                    ItemStack st = inv.getStackInSlot(i);
+                    if (st != null && st.stackSize > 0) {
                         JsonObject slotObj = new JsonObject();
                         slotObj.addProperty("slot", i);
-                        String reg = st.func_77973_b() != null ? Item.field_150901_e.func_148750_c(st.func_77973_b()) : "";
-                        slotObj.addProperty("item", reg != null ? reg : st.func_77977_a());
-                        slotObj.addProperty("displayName", st.func_82833_r());
-                        slotObj.addProperty("count", st.field_77994_a);
-                        slotObj.addProperty("damage", st.func_77960_j());
+                        String reg = st.getItem() != null ? Item.itemRegistry.getNameForObject(st.getItem()) : "";
+                        slotObj.addProperty("item", reg != null ? reg : st.getUnlocalizedName());
+                        slotObj.addProperty("displayName", st.getDisplayName());
+                        slotObj.addProperty("count", st.stackSize);
+                        slotObj.addProperty("damage", st.getItemDamage());
                         invArr.add(slotObj);
                     }
                 }
@@ -205,7 +205,7 @@ public class DroneTelemetrySerializer {
             dj.add("inventory", invArr);
 
             JsonObject nearbyOres = new JsonObject();
-            Map<String, int[]> scan = this.manager.getWorldScanner().scanNearbyResources(d.field_70170_p, d.field_70165_t, d.field_70163_u, d.field_70161_v, 16);
+            Map<String, int[]> scan = this.manager.getWorldScanner().scanNearbyResources(d.worldObj, d.posX, d.posY, d.posZ, 16);
             for (Map.Entry<String, int[]> e : scan.entrySet()) {
                 int[] v = e.getValue();
                 JsonObject ro = new JsonObject();
@@ -218,23 +218,23 @@ public class DroneTelemetrySerializer {
             dj.add("nearbyBlocks", nearbyOres);
 
             JsonArray nearbyEnts = new JsonArray();
-            AxisAlignedBB eBox = AxisAlignedBB.func_72330_a(
-                d.field_70165_t - 12.0, d.field_70163_u - 6.0, d.field_70161_v - 12.0,
-                d.field_70165_t + 12.0, d.field_70163_u + 8.0, d.field_70161_v + 12.0
+            AxisAlignedBB eBox = AxisAlignedBB.getBoundingBox(
+                d.posX - 12.0, d.posY - 6.0, d.posZ - 12.0,
+                d.posX + 12.0, d.posY + 8.0, d.posZ + 12.0
             );
-            List<?> ents = d.field_70170_p.func_72872_a(EntityLivingBase.class, eBox);
+            List<?> ents = d.worldObj.getEntitiesWithinAABB(EntityLivingBase.class, eBox);
             if (ents != null) {
                 for (Object eo : ents) {
                     if (eo instanceof EntityLivingBase) {
                         EntityLivingBase el = (EntityLivingBase) eo;
-                        if (el.field_70128_L) continue;
+                        if (el.isDead) continue;
                         JsonObject eJson = new JsonObject();
-                        eJson.addProperty("name", el.func_70005_c_());
+                        eJson.addProperty("name", el.getCommandSenderName());
                         eJson.addProperty("hostile", ItemClassifier.isHostileOrMutantEntity(el));
-                        eJson.addProperty("health", el.func_110143_aJ());
-                        eJson.addProperty("x", Math.round(el.field_70165_t * 10.0) / 10.0);
-                        eJson.addProperty("y", Math.round(el.field_70163_u * 10.0) / 10.0);
-                        eJson.addProperty("z", Math.round(el.field_70161_v * 10.0) / 10.0);
+                        eJson.addProperty("health", el.getHealth());
+                        eJson.addProperty("x", Math.round(el.posX * 10.0) / 10.0);
+                        eJson.addProperty("y", Math.round(el.posY * 10.0) / 10.0);
+                        eJson.addProperty("z", Math.round(el.posZ * 10.0) / 10.0);
                         nearbyEnts.add(eJson);
                     }
                 }

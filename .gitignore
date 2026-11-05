@@ -11,6 +11,10 @@ mods/
 .gradle/
 # Gradle wrapper hash dirs use a hash directory; keep properties file tracked
 !gradle/wrapper/gradle-wrapper.properties
+!gradle/wrapper/gradle-wrapper.jar
+
+# ForgeGradle / RFG dev run directory
+run/
 
 # IDE
 .idea/

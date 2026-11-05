@@ -214,9 +214,9 @@ public class AIDroneManager {
         if (newMode != Mode.FOLLOW) {
             ctrl.hasAnchor = false;
         }
-        if (newMode != Mode.MINE && ctrl.currentMineTarget != null && ctrl.drone != null && ctrl.drone.field_70170_p != null) {
-            ctrl.drone.field_70170_p.func_147443_d(
-                ctrl.drone.func_145782_y(),
+        if (newMode != Mode.MINE && ctrl.currentMineTarget != null && ctrl.drone != null && ctrl.drone.worldObj != null) {
+            ctrl.drone.worldObj.destroyBlockInWorldPartially(
+                ctrl.drone.getEntityId(),
                 ctrl.currentMineTarget[0],
                 ctrl.currentMineTarget[1],
                 ctrl.currentMineTarget[2],
@@ -234,7 +234,7 @@ public class AIDroneManager {
 
     public void onPlayerChat(ServerChatEvent event) {
         String msg = event.message != null ? event.message.trim() : "";
-        String senderName = event.player.func_70005_c_();
+        String senderName = event.player.getCommandSenderName();
         this.logger.recordChat(senderName, msg);
 
         String lower = msg.toLowerCase();
@@ -264,7 +264,7 @@ public class AIDroneManager {
     public void onServerTickStart() {
         this.tickProfiler.onTickStart();
         for (DroneController ctrl : this.controllersById.values()) {
-            if (ctrl.drone != null && !ctrl.drone.field_70128_L) {
+            if (ctrl.drone != null && !ctrl.drone.isDead) {
                 ensureMachineRunningState(ctrl.drone);
             }
         }
@@ -281,7 +281,7 @@ public class AIDroneManager {
         while (it.hasNext()) {
             Map.Entry<Integer, DroneController> entry = it.next();
             DroneController ctrl = entry.getValue();
-            if (ctrl.drone == null || ctrl.drone.field_70128_L) {
+            if (ctrl.drone == null || ctrl.drone.isDead) {
                 it.remove();
                 continue;
             }
@@ -306,22 +306,22 @@ public class AIDroneManager {
     }
 
     private void reconnectUnlinkedWorldDrones() {
-        MinecraftServer srv = MinecraftServer.func_71276_C();
-        if (srv == null || srv.field_71305_c == null) return;
+        MinecraftServer srv = MinecraftServer.getServer();
+        if (srv == null || srv.worldServers == null) return;
 
-        for (WorldServer ws : srv.field_71305_c) {
-            if (ws == null || ws.field_72996_f == null) continue;
-            List<?> entities = new ArrayList<Object>(ws.field_72996_f);
+        for (WorldServer ws : srv.worldServers) {
+            if (ws == null || ws.loadedEntityList == null) continue;
+            List<?> entities = new ArrayList<Object>((java.util.Collection<?>) ws.loadedEntityList);
             for (Object obj : entities) {
                 if (obj instanceof Drone) {
                     Drone d = (Drone) obj;
-                    if (d.field_70128_L) continue;
+                    if (d.isDead) continue;
                     if (findControllerByEntity(d) != null) continue;
                     if (wasDespawned(d)) continue;
 
-                    UUID uid = d.func_110124_au();
+                    UUID uid = d.getUniqueID();
                     String owner = d.ownerName() != null && !d.ownerName().isEmpty() ? d.ownerName() : "Server";
-                    String name = d.func_70005_c_() != null ? d.func_70005_c_() : "AI-Drone";
+                    String name = d.getCommandSenderName() != null ? d.getCommandSenderName() : "AI-Drone";
                     Mode restoredMode = Mode.FOLLOW;
                     boolean restoredTorch = false;
                     String restoredLedEffect = "NONE";
@@ -365,9 +365,9 @@ public class AIDroneManager {
                     // Deduplicate if this player already has an active drone controller
                     if (!"Server".equalsIgnoreCase(owner)) {
                         DroneController existingOwnerCtrl = getPlayerDrone(owner);
-                        if (existingOwnerCtrl != null && existingOwnerCtrl.drone != null && !existingOwnerCtrl.drone.field_70128_L && existingOwnerCtrl.drone != d) {
+                        if (existingOwnerCtrl != null && existingOwnerCtrl.drone != null && !existingOwnerCtrl.drone.isDead && existingOwnerCtrl.drone != d) {
                             InventoryService.withdrawFromInventory(d.mainInventory(), existingOwnerCtrl.drone.mainInventory(), "all", 512);
-                            d.func_70106_y();
+                            d.setDead();
                             this.logger.log("LINK", existingOwnerCtrl, "Merged and despawned duplicate world drone for " + owner, "");
                             continue;
                         }
@@ -384,14 +384,14 @@ public class AIDroneManager {
                     ctrl.guardFilter = restoredGuardFilter;
                     ctrl.patrolRadius = restoredPatrolRadius;
                     this.logger.log("LINK", ctrl, "Auto-reconnected world drone",
-                        String.format("owner=%s pos=(%.1f,%.1f,%.1f) mode=%s", owner, d.field_70165_t, d.field_70163_u, d.field_70161_v, restoredMode.name()));
+                        String.format("owner=%s pos=(%.1f,%.1f,%.1f) mode=%s", owner, d.posX, d.posY, d.posZ, restoredMode.name()));
                 }
             }
         }
     }
 
     public DroneController findControllerByEntity(Drone d) {
-        UUID uid = d.func_110124_au();
+        UUID uid = d.getUniqueID();
         for (DroneController c : this.controllersById.values()) {
             if (c.drone == d || (uid != null && uid.equals(c.entityUuid))) {
                 c.drone = d;
@@ -404,11 +404,11 @@ public class AIDroneManager {
     public DroneController getPlayerDrone(String playerName) {
         if (playerName == null) return null;
         DroneController ctrl = this.controllersByOwner.get(CortexDroneMod.normKey(playerName));
-        if (ctrl != null && ctrl.drone != null && !ctrl.drone.field_70128_L) {
+        if (ctrl != null && ctrl.drone != null && !ctrl.drone.isDead) {
             return ctrl;
         }
         for (DroneController c : this.controllersById.values()) {
-            if (c.drone != null && !c.drone.field_70128_L && playerName.equalsIgnoreCase(c.ownerName)) {
+            if (c.drone != null && !c.drone.isDead && playerName.equalsIgnoreCase(c.ownerName)) {
                 this.controllersByOwner.put(CortexDroneMod.normKey(playerName), c);
                 return c;
             }
@@ -420,7 +420,7 @@ public class AIDroneManager {
         DroneController owned = getPlayerDrone(playerName);
         if (owned != null) return owned;
         for (DroneController c : this.controllersById.values()) {
-            if (c.drone != null && !c.drone.field_70128_L) {
+            if (c.drone != null && !c.drone.isDead) {
                 return c;
             }
         }
@@ -438,61 +438,61 @@ public class AIDroneManager {
     }
 
     public DroneController spawnDroneForPlayer(EntityPlayerMP player, String customName) {
-        DroneController existing = getPlayerDrone(player.func_70005_c_());
-        if (existing != null && existing.drone != null && !existing.drone.field_70128_L) {
+        DroneController existing = getPlayerDrone(player.getCommandSenderName());
+        if (existing != null && existing.drone != null && !existing.drone.isDead) {
             despawnDrone(existing, player);
         }
 
-        World world = player.field_70170_p;
+        World world = player.worldObj;
         Drone drone = new Drone(world);
         String dName = (customName != null && !customName.trim().isEmpty())
             ? customName.trim()
-            : (player.func_70005_c_() + "-AI");
+            : (player.getCommandSenderName() + "-AI");
 
         drone.setName(dName);
-        drone.ownerName_$eq(player.func_70005_c_());
-        drone.ownerUUID_$eq(player.func_110124_au());
+        drone.ownerName_$eq(player.getCommandSenderName());
+        drone.ownerUUID_$eq(player.getUniqueID());
 
-        double yawRad = Math.toRadians(player.field_70177_z);
+        double yawRad = Math.toRadians(player.rotationYaw);
         double fx = -Math.sin(yawRad) * 2.0;
         double fz = Math.cos(yawRad) * 2.0;
-        double sx = player.field_70165_t + fx;
-        double sy = player.field_70163_u + 1.25;
-        double sz = player.field_70161_v + fz;
-        if (!ItemClassifier.isPassableVoxel(world, MathHelper.func_76128_c(sx), MathHelper.func_76128_c(sy), MathHelper.func_76128_c(sz))) {
-            sx = player.field_70165_t;
-            sy = player.field_70163_u + 1.5;
-            sz = player.field_70161_v;
+        double sx = player.posX + fx;
+        double sy = player.posY + 1.25;
+        double sz = player.posZ + fz;
+        if (!ItemClassifier.isPassableVoxel(world, MathHelper.floor_double(sx), MathHelper.floor_double(sy), MathHelper.floor_double(sz))) {
+            sx = player.posX;
+            sy = player.posY + 1.5;
+            sz = player.posZ;
         }
 
-        drone.func_70107_b(sx, sy, sz);
+        drone.setPosition(sx, sy, sz);
         drone.preparePowerUp();
         drone.inventorySize_$eq(8);
         drone.lightColor_$eq(0x00FFFF);
-        drone.statusText_$eq("Following\n" + trimStatus(player.func_70005_c_()));
+        drone.statusText_$eq("Following\n" + trimStatus(player.getCommandSenderName()));
 
         FlightPathfinder.setDroneFlightTarget(drone, sx, sy, sz, 0.1f);
         ensureMachineRunningState(drone);
-        world.func_72838_d(drone);
+        world.spawnEntityInWorld(drone);
 
-        DroneController ctrl = registerDroneController(drone, dName, player.func_70005_c_());
+        DroneController ctrl = registerDroneController(drone, dName, player.getCommandSenderName());
         saveConfig();
-        this.logger.log("SPAWN", ctrl, "Spawned new AI drone for " + player.func_70005_c_(),
+        this.logger.log("SPAWN", ctrl, "Spawned new AI drone for " + player.getCommandSenderName(),
             String.format("pos=(%.1f,%.1f,%.1f)", sx, sy, sz));
         return ctrl;
     }
 
     public DroneController linkNearestDrone(EntityPlayerMP player) {
-        World world = player.field_70170_p;
-        AxisAlignedBB box = player.field_70121_D.func_72314_b(8.0, 8.0, 8.0);
-        List<?> list = world.func_72872_a(Drone.class, box);
+        World world = player.worldObj;
+        AxisAlignedBB box = player.boundingBox.expand(8.0, 8.0, 8.0);
+        List<?> list = world.getEntitiesWithinAABB(Drone.class, box);
         Drone best = null;
         double bestDist = Double.MAX_VALUE;
         for (Object o : list) {
             if (o instanceof Drone) {
                 Drone d = (Drone) o;
-                if (d.field_70128_L) continue;
-                double dist = d.func_70032_d(player);
+                if (d.isDead) continue;
+                double dist = d.getDistanceToEntity(player);
                 if (dist < bestDist) {
                     bestDist = dist;
                     best = d;
@@ -502,17 +502,17 @@ public class AIDroneManager {
         if (best == null) return null;
 
         DroneController ctrl = findControllerByEntity(best);
-        String pName = player.func_70005_c_();
+        String pName = player.getCommandSenderName();
         best.ownerName_$eq(pName);
-        best.ownerUUID_$eq(player.func_110124_au());
+        best.ownerUUID_$eq(player.getUniqueID());
         ensureMachineRunningState(best);
         best.inventorySize_$eq(8);
         best.lightColor_$eq(0x00FF88);
         best.statusText_$eq("Linked\n" + trimStatus(pName));
 
         if (ctrl == null) {
-            String dName = best.func_70005_c_() != null && !best.func_70005_c_().isEmpty()
-                ? best.func_70005_c_()
+            String dName = best.getCommandSenderName() != null && !best.getCommandSenderName().isEmpty()
+                ? best.getCommandSenderName()
                 : (pName + "-AI");
             ctrl = registerDroneController(best, dName, pName);
         } else {
@@ -526,20 +526,20 @@ public class AIDroneManager {
     }
 
     private boolean wasDespawned(Drone d) {
-        return d != null && d.func_110124_au() != null && this.despawnedUuids.contains(d.func_110124_au());
+        return d != null && d.getUniqueID() != null && this.despawnedUuids.contains(d.getUniqueID());
     }
     public int despawnDrone(DroneController ctrl, EntityPlayerMP dropTargetPlayer) {
         if (ctrl == null || ctrl.drone == null) return 0;
         Drone d = ctrl.drone;
-        World w = d.field_70170_p;
-        double dx = dropTargetPlayer != null ? dropTargetPlayer.field_70165_t : d.field_70165_t;
-        double dy = dropTargetPlayer != null ? dropTargetPlayer.field_70163_u + 0.5 : d.field_70163_u;
-        double dz = dropTargetPlayer != null ? dropTargetPlayer.field_70161_v : d.field_70161_v;
+        World w = d.worldObj;
+        double dx = dropTargetPlayer != null ? dropTargetPlayer.posX : d.posX;
+        double dy = dropTargetPlayer != null ? dropTargetPlayer.posY + 0.5 : d.posY;
+        double dz = dropTargetPlayer != null ? dropTargetPlayer.posZ : d.posZ;
 
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
         this.effectService.clearLighting(ctrl);
         ctrl.despawned = true;
-        UUID duid = d.func_110124_au();
+        UUID duid = d.getUniqueID();
         if (duid != null) {
             this.despawnedUuids.add(duid);
             if (this.config != null && this.config.getSavedDrones() != null) {
@@ -550,14 +550,14 @@ public class AIDroneManager {
                 }
             }
         }
-        d.func_70106_y();
+        d.setDead();
         this.controllersById.remove(ctrl.id);
         this.httpServer.updateCachedSnapshots();
         if (ctrl.ownerName != null) {
             String key = CortexDroneMod.normKey(ctrl.ownerName);
             this.controllersByOwner.remove(key, ctrl);
             for (DroneController other : this.controllersById.values()) {
-                if (other != null && other.drone != null && !other.drone.field_70128_L
+                if (other != null && other.drone != null && !other.drone.isDead
                     && ctrl.ownerName.equalsIgnoreCase(other.ownerName)) {
                     this.controllersByOwner.put(key, other);
                     break;
@@ -587,15 +587,15 @@ public class AIDroneManager {
 
     public void commandComeToPlayer(EntityPlayerMP player, DroneController ctrl) {
         if (player == null || ctrl == null || ctrl.drone == null) return;
-        World world = player.field_70170_p;
-        double yawRad = Math.toRadians(player.field_70177_z);
+        World world = player.worldObj;
+        double yawRad = Math.toRadians(player.rotationYaw);
         double fx = -Math.sin(yawRad) * 2.0;
         double fz = Math.cos(yawRad) * 2.0;
-        double gx = player.field_70165_t + fx;
-        double gy = player.field_70163_u + 1.15;
-        double gz = player.field_70161_v + fz;
-        if (!ItemClassifier.isPassableVoxel(world, MathHelper.func_76128_c(gx), MathHelper.func_76128_c(gy), MathHelper.func_76128_c(gz))) {
-            int[] open = FlightPathfinder.findNearestPassableVoxel(world, MathHelper.func_76128_c(gx), MathHelper.func_76128_c(gy), MathHelper.func_76128_c(gz), 2);
+        double gx = player.posX + fx;
+        double gy = player.posY + 1.15;
+        double gz = player.posZ + fz;
+        if (!ItemClassifier.isPassableVoxel(world, MathHelper.floor_double(gx), MathHelper.floor_double(gy), MathHelper.floor_double(gz))) {
+            int[] open = FlightPathfinder.findNearestPassableVoxel(world, MathHelper.floor_double(gx), MathHelper.floor_double(gy), MathHelper.floor_double(gz), 2);
             if (open != null) {
                 gx = open[0] + 0.5;
                 gy = open[1] + 0.35;
@@ -620,7 +620,7 @@ public class AIDroneManager {
         CortexDroneMod.sendMsg(sender, String.format(EnumChatFormatting.YELLOW + "Pos: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
             + EnumChatFormatting.YELLOW + " -> Target: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
             + EnumChatFormatting.GRAY + " [Waypoints: %d/%d]",
-            d.field_70165_t, d.field_70163_u, d.field_70161_v, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ(),
+            d.posX, d.posY, d.posZ, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ(),
             ctrl.pathIndex, ctrl.pathWaypoints.size()));
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "LED: " + EnumChatFormatting.AQUA + String.format("#%06X", d.lightColor() & 0xFFFFFF)
             + EnumChatFormatting.YELLOW + " | Light Aura: " + EnumChatFormatting.WHITE + (ctrl.autoTorch ? "ON" : "OFF")
@@ -639,7 +639,7 @@ public class AIDroneManager {
             });
             return;
         }
-        DroneController ctrl = player != null ? getPlayerDrone(player.func_70005_c_()) : null;
+        DroneController ctrl = player != null ? getPlayerDrone(player.getCommandSenderName()) : null;
         if (ctrl == null && player != null) {
             ctrl = linkNearestDrone(player);
             if (ctrl == null) {

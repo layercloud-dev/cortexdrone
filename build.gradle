@@ -1,65 +1,68 @@
 plugins {
     id 'java'
-    id 'application'
+    id 'com.gtnewhorizons.retrofuturagradle' version '2.0.6'
 }
 
-group = project.group
-version = project.version
+// ---------------------------------------------------------------------------
+// Project metadata
+// ---------------------------------------------------------------------------
+group = project.findProperty('group') ?: 'ir.layercloud'
+version = project.findProperty('version') ?: '1.4.0'
+base {
+    archivesName = 'CortexDrone'
+}
+
+def modsDir = project.findProperty('modsDir') ?: '/root/forge-smp/mods'
+def ocVersion = project.findProperty('ocVersion') ?: '1.12.70-GTNH'
 
 // ---------------------------------------------------------------------------
-// Local dependency jars (flat dirs + explicit files, configured via
-// gradle.properties so they can be overridden without editing this file).
+// Java / Forge toolchain
 // ---------------------------------------------------------------------------
-def forgeDir = project.hasProperty('forgeDir') ? project.forgeDir : '/root/forge-smp'
-def layercloudDir = project.hasProperty('layercloudDir') ? project.layercloudDir : "${rootDir.parent}/layercloud-smp-src"
-def modsDir = project.hasProperty('modsDir') ? project.modsDir : "${forgeDir}/mods"
-def mcSrgJar = project.hasProperty('mcSrgJar') ? project.mcSrgJar : "${layercloudDir}/srg_gen/mc-srg.jar"
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
 
-def mcSrgFile = file(mcSrgJar)
-def ocFile = file("${modsDir}/OpenComputers-1.12.70-GTNH.jar")
-def lwjglFile = file("${forgeDir}/lwjgl3ify-forgePatches.jar")
-def guavaFile = file("${forgeDir}/libraries/com/google/guava/guava/17.0/guava-17.0.jar")
-
-// Resolve compile classpath:
-//  1. mc-srg.jar if present (obfuscated Forge 1.7.10 runtime classes)
-//  2. otherwise forge universal jar
-def forgeUniversal = file("${forgeDir}/forge-1.7.10-10.13.4.1614-1.7.10-universal.jar")
-
-
+minecraft {
+    mcVersion = '1.7.10'
+    username = 'Developer'
+    mcpMappingChannel = 'stable'
+    mcpMappingVersion = '12'
+}
 
 repositories {
+    maven {
+        name = 'GTNH Maven'
+        url = uri('https://nexus.gtnewhorizons.com/repository/public/')
+    }
     mavenCentral()
 }
 
 dependencies {
-    // NOTE: compileOnly files(...) must NOT have a { } closure in Gradle 8.14 (it parses as a task/action and the files are dropped, causing 'package net.minecraft does not exist').
-    compileOnly files(mcSrgFile.exists() ? mcSrgFile : forgeUniversal, ocFile, lwjglFile, guavaFile)
-    // Tests exercise action contexts directly; the MC jar also supplies Gson
-    // and the player entity type used by the Action contract.
-    testCompileOnly files(mcSrgFile.exists() ? mcSrgFile : forgeUniversal)
-    testRuntimeOnly files(mcSrgFile.exists() ? mcSrgFile : forgeUniversal)
-    // Lombok is compile-time only: no Lombok classes are bundled into the mod jar.
+    // OpenComputers is the host API. The Maven dev artifact is deobfuscated by
+    // RFG so its MC references match the MCP development workspace.
+    compileOnly(rfg.deobf("com.github.GTNewHorizons:OpenComputers:${ocVersion}")) {
+        transitive = false
+    }
+    compileOnly 'org.scala-lang:scala-library:2.11.1'
+    compileOnly 'com.google.guava:guava:17.0'
+
     compileOnly 'org.projectlombok:lombok:1.18.38'
     annotationProcessor 'org.projectlombok:lombok:1.18.38'
+
     testImplementation 'junit:junit:4.13.2'
 }
 
-// ---------------------------------------------------------------------------
-// Java toolchain / compilation
-// ---------------------------------------------------------------------------
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-// The original build.sh uses GraalVM JDK 25 with --release 8.
-// Keep that behaviour: compile with release 8 on the running JVM so the
-// output stays compatible with the Forge 1.7.10 / Java 8 runtime.
 compileJava {
     options.encoding = 'UTF-8'
-    options.release = 8
     options.compilerArgs = ['-Xlint:deprecation', '-Xlint:unchecked', '-Werror', '-Xlint:-options']
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
     sourceCompatibility = '1.8'
     targetCompatibility = '1.8'
 }
@@ -68,11 +71,19 @@ processResources {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
+jar {
+    manifest {
+        attributes 'Implementation-Title'   : 'CortexDrone',
+                    'Implementation-Version': project.version,
+                    'Implementation-Vendor' : 'LayerCloud'
+    }
+}
+
 // ---------------------------------------------------------------------------
-// Validation (kept from the old monolithic build.gradle / validate-all.sh)
+// Validation (line limits, package layout, JS syntax)
 // ---------------------------------------------------------------------------
 tasks.register('validate') {
-    description = 'Modular line-limit, package structure, JS syntax, and live HTTP checks'
+    description = 'Modular line-limit, package structure and JS syntax validation'
     inputs.files(sourceSets.main.java.srcDirs.collect { fileTree(dir: it, include: '**/*.java') })
     inputs.files(fileTree(dir: 'src/main/resources', include: '**/*.mjs'))
     outputs.files(layout.buildDirectory.file('validate.done'))
@@ -82,32 +93,27 @@ tasks.register('validate') {
         def tmp = layout.buildDirectory.file('validate.done')
         tmp.get().asFile.parentFile.mkdirs()
 
-        // 1) Java line limit / package
-        def javaFiles = fileTree(dir: 'src/main/java', include: '**/*.java')
-        javaFiles.each { f ->
+        fileTree(dir: 'src/main/java', include: '**/*.java').each { f ->
             def rel = file('src/main/java').toPath().relativize(f.toPath())
             def lines = f.readLines().size()
-            def limit = 696
-            if (lines > limit) {
-                failures << "FAIL: ${rel} exceeds modular line limit (${lines} > ${limit})"
+            if (lines > 696) {
+                failures << "FAIL: ${rel} exceeds modular line limit (${lines} > 696)"
             }
 
-            // package-directory check
-            def declared = f.readLines().find { it.startsWith('package ') }?.replace('package ', '').replace(';', '')?.trim()
-            def srcRoot = project.projectDir.toPath().resolve('src/main/java')
-            def expectedPkg = srcRoot.relativize(new File(f.parent).toPath())
+            def declared = f.readLines().find { it.startsWith('package ') }?.replace('package ', '')?.replace(';', '')?.trim()
+            def expectedPkg = project.projectDir.toPath().resolve('src/main/java').relativize(new File(f.parent).toPath())
             def dirPkg = expectedPkg.toString().replace(File.separator, '.')
             if (declared != dirPkg) {
                 failures << "FAIL: Package mismatch in ${rel}: expected ${dirPkg}, got ${declared}"
             }
         }
 
-        // 2) JS --check
         fileTree(dir: 'src/main/resources', include: '**/*.mjs').each { f ->
             def proc = ['/usr/local/bin/node', '--check', f.path].execute()
             proc.waitFor()
             if (proc.exitValue() != 0) failures << "FAIL: JS syntax ${f.path}"
         }
+
         tmp.get().asFile.text = 'done'
         if (!failures.isEmpty()) {
             failures.each { println it }
@@ -118,36 +124,28 @@ tasks.register('validate') {
 }
 
 // ---------------------------------------------------------------------------
-// Packaging
+// Packaging / deployment
 // ---------------------------------------------------------------------------
-tasks.named('jar') {
-    archiveFileName = 'CortexDrone-1.0.0.jar'
-    // plain jar (no shadow) — matches build.sh output to mods/
-    // The manifest is minimal; mcmod.info lives in src/main/resources already.
-    manifest {
-        attributes 'Implementation-Title'   : 'CortexDrone',
-                    'Implementation-Version': project.version,
-                    'Implementation-Vendor' : 'LayerCloud'
-    }
-}
-
-tasks.register('buildJar', Copy) {
-    description = 'Build jar (plain, no-shadow) — copy of the default jar task output'
-    dependsOn 'jar'
-    from tasks.named('jar').get().archiveFile
-    into layout.buildDirectory.file('libs')
-}
+def reobfJar = tasks.named('reobfJar')
 
 tasks.register('deploy') {
-    description = 'Deploy built jar to the configured mods dir'
-    dependsOn 'jar'
+    description = 'Reobfuscate and deploy the built jar to the configured mods dir'
+    dependsOn reobfJar
     doLast {
-        def outJar = tasks.named('jar').get().archiveFile.get().asFile
+        def outJar = reobfJar.get().archiveFile.get().asFile
+        def targetDir = file(modsDir)
+        targetDir.mkdirs()
+        targetDir.listFiles()?.each { f ->
+            if (f.isFile() && f.name.startsWith('CortexDrone-') && f.name.endsWith('.jar')
+                && f.name != outJar.name) {
+                f.delete()
+            }
+        }
         copy {
             from outJar
-            into file(modsDir)
+            into targetDir
         }
-        println "Deployed ${file(modsDir)}/${outJar.name}"
+        println "Deployed ${new File(targetDir, outJar.name)}"
     }
 }
 

@@ -119,7 +119,7 @@ public class AIConfig {
             }
             if (controllers != null) {
                 for (DroneController c : controllers) {
-                    if (c.drone == null || c.drone.field_70128_L || c.entityUuid == null || "Server".equalsIgnoreCase(c.ownerName)) continue;
+                    if (c.drone == null || c.drone.isDead || c.entityUuid == null || "Server".equalsIgnoreCase(c.ownerName)) continue;
                     SavedDroneInfo info = new SavedDroneInfo();
                     info.setUuid(c.entityUuid.toString());
                     info.setName(c.name);
@@ -132,10 +132,10 @@ public class AIConfig {
                     info.setCustomLedColor(c.customLedColor);
                     info.setGuardFilter(c.guardFilter);
                     info.setPatrolRadius(c.patrolRadius);
-                    info.setDimension(c.drone.field_71093_bK);
-                    info.setX(Math.round(c.drone.field_70165_t * 10.0) / 10.0);
-                    info.setY(Math.round(c.drone.field_70163_u * 10.0) / 10.0);
-                    info.setZ(Math.round(c.drone.field_70161_v * 10.0) / 10.0);
+                    info.setDimension(c.drone.dimension);
+                    info.setX(Math.round(c.drone.posX * 10.0) / 10.0);
+                    info.setY(Math.round(c.drone.posY * 10.0) / 10.0);
+                    info.setZ(Math.round(c.drone.posZ * 10.0) / 10.0);
                     byUuid.put(info.getUuid(), info);
                 }
             }

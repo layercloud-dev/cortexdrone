@@ -69,7 +69,7 @@ public class CortexDroneMod {
 
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
-        File worldDir = event.getServer().func_71209_f("world");
+        File worldDir = event.getServer().getFile("world");
         if (!worldDir.exists()) {
             worldDir.mkdirs();
         }
@@ -155,28 +155,28 @@ public class CortexDroneMod {
 
     public static void sendMsg(ICommandSender sender, String msg) {
         if (sender != null) {
-            sender.func_145747_a(new ChatComponentText(msg));
+            sender.addChatMessage(new ChatComponentText(msg));
         }
     }
 
     public static void broadcast(String msg) {
-        MinecraftServer srv = MinecraftServer.func_71276_C();
-        if (srv != null && srv.func_71203_ab() != null) {
-            srv.func_71203_ab().func_148539_a(new ChatComponentText(msg));
+        MinecraftServer srv = MinecraftServer.getServer();
+        if (srv != null && srv.getConfigurationManager() != null) {
+            srv.getConfigurationManager().sendChatMsg(new ChatComponentText(msg));
         }
     }
 
     public static EntityPlayerMP findPlayer(String name) {
-        MinecraftServer srv = MinecraftServer.func_71276_C();
-        if (srv == null || srv.func_71203_ab() == null || name == null) return null;
-        return srv.func_71203_ab().func_152612_a(name);
+        MinecraftServer srv = MinecraftServer.getServer();
+        if (srv == null || srv.getConfigurationManager() == null || name == null) return null;
+        return srv.getConfigurationManager().func_152612_a(name);
     }
 
     public abstract static class BaseCmd extends CommandBase {
         @Override
         public int compareTo(Object o) {
             if (o instanceof ICommand) {
-                return this.func_71517_b().compareTo(((ICommand) o).func_71517_b());
+                return this.getCommandName().compareTo(((ICommand) o).getCommandName());
             }
             return 0;
         }

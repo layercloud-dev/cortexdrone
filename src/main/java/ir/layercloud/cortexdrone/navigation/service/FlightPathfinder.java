@@ -105,8 +105,8 @@ public class FlightPathfinder {
         // waypoints across the world.
         long h = 1125899906842597L;
         int[] c = new int[]{
-            MathHelper.func_76128_c(sx), MathHelper.func_76128_c(sy), MathHelper.func_76128_c(sz),
-            MathHelper.func_76128_c(gx), MathHelper.func_76128_c(gy), MathHelper.func_76128_c(gz)
+            MathHelper.floor_double(sx), MathHelper.floor_double(sy), MathHelper.floor_double(sz),
+            MathHelper.floor_double(gx), MathHelper.floor_double(gy), MathHelper.floor_double(gz)
         };
         for (int v : c) {
             h = (h ^ (v & 0xFFFFFFFFL)) * 1099511628211L;
@@ -142,12 +142,12 @@ public class FlightPathfinder {
             }
         }
 
-        int startX = MathHelper.func_76128_c(sx);
-        int startY = MathHelper.func_76128_c(sy);
-        int startZ = MathHelper.func_76128_c(sz);
-        int goalX = MathHelper.func_76128_c(gx);
-        int goalY = MathHelper.func_76128_c(gy);
-        int goalZ = MathHelper.func_76128_c(gz);
+        int startX = MathHelper.floor_double(sx);
+        int startY = MathHelper.floor_double(sy);
+        int startZ = MathHelper.floor_double(sz);
+        int goalX = MathHelper.floor_double(gx);
+        int goalY = MathHelper.floor_double(gy);
+        int goalZ = MathHelper.floor_double(gz);
 
         ChunkCacheContext bsi = new ChunkCacheContext(world, startX, startZ, 3);
 
@@ -236,7 +236,7 @@ public class FlightPathfinder {
                         Block nb = bsi.getBlock(nx, ny, nz);
                         boolean inLiq = ItemClassifier.isLiquidBlock(nb);
                         if (inLiq) {
-                            stepCost += (nb.func_149688_o() == Material.field_151587_i) ? 4.0 : 1.2;
+                            stepCost += (nb.getMaterial() == Material.lava) ? 4.0 : 1.2;
                         }
                         if (!bsi.isPassable(nx, ny - 1, nz)) {
                             stepCost += 0.35;
@@ -372,26 +372,26 @@ public class FlightPathfinder {
         Drone d = nav.drone();
         World world = nav.world();
 
-        int curBx = MathHelper.func_76128_c(d.field_70165_t);
-        int curBy = MathHelper.func_76128_c(d.field_70163_u);
-        int curBz = MathHelper.func_76128_c(d.field_70161_v);
-        int topCur = world.func_72976_f(curBx, curBz);
-        boolean droneInOpenSky = world.func_72937_j(curBx, curBy, curBz) || d.field_70163_u >= topCur - 1;
-        int topGoal = world.func_72976_f(MathHelper.func_76128_c(gx), MathHelper.func_76128_c(gz));
+        int curBx = MathHelper.floor_double(d.posX);
+        int curBy = MathHelper.floor_double(d.posY);
+        int curBz = MathHelper.floor_double(d.posZ);
+        int topCur = world.getHeightValue(curBx, curBz);
+        boolean droneInOpenSky = world.canBlockSeeTheSky(curBx, curBy, curBz) || d.posY >= topCur - 1;
+        int topGoal = world.getHeightValue(MathHelper.floor_double(gx), MathHelper.floor_double(gz));
         boolean goalOnSurface = gy >= topGoal - 3;
 
         double effGx = gx;
         double effGy = gy;
         double effGz = gz;
-        double horizDist = Math.hypot(gx - d.field_70165_t, gz - d.field_70161_v);
+        double horizDist = Math.hypot(gx - d.posX, gz - d.posZ);
 
-        if (!droneInOpenSky && goalOnSurface && (gy - d.field_70163_u > 6.0 || horizDist > 20.0)) {
+        if (!droneInOpenSky && goalOnSurface && (gy - d.posY > 6.0 || horizDist > 20.0)) {
             // Drone is underground trying to reach a surface goal: target surface exit above current position or last surface anchor first
             boolean anchorUsable = false;
-            if (ctrl.lastSurfaceAnchor != null && Math.hypot(ctrl.lastSurfaceAnchor[0] - d.field_70165_t, ctrl.lastSurfaceAnchor[2] - d.field_70161_v) <= 24.0) {
-                int ax = MathHelper.func_76128_c(ctrl.lastSurfaceAnchor[0]);
+            if (ctrl.lastSurfaceAnchor != null && Math.hypot(ctrl.lastSurfaceAnchor[0] - d.posX, ctrl.lastSurfaceAnchor[2] - d.posZ) <= 24.0) {
+                int ax = MathHelper.floor_double(ctrl.lastSurfaceAnchor[0]);
                 int ay = ctrl.lastSurfaceAnchor[1];
-                int az = MathHelper.func_76128_c(ctrl.lastSurfaceAnchor[2]);
+                int az = MathHelper.floor_double(ctrl.lastSurfaceAnchor[2]);
                 // A stale breadcrumb can sit inside rock now; never fly at a solid anchor.
                 if (ItemClassifier.isPassableVoxel(world, ax, ay, az) && ItemClassifier.isPassableVoxel(world, ax, ay + 1, az)) {
                     effGx = ctrl.lastSurfaceAnchor[0] + 0.5;
@@ -414,13 +414,13 @@ public class FlightPathfinder {
             }
         } else if (horizDist > (droneInOpenSky ? 18.0 : 32.0)) {
             double stepDist = droneInOpenSky ? 16.0 : 24.0;
-            effGx = d.field_70165_t + (gx - d.field_70165_t) / horizDist * stepDist;
-            effGz = d.field_70161_v + (gz - d.field_70161_v) / horizDist * stepDist;
+            effGx = d.posX + (gx - d.posX) / horizDist * stepDist;
+            effGz = d.posZ + (gz - d.posZ) / horizDist * stepDist;
             if (droneInOpenSky) {
-                int topSub = world.func_72976_f(MathHelper.func_76128_c(effGx), MathHelper.func_76128_c(effGz));
+                int topSub = world.getHeightValue(MathHelper.floor_double(effGx), MathHelper.floor_double(effGz));
                 effGy = Math.max(gy, Math.max(topSub, topCur) + 4.5);
             } else {
-                effGy = d.field_70163_u + (gy - d.field_70163_u) * (stepDist / horizDist);
+                effGy = d.posY + (gy - d.posY) * (stepDist / horizDist);
             }
         }
 
@@ -432,9 +432,9 @@ public class FlightPathfinder {
 
         String route = nav.route();
         if (("tunnel".equals(route) || "down".equals(route)) && ctrl.mode == Mode.GOTO
-            && !isFlightLineClear(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, effGx, effGy, effGz)) {
+            && !isFlightLineClear(world, d.posX, d.posY, d.posZ, effGx, effGy, effGz)) {
             int dug = this.caveEscapeService.digTowardTarget(
-                ctrl, MathHelper.func_76128_c(effGx), MathHelper.func_76128_c(effGy), MathHelper.func_76128_c(effGz));
+                ctrl, MathHelper.floor_double(effGx), MathHelper.floor_double(effGy), MathHelper.floor_double(effGz));
             if (dug > 0) return;
         }
 
@@ -451,14 +451,14 @@ public class FlightPathfinder {
             // If trapped underground with a partial path, trigger automatic breadcrumb backtrack or Baritone dig-escape
             if (!"direct".equals(route) && !"tunnel".equals(route) && !"down".equals(route)
                 && !droneInOpenSky && ctrl.lastPathPartial
-                && (ctrl.stuckTicks >= 6 || (goalOnSurface && gy - d.field_70163_u > 6.0))) {
+                && (ctrl.stuckTicks >= 6 || (goalOnSurface && gy - d.posY > 6.0))) {
                 escapeCaveOrDigOut(ctrl, null);
             }
         }
 
         while (nav.hasWaypoint()) {
             double[] wp = nav.currentWaypoint();
-            double distWp = d.func_70011_f(wp[0], wp[1], wp[2]);
+            double distWp = d.getDistance(wp[0], wp[1], wp[2]);
             boolean isLastWp = (nav.pathIndex() == nav.path().size() - 1);
             double distWpToGoal = Math.sqrt(
                 (wp[0] - effGx) * (wp[0] - effGx)
@@ -478,19 +478,19 @@ public class FlightPathfinder {
         double[] activeWp = nav.hasWaypoint()
             ? nav.currentWaypoint()
             : new double[]{effGx, effGy, effGz};
-        int awx = MathHelper.func_76128_c(activeWp[0]);
-        int away = MathHelper.func_76128_c(activeWp[1]);
-        int awz = MathHelper.func_76128_c(activeWp[2]);
+        int awx = MathHelper.floor_double(activeWp[0]);
+        int away = MathHelper.floor_double(activeWp[1]);
+        int awz = MathHelper.floor_double(activeWp[2]);
         // A waypoint that is inside collision territory must be recovered from, not
         // hovered at. The previous throttle compared one `lastSolidKey`: when two
         // different blocked goals alternated every tick (A/B/A/B) it saw "new key"
         // each time, so it logged every tick and NEVER escalated — 15.6k STUCK lines
         // and a permanently hovering drone. Count hits per blocked waypoint instead.
         if (!ItemClassifier.isPassableVoxel(world, awx, away, awz) || !ItemClassifier.isPassableVoxel(world, awx, away + 1, awz)) {
-            FlightPathfinder.setDroneFlightTarget(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, 0.05f);
-            d.field_70159_w *= 0.3;
-            d.field_70181_x *= 0.3;
-            d.field_70179_y *= 0.3;
+            FlightPathfinder.setDroneFlightTarget(d, d.posX, d.posY, d.posZ, 0.05f);
+            d.motionX *= 0.3;
+            d.motionY *= 0.3;
+            d.motionZ *= 0.3;
             if (ctrl.stuckTicks < 6) {
                 ctrl.stuckTicks = 6;
             }
@@ -509,11 +509,11 @@ public class FlightPathfinder {
             // One log per drone per 4s max, regardless of how many goals alternate.
             boolean logNow = ctrl.tickClock - ctrl.solidLogTick >= 80;
             if (logNow) {
-                Block blockedAtWp = world.func_147439_a(awx, away, awz);
+                Block blockedAtWp = world.getBlock(awx, away, awz);
                 this.logger.log("STUCK", ctrl, "Blocked waypoint; recovering",
                     String.format("wp=(%.2f,%.2f,%.2f) hits=%d block=%s mode=%s",
                         activeWp[0], activeWp[1], activeWp[2], hits,
-                        ItemClassifier.getBlockDisplayName(blockedAtWp, world.func_72805_g(awx, away, awz)),
+                        ItemClassifier.getBlockDisplayName(blockedAtWp, world.getBlockMetadata(awx, away, awz)),
                         ctrl.mode.name()));
                 ctrl.lastSolidKey = ctrl.id + "|solid:" + solidKey;
                 ctrl.lastSolidLogTick = ctrl.tickClock;

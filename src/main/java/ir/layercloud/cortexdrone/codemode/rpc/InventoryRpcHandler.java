@@ -52,7 +52,7 @@ public class InventoryRpcHandler implements RpcHandler {
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
+        World world = d.worldObj;
 
         if (m.equals("get_player")) {
             String pName = args.has("name") && !args.get("name").isJsonNull() ? args.get("name").getAsString() : ctrl.ownerName;
@@ -63,42 +63,42 @@ public class InventoryRpcHandler implements RpcHandler {
                 res.addProperty("error", "Player offline");
                 return res;
             }
-            int bx = MathHelper.func_76128_c(p.field_70165_t);
-            int by = MathHelper.func_76128_c(p.field_70163_u);
-            int bz = MathHelper.func_76128_c(p.field_70161_v);
-            int facing = MathHelper.func_76128_c((double) (p.field_70177_z * 4.0f / 360.0f) + 0.5D) & 3;
+            int bx = MathHelper.floor_double(p.posX);
+            int by = MathHelper.floor_double(p.posY);
+            int bz = MathHelper.floor_double(p.posZ);
+            int facing = MathHelper.floor_double((double) (p.rotationYaw * 4.0f / 360.0f) + 0.5D) & 3;
             int dirX = facing == 1 ? -1 : (facing == 3 ? 1 : 0);
             int dirZ = facing == 0 ? 1 : (facing == 2 ? -1 : 0);
             String[] dirs = new String[]{"South(+Z)", "West(-X)", "North(-Z)", "East(+X)"};
-            Block foot = world.func_147439_a(bx, by, bz);
-            Block under = world.func_147439_a(bx, by - 1, bz);
+            Block foot = world.getBlock(bx, by, bz);
+            Block under = world.getBlock(bx, by - 1, bz);
             JsonObject supportBlock = WorldScanner.findPlayerSupportBlock(world, p);
             JsonObject lookBlock = WorldScanner.raycastPlayerLook(world, p, 80.0);
-            ItemStack held = p.func_71045_bC();
-            res.addProperty("name", p.func_70005_c_());
-            res.addProperty("x", p.field_70165_t);
-            res.addProperty("y", p.field_70163_u);
-            res.addProperty("z", p.field_70161_v);
+            ItemStack held = p.getCurrentEquippedItem();
+            res.addProperty("name", p.getCommandSenderName());
+            res.addProperty("x", p.posX);
+            res.addProperty("y", p.posY);
+            res.addProperty("z", p.posZ);
             res.addProperty("blockX", bx);
             res.addProperty("blockY", by);
             res.addProperty("blockZ", bz);
-            res.addProperty("footBlock", world.func_147437_c(bx, by, bz) ? "Air" : ItemClassifier.getBlockDisplayName(foot, world.func_72805_g(bx, by, bz)));
-            String underName = world.func_147437_c(bx, by - 1, bz)
+            res.addProperty("footBlock", world.isAirBlock(bx, by, bz) ? "Air" : ItemClassifier.getBlockDisplayName(foot, world.getBlockMetadata(bx, by, bz)));
+            String underName = world.isAirBlock(bx, by - 1, bz)
                 ? (supportBlock != null && supportBlock.has("name") ? supportBlock.get("name").getAsString() : "Air")
-                : ItemClassifier.getBlockDisplayName(under, world.func_72805_g(bx, by - 1, bz));
+                : ItemClassifier.getBlockDisplayName(under, world.getBlockMetadata(bx, by - 1, bz));
             res.addProperty("underBlock", underName);
             if (supportBlock != null) res.add("supportBlock", supportBlock);
             if (lookBlock != null) res.add("lookBlock", lookBlock);
-            res.addProperty("heldBlock", (held != null && held.field_77994_a > 0) ? held.func_82833_r() : "Empty");
-            if (held != null && held.field_77994_a > 0) {
-                res.add("heldItem", ItemClassifier.itemStackToJson(p.field_71071_by != null ? p.field_71071_by.field_70461_c : 0, held));
+            res.addProperty("heldBlock", (held != null && held.stackSize > 0) ? held.getDisplayName() : "Empty");
+            if (held != null && held.stackSize > 0) {
+                res.add("heldItem", ItemClassifier.itemStackToJson(p.inventory != null ? p.inventory.currentItem : 0, held));
             }
-            res.addProperty("yaw", p.field_70177_z);
-            res.addProperty("pitch", p.field_70125_A);
+            res.addProperty("yaw", p.rotationYaw);
+            res.addProperty("pitch", p.rotationPitch);
             res.addProperty("facing", dirs[facing]);
             res.addProperty("facingDx", dirX);
             res.addProperty("facingDz", dirZ);
-            res.addProperty("health", p.func_110143_aJ());
+            res.addProperty("health", p.getHealth());
             return res;
         }
 
@@ -106,26 +106,26 @@ public class InventoryRpcHandler implements RpcHandler {
             String pName = args.has("name") && !args.get("name").isJsonNull() ? args.get("name").getAsString() : ctrl.ownerName;
             EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : player;
             if (p == null) p = player;
-            if (p == null || p.field_71071_by == null) {
+            if (p == null || p.inventory == null) {
                 res.addProperty("ok", false);
                 res.addProperty("error", "Player offline");
                 return res;
             }
-            res.addProperty("player", p.func_70005_c_());
-            res.addProperty("heldSlot", p.field_71071_by.field_70461_c);
-            ItemStack held = p.func_71045_bC();
-            if (held != null && held.field_77994_a > 0) {
-                res.add("heldItem", ItemClassifier.itemStackToJson(p.field_71071_by.field_70461_c, held));
+            res.addProperty("player", p.getCommandSenderName());
+            res.addProperty("heldSlot", p.inventory.currentItem);
+            ItemStack held = p.getCurrentEquippedItem();
+            if (held != null && held.stackSize > 0) {
+                res.add("heldItem", ItemClassifier.itemStackToJson(p.inventory.currentItem, held));
             }
             JsonArray items = new JsonArray();
             for (int i = 0; i < 36; i++) {
-                ItemStack st = p.field_71071_by.func_70301_a(i);
-                if (st != null && st.field_77994_a > 0) {
+                ItemStack st = p.inventory.getStackInSlot(i);
+                if (st != null && st.stackSize > 0) {
                     items.add(ItemClassifier.itemStackToJson(i, st));
                 }
             }
             res.add("items", items);
-            res.addProperty("summary", InventoryService.formatInventorySummary(p.field_71071_by));
+            res.addProperty("summary", InventoryService.formatInventorySummary(p.inventory));
             return res;
         }
 
@@ -146,7 +146,7 @@ public class InventoryRpcHandler implements RpcHandler {
             int count = args.has("count") ? args.get("count").getAsInt() : 512;
             EntityPlayerMP p = args.has("player") ? CortexDroneMod.findPlayer(args.get("player").getAsString()) : player;
             if (p == null) p = CortexDroneMod.findPlayer(ctrl.ownerName);
-            if (p != null && p.field_70170_p == world && d.func_70032_d(p) > 4.2 && InventoryService.countInventoryItems(d.mainInventory()) > 0) {
+            if (p != null && p.worldObj == world && d.getDistanceToEntity(p) > 4.2 && InventoryService.countInventoryItems(d.mainInventory()) > 0) {
                 ctrl.dropFilter = filter;
                 this.manager.setDroneMode(ctrl, Mode.DROP, "RPC deliver_to_player (" + filter + ")");
                 res.addProperty("flyingToPlayer", true);
@@ -169,31 +169,31 @@ public class InventoryRpcHandler implements RpcHandler {
 
             TileEntity srcTe = null;
             if (args.has("fromX") && args.has("fromY") && args.has("fromZ")) {
-                srcTe = world.func_147438_o(args.get("fromX").getAsInt(), args.get("fromY").getAsInt(), args.get("fromZ").getAsInt());
+                srcTe = world.getTileEntity(args.get("fromX").getAsInt(), args.get("fromY").getAsInt(), args.get("fromZ").getAsInt());
             } else if (args.has("chestX") && args.has("chestY") && args.has("chestZ")) {
-                srcTe = world.func_147438_o(args.get("chestX").getAsInt(), args.get("chestY").getAsInt(), args.get("chestZ").getAsInt());
+                srcTe = world.getTileEntity(args.get("chestX").getAsInt(), args.get("chestY").getAsInt(), args.get("chestZ").getAsInt());
             } else {
-                srcTe = this.inventoryService.findNearestInventoryTile(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, 24);
+                srcTe = this.inventoryService.findNearestInventoryTile(world, d.posX, d.posY, d.posZ, 24);
             }
 
             TileEntity dstTe = null;
             if (args.has("toX") && args.has("toY") && args.has("toZ")) {
-                dstTe = world.func_147438_o(args.get("toX").getAsInt(), args.get("toY").getAsInt(), args.get("toZ").getAsInt());
+                dstTe = world.getTileEntity(args.get("toX").getAsInt(), args.get("toY").getAsInt(), args.get("toZ").getAsInt());
             } else if (args.has("chestTargetX") && args.has("chestTargetY") && args.has("chestTargetZ")) {
-                dstTe = world.func_147438_o(args.get("chestTargetX").getAsInt(), args.get("chestTargetY").getAsInt(), args.get("chestTargetZ").getAsInt());
+                dstTe = world.getTileEntity(args.get("chestTargetX").getAsInt(), args.get("chestTargetY").getAsInt(), args.get("chestTargetZ").getAsInt());
             } else if (args.has("targetX") && args.has("targetY") && args.has("targetZ")) {
-                dstTe = world.func_147438_o(args.get("targetX").getAsInt(), args.get("targetY").getAsInt(), args.get("targetZ").getAsInt());
+                dstTe = world.getTileEntity(args.get("targetX").getAsInt(), args.get("targetY").getAsInt(), args.get("targetZ").getAsInt());
             } else if (args.has("chestX") && args.has("chestY") && args.has("chestZ") && !fromType.equals("chest") && !fromType.equals("crate") && !fromType.equals("container")) {
-                dstTe = world.func_147438_o(args.get("chestX").getAsInt(), args.get("chestY").getAsInt(), args.get("chestZ").getAsInt());
+                dstTe = world.getTileEntity(args.get("chestX").getAsInt(), args.get("chestY").getAsInt(), args.get("chestZ").getAsInt());
             } else {
-                dstTe = this.inventoryService.findNearestInventoryWithSpace(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, 24, srcTe instanceof IInventory ? (IInventory) srcTe : d.mainInventory());
+                dstTe = this.inventoryService.findNearestInventoryWithSpace(world, d.posX, d.posY, d.posZ, 24, srcTe instanceof IInventory ? (IInventory) srcTe : d.mainInventory());
             }
 
             boolean fromWorldContainer = fromType.equals("chest") || fromType.equals("crate") || fromType.equals("container") || fromType.equals("furnace");
             boolean toWorldContainer = toType.equals("chest") || toType.equals("crate") || toType.equals("container") || toType.equals("furnace");
-            IInventory srcInv = fromType.equals("player") && p != null ? p.field_71071_by
+            IInventory srcInv = fromType.equals("player") && p != null ? p.inventory
                 : (fromWorldContainer && srcTe instanceof IInventory ? (IInventory) srcTe : d.mainInventory());
-            IInventory dstInv = toType.equals("player") && p != null ? p.field_71071_by
+            IInventory dstInv = toType.equals("player") && p != null ? p.inventory
                 : (toWorldContainer && dstTe instanceof IInventory ? (IInventory) dstTe : d.mainInventory());
             int moved = this.inventoryService.moveInventorySlot(srcInv, fromSlot, itemFilter, dstInv, toSlot, count, p);
             res.addProperty("moved", moved);
@@ -218,24 +218,24 @@ public class InventoryRpcHandler implements RpcHandler {
 
         if (m.equals("get_chest")) {
             int x = args.get("x").getAsInt(), y = args.get("y").getAsInt(), z = args.get("z").getAsInt();
-            TileEntity te = world.func_147438_o(x, y, z);
+            TileEntity te = world.getTileEntity(x, y, z);
             if (!(te instanceof IInventory)) {
                 res.addProperty("ok", false);
                 res.addProperty("error", "No inventory at (" + x + "," + y + "," + z + ")");
                 return res;
             }
             IInventory inv = (IInventory) te;
-            Block b = world.func_147439_a(x, y, z);
-            int meta = world.func_72805_g(x, y, z);
+            Block b = world.getBlock(x, y, z);
+            int meta = world.getBlockMetadata(x, y, z);
             res.addProperty("x", x);
             res.addProperty("y", y);
             res.addProperty("z", z);
             res.addProperty("blockName", ItemClassifier.getBlockDisplayName(b, meta));
             JsonArray items = new JsonArray();
-            int totalSlots = inv.func_70302_i_();
+            int totalSlots = inv.getSizeInventory();
             for (int i = 0; i < totalSlots; i++) {
-                ItemStack st = inv.func_70301_a(i);
-                if (st != null && st.field_77994_a > 0) {
+                ItemStack st = inv.getStackInSlot(i);
+                if (st != null && st.stackSize > 0) {
                     items.add(ItemClassifier.itemStackToJson(i, st));
                 }
             }
@@ -251,7 +251,7 @@ public class InventoryRpcHandler implements RpcHandler {
             int count = args.has("count") ? args.get("count").getAsInt() : 64;
             int moved = 0;
             if (args.has("x") && args.has("y") && args.has("z")) {
-                TileEntity te = world.func_147438_o(args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
+                TileEntity te = world.getTileEntity(args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
                 if (!(te instanceof IInventory)) {
                     res.addProperty("ok", false);
                     res.addProperty("error", "No chest found at specified coordinates");
@@ -260,8 +260,8 @@ public class InventoryRpcHandler implements RpcHandler {
                 moved = InventoryService.withdrawFromInventory((IInventory) te, d.mainInventory(), ItemClassifier.resolveHeldFilter(player, filter), count);
                 if (moved < count && te instanceof TileEntityChest) {
                     TileEntityChest tc = (TileEntityChest) te;
-                    tc.func_145979_i();
-                    TileEntityChest[] adj = new TileEntityChest[]{tc.field_145992_i, tc.field_145990_j, tc.field_145991_k, tc.field_145988_l};
+                    tc.checkForAdjacentChests();
+                    TileEntityChest[] adj = new TileEntityChest[]{tc.adjacentChestZNeg, tc.adjacentChestXPos, tc.adjacentChestXNeg, tc.adjacentChestZPos};
                     for (TileEntityChest a : adj) {
                         if (a != null && moved < count) {
                             moved += InventoryService.withdrawFromInventory(a, d.mainInventory(), ItemClassifier.resolveHeldFilter(player, filter), count - moved);
@@ -278,9 +278,9 @@ public class InventoryRpcHandler implements RpcHandler {
         if (m.equals("deposit_chest")) {
             if (args.has("x") && args.has("y") && args.has("z")) {
                 int cx = args.get("x").getAsInt(), cy = args.get("y").getAsInt(), cz = args.get("z").getAsInt();
-                TileEntity te = world.func_147438_o(cx, cy, cz);
+                TileEntity te = world.getTileEntity(cx, cy, cz);
                 if (te instanceof IInventory) {
-                    if (d.func_70011_f(cx + 0.5, cy + 0.5, cz + 0.5) <= 4.2) {
+                    if (d.getDistance(cx + 0.5, cy + 0.5, cz + 0.5) <= 4.2) {
                         int moved = this.inventoryService.depositDroneItemsIntoTile(d, te);
                         res.addProperty("deposited", moved);
                         return res;
@@ -311,7 +311,7 @@ public class InventoryRpcHandler implements RpcHandler {
 
         if (m.equals("suck_items")) {
             double radius = args.has("radius") ? Math.min(16.0, Math.max(1.0, args.get("radius").getAsDouble())) : 6.5;
-            InventoryService.suckNearbyItems(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, radius);
+            InventoryService.suckNearbyItems(d, d.posX, d.posY, d.posZ, radius);
             res.addProperty("totalItems", InventoryService.countInventoryItems(d.mainInventory()));
             return res;
         }
@@ -332,25 +332,25 @@ public class InventoryRpcHandler implements RpcHandler {
 
         if (m.equals("scan_furnaces")) {
             int radius = args.has("radius") ? Math.min(36, Math.max(4, args.get("radius").getAsInt())) : 24;
-            List<TileEntity> furnaces = FurnaceScanner.findAllFurnaceTiles(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, radius);
+            List<TileEntity> furnaces = FurnaceScanner.findAllFurnaceTiles(world, d.posX, d.posY, d.posZ, radius);
             JsonArray arr = new JsonArray();
             for (TileEntity te : furnaces) {
                 if (te instanceof IInventory) {
                     IInventory inv = (IInventory) te;
                     JsonObject fo = new JsonObject();
-                    fo.addProperty("x", te.field_145851_c);
-                    fo.addProperty("y", te.field_145848_d);
-                    fo.addProperty("z", te.field_145849_e);
-                    fo.addProperty("dist", Math.round(d.func_70011_f(te.field_145851_c + 0.5, te.field_145848_d + 0.5, te.field_145849_e + 0.5) * 10.0) / 10.0);
+                    fo.addProperty("x", te.xCoord);
+                    fo.addProperty("y", te.yCoord);
+                    fo.addProperty("z", te.zCoord);
+                    fo.addProperty("dist", Math.round(d.getDistance(te.xCoord + 0.5, te.yCoord + 0.5, te.zCoord + 0.5) * 10.0) / 10.0);
                     if (te instanceof TileEntityFurnace) {
                         TileEntityFurnace tf = (TileEntityFurnace) te;
-                        fo.addProperty("burnTime", tf.field_145956_a);
-                        fo.addProperty("cookTime", tf.field_145961_j);
+                        fo.addProperty("burnTime", tf.furnaceBurnTime);
+                        fo.addProperty("cookTime", tf.furnaceCookTime);
                     }
                     JsonArray items = new JsonArray();
-                    for (int i = 0; i < inv.func_70302_i_(); i++) {
-                        ItemStack st = inv.func_70301_a(i);
-                        if (st != null && st.field_77994_a > 0) {
+                    for (int i = 0; i < inv.getSizeInventory(); i++) {
+                        ItemStack st = inv.getStackInSlot(i);
+                        if (st != null && st.stackSize > 0) {
                             items.add(ItemClassifier.itemStackToJson(i, st));
                         }
                     }
@@ -388,9 +388,9 @@ public class InventoryRpcHandler implements RpcHandler {
                 : (args.has("filter") ? args.get("filter").getAsString() : ""));
             int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
             String want = MachineTileInspector.normalizeMachineAlias(machine);
-            double refX = player != null && player.field_70170_p == world ? player.field_70165_t : d.field_70165_t;
-            double refY = player != null && player.field_70170_p == world ? player.field_70163_u : d.field_70163_u;
-            double refZ = player != null && player.field_70170_p == world ? player.field_70161_v : d.field_70161_v;
+            double refX = player != null && player.worldObj == world ? player.posX : d.posX;
+            double refY = player != null && player.worldObj == world ? player.posY : d.posY;
+            double refZ = player != null && player.worldObj == world ? player.posZ : d.posZ;
             List<TileEntity> machines = MachineTileInspector.findMachineTiles(world, refX, refY, refZ, radius, want);
             JsonArray arr = new JsonArray();
             for (TileEntity te : machines) arr.add(MachineTileInspector.describeMachineTile(world, te));

@@ -95,8 +95,8 @@ public class LightingAura {
     /** Called every server tick by the coordinator for each active controller. */
     public void tick(DroneController ctrl) {
         if (ctrl == null || ctrl.drone == null) return;
-        World world = ctrl.drone.field_70170_p;
-        if (world == null || world.field_72995_K) return;
+        World world = ctrl.drone.worldObj;
+        if (world == null || world.isRemote) return;
         if (!ctrl.autoTorch) {
             if (!ctrl.lightCells.isEmpty()) clearAura(ctrl);
             return;
@@ -116,19 +116,19 @@ public class LightingAura {
     /** Restores every voxel this aura touched. Safe to call repeatedly. */
     public void clearAura(DroneController ctrl) {
         if (ctrl == null) return;
-        if (ctrl.drone == null || ctrl.drone.field_70170_p == null) {
+        if (ctrl.drone == null || ctrl.drone.worldObj == null) {
             ctrl.lightCells.clear();
             ctrl.lightAnchor = Long.MIN_VALUE;
             return;
         }
-        World world = ctrl.drone.field_70170_p;
+        World world = ctrl.drone.worldObj;
         Map<Long, Integer> chunkMasks = new HashMap<Long, Integer>();
         for (Map.Entry<Long, Integer> e : ctrl.lightCells.entrySet()) {
             long key = e.getKey().longValue();
             int x = unpackX(key);
             int y = unpackY(key);
             int z = unpackZ(key);
-            world.func_72915_b(EnumSkyBlock.Block, x, y, z, e.getValue().intValue());
+            world.setLightValue(EnumSkyBlock.Block, x, y, z, e.getValue().intValue());
             addChunkMask(chunkMasks, x, y, z);
         }
         int restored = ctrl.lightCells.size();
@@ -142,12 +142,12 @@ public class LightingAura {
 
     private void applyAura(DroneController ctrl) {
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
+        World world = d.worldObj;
         if (world == null) return;
 
-        int cx = MathHelper.func_76128_c(d.field_70165_t);
-        int cy = MathHelper.func_76128_c(d.field_70163_u);
-        int cz = MathHelper.func_76128_c(d.field_70161_v);
+        int cx = MathHelper.floor_double(d.posX);
+        int cy = MathHelper.floor_double(d.posY);
+        int cz = MathHelper.floor_double(d.posZ);
         int radius = clamp(ctrl.lightRadius, MIN_RADIUS, MAX_RADIUS);
         int level = clamp(ctrl.lightIntensity, MIN_LEVEL, MAX_LEVEL);
 
@@ -166,16 +166,16 @@ public class LightingAura {
                     int z = cz + dz;
                     if (y < 2 || y > 254) continue;
                     // Only illuminate open space; never rewrite light inside solids.
-                    if (!world.func_147437_c(x, y, z)) continue;
+                    if (!world.isAirBlock(x, y, z)) continue;
                     long key = pack(x, y, z);
                     Integer original = previous.remove(key);
                     int before = original != null
                         ? original.intValue()
-                        : world.func_72972_b(EnumSkyBlock.Block, x, y, z);
+                        : world.getSavedLightValue(EnumSkyBlock.Block, x, y, z);
                     ctrl.lightCells.put(key, Integer.valueOf(before));
                     int want = Math.max(1, level - (int) Math.sqrt((double) d2));
                     if (before < want) {
-                        world.func_72915_b(EnumSkyBlock.Block, x, y, z, want);
+                        world.setLightValue(EnumSkyBlock.Block, x, y, z, want);
                         addChunkMask(chunkMasks, x, y, z);
                     }
                 }
@@ -189,7 +189,7 @@ public class LightingAura {
             int x = unpackX(key);
             int y = unpackY(key);
             int z = unpackZ(key);
-            world.func_72915_b(EnumSkyBlock.Block, x, y, z, e.getValue().intValue());
+            world.setLightValue(EnumSkyBlock.Block, x, y, z, e.getValue().intValue());
             addChunkMask(chunkMasks, x, y, z);
         }
 
@@ -205,7 +205,7 @@ public class LightingAura {
      * so a light-only edit is invisible to a connected player otherwise.
      */
     private void syncChunks(World world, Map<Long, Integer> chunkMasks) {
-        if (world.field_73010_i == null || world.field_73010_i.isEmpty()) return;
+        if (world.playerEntities == null || world.playerEntities.isEmpty()) return;
 
         for (Map.Entry<Long, Integer> ce : chunkMasks.entrySet()) {
             int cx = unpackChunkX(ce.getKey().longValue());
@@ -213,18 +213,18 @@ public class LightingAura {
             int mask = ce.getValue().intValue() & 0xFFFF;
             if (mask == 0) continue;
             if (!ChunkAccess.isLoaded(world, cx, cz)) continue;
-            Chunk chunk = world.func_72964_e(cx, cz);
+            Chunk chunk = world.getChunkFromChunkCoords(cx, cz);
             if (chunk == null) continue;
             S21PacketChunkData packet = new S21PacketChunkData(chunk, true, mask);
             double px = cx * 16 + 8;
             double pz = cz * 16 + 8;
-            for (Object o : world.field_73010_i) {
+            for (Object o : world.playerEntities) {
                 if (!(o instanceof EntityPlayerMP)) continue;
                 EntityPlayerMP p = (EntityPlayerMP) o;
-                if (p.field_70170_p != world) continue;
-                if (p.func_70011_f(px, p.field_70163_u, pz) > CLIENT_SYNC_RANGE) continue;
+                if (p.worldObj != world) continue;
+                if (p.getDistance(px, p.posY, pz) > CLIENT_SYNC_RANGE) continue;
                 try {
-                    p.field_71135_a.func_147359_a(packet);
+                    p.playerNetServerHandler.sendPacket(packet);
                 } catch (Throwable ignored) {
                 }
             }
@@ -317,9 +317,9 @@ public class LightingAura {
     }
 
     private static long packAnchor(Drone d) {
-        int x = MathHelper.func_76128_c(d.field_70165_t) >> 1;
-        int y = MathHelper.func_76128_c(d.field_70163_u) >> 1;
-        int z = MathHelper.func_76128_c(d.field_70161_v) >> 1;
+        int x = MathHelper.floor_double(d.posX) >> 1;
+        int y = MathHelper.floor_double(d.posY) >> 1;
+        int z = MathHelper.floor_double(d.posZ) >> 1;
         return pack(x, y, z);
     }
 }

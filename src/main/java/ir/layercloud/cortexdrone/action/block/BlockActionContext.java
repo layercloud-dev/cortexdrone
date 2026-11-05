@@ -29,7 +29,7 @@ public final class BlockActionContext extends ActionContextBase {
     protected void onTick() {
         DroneController ctrl = controller();
         if (!this.breakOperation || ctrl == null || ctrl.drone == null
-            || ctrl.drone.field_70128_L || ctrl.mode != Mode.MINE
+            || ctrl.drone.isDead || ctrl.mode != Mode.MINE
             || ctrl.currentMineTarget == null || !matches(ctrl.currentMineTarget)) {
             complete();
             return;

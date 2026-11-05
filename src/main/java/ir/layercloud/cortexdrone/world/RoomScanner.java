@@ -109,8 +109,8 @@ public final class RoomScanner {
                 long fk = FlightPathfinder.packBlockPos(ax, fy, az);
                 if (seenFloor.add(fk)) {
                     floorList.add(new int[]{ax, fy, az});
-                    Block fb = world.func_147439_a(ax, fy, az);
-                    String fn = ItemClassifier.getBlockDisplayName(fb, world.func_72805_g(ax, fy, az));
+                    Block fb = world.getBlock(ax, fy, az);
+                    String fn = ItemClassifier.getBlockDisplayName(fb, world.getBlockMetadata(ax, fy, az));
                     floorMats.put(fn, (floorMats.containsKey(fn) ? floorMats.get(fn) : 0) + 1);
                 }
             }
@@ -120,8 +120,8 @@ public final class RoomScanner {
                 long ck = FlightPathfinder.packBlockPos(ax, cy, az);
                 if (seenCeil.add(ck)) {
                     ceilingList.add(new int[]{ax, cy, az});
-                    Block cb = world.func_147439_a(ax, cy, az);
-                    String cn = ItemClassifier.getBlockDisplayName(cb, world.func_72805_g(ax, cy, az));
+                    Block cb = world.getBlock(ax, cy, az);
+                    String cn = ItemClassifier.getBlockDisplayName(cb, world.getBlockMetadata(ax, cy, az));
                     ceilMats.put(cn, (ceilMats.containsKey(cn) ? ceilMats.get(cn) : 0) + 1);
                 }
             }
@@ -138,8 +138,8 @@ public final class RoomScanner {
                         else if (dirIdx == 1) southWall.add(pt);
                         else if (dirIdx == 2) westWall.add(pt);
                         else eastWall.add(pt);
-                        Block wb = world.func_147439_a(wx, ay, wz);
-                        String wn = ItemClassifier.getBlockDisplayName(wb, world.func_72805_g(wx, ay, wz));
+                        Block wb = world.getBlock(wx, ay, wz);
+                        String wn = ItemClassifier.getBlockDisplayName(wb, world.getBlockMetadata(wx, ay, wz));
                         wallMats.put(wn, (wallMats.containsKey(wn) ? wallMats.get(wn) : 0) + 1);
                     }
                 }

@@ -39,17 +39,17 @@ final class MachineRecipeRanker {
         // movement, so a coarser key avoids an uncached scan per block step.
         long now = System.currentTimeMillis();
         long bucket = radius / 16;
-        int droneX = player != null ? (int) player.field_70165_t : 0;
-        int droneZ = player != null ? (int) player.field_70161_v : 0;
+        int droneX = player != null ? (int) player.posX : 0;
+        int droneZ = player != null ? (int) player.posZ : 0;
         int dimId = 0;
-        if (world != null && world.field_73011_w != null) {
+        if (world != null && world.provider != null) {
             try {
-                dimId = world.field_73011_w.field_76574_g;
+                dimId = world.provider.dimensionId;
             } catch (Throwable ignored) {
                 dimId = 0;
             }
         }
-        String key = dimId + "|" + droneX / 16 + "|" + droneZ / 16 + "|" + bucket + "|" + (player != null ? player.func_70005_c_() : "null");
+        String key = dimId + "|" + droneX / 16 + "|" + droneZ / 16 + "|" + bucket + "|" + (player != null ? player.getCommandSenderName() : "null");
         java.util.Map<String, Integer> hitCache = COUNT_CACHE.get(key);
         Long expiry = COUNT_CACHE_EXPIRY.get(key);
         if (hitCache != null && expiry != null && expiry.longValue() > now) {
@@ -82,29 +82,29 @@ final class MachineRecipeRanker {
             if (world == null) return totals;
             IInventory droneInv = findDroneInventory(world, player);
             if (droneInv != null) {
-                for (int i = 0; i < droneInv.func_70302_i_(); i++) {
-                    ItemStack st = droneInv.func_70301_a(i);
-                    if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
+                for (int i = 0; i < droneInv.getSizeInventory(); i++) {
+                    ItemStack st = droneInv.getStackInSlot(i);
+                    if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
                     addToTotals(totals, st);
                 }
             }
-            if (player != null && player.field_71071_by != null) {
-                for (int i = 0; i < Math.min(36, player.field_71071_by.func_70302_i_()); i++) {
-                    ItemStack st = player.field_71071_by.func_70301_a(i);
-                    if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
+            if (player != null && player.inventory != null) {
+                for (int i = 0; i < Math.min(36, player.inventory.getSizeInventory()); i++) {
+                    ItemStack st = player.inventory.getStackInSlot(i);
+                    if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
                     addToTotals(totals, st);
                 }
             }
-            double cx = player != null ? player.field_70165_t : 0;
-            double cy = player != null ? player.field_70163_u : 64;
-            double cz = player != null ? player.field_70161_v : 0;
+            double cx = player != null ? player.posX : 0;
+            double cy = player != null ? player.posY : 64;
+            double cz = player != null ? player.posZ : 0;
             List<net.minecraft.tileentity.TileEntity> tiles = inventoryService.findAllInventoryTiles(world, cx, cy, cz, radius);
             for (net.minecraft.tileentity.TileEntity te : tiles) {
                 if (!(te instanceof IInventory)) continue;
                 IInventory inv = (IInventory) te;
-                for (int i = 0; i < inv.func_70302_i_(); i++) {
-                    ItemStack st = inv.func_70301_a(i);
-                    if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
+                for (int i = 0; i < inv.getSizeInventory(); i++) {
+                    ItemStack st = inv.getStackInSlot(i);
+                    if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
                     addToTotals(totals, st);
                 }
             }
@@ -115,31 +115,31 @@ final class MachineRecipeRanker {
 
     static void addToTotals(java.util.Map<String, Integer> totals, ItemStack st) {
         String key = totalsKey(st);
-        totals.put(key, (totals.containsKey(key) ? totals.get(key) : 0) + st.field_77994_a);
+        totals.put(key, (totals.containsKey(key) ? totals.get(key) : 0) + st.stackSize);
         for (String tag : ItemClassifier.getOreDictNames(st)) {
             String tkey = "dict:" + tag.toLowerCase();
-            totals.put(tkey, (totals.containsKey(tkey) ? totals.get(tkey) : 0) + st.field_77994_a);
+            totals.put(tkey, (totals.containsKey(tkey) ? totals.get(tkey) : 0) + st.stackSize);
         }
         BlockLike bl = toBlockLike(st);
         if (bl != null) {
             for (String tag : ItemClassifier.getOreDictNames(bl.getBlock(), bl.getMeta())) {
                 String tkey = "dict:" + tag.toLowerCase();
-                totals.put(tkey, (totals.containsKey(tkey) ? totals.get(tkey) : 0) + st.field_77994_a);
+                totals.put(tkey, (totals.containsKey(tkey) ? totals.get(tkey) : 0) + st.stackSize);
             }
         }
     }
 
     static String totalsKey(ItemStack st) {
-        String reg = Item.field_150901_e.func_148750_c(st.func_77973_b());
-        int meta = st.func_77960_j();
-        return (reg != null ? reg.toLowerCase() : st.func_77973_b().getClass().getName().toLowerCase()) + ":" + meta;
+        String reg = Item.itemRegistry.getNameForObject(st.getItem());
+        int meta = st.getItemDamage();
+        return (reg != null ? reg.toLowerCase() : st.getItem().getClass().getName().toLowerCase()) + ":" + meta;
     }
 
     static BlockLike toBlockLike(ItemStack st) {
         try {
-            net.minecraft.block.Block b = net.minecraft.block.Block.func_149634_a(st.func_77973_b());
-            if (b == null || b == net.minecraft.init.Blocks.field_150350_a) return null;
-            return new BlockLike(b, st.func_77960_j());
+            net.minecraft.block.Block b = net.minecraft.block.Block.getBlockFromItem(st.getItem());
+            if (b == null || b == net.minecraft.init.Blocks.air) return null;
+            return new BlockLike(b, st.getItemDamage());
         } catch (Throwable ignored) {
             return null;
         }
@@ -154,8 +154,8 @@ final class MachineRecipeRanker {
     static IInventory findDroneInventory(World world, EntityPlayerMP player) {
         try {
             if (player != null && world != null) {
-                String owner = player.func_70005_c_();
-                for (Object o : world.field_147482_g) {
+                String owner = player.getCommandSenderName();
+                for (Object o : world.loadedTileEntityList) {
                     if (o == null) continue;
                     String cn = o.getClass().getName();
                     if (!cn.contains("Drone") && !cn.contains("drone")) continue;

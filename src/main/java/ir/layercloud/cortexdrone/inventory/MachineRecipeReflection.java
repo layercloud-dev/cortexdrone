@@ -186,17 +186,17 @@ final class MachineRecipeReflection {
             JsonObject ioR = normalizeAStack(owner, right);
             if (ioL != null) r.inputs.add(ioL);
             if (ioR != null) r.inputs.add(ioR);
-            if (outSt == null || outSt.func_77973_b() == null) return null;
+            if (outSt == null || outSt.getItem() == null) return null;
             JsonObject oo = new JsonObject();
             oo.addProperty("type", "item");
-            String reg = Item.field_150901_e.func_148750_c(outSt.func_77973_b());
+            String reg = Item.itemRegistry.getNameForObject(outSt.getItem());
             oo.addProperty("registryName", reg != null ? reg : "");
-            oo.addProperty("meta", outSt.func_77960_j());
-            oo.addProperty("displayName", outSt.func_82833_r());
-            oo.addProperty("amount", Math.max(1, outSt.field_77994_a));
+            oo.addProperty("meta", outSt.getItemDamage());
+            oo.addProperty("displayName", outSt.getDisplayName());
+            oo.addProperty("amount", Math.max(1, outSt.stackSize));
             oo.addProperty("chance", 1.0);
             r.outputs.add(oo);
-            r.displayName = outSt.func_82833_r();
+            r.displayName = outSt.getDisplayName();
             r.name = "anvil.smithing." + r.displayName.toLowerCase().replace(' ', '_');
             return r;
         } catch (Throwable ignored) {
@@ -265,12 +265,12 @@ final class MachineRecipeReflection {
                 o.addProperty("type", "item");
                 Item it = (Item) a.getClass().getField("item").get(a);
                 int meta = a.getClass().getField("meta").getInt(a);
-                String reg = Item.field_150901_e.func_148750_c(it);
+                String reg = Item.itemRegistry.getNameForObject(it);
                 o.addProperty("registryName", reg != null ? reg : it.getClass().getName());
                 o.addProperty("meta", meta);
                 try {
                     ItemStack disp = new ItemStack(it, 1, meta);
-                    o.addProperty("displayName", disp.func_82833_r());
+                    o.addProperty("displayName", disp.getDisplayName());
                 } catch (Throwable ignored) {
                     o.addProperty("displayName", reg != null ? reg : "item");
                 }
@@ -288,14 +288,14 @@ final class MachineRecipeReflection {
         try {
             ItemStack st = (ItemStack) a.getClass().getField("stack").get(a);
             float chance = a.getClass().getField("chance").getFloat(a);
-            if (st == null || st.func_77973_b() == null) return null;
+            if (st == null || st.getItem() == null) return null;
             JsonObject o = new JsonObject();
             o.addProperty("type", "item");
-            String reg = Item.field_150901_e.func_148750_c(st.func_77973_b());
+            String reg = Item.itemRegistry.getNameForObject(st.getItem());
             o.addProperty("registryName", reg != null ? reg : "");
-            o.addProperty("meta", st.func_77960_j());
-            o.addProperty("displayName", st.func_82833_r());
-            o.addProperty("amount", Math.max(1, st.field_77994_a));
+            o.addProperty("meta", st.getItemDamage());
+            o.addProperty("displayName", st.getDisplayName());
+            o.addProperty("amount", Math.max(1, st.stackSize));
             o.addProperty("chance", chance);
             return o;
         } catch (Throwable ignored) {
@@ -314,7 +314,7 @@ final class MachineRecipeReflection {
                     for (Object p : poss) {
                         if (!(p instanceof ItemStack)) continue;
                         ItemStack cand = (ItemStack) p;
-                        if (cand.func_77973_b() == null) continue;
+                        if (cand.getItem() == null) continue;
                         float ch = 1.0f;
                         try {
                             java.lang.reflect.Field cf = o.getClass().getField("chance");
@@ -324,11 +324,11 @@ final class MachineRecipeReflection {
                         if (best == null || ch > bestChance) {
                             JsonObject io = new JsonObject();
                             io.addProperty("type", "item");
-                            String reg = Item.field_150901_e.func_148750_c(cand.func_77973_b());
+                            String reg = Item.itemRegistry.getNameForObject(cand.getItem());
                             io.addProperty("registryName", reg != null ? reg : "");
-                            io.addProperty("meta", cand.func_77960_j());
-                            io.addProperty("displayName", cand.func_82833_r());
-                            io.addProperty("amount", Math.max(1, cand.field_77994_a));
+                            io.addProperty("meta", cand.getItemDamage());
+                            io.addProperty("displayName", cand.getDisplayName());
+                            io.addProperty("amount", Math.max(1, cand.stackSize));
                             io.addProperty("chance", ch);
                             best = io;
                             bestChance = ch;
@@ -341,14 +341,14 @@ final class MachineRecipeReflection {
             Object single = o.getClass().getMethod("getSingle").invoke(o);
             if (!(single instanceof ItemStack)) return null;
             ItemStack st = (ItemStack) single;
-            if (st.func_77973_b() == null) return null;
+            if (st.getItem() == null) return null;
             JsonObject io = new JsonObject();
             io.addProperty("type", "item");
-            String reg = Item.field_150901_e.func_148750_c(st.func_77973_b());
+            String reg = Item.itemRegistry.getNameForObject(st.getItem());
             io.addProperty("registryName", reg != null ? reg : "");
-            io.addProperty("meta", st.func_77960_j());
-            io.addProperty("displayName", st.func_82833_r());
-            io.addProperty("amount", Math.max(1, st.field_77994_a));
+            io.addProperty("meta", st.getItemDamage());
+            io.addProperty("displayName", st.getDisplayName());
+            io.addProperty("amount", Math.max(1, st.stackSize));
             io.addProperty("chance", 1.0);
             return io;
         } catch (Throwable ignored) {

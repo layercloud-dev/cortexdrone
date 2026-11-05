@@ -52,10 +52,10 @@ public class InventoryService {
 
     public static boolean isInventoryFull(IInventory inv) {
         if (inv == null) return true;
-        int size = inv.func_70302_i_();
+        int size = inv.getSizeInventory();
         for (int i = 0; i < size; i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st == null || st.field_77994_a < Math.min(inv.func_70297_j_(), st.func_77976_d())) {
+            ItemStack st = inv.getStackInSlot(i);
+            if (st == null || st.stackSize < Math.min(inv.getInventoryStackLimit(), st.getMaxStackSize())) {
                 return false;
             }
         }
@@ -65,11 +65,11 @@ public class InventoryService {
     public static int countInventoryItems(IInventory inv) {
         if (inv == null) return 0;
         int total = 0;
-        int size = inv.func_70302_i_();
+        int size = inv.getSizeInventory();
         for (int i = 0; i < size; i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st != null && st.field_77994_a > 0) {
-                total += st.field_77994_a;
+            ItemStack st = inv.getStackInSlot(i);
+            if (st != null && st.stackSize > 0) {
+                total += st.stackSize;
             }
         }
         return total;
@@ -78,53 +78,53 @@ public class InventoryService {
     public static String formatInventorySummary(IInventory inv) {
         if (inv == null) return "Empty";
         StringBuilder sb = new StringBuilder();
-        int size = inv.func_70302_i_();
+        int size = inv.getSizeInventory();
         for (int i = 0; i < size; i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st != null && st.field_77994_a > 0) {
+            ItemStack st = inv.getStackInSlot(i);
+            if (st != null && st.stackSize > 0) {
                 if (sb.length() > 0) sb.append(", ");
-                sb.append("[").append(i + 1).append("] ").append(st.func_82833_r()).append(" x").append(st.field_77994_a);
+                sb.append("[").append(i + 1).append("] ").append(st.getDisplayName()).append(" x").append(st.stackSize);
             }
         }
         return sb.length() == 0 ? "Empty (0/" + size + " slots)" : sb.toString();
     }
 
     public static int insertIntoInventory(IInventory inv, ItemStack stack) {
-        if (inv == null || stack == null || stack.field_77994_a <= 0) return 0;
+        if (inv == null || stack == null || stack.stackSize <= 0) return 0;
         int inserted = 0;
-        int size = inv.func_70302_i_();
+        int size = inv.getSizeInventory();
 
-        for (int i = 0; i < size && stack.field_77994_a > 0; i++) {
-            ItemStack existing = inv.func_70301_a(i);
-            if (existing != null && existing.func_77969_a(stack) && ItemStack.func_77970_a(existing, stack)) {
-                int max = Math.min(inv.func_70297_j_(), existing.func_77976_d());
-                int space = max - existing.field_77994_a;
+        for (int i = 0; i < size && stack.stackSize > 0; i++) {
+            ItemStack existing = inv.getStackInSlot(i);
+            if (existing != null && existing.isItemEqual(stack) && ItemStack.areItemStackTagsEqual(existing, stack)) {
+                int max = Math.min(inv.getInventoryStackLimit(), existing.getMaxStackSize());
+                int space = max - existing.stackSize;
                 if (space > 0) {
-                    int add = Math.min(space, stack.field_77994_a);
-                    ItemStack updated = existing.func_77946_l();
-                    updated.field_77994_a += add;
-                    inv.func_70299_a(i, updated);
-                    stack.field_77994_a -= add;
+                    int add = Math.min(space, stack.stackSize);
+                    ItemStack updated = existing.copy();
+                    updated.stackSize += add;
+                    inv.setInventorySlotContents(i, updated);
+                    stack.stackSize -= add;
                     inserted += add;
                 }
             }
         }
 
-        for (int i = 0; i < size && stack.field_77994_a > 0; i++) {
-            ItemStack existing = inv.func_70301_a(i);
+        for (int i = 0; i < size && stack.stackSize > 0; i++) {
+            ItemStack existing = inv.getStackInSlot(i);
             if (existing == null) {
-                int max = Math.min(inv.func_70297_j_(), stack.func_77976_d());
-                int add = Math.min(max, stack.field_77994_a);
-                ItemStack copy = stack.func_77946_l();
-                copy.field_77994_a = add;
-                inv.func_70299_a(i, copy);
-                stack.field_77994_a -= add;
+                int max = Math.min(inv.getInventoryStackLimit(), stack.getMaxStackSize());
+                int add = Math.min(max, stack.stackSize);
+                ItemStack copy = stack.copy();
+                copy.stackSize = add;
+                inv.setInventorySlotContents(i, copy);
+                stack.stackSize -= add;
                 inserted += add;
             }
         }
 
         if (inserted > 0) {
-            inv.func_70296_d();
+            inv.markDirty();
         }
         return inserted;
     }
@@ -134,23 +134,23 @@ public class InventoryService {
         String f = (filter == null || filter.trim().isEmpty()) ? "any" : filter.trim().toLowerCase();
         boolean matchAnyBlock = f.equals("any") || f.equals("block") || f.equals("solid");
         boolean isBucketQuery = f.contains("bucket");
-        int size = inv.func_70302_i_();
+        int size = inv.getSizeInventory();
         int bestSlot = -1;
         int bestScore = 0;
         for (int i = 0; i < size; i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
-            Item item = st.func_77973_b();
+            ItemStack st = inv.getStackInSlot(i);
+            if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
+            Item item = st.getItem();
             if (!isBucketQuery) {
-                Block b = Block.func_149634_a(item);
-                if (b == null || b == Blocks.field_150350_a || ItemClassifier.isLiquidBlock(b)) {
+                Block b = Block.getBlockFromItem(item);
+                if (b == null || b == Blocks.air || ItemClassifier.isLiquidBlock(b)) {
                     continue;
                 }
             }
             if (matchAnyBlock) {
                 return i;
             }
-            int score = ItemClassifier.scoreBlockOrItemMatch(st.func_82833_r(), ItemClassifier.getItemIdentifier(st), st.func_77960_j(), f);
+            int score = ItemClassifier.scoreBlockOrItemMatch(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), f);
             if (score > bestScore) {
                 bestScore = score;
                 bestSlot = i;
@@ -162,37 +162,37 @@ public class InventoryService {
     public static void syncPlayerInventory(EntityPlayerMP player) {
         if (player == null) return;
         try {
-            if (player.field_71071_by != null) {
-                player.field_71071_by.func_70296_d();
+            if (player.inventory != null) {
+                player.inventory.markDirty();
             }
-            if (player.field_71069_bz != null) {
-                player.field_71069_bz.func_75142_b();
+            if (player.inventoryContainer != null) {
+                player.inventoryContainer.detectAndSendChanges();
             }
-            if (player.field_71070_bA != null && player.field_71070_bA != player.field_71069_bz) {
-                player.field_71070_bA.func_75142_b();
+            if (player.openContainer != null && player.openContainer != player.inventoryContainer) {
+                player.openContainer.detectAndSendChanges();
             }
         } catch (Throwable ignored) {
         }
     }
 
     public List<TileEntity> findAllInventoryTiles(final World world, final double x, final double y, final double z, int radius) {
-        int cx = MathHelper.func_76128_c(x);
-        int cy = MathHelper.func_76128_c(y);
-        int cz = MathHelper.func_76128_c(z);
+        int cx = MathHelper.floor_double(x);
+        int cy = MathHelper.floor_double(y);
+        int cz = MathHelper.floor_double(z);
         List<TileEntity> tiles = new ArrayList<TileEntity>();
         double r2 = (double) radius * radius;
 
-        // Fast path: iterate already-loaded tile entities (world.field_147482_g list) and distance-filter,
-        // avoiding a dense block-probe cube via func_147438_o, which both costs
+        // Fast path: iterate already-loaded tile entities (world.loadedTileEntityList list) and distance-filter,
+        // avoiding a dense block-probe cube via getTileEntity, which both costs
         // main-thread time AND loads chunks to materialize TileEntity. Loaded tile entities are the
         // only ones whose inventories are readable anyway — unloaded-chunk chests cannot be opened.
-        if (world.field_147482_g != null) {
-            for (Object o : world.field_147482_g) {
+        if (world.loadedTileEntityList != null) {
+            for (Object o : world.loadedTileEntityList) {
                 if (!(o instanceof TileEntity)) continue;
                 TileEntity te = (TileEntity) o;
-                int bx = te.field_145851_c;
-                int by = te.field_145848_d;
-                int bz = te.field_145849_e;
+                int bx = te.xCoord;
+                int by = te.yCoord;
+                int bz = te.zCoord;
                 double dx = bx + 0.5 - x;
                 double dy = by + 0.5 - y;
                 double dz = bz + 0.5 - z;
@@ -209,12 +209,12 @@ public class InventoryService {
                 boolean ca = a instanceof TileEntityChest;
                 boolean cb = b instanceof TileEntityChest;
                 if (ca != cb) return ca ? -1 : 1;
-                double da = (a.field_145851_c + 0.5 - x) * (a.field_145851_c + 0.5 - x)
-                    + (a.field_145848_d + 0.5 - y) * (a.field_145848_d + 0.5 - y)
-                    + (a.field_145849_e + 0.5 - z) * (a.field_145849_e + 0.5 - z);
-                double db = (b.field_145851_c + 0.5 - x) * (b.field_145851_c + 0.5 - x)
-                    + (b.field_145848_d + 0.5 - y) * (b.field_145848_d + 0.5 - y)
-                    + (b.field_145849_e + 0.5 - z) * (b.field_145849_e + 0.5 - z);
+                double da = (a.xCoord + 0.5 - x) * (a.xCoord + 0.5 - x)
+                    + (a.yCoord + 0.5 - y) * (a.yCoord + 0.5 - y)
+                    + (a.zCoord + 0.5 - z) * (a.zCoord + 0.5 - z);
+                double db = (b.xCoord + 0.5 - x) * (b.xCoord + 0.5 - x)
+                    + (b.yCoord + 0.5 - y) * (b.yCoord + 0.5 - y)
+                    + (b.zCoord + 0.5 - z) * (b.zCoord + 0.5 - z);
                 return Double.compare(da, db);
             }
         });
@@ -223,19 +223,19 @@ public class InventoryService {
 
     public static boolean canInventoryAcceptAny(IInventory targetInv, IInventory srcInv) {
         if (targetInv == null) return false;
-        int tSize = targetInv.func_70302_i_();
+        int tSize = targetInv.getSizeInventory();
         for (int i = 0; i < tSize; i++) {
-            if (targetInv.func_70301_a(i) == null) return true;
+            if (targetInv.getStackInSlot(i) == null) return true;
         }
         if (srcInv == null) return false;
-        for (int s = 0; s < srcInv.func_70302_i_(); s++) {
-            ItemStack st = srcInv.func_70301_a(s);
-            if (st == null || st.field_77994_a <= 0) continue;
+        for (int s = 0; s < srcInv.getSizeInventory(); s++) {
+            ItemStack st = srcInv.getStackInSlot(s);
+            if (st == null || st.stackSize <= 0) continue;
             for (int i = 0; i < tSize; i++) {
-                ItemStack existing = targetInv.func_70301_a(i);
-                if (existing != null && existing.func_77969_a(st) && ItemStack.func_77970_a(existing, st)) {
-                    int max = Math.min(targetInv.func_70297_j_(), existing.func_77976_d());
-                    if (existing.field_77994_a < max) return true;
+                ItemStack existing = targetInv.getStackInSlot(i);
+                if (existing != null && existing.isItemEqual(st) && ItemStack.areItemStackTagsEqual(existing, st)) {
+                    int max = Math.min(targetInv.getInventoryStackLimit(), existing.getMaxStackSize());
+                    if (existing.stackSize < max) return true;
                 }
             }
         }
@@ -262,29 +262,29 @@ public class InventoryService {
         String f = (filter == null || filter.trim().isEmpty()) ? "any" : filter.trim().toLowerCase();
         boolean matchAny = f.equals("any") || f.equals("all") || f.equals("*") || f.equals("block") || f.equals("solid");
         int moved = 0;
-        for (int i = 0; i < src.func_70302_i_() && moved < maxCount; i++) {
-            ItemStack st = src.func_70301_a(i);
-            if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
-            int meta = st.func_77960_j();
-            String disp = st.func_82833_r();
+        for (int i = 0; i < src.getSizeInventory() && moved < maxCount; i++) {
+            ItemStack st = src.getStackInSlot(i);
+            if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
+            int meta = st.getItemDamage();
+            String disp = st.getDisplayName();
             String combined = ItemClassifier.getItemIdentifier(st);
             boolean ok = matchAny
-                ? (f.equals("all") || f.equals("*") || st.func_77973_b() instanceof ItemBlock)
+                ? (f.equals("all") || f.equals("*") || st.getItem() instanceof ItemBlock)
                 : ItemClassifier.matchesBlockOrItemName(disp, combined, meta, f);
             if (!ok) continue;
 
-            int take = Math.min(st.field_77994_a, maxCount - moved);
-            ItemStack toInsert = st.func_77946_l();
-            toInsert.field_77994_a = take;
+            int take = Math.min(st.stackSize, maxCount - moved);
+            ItemStack toInsert = st.copy();
+            toInsert.stackSize = take;
             int ins = insertIntoInventory(dst, toInsert);
             if (ins > 0) {
-                src.func_70298_a(i, ins);
+                src.decrStackSize(i, ins);
                 moved += ins;
             }
         }
         if (moved > 0) {
-            src.func_70296_d();
-            dst.func_70296_d();
+            src.markDirty();
+            dst.markDirty();
         }
         return moved;
     }
@@ -292,9 +292,9 @@ public class InventoryService {
     public int withdrawMatchingFromNearbyChests(World world, DroneController ctrl, EntityPlayerMP owner, String filter, int maxCount) {
         if (world == null || ctrl == null || ctrl.drone == null) return 0;
         String resolved = ItemClassifier.resolveHeldFilter(owner, filter);
-        List<TileEntity> tiles = findAllInventoryTiles(world, ctrl.drone.field_70165_t, ctrl.drone.field_70163_u, ctrl.drone.field_70161_v, 28);
-        if (owner != null && owner.field_70170_p == world) {
-            List<TileEntity> ownerTiles = findAllInventoryTiles(world, owner.field_70165_t, owner.field_70163_u, owner.field_70161_v, 28);
+        List<TileEntity> tiles = findAllInventoryTiles(world, ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ, 28);
+        if (owner != null && owner.worldObj == world) {
+            List<TileEntity> ownerTiles = findAllInventoryTiles(world, owner.posX, owner.posY, owner.posZ, 28);
             for (TileEntity ote : ownerTiles) {
                 if (!tiles.contains(ote)) {
                     tiles.add(ote);
@@ -305,40 +305,40 @@ public class InventoryService {
         IInventory dst = ctrl.drone.mainInventory();
 
         boolean hasFreeSlot = false;
-        for (int i = 0; i < dst.func_70302_i_(); i++) {
-            ItemStack st = dst.func_70301_a(i);
-            if (st == null || st.field_77994_a <= 0) {
+        for (int i = 0; i < dst.getSizeInventory(); i++) {
+            ItemStack st = dst.getStackInSlot(i);
+            if (st == null || st.stackSize <= 0) {
                 hasFreeSlot = true;
                 break;
             }
-            if (ItemClassifier.matchesBlockOrItemName(st.func_82833_r(), ItemClassifier.getItemIdentifier(st), st.func_77960_j(), resolved)
-                && st.field_77994_a < st.func_77976_d()) {
+            if (ItemClassifier.matchesBlockOrItemName(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), resolved)
+                && st.stackSize < st.getMaxStackSize()) {
                 hasFreeSlot = true;
                 break;
             }
         }
         if (!hasFreeSlot) {
-            for (int i = dst.func_70302_i_() - 1; i >= 0; i--) {
-                ItemStack st = dst.func_70301_a(i);
+            for (int i = dst.getSizeInventory() - 1; i >= 0; i--) {
+                ItemStack st = dst.getStackInSlot(i);
                 if (st == null) continue;
-                if (!ItemClassifier.matchesBlockOrItemName(st.func_82833_r(), ItemClassifier.getItemIdentifier(st), st.func_77960_j(), resolved)) {
+                if (!ItemClassifier.matchesBlockOrItemName(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), resolved)) {
                     boolean swapped = false;
                     for (TileEntity te : tiles) {
                         if (te instanceof IInventory) {
-                            ItemStack copy = st.func_77946_l();
+                            ItemStack copy = st.copy();
                             int ins = insertIntoInventory((IInventory) te, copy);
-                            if (ins == st.field_77994_a) {
-                                dst.func_70299_a(i, null);
-                                dst.func_70296_d();
-                                ((IInventory) te).func_70296_d();
+                            if (ins == st.stackSize) {
+                                dst.setInventorySlotContents(i, null);
+                                dst.markDirty();
+                                ((IInventory) te).markDirty();
                                 swapped = true;
                                 break;
                             }
                         }
                     }
-                    if (!swapped && owner != null && owner.field_71071_by != null && owner.field_71071_by.func_70441_a(st.func_77946_l())) {
-                        dst.func_70299_a(i, null);
-                        dst.func_70296_d();
+                    if (!swapped && owner != null && owner.inventory != null && owner.inventory.addItemStackToInventory(st.copy())) {
+                        dst.setInventorySlotContents(i, null);
+                        dst.markDirty();
                         syncPlayerInventory(owner);
                         swapped = true;
                     }
@@ -366,41 +366,41 @@ public class InventoryService {
         if (droneInv == null) return 0;
 
         int totalDeposited = 0;
-        int size = droneInv.func_70302_i_();
+        int size = droneInv.getSizeInventory();
         for (int i = 0; i < size; i++) {
-            ItemStack st = droneInv.func_70301_a(i);
-            if (st == null || st.field_77994_a <= 0) continue;
-            ItemStack working = st.func_77946_l();
+            ItemStack st = droneInv.getStackInSlot(i);
+            if (st == null || st.stackSize <= 0) continue;
+            ItemStack working = st.copy();
             totalDeposited += insertIntoInventory(targetInv, working);
 
-            if (working.field_77994_a > 0 && te instanceof TileEntityChest) {
+            if (working.stackSize > 0 && te instanceof TileEntityChest) {
                 TileEntityChest tc = (TileEntityChest) te;
-                tc.func_145979_i();
+                tc.checkForAdjacentChests();
                 TileEntityChest[] adj = new TileEntityChest[]{
-                    tc.field_145992_i, tc.field_145990_j, tc.field_145991_k, tc.field_145988_l
+                    tc.adjacentChestZNeg, tc.adjacentChestXPos, tc.adjacentChestXNeg, tc.adjacentChestZPos
                 };
                 for (TileEntityChest a : adj) {
-                    if (a != null && working.field_77994_a > 0) {
+                    if (a != null && working.stackSize > 0) {
                         totalDeposited += insertIntoInventory(a, working);
                     }
                 }
             }
 
-            if (working.field_77994_a <= 0) {
-                droneInv.func_70299_a(i, null);
+            if (working.stackSize <= 0) {
+                droneInv.setInventorySlotContents(i, null);
             } else {
-                droneInv.func_70299_a(i, working);
+                droneInv.setInventorySlotContents(i, working);
             }
         }
-        droneInv.func_70296_d();
-        targetInv.func_70296_d();
+        droneInv.markDirty();
+        targetInv.markDirty();
 
-        if (countInventoryItems(droneInv) > 0 && d.field_70170_p != null) {
+        if (countInventoryItems(droneInv) > 0 && d.worldObj != null) {
             List<TileEntity> nearby = findAllInventoryTiles(
-                d.field_70170_p,
-                te.field_145851_c + 0.5,
-                te.field_145848_d + 0.5,
-                te.field_145849_e + 0.5,
+                d.worldObj,
+                te.xCoord + 0.5,
+                te.yCoord + 0.5,
+                te.zCoord + 0.5,
                 8
             );
             for (TileEntity other : nearby) {
@@ -408,18 +408,18 @@ public class InventoryService {
                 if (countInventoryItems(droneInv) <= 0) break;
                 IInventory oInv = (IInventory) other;
                 for (int i = 0; i < size; i++) {
-                    ItemStack st = droneInv.func_70301_a(i);
-                    if (st == null || st.field_77994_a <= 0) continue;
-                    ItemStack working = st.func_77946_l();
+                    ItemStack st = droneInv.getStackInSlot(i);
+                    if (st == null || st.stackSize <= 0) continue;
+                    ItemStack working = st.copy();
                     int ins = insertIntoInventory(oInv, working);
                     if (ins > 0) {
                         totalDeposited += ins;
-                        droneInv.func_70299_a(i, working.field_77994_a > 0 ? working : null);
-                        oInv.func_70296_d();
+                        droneInv.setInventorySlotContents(i, working.stackSize > 0 ? working : null);
+                        oInv.markDirty();
                     }
                 }
             }
-            droneInv.func_70296_d();
+            droneInv.markDirty();
         }
         return totalDeposited;
     }
@@ -437,36 +437,36 @@ public class InventoryService {
     }
 
     public static void suckNearbyItems(Drone d, double x, double y, double z, double radius) {
-        World world = d.field_70170_p;
+        World world = d.worldObj;
         IInventory inv = d.mainInventory();
         if (world == null || inv == null) return;
-        AxisAlignedBB box = AxisAlignedBB.func_72330_a(
+        AxisAlignedBB box = AxisAlignedBB.getBoundingBox(
             x - radius, y - radius, z - radius,
             x + radius, y + radius, z + radius
         );
-        List<?> items = world.func_72872_a(EntityItem.class, box);
+        List<?> items = world.getEntitiesWithinAABB(EntityItem.class, box);
         if (items == null || items.isEmpty()) return;
 
         boolean pickedAny = false;
         for (Object o : items) {
             if (o instanceof EntityItem) {
                 EntityItem ei = (EntityItem) o;
-                if (ei.field_70128_L) continue;
-                ItemStack st = ei.func_92059_d();
-                if (st == null || st.field_77994_a <= 0) continue;
-                int before = st.field_77994_a;
+                if (ei.isDead) continue;
+                ItemStack st = ei.getEntityItem();
+                if (st == null || st.stackSize <= 0) continue;
+                int before = st.stackSize;
                 insertIntoInventory(inv, st);
-                if (st.field_77994_a <= 0) {
-                    ei.func_70106_y();
+                if (st.stackSize <= 0) {
+                    ei.setDead();
                     pickedAny = true;
-                } else if (st.field_77994_a != before) {
-                    ei.func_92058_a(st);
+                } else if (st.stackSize != before) {
+                    ei.setEntityItemStack(st);
                     pickedAny = true;
                 }
             }
         }
         if (pickedAny) {
-            world.func_72956_a(d, "random.pop", 0.25f, 1.6f);
+            world.playSoundAtEntity(d, "random.pop", 0.25f, 1.6f);
         }
     }
 
@@ -474,18 +474,18 @@ public class InventoryService {
         IInventory inv = d.mainInventory();
         if (inv == null) return 0;
         int totalCount = 0;
-        int size = inv.func_70302_i_();
+        int size = inv.getSizeInventory();
         for (int i = 0; i < size; i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st != null && st.field_77994_a > 0) {
-                totalCount += st.field_77994_a;
-                EntityItem ei = new EntityItem(w, x, y, z, st.func_77946_l());
-                ei.field_145804_b = 0;
-                w.func_72838_d(ei);
-                inv.func_70299_a(i, null);
+            ItemStack st = inv.getStackInSlot(i);
+            if (st != null && st.stackSize > 0) {
+                totalCount += st.stackSize;
+                EntityItem ei = new EntityItem(w, x, y, z, st.copy());
+                ei.delayBeforeCanPickup = 0;
+                w.spawnEntityInWorld(ei);
+                inv.setInventorySlotContents(i, null);
             }
         }
-        inv.func_70296_d();
+        inv.markDirty();
         return totalCount;
     }
 

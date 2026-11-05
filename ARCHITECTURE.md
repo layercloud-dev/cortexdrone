@@ -119,6 +119,21 @@ only loaded chunks and never calls a chunk-loading method.
 Instruction handling and world-context scans are dispatched to the server
 thread, so no chunk/world object is read from the LLM or heartbeat threads.
 
+## Build
+
+The project uses RetroFuturaGradle 2.x, the maintained ForgeGradle-compatible
+toolchain for Minecraft 1.7.10, with Gradle 9.2 and a Java 8 compile toolchain.
+Sources are written against MCP names; `reobfJar` produces the SRG-named jar
+that Forge 1.7.10 loads on the server. OpenComputers is resolved as a
+compile-only deobfuscated dependency.
+
+```bash
+./gradlew build          # validate + test + reobf + deploy
+./gradlew reobfJar       # production jar in build/libs
+./gradlew runClient      # dev client
+./gradlew runServer      # dev server
+```
+
 ## Verification
 
 ```bash

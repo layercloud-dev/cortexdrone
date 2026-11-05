@@ -49,33 +49,33 @@ public final class ItemClassifier {
 
     public static boolean isReplaceableBlock(World world, int x, int y, int z) {
         if (y <= 1 || y >= 255) return false;
-        if (world.func_147437_c(x, y, z)) return true;
-        Block b = world.func_147439_a(x, y, z);
+        if (world.isAirBlock(x, y, z)) return true;
+        Block b = world.getBlock(x, y, z);
         if (b == null || isLiquidBlock(b)) return true;
-        Material m = b.func_149688_o();
-        return m != null && m.func_76222_j();
+        Material m = b.getMaterial();
+        return m != null && m.isReplaceable();
     }
 
     public static boolean isPassableVoxel(World world, int bx, int by, int bz) {
         if (by <= 1 || by >= 255) return false;
-        if (world.func_147437_c(bx, by, bz)) return true;
-        Block b = world.func_147439_a(bx, by, bz);
+        if (world.isAirBlock(bx, by, bz)) return true;
+        Block b = world.getBlock(bx, by, bz);
         if (b == null || isLiquidBlock(b)) return true;
-        if (b.func_149655_b(world, bx, by, bz)) return true;
-        return b.func_149668_a(world, bx, by, bz) == null;
+        if (b.getBlocksMovement(world, bx, by, bz)) return true;
+        return b.getCollisionBoundingBoxFromPool(world, bx, by, bz) == null;
     }
 
     private static boolean isProtectedTileEntity(World world, int x, int y, int z) {
-        TileEntity te = world.func_147438_o(x, y, z);
+        TileEntity te = world.getTileEntity(x, y, z);
         if (te == null) return false;
         if (RegistryIntrospector.isFurnaceTile(world, te)) return true;
         String cls = te.getClass().getName().toLowerCase();
         if (cls.contains("opencomputers") || cls.contains("li.cil.oc")) return true;
         if (te instanceof IInventory) {
             IInventory inv = (IInventory) te;
-            for (int i = 0; i < inv.func_70302_i_(); i++) {
-                ItemStack st = inv.func_70301_a(i);
-                if (st != null && st.field_77994_a > 0) {
+            for (int i = 0; i < inv.getSizeInventory(); i++) {
+                ItemStack st = inv.getStackInSlot(i);
+                if (st != null && st.stackSize > 0) {
                     return true;
                 }
             }
@@ -86,20 +86,20 @@ public final class ItemClassifier {
 
     public static boolean isMineableBlock(World world, int x, int y, int z) {
         if (y <= 1 || y >= 255) return false;
-        if (world.func_147437_c(x, y, z)) return false;
-        Block b = world.func_147439_a(x, y, z);
-        if (b == null || b == Blocks.field_150350_a || b == Blocks.field_150357_h) return false;
+        if (world.isAirBlock(x, y, z)) return false;
+        Block b = world.getBlock(x, y, z);
+        if (b == null || b == Blocks.air || b == Blocks.bedrock) return false;
         if (isLiquidBlock(b)) return false;
-        if (b.func_149712_f(world, x, y, z) < 0.0f) return false;
+        if (b.getBlockHardness(world, x, y, z) < 0.0f) return false;
         return !isProtectedTileEntity(world, x, y, z);
     }
 
     public static boolean isProtectedFixture(World world, int x, int y, int z) {
         if (y <= 1 || y >= 255) return true;
-        Block b = world.func_147439_a(x, y, z);
-        if (b == Blocks.field_150357_h) return true;
+        Block b = world.getBlock(x, y, z);
+        if (b == Blocks.bedrock) return true;
         if (isProtectedTileEntity(world, x, y, z)) return true;
-        return b != null && !world.func_147437_c(x, y, z) && b.func_149712_f(world, x, y, z) < 0.0f;
+        return b != null && !world.isAirBlock(x, y, z) && b.getBlockHardness(world, x, y, z) < 0.0f;
     }
 
     public static boolean isOreBlock(Block b, int meta) {
@@ -148,18 +148,18 @@ public final class ItemClassifier {
     }
 
     public static String getBlockDisplayName(Block b, int meta) {
-        if (b == null || b == Blocks.field_150350_a) return "Air";
+        if (b == null || b == Blocks.air) return "Air";
         int key = RegistryIntrospector.blockCacheKey(b, meta);
         String cached = BLOCK_DISP_CACHE.get(key);
         if (cached != null) return cached;
 
         String result = null;
         try {
-            Item item = Item.func_150898_a(b);
+            Item item = Item.getItemFromBlock(b);
             if (item != null) {
                 int dmg = RegistryIntrospector.normalizeBlockMeta(b, meta);
                 ItemStack st = new ItemStack(item, 1, dmg);
-                String dn = st.func_82833_r();
+                String dn = st.getDisplayName();
                 if (dn != null && !dn.isEmpty() && !dn.endsWith(".name") && !dn.startsWith("tile.") && !dn.startsWith("item.")) {
                     result = dn;
                 }
@@ -167,11 +167,11 @@ public final class ItemClassifier {
         } catch (Throwable ignored) {
         }
         if (result == null) {
-            String loc = b.func_149732_F();
+            String loc = b.getLocalizedName();
             if (loc != null && !loc.isEmpty() && !loc.endsWith(".name") && !loc.startsWith("tile.") && !loc.startsWith("item.")) {
                 result = loc;
             } else {
-                String reg = Block.field_149771_c.func_148750_c(b);
+                String reg = Block.blockRegistry.getNameForObject(b);
                 result = humanizeUnlocalizedName(loc, reg);
             }
         }
@@ -185,9 +185,9 @@ public final class ItemClassifier {
         String cached = BLOCK_ID_CACHE.get(key);
         if (cached != null) return cached;
 
-        String reg = Block.field_149771_c.func_148750_c(b);
-        String unloc = b.func_149739_a();
-        String loc = b.func_149732_F();
+        String reg = Block.blockRegistry.getNameForObject(b);
+        String unloc = b.getUnlocalizedName();
+        String loc = b.getLocalizedName();
         String disp = getBlockDisplayName(b, meta);
         StringBuilder oreTags = new StringBuilder();
         for (String tag : getOreDictNames(b, meta)) {
@@ -205,12 +205,12 @@ public final class ItemClassifier {
     }
 
     public static String getItemIdentifier(ItemStack st) {
-        if (st == null || st.func_77973_b() == null) return "";
-        Item item = st.func_77973_b();
-        int meta = st.func_77960_j();
-        String reg = Item.field_150901_e.func_148750_c(item);
-        String unloc = st.func_77977_a();
-        String disp = st.func_82833_r();
+        if (st == null || st.getItem() == null) return "";
+        Item item = st.getItem();
+        int meta = st.getItemDamage();
+        String reg = Item.itemRegistry.getNameForObject(item);
+        String unloc = st.getUnlocalizedName();
+        String disp = st.getDisplayName();
         StringBuilder oreTags = new StringBuilder();
         for (String tag : getOreDictNames(st)) {
             oreTags.append(' ').append(tag);
@@ -226,9 +226,9 @@ public final class ItemClassifier {
         if (lower.equals("held") || lower.equals("selected") || lower.equals("selected block")
             || lower.equals("held block") || lower.equals("held item") || lower.equals("hand") || lower.equals("equipped")) {
             if (player != null) {
-                ItemStack held = player.func_71045_bC();
-                if (held != null && held.field_77994_a > 0 && held.func_77973_b() != null) {
-                    return held.func_82833_r() + ":" + held.func_77960_j();
+                ItemStack held = player.getCurrentEquippedItem();
+                if (held != null && held.stackSize > 0 && held.getItem() != null) {
+                    return held.getDisplayName() + ":" + held.getItemDamage();
                 }
             }
             return "any";
@@ -333,7 +333,7 @@ public final class ItemClassifier {
         String id = getBlockIdentifier(b, normMeta);
 
         if (f.equals("all non air") || f.equals("*")) {
-            return b != Blocks.field_150350_a;
+            return b != Blocks.air;
         }
         if (f.equals("ore") || f.equals("ores") || f.equals("vein") || f.equals("all")) {
             return isOreBlock(b, normMeta);
@@ -370,7 +370,7 @@ public final class ItemClassifier {
     }
 
     public static boolean matchesEntityFilter(EntityLivingBase el, String filter) {
-        if (el == null || el.field_70128_L || el.func_110143_aJ() <= 0.0f) return false;
+        if (el == null || el.isDead || el.getHealth() <= 0.0f) return false;
         if (el instanceof EntityPlayer) return false;
         String f = (filter == null || filter.trim().isEmpty()) ? "animal" : filter.trim().toLowerCase();
         String combined = RegistryIntrospector.getEntityIdentifier(el);
@@ -401,11 +401,11 @@ public final class ItemClassifier {
     public static JsonObject itemStackToJson(int slot, ItemStack st) {
         JsonObject io = new JsonObject();
         if (slot >= 0) io.addProperty("slot", slot);
-        if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) return io;
-        String disp = st.func_82833_r();
-        String reg = Item.field_150901_e.func_148750_c(st.func_77973_b());
-        int id = Item.func_150891_b(st.func_77973_b());
-        int meta = st.func_77960_j();
+        if (st == null || st.stackSize <= 0 || st.getItem() == null) return io;
+        String disp = st.getDisplayName();
+        String reg = Item.itemRegistry.getNameForObject(st.getItem());
+        int id = Item.getIdFromItem(st.getItem());
+        int meta = st.getItemDamage();
         io.addProperty("name", disp != null ? disp : "");
         io.addProperty("displayName", disp != null ? disp : "");
         io.addProperty("registryName", reg != null ? reg : "");
@@ -413,7 +413,7 @@ public final class ItemClassifier {
         io.addProperty("id", id);
         io.addProperty("meta", meta);
         io.addProperty("damage", meta);
-        io.addProperty("count", st.field_77994_a);
+        io.addProperty("count", st.stackSize);
         return io;
     }
 }

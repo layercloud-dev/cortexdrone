@@ -48,19 +48,19 @@ public class DocLookupService {
         JsonArray registryMatches = new JsonArray();
 
         // 1) Inspect live Forge Item & Block registries
-        Set<?> itemKeys = Item.field_150901_e.func_148742_b();
+        Set<?> itemKeys = Item.itemRegistry.getKeys();
         if (itemKeys != null) {
             for (Object keyObj : itemKeys) {
                 if (registryMatches.size() >= 18) break;
                 String regName = String.valueOf(keyObj);
                 if (modFilter != null && !regName.toLowerCase().startsWith(modFilter + ":")) continue;
-                Item item = (Item) Item.field_150901_e.func_82594_a(regName);
+                Item item = (Item) Item.itemRegistry.getObject(regName);
                 if (item == null) continue;
 
-                for (int meta = 0; meta < (item.func_77614_k() ? 8 : 1); meta++) {
+                for (int meta = 0; meta < (item.getHasSubtypes() ? 8 : 1); meta++) {
                     try {
                         ItemStack st = new ItemStack(item, 1, meta);
-                        String disp = st.func_82833_r();
+                        String disp = st.getDisplayName();
                         String combined = ItemClassifier.getItemIdentifier(st);
                         if (ItemClassifier.matchesBlockOrItemName(disp, combined, meta, qLower)
                             || (disp != null && disp.toLowerCase().contains(qLower))
@@ -68,22 +68,22 @@ public class DocLookupService {
                             JsonObject io = new JsonObject();
                             io.addProperty("name", disp != null ? disp : regName);
                             io.addProperty("registryName", regName);
-                            io.addProperty("id", Item.func_150891_b(item));
+                            io.addProperty("id", Item.getIdFromItem(item));
                             io.addProperty("meta", meta);
                             int colon = regName.indexOf(':');
                             io.addProperty("modId", colon > 0 ? regName.substring(0, colon) : "minecraft");
-                            Block block = Block.func_149634_a(item);
-                            boolean isBlock = (block != null && block != net.minecraft.init.Blocks.field_150350_a);
+                            Block block = Block.getBlockFromItem(item);
+                            boolean isBlock = (block != null && block != net.minecraft.init.Blocks.air);
                             io.addProperty("isBlock", isBlock);
                             io.addProperty("isFood", item instanceof ItemFood);
                             io.addProperty("isTool", item instanceof ItemTool);
-                            int burnTime = TileEntityFurnace.func_145952_a(st);
+                            int burnTime = TileEntityFurnace.getItemBurnTime(st);
                             if (burnTime > 0) {
                                 io.addProperty("fuelBurnTicks", burnTime);
                             }
-                            ItemStack smeltOut = FurnaceRecipes.func_77602_a().func_151395_a(st);
-                            if (smeltOut != null && smeltOut.func_77973_b() != null) {
-                                io.addProperty("smeltsInto", smeltOut.func_82833_r() + " x" + Math.max(1, smeltOut.field_77994_a));
+                            ItemStack smeltOut = FurnaceRecipes.smelting().getSmeltingResult(st);
+                            if (smeltOut != null && smeltOut.getItem() != null) {
+                                io.addProperty("smeltsInto", smeltOut.getDisplayName() + " x" + Math.max(1, smeltOut.stackSize));
                             }
                             JsonArray oreTags = new JsonArray();
                             for (String tag : ItemClassifier.getOreDictNames(st)) {
@@ -138,9 +138,9 @@ public class DocLookupService {
 
     private static File resolveConfigDirectory() {
         try {
-            net.minecraft.server.MinecraftServer srv = net.minecraft.server.MinecraftServer.func_71276_C();
+            net.minecraft.server.MinecraftServer srv = net.minecraft.server.MinecraftServer.getServer();
             if (srv != null) {
-                File f = srv.func_71209_f("config");
+                File f = srv.getFile("config");
                 if (f != null && f.isDirectory()) return f;
             }
         } catch (Throwable ignored) {

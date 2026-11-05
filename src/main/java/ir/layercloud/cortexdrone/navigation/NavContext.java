@@ -34,17 +34,17 @@ public final class NavContext {
                        String route, int cacheRadius) {
         this.controller = controller;
         this.drone = controller.drone;
-        this.world = this.drone != null ? this.drone.field_70170_p : null;
-        this.startX = this.drone != null ? this.drone.field_70165_t : Double.NaN;
-        this.startY = this.drone != null ? this.drone.field_70163_u : Double.NaN;
-        this.startZ = this.drone != null ? this.drone.field_70161_v : Double.NaN;
+        this.world = this.drone != null ? this.drone.worldObj : null;
+        this.startX = this.drone != null ? this.drone.posX : Double.NaN;
+        this.startY = this.drone != null ? this.drone.posY : Double.NaN;
+        this.startZ = this.drone != null ? this.drone.posZ : Double.NaN;
         this.goalX = goalX;
         this.goalY = goalY;
         this.goalZ = goalZ;
         this.route = route == null || route.isEmpty() ? "auto" : route;
         this.cache = this.world != null
-            ? new ChunkCacheContext(this.world, MathHelper.func_76128_c(this.startX),
-                MathHelper.func_76128_c(this.startZ), cacheRadius)
+            ? new ChunkCacheContext(this.world, MathHelper.floor_double(this.startX),
+                MathHelper.floor_double(this.startZ), cacheRadius)
             : null;
     }
 

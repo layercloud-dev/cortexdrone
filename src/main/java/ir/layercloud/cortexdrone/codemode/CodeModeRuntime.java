@@ -74,7 +74,7 @@ public class CodeModeRuntime {
         ctrl.activeScriptCount.incrementAndGet();
         try {
             String safeJsCode = jsCode != null ? jsCode : "";
-            String pName = player != null ? player.func_70005_c_() : ctrl.ownerName;
+            String pName = player != null ? player.getCommandSenderName() : ctrl.ownerName;
             int port = (this.config != null && this.config.getHttpPort() > 0) ? this.config.getHttpPort() : 25580;
 
             String script = "const DRONE_ID = " + ctrl.id + ";\n"
@@ -143,7 +143,7 @@ public class CodeModeRuntime {
                 if (proc.waitFor(Math.min(250L, remaining), TimeUnit.MILLISECONDS)) {
                     break;
                 }
-                if ((loopId > 0 && ctrl.isLoopCancelled(loopId)) || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                if ((loopId > 0 && ctrl.isLoopCancelled(loopId)) || ctrl.drone == null || ctrl.drone.isDead) {
                     superseded = true;
                     break;
                 }

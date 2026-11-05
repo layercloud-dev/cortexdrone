@@ -20,9 +20,9 @@ public class PlayerTransportService {
     private final FlightPathfinder pathfinder;
 
     public static double[] findSafeLandingSpot(World world, double gx, double gy, double gz) {
-        int bx = MathHelper.func_76128_c(gx);
-        int by = MathHelper.func_76128_c(gy);
-        int bz = MathHelper.func_76128_c(gz);
+        int bx = MathHelper.floor_double(gx);
+        int by = MathHelper.floor_double(gy);
+        int bz = MathHelper.floor_double(gz);
         for (int r = 0; r <= 3; r++) {
             for (int dy = -2; dy <= 3; dy++) {
                 for (int dx = -r; dx <= r; dx++) {
@@ -38,7 +38,7 @@ public class PlayerTransportService {
                 }
             }
         }
-        int topY = world.func_72976_f(bx, bz);
+        int topY = world.getHeightValue(bx, bz);
         return new double[]{bx + 0.5, Math.max(gy, (double) topY), bz + 0.5};
     }
 
@@ -51,38 +51,38 @@ public class PlayerTransportService {
         ctrl.goalX = gx;
         ctrl.goalY = gy;
         ctrl.goalZ = gz;
-        this.manager.setDroneMode(ctrl, Mode.CARRY, String.format("Carrying %s to (%.1f,%.1f,%.1f)", player.func_70005_c_(), gx, gy, gz));
+        this.manager.setDroneMode(ctrl, Mode.CARRY, String.format("Carrying %s to (%.1f,%.1f,%.1f)", player.getCommandSenderName(), gx, gy, gz));
         d.lightColor_$eq(0x00FFFF);
-        d.statusText_$eq("Carrying\n" + AIDroneManager.trimStatus(player.func_70005_c_()));
+        d.statusText_$eq("Carrying\n" + AIDroneManager.trimStatus(player.getCommandSenderName()));
     }
 
     public void tickCarryBehavior(DroneController ctrl, EntityPlayerMP owner) {
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        if (owner == null || owner.field_70170_p != world) {
-            if (d.field_70153_n != null) {
-                d.field_70153_n.func_70078_a(null);
+        World world = d.worldObj;
+        if (owner == null || owner.worldObj != world) {
+            if (d.riddenByEntity != null) {
+                d.riddenByEntity.mountEntity(null);
             }
             this.manager.setDroneMode(ctrl, Mode.STAY, "Owner offline during CARRY");
             return;
         }
-        owner.field_70143_R = 0.0f;
+        owner.fallDistance = 0.0f;
 
-        if (owner.field_70154_o != d && d.func_70032_d(owner) > 4.0) {
-            this.pathfinder.navigateToward(ctrl, owner.field_70165_t, owner.field_70163_u + 1.5, owner.field_70161_v, 0.14f);
-            d.statusText_$eq("To Player\n" + (int) d.func_70032_d(owner) + "m");
+        if (owner.ridingEntity != d && d.getDistanceToEntity(owner) > 4.0) {
+            this.pathfinder.navigateToward(ctrl, owner.posX, owner.posY + 1.5, owner.posZ, 0.14f);
+            d.statusText_$eq("To Player\n" + (int) d.getDistanceToEntity(owner) + "m");
             return;
         }
 
-        double dist = d.func_70011_f(ctrl.carryGoalX, ctrl.carryGoalY, ctrl.carryGoalZ);
+        double dist = d.getDistance(ctrl.carryGoalX, ctrl.carryGoalY, ctrl.carryGoalZ);
         if (dist <= 2.8) {
-            if (owner.field_70154_o == d) {
-                owner.func_70078_a(null);
+            if (owner.ridingEntity == d) {
+                owner.mountEntity(null);
             }
             double[] safe = findSafeLandingSpot(world, ctrl.carryGoalX, ctrl.carryGoalY, ctrl.carryGoalZ);
-            owner.field_70143_R = 0.0f;
-            owner.func_70634_a(safe[0], safe[1], safe[2]);
-            owner.field_70143_R = 0.0f;
+            owner.fallDistance = 0.0f;
+            owner.setPositionAndUpdate(safe[0], safe[1], safe[2]);
+            owner.fallDistance = 0.0f;
             if (!ctrl.isScriptRunning()) {
                 this.manager.droneSay(owner, ctrl, String.format("Safely transported you to (%.0f, %.0f, %.0f)!", safe[0], safe[1], safe[2]));
             }
@@ -90,28 +90,28 @@ public class PlayerTransportService {
             return;
         }
 
-        if (owner.field_70154_o != d) {
-            owner.func_70078_a(d);
+        if (owner.ridingEntity != d) {
+            owner.mountEntity(d);
         }
         this.pathfinder.navigateToward(ctrl, ctrl.carryGoalX, ctrl.carryGoalY + 1.4, ctrl.carryGoalZ, 0.14f);
-        owner.field_70143_R = 0.0f;
+        owner.fallDistance = 0.0f;
 
-        if (owner.field_70154_o != d) {
-            double py = ItemClassifier.isPassableVoxel(world, MathHelper.func_76128_c(d.field_70165_t), MathHelper.func_76128_c(d.field_70163_u - 1.2), MathHelper.func_76128_c(d.field_70161_v))
-                ? (d.field_70163_u - 1.2)
-                : d.field_70163_u;
-            owner.field_70159_w = d.field_70159_w;
-            owner.field_70181_x = d.field_70181_x;
-            owner.field_70179_y = d.field_70179_y;
-            if (owner.field_71135_a != null) {
-                owner.field_71135_a.func_147359_a(new S12PacketEntityVelocity(owner));
+        if (owner.ridingEntity != d) {
+            double py = ItemClassifier.isPassableVoxel(world, MathHelper.floor_double(d.posX), MathHelper.floor_double(d.posY - 1.2), MathHelper.floor_double(d.posZ))
+                ? (d.posY - 1.2)
+                : d.posY;
+            owner.motionX = d.motionX;
+            owner.motionY = d.motionY;
+            owner.motionZ = d.motionZ;
+            if (owner.playerNetServerHandler != null) {
+                owner.playerNetServerHandler.sendPacket(new S12PacketEntityVelocity(owner));
             }
-            owner.func_70634_a(d.field_70165_t, py, d.field_70161_v);
-        } else if (owner.field_71135_a != null) {
-            owner.field_71135_a.func_147359_a(new S12PacketEntityVelocity(d));
+            owner.setPositionAndUpdate(d.posX, py, d.posZ);
+        } else if (owner.playerNetServerHandler != null) {
+            owner.playerNetServerHandler.sendPacket(new S12PacketEntityVelocity(d));
         }
-        owner.field_70143_R = 0.0f;
+        owner.fallDistance = 0.0f;
         d.lightColor_$eq(0x00FFFF);
-        d.statusText_$eq("Airlift " + (int) dist + "m\n" + AIDroneManager.trimStatus(owner.func_70005_c_()));
+        d.statusText_$eq("Airlift " + (int) dist + "m\n" + AIDroneManager.trimStatus(owner.getCommandSenderName()));
     }
 }

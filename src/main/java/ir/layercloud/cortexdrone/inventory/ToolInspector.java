@@ -20,11 +20,11 @@ public final class ToolInspector {
     public static int getBestFortuneLevel(IInventory inv) {
         if (inv == null) return 0;
         int best = 0;
-        int fortuneId = Enchantment.field_77346_s != null ? Enchantment.field_77346_s.field_77352_x : 35;
-        for (int i = 0; i < inv.func_70302_i_(); i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
-            int lvl = EnchantmentHelper.func_77506_a(fortuneId, st);
+        int fortuneId = Enchantment.fortune != null ? Enchantment.fortune.effectId : 35;
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
+            if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
+            int lvl = EnchantmentHelper.getEnchantmentLevel(fortuneId, st);
             if (lvl > best) best = lvl;
         }
         return Math.min(5, best);
@@ -35,13 +35,13 @@ public final class ToolInspector {
         if (inv == null || block == null) return (int) baseTicks;
 
         float bestSpeedBonus = 1.0f;
-        int effId = Enchantment.field_77349_p != null ? Enchantment.field_77349_p.field_77352_x : 32;
-        for (int i = 0; i < inv.func_70302_i_(); i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
+        int effId = Enchantment.efficiency != null ? Enchantment.efficiency.effectId : 32;
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
+            if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
             try {
                 float digSpeed = st.func_150997_a(block);
-                int effLvl = EnchantmentHelper.func_77506_a(effId, st);
+                int effLvl = EnchantmentHelper.getEnchantmentLevel(effId, st);
                 if (effLvl > 0) {
                     digSpeed += effLvl * effLvl + 1.0f;
                 }
@@ -60,18 +60,18 @@ public final class ToolInspector {
     public static float computeAttackDamage(IInventory inv, EntityLivingBase target, float baseDamage) {
         if (inv == null) return baseDamage;
         float bestBonus = 0.0f;
-        for (int i = 0; i < inv.func_70302_i_(); i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) continue;
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
+            if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
             float weaponBonus = 0.0f;
-            if (st.func_77973_b() instanceof ItemSword) {
-                weaponBonus = 4.0f + ((ItemSword) st.func_77973_b()).func_150931_i();
-            } else if (st.func_77973_b() instanceof ItemTool) {
+            if (st.getItem() instanceof ItemSword) {
+                weaponBonus = 4.0f + ((ItemSword) st.getItem()).func_150931_i();
+            } else if (st.getItem() instanceof ItemTool) {
                 weaponBonus = 2.5f;
             }
             if (target != null) {
                 try {
-                    weaponBonus += EnchantmentHelper.func_152377_a(st, target.func_70668_bt());
+                    weaponBonus += EnchantmentHelper.func_152377_a(st, target.getCreatureAttribute());
                 } catch (Throwable ignored) {
                 }
             }
@@ -85,11 +85,11 @@ public final class ToolInspector {
     public static int getFireAspectSeconds(IInventory inv) {
         if (inv == null) return 0;
         int best = 0;
-        int fireId = Enchantment.field_77334_n != null ? Enchantment.field_77334_n.field_77352_x : 20;
-        for (int i = 0; i < inv.func_70302_i_(); i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st != null && st.field_77994_a > 0) {
-                int lvl = EnchantmentHelper.func_77506_a(fireId, st);
+        int fireId = Enchantment.fireAspect != null ? Enchantment.fireAspect.effectId : 20;
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
+            if (st != null && st.stackSize > 0) {
+                int lvl = EnchantmentHelper.getEnchantmentLevel(fireId, st);
                 if (lvl > best) best = lvl;
             }
         }

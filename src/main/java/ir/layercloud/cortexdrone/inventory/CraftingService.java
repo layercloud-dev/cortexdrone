@@ -38,12 +38,12 @@ public class CraftingService {
 
     static {
         try {
-            shapedItemsField = ShapedRecipes.class.getDeclaredField("field_77574_d");
+            shapedItemsField = ShapedRecipes.class.getDeclaredField("recipeItems");
             shapedItemsField.setAccessible(true);
         } catch (Throwable ignored) {
         }
         try {
-            shapelessItemsField = ShapelessRecipes.class.getDeclaredField("field_77579_b");
+            shapelessItemsField = ShapelessRecipes.class.getDeclaredField("recipeItems");
             shapelessItemsField.setAccessible(true);
         } catch (Throwable ignored) {
         }
@@ -67,7 +67,7 @@ public class CraftingService {
                 ItemStack[] arr = (ItemStack[]) shapedItemsField.get(recipe);
                 if (arr != null) {
                     for (ItemStack st : arr) {
-                        if (st != null && st.func_77973_b() != null) {
+                        if (st != null && st.getItem() != null) {
                             slots.add(Collections.singletonList(st));
                         }
                     }
@@ -76,7 +76,7 @@ public class CraftingService {
                 List<?> list = (List<?>) shapelessItemsField.get(recipe);
                 if (list != null) {
                     for (Object o : list) {
-                        if (o instanceof ItemStack && ((ItemStack) o).func_77973_b() != null) {
+                        if (o instanceof ItemStack && ((ItemStack) o).getItem() != null) {
                             slots.add(Collections.singletonList((ItemStack) o));
                         }
                     }
@@ -85,7 +85,7 @@ public class CraftingService {
                 Object[] input = ((ShapedOreRecipe) recipe).getInput();
                 if (input != null) {
                     for (Object o : input) {
-                        if (o instanceof ItemStack && ((ItemStack) o).func_77973_b() != null) {
+                        if (o instanceof ItemStack && ((ItemStack) o).getItem() != null) {
                             slots.add(Collections.singletonList((ItemStack) o));
                         } else if (o instanceof List && !((List<?>) o).isEmpty()) {
                             slots.add((List<ItemStack>) o);
@@ -96,7 +96,7 @@ public class CraftingService {
                 List<?> input = ((ShapelessOreRecipe) recipe).getInput();
                 if (input != null) {
                     for (Object o : input) {
-                        if (o instanceof ItemStack && ((ItemStack) o).func_77973_b() != null) {
+                        if (o instanceof ItemStack && ((ItemStack) o).getItem() != null) {
                             slots.add(Collections.singletonList((ItemStack) o));
                         } else if (o instanceof List && !((List<?>) o).isEmpty()) {
                             slots.add((List<ItemStack>) o);
@@ -110,11 +110,11 @@ public class CraftingService {
     }
 
     private static boolean stackMatchesRecipeOption(ItemStack candidate, ItemStack option) {
-        if (candidate == null || candidate.field_77994_a <= 0 || candidate.func_77973_b() == null) return false;
-        if (option == null || option.func_77973_b() == null) return false;
-        if (candidate.func_77973_b() != option.func_77973_b()) return false;
-        int optMeta = option.func_77960_j();
-        return optMeta == OreDictionary.WILDCARD_VALUE || optMeta == candidate.func_77960_j();
+        if (candidate == null || candidate.stackSize <= 0 || candidate.getItem() == null) return false;
+        if (option == null || option.getItem() == null) return false;
+        if (candidate.getItem() != option.getItem()) return false;
+        int optMeta = option.getItemDamage();
+        return optMeta == OreDictionary.WILDCARD_VALUE || optMeta == candidate.getItemDamage();
     }
 
     private static boolean stackMatchesAnyOption(ItemStack candidate, List<ItemStack> options) {
@@ -162,14 +162,14 @@ public class CraftingService {
 
     private static List<IRecipe> findRankedMatchingRecipes(String filter) {
         List<ScoredRecipe> scored = new ArrayList<ScoredRecipe>();
-        List<?> allRecipes = CraftingManager.func_77594_a().func_77592_b();
+        List<?> allRecipes = CraftingManager.getInstance().getRecipeList();
         if (allRecipes != null) {
             for (Object ro : allRecipes) {
                 if (!(ro instanceof IRecipe)) continue;
                 IRecipe r = (IRecipe) ro;
-                ItemStack out = r.func_77571_b();
-                if (out == null || out.func_77973_b() == null) continue;
-                int s = ItemClassifier.scoreBlockOrItemMatch(out.func_82833_r(), ItemClassifier.getItemIdentifier(out), out.func_77960_j(), filter);
+                ItemStack out = r.getRecipeOutput();
+                if (out == null || out.getItem() == null) continue;
+                int s = ItemClassifier.scoreBlockOrItemMatch(out.getDisplayName(), ItemClassifier.getItemIdentifier(out), out.getItemDamage(), filter);
                 if (s > 0 && !extractRecipeIngredients(r).isEmpty()) {
                     scored.add(new ScoredRecipe(r, s));
                 }
@@ -196,19 +196,19 @@ public class CraftingService {
         JsonArray recipesArr = new JsonArray();
         for (IRecipe r : ranked) {
             if (recipesArr.size() >= 25) break;
-            ItemStack out = r.func_77571_b();
+            ItemStack out = r.getRecipeOutput();
             List<List<ItemStack>> ingSlots = extractRecipeIngredients(r);
             if (out == null || ingSlots.isEmpty()) continue;
             JsonObject roJson = new JsonObject();
-            roJson.addProperty("output", out.func_82833_r());
-            roJson.addProperty("outputCount", Math.max(1, out.field_77994_a));
+            roJson.addProperty("output", out.getDisplayName());
+            roJson.addProperty("outputCount", Math.max(1, out.stackSize));
             JsonArray ingArr = new JsonArray();
             for (List<ItemStack> opts : ingSlots) {
                 if (!opts.isEmpty() && opts.get(0) != null) {
                     ItemStack first = opts.get(0);
-                    int m = first.func_77960_j() == OreDictionary.WILDCARD_VALUE ? 0 : first.func_77960_j();
-                    ItemStack dispSt = new ItemStack(first.func_77973_b(), 1, m);
-                    ingArr.add(new JsonPrimitive(dispSt.func_82833_r()));
+                    int m = first.getItemDamage() == OreDictionary.WILDCARD_VALUE ? 0 : first.getItemDamage();
+                    ItemStack dispSt = new ItemStack(first.getItem(), 1, m);
+                    ingArr.add(new JsonPrimitive(dispSt.getDisplayName()));
                 }
             }
             roJson.add("ingredients", ingArr);
@@ -256,33 +256,33 @@ public class CraftingService {
                     List<List<ItemStack>> reqSlots = extractRecipeIngredients(recipe);
                     if (reqSlots.isEmpty()) continue;
 
-                    int[] reservedCounts = new int[droneInv.func_70302_i_()];
+                    int[] reservedCounts = new int[droneInv.getSizeInventory()];
                     boolean allAvailable = true;
 
                     for (List<ItemStack> slotOpts : reqSlots) {
                         int foundSlot = -1;
-                        for (int i = 0; i < droneInv.func_70302_i_(); i++) {
-                            ItemStack st = droneInv.func_70301_a(i);
-                            if (st != null && (st.field_77994_a - reservedCounts[i]) > 0 && stackMatchesAnyOption(st, slotOpts)) {
+                        for (int i = 0; i < droneInv.getSizeInventory(); i++) {
+                            ItemStack st = droneInv.getStackInSlot(i);
+                            if (st != null && (st.stackSize - reservedCounts[i]) > 0 && stackMatchesAnyOption(st, slotOpts)) {
                                 foundSlot = i;
                                 break;
                             }
                         }
                         if (foundSlot < 0 && allowExternalPull && !slotOpts.isEmpty()) {
                             for (ItemStack opt : slotOpts) {
-                                if (opt == null || opt.func_77973_b() == null) continue;
-                                int m = opt.func_77960_j() == OreDictionary.WILDCARD_VALUE ? 0 : opt.func_77960_j();
-                                ItemStack probe = new ItemStack(opt.func_77973_b(), 1, m);
-                                String optName = probe.func_82833_r();
+                                if (opt == null || opt.getItem() == null) continue;
+                                int m = opt.getItemDamage() == OreDictionary.WILDCARD_VALUE ? 0 : opt.getItemDamage();
+                                ItemStack probe = new ItemStack(opt.getItem(), 1, m);
+                                String optName = probe.getDisplayName();
                                 int pulled = this.inventoryService.withdrawMatchingFromNearbyChests(world, ctrl, owner, optName, 8);
                                 if (pulled == 0 && owner != null) {
                                     pulled = this.inventoryService.takeFromPlayerInventory(ctrl, owner, optName, 8);
                                 }
                                 if (pulled > 0) break;
                             }
-                            for (int i = 0; i < droneInv.func_70302_i_(); i++) {
-                                ItemStack st = droneInv.func_70301_a(i);
-                                if (st != null && (st.field_77994_a - reservedCounts[i]) > 0 && stackMatchesAnyOption(st, slotOpts)) {
+                            for (int i = 0; i < droneInv.getSizeInventory(); i++) {
+                                ItemStack st = droneInv.getStackInSlot(i);
+                                if (st != null && (st.stackSize - reservedCounts[i]) > 0 && stackMatchesAnyOption(st, slotOpts)) {
                                     foundSlot = i;
                                     break;
                                 }
@@ -290,13 +290,13 @@ public class CraftingService {
                         }
                         if (foundSlot < 0 && allowSubcraft && depth < 1 && !slotOpts.isEmpty()) {
                             ItemStack opt = slotOpts.get(0);
-                            if (opt != null && opt.func_77973_b() != null) {
-                                int m = opt.func_77960_j() == OreDictionary.WILDCARD_VALUE ? 0 : opt.func_77960_j();
-                                String subName = new ItemStack(opt.func_77973_b(), 1, m).func_82833_r();
+                            if (opt != null && opt.getItem() != null) {
+                                int m = opt.getItemDamage() == OreDictionary.WILDCARD_VALUE ? 0 : opt.getItemDamage();
+                                String subName = new ItemStack(opt.getItem(), 1, m).getDisplayName();
                                 craftItemInternal(world, ctrl, owner, subName, reqSlots.size(), depth + 1);
-                                for (int i = 0; i < droneInv.func_70302_i_(); i++) {
-                                    ItemStack st = droneInv.func_70301_a(i);
-                                    if (st != null && (st.field_77994_a - reservedCounts[i]) > 0 && stackMatchesAnyOption(st, slotOpts)) {
+                                for (int i = 0; i < droneInv.getSizeInventory(); i++) {
+                                    ItemStack st = droneInv.getStackInSlot(i);
+                                    if (st != null && (st.stackSize - reservedCounts[i]) > 0 && stackMatchesAnyOption(st, slotOpts)) {
                                         foundSlot = i;
                                         break;
                                     }
@@ -314,20 +314,20 @@ public class CraftingService {
                     if (allAvailable) {
                         for (int i = 0; i < reservedCounts.length; i++) {
                             if (reservedCounts[i] > 0) {
-                                droneInv.func_70298_a(i, reservedCounts[i]);
+                                droneInv.decrStackSize(i, reservedCounts[i]);
                             }
                         }
-                        ItemStack outTemplate = recipe.func_77571_b().func_77946_l();
-                        int outCount = Math.max(1, outTemplate.field_77994_a);
-                        outTemplate.field_77994_a = outCount;
-                        craftedName = outTemplate.func_82833_r();
+                        ItemStack outTemplate = recipe.getRecipeOutput().copy();
+                        int outCount = Math.max(1, outTemplate.stackSize);
+                        outTemplate.stackSize = outCount;
+                        craftedName = outTemplate.getDisplayName();
                         InventoryService.insertIntoInventory(droneInv, outTemplate);
-                        if (outTemplate.field_77994_a > 0) {
-                            for (int i = droneInv.func_70302_i_() - 1; i >= 0; i--) {
-                                ItemStack st = droneInv.func_70301_a(i);
-                                if (st != null && !st.func_77969_a(outTemplate)) {
-                                    if (owner != null && owner.field_71071_by != null && owner.field_71071_by.func_70441_a(st.func_77946_l())) {
-                                        droneInv.func_70299_a(i, null);
+                        if (outTemplate.stackSize > 0) {
+                            for (int i = droneInv.getSizeInventory() - 1; i >= 0; i--) {
+                                ItemStack st = droneInv.getStackInSlot(i);
+                                if (st != null && !st.isItemEqual(outTemplate)) {
+                                    if (owner != null && owner.inventory != null && owner.inventory.addItemStackToInventory(st.copy())) {
+                                        droneInv.setInventorySlotContents(i, null);
                                         InventoryService.syncPlayerInventory(owner);
                                         break;
                                     }
@@ -335,11 +335,11 @@ public class CraftingService {
                             }
                             InventoryService.insertIntoInventory(droneInv, outTemplate);
                         }
-                        if (outTemplate.field_77994_a > 0 && owner != null && owner.field_71071_by != null) {
-                            owner.field_71071_by.func_70441_a(outTemplate);
+                        if (outTemplate.stackSize > 0 && owner != null && owner.inventory != null) {
+                            owner.inventory.addItemStackToInventory(outTemplate);
                             InventoryService.syncPlayerInventory(owner);
                         }
-                        droneInv.func_70296_d();
+                        droneInv.markDirty();
                         totalCrafted += outCount;
                         craftedThisPass = true;
                         break;

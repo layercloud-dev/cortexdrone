@@ -62,47 +62,47 @@ public class LlmAgentService {
     }
     public JsonObject buildDroneContextForLlm(EntityPlayerMP player, DroneController ctrl) {
         JsonObject ctx = new JsonObject();
-        World world = ctrl.drone.field_70170_p;
-        double refX = player != null ? player.field_70165_t : ctrl.drone.field_70165_t;
-        double refY = player != null ? player.field_70163_u : ctrl.drone.field_70163_u;
-        double refZ = player != null ? player.field_70161_v : ctrl.drone.field_70161_v;
-        ctx.addProperty("player", player != null ? player.func_70005_c_() : ctrl.ownerName);
-        ctx.addProperty("playerX", MathHelper.func_76128_c(refX));
-        ctx.addProperty("playerY", MathHelper.func_76128_c(refY));
-        ctx.addProperty("playerZ", MathHelper.func_76128_c(refZ));
-        int facing = player != null ? (MathHelper.func_76128_c((double) (player.field_70177_z * 4.0f / 360.0f) + 0.5D) & 3) : 0;
+        World world = ctrl.drone.worldObj;
+        double refX = player != null ? player.posX : ctrl.drone.posX;
+        double refY = player != null ? player.posY : ctrl.drone.posY;
+        double refZ = player != null ? player.posZ : ctrl.drone.posZ;
+        ctx.addProperty("player", player != null ? player.getCommandSenderName() : ctrl.ownerName);
+        ctx.addProperty("playerX", MathHelper.floor_double(refX));
+        ctx.addProperty("playerY", MathHelper.floor_double(refY));
+        ctx.addProperty("playerZ", MathHelper.floor_double(refZ));
+        int facing = player != null ? (MathHelper.floor_double((double) (player.rotationYaw * 4.0f / 360.0f) + 0.5D) & 3) : 0;
         String[] dirs = new String[]{"South(+Z)", "West(-X)", "North(-Z)", "East(+X)"};
         ctx.addProperty("playerFacing", dirs[facing]);
         if (player != null) {
-            ctx.addProperty("playerYaw", Math.round(player.field_70177_z * 10.0f) / 10.0f);
-            ctx.addProperty("playerPitch", Math.round(player.field_70125_A * 10.0f) / 10.0f);
+            ctx.addProperty("playerYaw", Math.round(player.rotationYaw * 10.0f) / 10.0f);
+            ctx.addProperty("playerPitch", Math.round(player.rotationPitch * 10.0f) / 10.0f);
             try {
                 JsonObject lookBlock = WorldScanner.raycastPlayerLook(world, player, 80.0);
                 if (lookBlock != null) ctx.add("playerCrosshairLookBlock", lookBlock);
                 JsonObject supportBlock = WorldScanner.findPlayerSupportBlock(world, player);
                 if (supportBlock != null) ctx.add("playerStandingOnBlock", supportBlock);
             } catch (Throwable ignored) {}
-            ItemStack held = player.func_71045_bC();
-            ctx.addProperty("playerHeldItem", (held != null && held.field_77994_a > 0)
-                ? (held.func_82833_r() + ":" + held.func_77960_j() + " x" + held.field_77994_a)
+            ItemStack held = player.getCurrentEquippedItem();
+            ctx.addProperty("playerHeldItem", (held != null && held.stackSize > 0)
+                ? (held.getDisplayName() + ":" + held.getItemDamage() + " x" + held.stackSize)
                 : "Empty");
         }
         ctx.addProperty("droneName", ctrl.name);
-        ctx.addProperty("droneX", Math.round(ctrl.drone.field_70165_t * 10.0) / 10.0);
-        ctx.addProperty("droneY", Math.round(ctrl.drone.field_70163_u * 10.0) / 10.0);
-        ctx.addProperty("droneZ", Math.round(ctrl.drone.field_70161_v * 10.0) / 10.0);
+        ctx.addProperty("droneX", Math.round(ctrl.drone.posX * 10.0) / 10.0);
+        ctx.addProperty("droneY", Math.round(ctrl.drone.posY * 10.0) / 10.0);
+        ctx.addProperty("droneZ", Math.round(ctrl.drone.posZ * 10.0) / 10.0);
         ctx.addProperty("mode", ctrl.mode.name());
         boolean canSeeSky = false;
         try {
-            canSeeSky = world.func_72937_j(MathHelper.func_76128_c(ctrl.drone.field_70165_t), MathHelper.func_76128_c(ctrl.drone.field_70163_u), MathHelper.func_76128_c(ctrl.drone.field_70161_v));
+            canSeeSky = world.canBlockSeeTheSky(MathHelper.floor_double(ctrl.drone.posX), MathHelper.floor_double(ctrl.drone.posY), MathHelper.floor_double(ctrl.drone.posZ));
         } catch (Throwable ignored) {}
         ctx.addProperty("droneCanSeeSky", canSeeSky);
         ctx.addProperty("breadcrumbCount", ctrl.navigationHistory.size());
         ctx.addProperty("droneInventory", InventoryService.formatInventorySummary(ctrl.drone.mainInventory()));
-        ctx.addProperty("playerInventory", player != null ? InventoryService.formatInventorySummary(player.field_71071_by) : "Offline");
+        ctx.addProperty("playerInventory", player != null ? InventoryService.formatInventorySummary(player.inventory) : "Offline");
 
         ctx.addProperty("distToPlayerM", Math.round(Math.hypot(
-            ctrl.drone.field_70165_t - refX, ctrl.drone.field_70163_u - refY) * 10.0) / 10.0);
+            ctrl.drone.posX - refX, ctrl.drone.posY - refY) * 10.0) / 10.0);
         ctx.addProperty("droneMode", ctrl.mode.name());
         ctx.addProperty("activeTaskRunning", ctrl.task.isActive() || ctrl.hasActiveTaskOrLoop(0));
         ctx.addProperty("activeScriptCount", ctrl.activeScriptCount.get());
@@ -119,7 +119,7 @@ public class LlmAgentService {
             ? (ctrl.currentMineTarget[0] + "," + ctrl.currentMineTarget[1] + "," + ctrl.currentMineTarget[2]) : "");
         ctx.add("task", taskState);
 
-        String ownerKey = player != null ? player.func_70005_c_() : ctrl.ownerName;
+        String ownerKey = player != null ? player.getCommandSenderName() : ctrl.ownerName;
         List<AIConfig.SavedLocation> savedLocs = this.manager.getConfig().listLocations(ownerKey);
         if (!savedLocs.isEmpty()) {
             JsonObject locsObj = new JsonObject();
@@ -194,7 +194,7 @@ public class LlmAgentService {
             LoopTracer.traceStart(this.logger, ctrl, myLoopId, userPrompt);
 
             for (int turn = 1; turn <= MAX_AGENT_TURNS; turn++) {
-                if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.isDead) {
                     LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
                     return;
                 }
@@ -211,7 +211,7 @@ public class LlmAgentService {
                 }
 
                 final int curTurn = turn;
-                this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.field_70128_L && ctrl.mode == Mode.FOLLOW) { ctrl.drone.lightColor_$eq(0xAA55FF); ctrl.drone.statusText_$eq("Thinking...\nTurn " + curTurn); } } });
+                this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW) { ctrl.drone.lightColor_$eq(0xAA55FF); ctrl.drone.statusText_$eq("Thinking...\nTurn " + curTurn); } } });
 
                 final long turnStartMs = System.currentTimeMillis();
                 JsonObject plan;
@@ -230,7 +230,7 @@ public class LlmAgentService {
                     this.logger.log("HEARTBEAT", ctrl, "Context overflow -> compacted and retrying loop " + myLoopId, "turn=" + turn);
                     continue;
                 }
-                if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.isDead) {
                     LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
                     return;
                 }
@@ -260,7 +260,7 @@ public class LlmAgentService {
                 if (!thought.isEmpty()) {
                     ctrl.recordThought(turn, thought);
                     this.logger.log("THINK", ctrl, "Turn " + turn + ": " + thought, "");
-                    this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.field_70128_L && ctrl.mode == Mode.FOLLOW) ctrl.drone.statusText_$eq("Think T" + curTurn + "\n" + AIDroneManager.trimStatus(thought)); } });
+                    this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW) ctrl.drone.statusText_$eq("Think T" + curTurn + "\n" + AIDroneManager.trimStatus(thought)); } });
                 }
 
                 boolean isMalformed = plan.has("malformed") && plan.get("malformed").getAsBoolean();
@@ -320,7 +320,7 @@ public class LlmAgentService {
 
                 if (!code.isEmpty()) {
                     executedAnyAction = true;
-                    this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.field_70128_L && ctrl.mode == Mode.FOLLOW) ctrl.drone.lightColor_$eq(0xAA55FF); } });
+                    this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW) ctrl.drone.lightColor_$eq(0xAA55FF); } });
 
                     final AtomicBoolean jsFinished = new AtomicBoolean(false);
                     if (done && !thought.isEmpty()) {
@@ -349,7 +349,7 @@ public class LlmAgentService {
                     jsFinished.set(true);
                     heartbeat.observe(turn, code, execRes);
 
-                    if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                    if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.isDead) {
                         LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
                         return;
                     }

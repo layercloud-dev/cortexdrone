@@ -95,7 +95,7 @@ public final class RegistryIntrospector {
     }
 
     public static int blockCacheKey(Block b, int meta) {
-        return (Block.func_149682_b(b) << 4) | (meta & 15);
+        return (Block.getIdFromBlock(b) << 4) | (meta & 15);
     }
 
     /**
@@ -103,9 +103,9 @@ public final class RegistryIntrospector {
      * Automatically strips orientation bits on rotated logs, pillars, quartz, and modded directional blocks.
      */
     public static int normalizeBlockMeta(Block b, int meta) {
-        if (b == null || b == Blocks.field_150350_a) return 0;
+        if (b == null || b == Blocks.air) return 0;
         try {
-            int droppedMeta = b.func_149692_a(meta);
+            int droppedMeta = b.damageDropped(meta);
             if (droppedMeta >= 0 && droppedMeta < 16) {
                 return droppedMeta;
             }
@@ -116,7 +116,7 @@ public final class RegistryIntrospector {
 
     public static List<String> getOreDictNames(ItemStack stack) {
         List<String> names = new ArrayList<String>();
-        if (stack == null || stack.func_77973_b() == null) return names;
+        if (stack == null || stack.getItem() == null) return names;
         try {
             int[] ids = OreDictionary.getOreIDs(stack);
             if (ids != null) {
@@ -133,9 +133,9 @@ public final class RegistryIntrospector {
     }
 
     public static List<String> getOreDictNames(Block block, int meta) {
-        if (block == null || block == Blocks.field_150350_a) return new ArrayList<String>();
+        if (block == null || block == Blocks.air) return new ArrayList<String>();
         try {
-            Item item = Item.func_150898_a(block);
+            Item item = Item.getItemFromBlock(block);
             if (item != null) {
                 int dmg = normalizeBlockMeta(block, meta);
                 return getOreDictNames(new ItemStack(item, 1, dmg));
@@ -172,10 +172,10 @@ public final class RegistryIntrospector {
     // ==================== Dynamic Fluid Detection ====================
 
     public static boolean isFluidBlock(Block b) {
-        if (b == null || b == Blocks.field_150350_a) return false;
+        if (b == null || b == Blocks.air) return false;
         if (b instanceof BlockLiquid || b instanceof IFluidBlock) return true;
-        Material m = b.func_149688_o();
-        if (m != null && (m.func_76224_d() || m == Material.field_151586_h || m == Material.field_151587_i)) {
+        Material m = b.getMaterial();
+        if (m != null && (m.isLiquid() || m == Material.water || m == Material.lava)) {
             return true;
         }
         try {
@@ -186,7 +186,7 @@ public final class RegistryIntrospector {
     }
 
     public static Fluid lookupFluidForBlock(Block b) {
-        if (b == null || b == Blocks.field_150350_a) return null;
+        if (b == null || b == Blocks.air) return null;
         try {
             if (b instanceof IFluidBlock) {
                 Fluid f = ((IFluidBlock) b).getFluid();
@@ -196,27 +196,27 @@ public final class RegistryIntrospector {
             if (f != null) return f;
         } catch (Throwable ignored) {
         }
-        Material m = b.func_149688_o();
-        if (m == Material.field_151587_i) return FluidRegistry.LAVA;
-        if (m == Material.field_151586_h) return FluidRegistry.WATER;
+        Material m = b.getMaterial();
+        if (m == Material.lava) return FluidRegistry.LAVA;
+        if (m == Material.water) return FluidRegistry.WATER;
         return null;
     }
 
     public static boolean isEmptyFluidContainer(ItemStack st) {
-        if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) return false;
+        if (st == null || st.stackSize <= 0 || st.getItem() == null) return false;
         try {
             if (FluidContainerRegistry.isEmptyContainer(st)) return true;
         } catch (Throwable ignored) {
         }
-        String reg = Item.field_150901_e.func_148750_c(st.func_77973_b());
+        String reg = Item.itemRegistry.getNameForObject(st.getItem());
         return "minecraft:bucket".equalsIgnoreCase(reg);
     }
 
     // ==================== Dynamic Wood, Leaf, Crop & Ore Detection ====================
 
     public static boolean isLogBlock(Block b) {
-        if (b == null || b == Blocks.field_150350_a) return false;
-        int key = Block.func_149682_b(b);
+        if (b == null || b == Blocks.air) return false;
+        int key = Block.getIdFromBlock(b);
         Boolean cached = LOG_BLOCK_CACHE.get(key);
         if (cached != null) return cached.booleanValue();
 
@@ -233,9 +233,9 @@ public final class RegistryIntrospector {
         if (!result && hasOreDictPrefix(b, 0, "log")) {
             result = true;
         }
-        if (!result && (b instanceof BlockRotatedPillar) && b.func_149688_o() == Material.field_151575_d) {
-            String reg = Block.field_149771_c.func_148750_c(b);
-            String unloc = b.func_149739_a();
+        if (!result && (b instanceof BlockRotatedPillar) && b.getMaterial() == Material.wood) {
+            String reg = Block.blockRegistry.getNameForObject(b);
+            String unloc = b.getUnlocalizedName();
             List<String> tokens = LexicalItemMatcher.tokenize((reg != null ? reg : "") + " " + (unloc != null ? unloc : ""));
             result = tokens.contains("log") || tokens.contains("bark") || tokens.contains("wood") || tokens.contains("stem") || tokens.contains("trunk");
         }
@@ -244,13 +244,13 @@ public final class RegistryIntrospector {
     }
 
     public static boolean isLeafBlock(Block b) {
-        if (b == null || b == Blocks.field_150350_a) return false;
-        int key = Block.func_149682_b(b);
+        if (b == null || b == Blocks.air) return false;
+        int key = Block.getIdFromBlock(b);
         Boolean cached = LEAF_BLOCK_CACHE.get(key);
         if (cached != null) return cached.booleanValue();
 
-        boolean result = (b instanceof BlockLeaves) || (b.func_149688_o() == Material.field_151584_j)
-            || ((b instanceof IShearable) && b.func_149688_o() == Material.field_151585_k);
+        boolean result = (b instanceof BlockLeaves) || (b.getMaterial() == Material.leaves)
+            || ((b instanceof IShearable) && b.getMaterial() == Material.plants);
         if (!result && blockIsLeavesMethod != null) {
             try {
                 Object r = blockIsLeavesMethod.invoke(b, null, 0, 0, 0);
@@ -268,28 +268,28 @@ public final class RegistryIntrospector {
     }
 
     public static boolean isCropOrPlantBlock(Block b) {
-        if (b == null || b == Blocks.field_150350_a) return false;
+        if (b == null || b == Blocks.air) return false;
         if (b instanceof BlockCrops || b instanceof BlockReed || b instanceof IPlantable) return true;
         return hasOreDictPrefix(b, 0, "crop", "reed", "seed", "listAllveggie", "listAllgrain");
     }
 
     public static boolean isOreBlock(Block b, int meta) {
-        if (b == null || b == Blocks.field_150350_a) return false;
+        if (b == null || b == Blocks.air) return false;
         int key = blockCacheKey(b, meta);
         Boolean cached = ORE_BLOCK_CACHE.get(key);
         if (cached != null) return cached.booleanValue();
 
         boolean res = (b instanceof BlockOre)
-            || b == Blocks.field_150450_ax
+            || b == Blocks.redstone_ore
             || hasOreDictPrefix(b, meta, "ore", "denseore", "poorore", "cluster");
 
         if (!res) {
             // Check what item the block drops when mined: if a rock/mineral block drops an ore/gem/crystal/cluster/raw/dust/coal item, it's an ore!
-            Material mat = b.func_149688_o();
-            if (mat == Material.field_151576_e || mat == Material.field_151573_f) {
+            Material mat = b.getMaterial();
+            if (mat == Material.rock || mat == Material.iron) {
                 try {
-                    Item droppedItem = b.func_149650_a(meta, PROBE_RANDOM, 0);
-                    int droppedMeta = b.func_149692_a(meta);
+                    Item droppedItem = b.getItemDropped(meta, PROBE_RANDOM, 0);
+                    int droppedMeta = b.damageDropped(meta);
                     if (droppedItem != null) {
                         ItemStack dropStack = new ItemStack(droppedItem, 1, droppedMeta);
                         if (hasOreDictPrefix(dropStack, "ore", "gem", "crystal", "cluster", "raw", "crushed", "dust", "coal", "lignite", "nugget", "billet")) {
@@ -302,8 +302,8 @@ public final class RegistryIntrospector {
         }
 
         if (!res) {
-            String reg = Block.field_149771_c.func_148750_c(b);
-            String unloc = b.func_149739_a();
+            String reg = Block.blockRegistry.getNameForObject(b);
+            String unloc = b.getUnlocalizedName();
             String disp = ItemClassifier.getBlockDisplayName(b, meta);
             List<String> tokens = LexicalItemMatcher.tokenize(
                 (reg != null ? reg : "") + " " + (unloc != null ? unloc : "") + " " + (disp != null ? disp : "")
@@ -393,11 +393,11 @@ public final class RegistryIntrospector {
         tokens.add("canes");
         tokens.add("sugarcane");
         try {
-            for (Object bObj : Block.field_149771_c) {
+            for (Object bObj : Block.blockRegistry) {
                 if (!(bObj instanceof Block)) continue;
                 Block b = (Block) bObj;
                 if (b instanceof BlockCrops || b instanceof BlockReed) {
-                    String reg = Block.field_149771_c.func_148750_c(b);
+                    String reg = Block.blockRegistry.getNameForObject(b);
                     String disp = ItemClassifier.getBlockDisplayName(b, 0);
                     for (String w : LexicalItemMatcher.tokenize((reg != null ? reg : "") + " " + (disp != null ? disp : ""))) {
                         if (w.length() >= 3 && !w.equals("minecraft") && !w.equals("block")) {
@@ -430,9 +430,9 @@ public final class RegistryIntrospector {
         if (te == null) return false;
         if (te instanceof TileEntityFurnace) return true;
         if (te instanceof IInventory && world != null) {
-            Block b = world.func_147439_a(te.field_145851_c, te.field_145848_d, te.field_145849_e);
-            if (b == Blocks.field_150460_al || b == Blocks.field_150470_am) return true;
-            String reg = b != null ? Block.field_149771_c.func_148750_c(b) : "";
+            Block b = world.getBlock(te.xCoord, te.yCoord, te.zCoord);
+            if (b == Blocks.furnace || b == Blocks.lit_furnace) return true;
+            String reg = b != null ? Block.blockRegistry.getNameForObject(b) : "";
             List<String> tokens = LexicalItemMatcher.tokenize(reg);
             return tokens.contains("furnace");
         }
@@ -445,11 +445,11 @@ public final class RegistryIntrospector {
         if (isFurnaceTile(world, te)) return false;
 
         IInventory inv = (IInventory) te;
-        int totalSlots = inv.func_70302_i_();
+        int totalSlots = inv.getSizeInventory();
         if (totalSlots < 5) return false;
 
         if (world != null) {
-            Block b = world.func_147439_a(te.field_145851_c, te.field_145848_d, te.field_145849_e);
+            Block b = world.getBlock(te.xCoord, te.yCoord, te.zCoord);
             if (b instanceof BlockChest) return true;
         }
 
@@ -467,7 +467,7 @@ public final class RegistryIntrospector {
         // True storage containers (IronChests, Crates, Barrels, Lockers, Drawers) have "chest", "crate", "barrel", "locker", "cabinet", "storage", "safe" in class or inventory name
         String invName = "";
         try {
-            invName = inv.func_145825_b() != null ? inv.func_145825_b().toLowerCase() : "";
+            invName = inv.getInventoryName() != null ? inv.getInventoryName().toLowerCase() : "";
         } catch (Throwable ignored) {
         }
         String combined = clsName + " " + invName;
@@ -482,10 +482,10 @@ public final class RegistryIntrospector {
             }
             // Behavioral check: in a general storage container, all slots uniformly accept a standard building block
             try {
-                ItemStack probe = new ItemStack(Blocks.field_150347_e, 1, 0);
+                ItemStack probe = new ItemStack(Blocks.cobblestone, 1, 0);
                 int checkSlots = Math.min(totalSlots, 6);
                 for (int i = 0; i < checkSlots; i++) {
-                    if (!inv.func_94041_b(i, probe)) {
+                    if (!inv.isItemValidForSlot(i, probe)) {
                         STORAGE_TILE_CLASS_CACHE.put(cls, Boolean.FALSE);
                         return false;
                     }
@@ -532,8 +532,8 @@ public final class RegistryIntrospector {
     // ==================== Dynamic Item Category Classification ====================
 
     public static int getItemCategoryOrder(ItemStack st) {
-        if (st == null || st.func_77973_b() == null) return 9;
-        Item item = st.func_77973_b();
+        if (st == null || st.getItem() == null) return 9;
+        Item item = st.getItem();
         if (item instanceof ItemFood || item instanceof IPlantable || hasOreDictPrefix(st, "crop", "seed", "listAllfood", "listAllmeat")) {
             return 3; // Food, Crops & Seeds
         }
@@ -545,12 +545,12 @@ public final class RegistryIntrospector {
         }
         if (item instanceof ItemTool || item instanceof ItemSword || item instanceof ItemArmor
             || item instanceof ItemBow || item instanceof ItemHoe || item instanceof ItemShears
-            || !item.func_77645_m() && st.func_77976_d() == 1) {
+            || !item.isDamageable() && st.getMaxStackSize() == 1) {
             return 2; // Tools, Weapons, Armor & Non-Stackable Equipment
         }
         if (item instanceof ItemBlock) {
-            Block b = Block.func_149634_a(item);
-            if (isOreBlock(b, st.func_77960_j())) {
+            Block b = Block.getBlockFromItem(item);
+            if (isOreBlock(b, st.getItemDamage())) {
                 return 0;
             }
             return 4; // Building Blocks

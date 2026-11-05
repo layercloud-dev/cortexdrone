@@ -173,19 +173,19 @@ public class DroneController {
     public DroneController(int id, Drone drone, String name, String ownerName) {
         this.id = id;
         this.drone = drone;
-        this.entityUuid = drone.func_110124_au();
+        this.entityUuid = drone.getUniqueID();
         this.name = name;
         this.ownerName = ownerName;
         this.targetPlayerName = ownerName;
-        this.goalX = drone.field_70165_t;
-        this.goalY = drone.field_70163_u;
-        this.goalZ = drone.field_70161_v;
-        this.anchorX = drone.field_70165_t;
-        this.anchorY = drone.field_70163_u;
-        this.anchorZ = drone.field_70161_v;
-        this.lastX = drone.field_70165_t;
-        this.lastY = drone.field_70163_u;
-        this.lastZ = drone.field_70161_v;
+        this.goalX = drone.posX;
+        this.goalY = drone.posY;
+        this.goalZ = drone.posZ;
+        this.anchorX = drone.posX;
+        this.anchorY = drone.posY;
+        this.anchorZ = drone.posZ;
+        this.lastX = drone.posX;
+        this.lastY = drone.posY;
+        this.lastZ = drone.posZ;
     }
 
     public boolean isScriptRunning() {

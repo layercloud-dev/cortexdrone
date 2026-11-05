@@ -71,7 +71,7 @@ public class CaveEscapeService {
             expanded++;
 
             if (toOpenSky) {
-                if (bsi.isPassable(cur.x, cur.y, cur.z) && world.func_72937_j(cur.x, cur.y, cur.z)) {
+                if (bsi.isPassable(cur.x, cur.y, cur.z) && world.canBlockSeeTheSky(cur.x, cur.y, cur.z)) {
                     reached = cur;
                     break;
                 }
@@ -99,7 +99,7 @@ public class CaveEscapeService {
                     if (!ItemClassifier.isMineableBlock(world, nx, ny, nz)) continue;
                     if (hasAdjacentLiquid(bsi, nx, ny, nz)) continue;
                     Block b = bsi.getBlock(nx, ny, nz);
-                    float hardness = b != null ? b.func_149712_f(world, nx, ny, nz) : 1.5f;
+                    float hardness = b != null ? b.getBlockHardness(world, nx, ny, nz) : 1.5f;
                     if (hardness < 0.0f || hardness > 30.0f) continue;
                     stepCost = 4.0 + hardness * 2.5;
                     dig = true;
@@ -110,7 +110,7 @@ public class CaveEscapeService {
                 if (prevG == null || ng < prevG.doubleValue()) {
                     bestG.put(nKey, ng);
                     double nh = toOpenSky
-                        ? Math.max(0.0, (world.func_72976_f(nx, nz) - ny) * 1.2)
+                        ? Math.max(0.0, (world.getHeightValue(nx, nz) - ny) * 1.2)
                         : Math.sqrt((gx - nx) * (gx - nx) + (gy - ny) * (gy - ny) + (gz - nz) * (gz - nz));
                     FlightPathfinder.AStarNode child = new FlightPathfinder.AStarNode(nx, ny, nz, ng, nh, ng + nh * 1.2, dig, cur);
                     open.add(child);
@@ -136,7 +136,7 @@ public class CaveEscapeService {
 
     public int retraceBreadcrumbs(DroneController ctrl, int maxSteps, boolean stopAtSky, boolean switchToGoto) {
         if (ctrl == null || ctrl.drone == null) return 0;
-        World world = ctrl.drone.field_70170_p;
+        World world = ctrl.drone.worldObj;
         List<int[]> hist = new ArrayList<int[]>(ctrl.navigationHistory);
         if (hist.isEmpty()) return 0;
 
@@ -148,7 +148,7 @@ public class CaveEscapeService {
             if (ItemClassifier.isPassableVoxel(world, pt[0], pt[1], pt[2])) {
                 waypoints.add(new double[]{pt[0] + 0.5, pt[1] + 0.65, pt[2] + 0.5});
                 count++;
-                if (stopAtSky && (pt[3] == 1 || world.func_72937_j(pt[0], pt[1], pt[2]))) {
+                if (stopAtSky && (pt[3] == 1 || world.canBlockSeeTheSky(pt[0], pt[1], pt[2]))) {
                     break;
                 }
             }
@@ -182,12 +182,12 @@ public class CaveEscapeService {
      * concrete block to break.
      */
     public int digOutBlockedWaypoint(DroneController ctrl, int wx, int wy, int wz) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return 0;
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) return 0;
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        int sx = MathHelper.func_76128_c(d.field_70165_t);
-        int sy = MathHelper.func_76128_c(d.field_70163_u);
-        int sz = MathHelper.func_76128_c(d.field_70161_v);
+        World world = d.worldObj;
+        int sx = MathHelper.floor_double(d.posX);
+        int sy = MathHelper.floor_double(d.posY);
+        int sz = MathHelper.floor_double(d.posZ);
 
         int queued = 0;
         // Save the real task and run the rescue on an isolated queue. The original
@@ -265,13 +265,13 @@ public class CaveEscapeService {
      * to the single-action miner, and restores the caller's GOTO goal afterwards.
      */
     public int digTowardTarget(DroneController ctrl, int gx, int gy, int gz) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return 0;
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) return 0;
         if (ctrl.escapeResume != null) return 0;
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        int sx = MathHelper.func_76128_c(d.field_70165_t);
-        int sy = MathHelper.func_76128_c(d.field_70163_u);
-        int sz = MathHelper.func_76128_c(d.field_70161_v);
+        World world = d.worldObj;
+        int sx = MathHelper.floor_double(d.posX);
+        int sy = MathHelper.floor_double(d.posY);
+        int sz = MathHelper.floor_double(d.posZ);
         List<int[]> digPath = findDigEscapePath(world, ctrl, sx, sy, sz, gx, gy, gz, false);
         if (digPath.isEmpty()) return 0;
 
@@ -330,10 +330,10 @@ public class CaveEscapeService {
     public int escapeCaveOrDigOut(DroneController ctrl, EntityPlayerMP owner) {
         if (ctrl == null || ctrl.drone == null) return 0;
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        int sx = MathHelper.func_76128_c(d.field_70165_t);
-        int sy = MathHelper.func_76128_c(d.field_70163_u);
-        int sz = MathHelper.func_76128_c(d.field_70161_v);
+        World world = d.worldObj;
+        int sx = MathHelper.floor_double(d.posX);
+        int sy = MathHelper.floor_double(d.posY);
+        int sz = MathHelper.floor_double(d.posZ);
 
         if (!ctrl.navigationHistory.isEmpty() && ctrl.stuckTicks < 10) {
             int retraced = retraceBreadcrumbs(ctrl, 48, true, false);
@@ -342,9 +342,9 @@ public class CaveEscapeService {
             }
         }
 
-        int gx = owner != null ? MathHelper.func_76128_c(owner.field_70165_t) : sx;
-        int gy = owner != null ? MathHelper.func_76128_c(owner.field_70163_u + 1.5) : world.func_72976_f(sx, sz) + 2;
-        int gz = owner != null ? MathHelper.func_76128_c(owner.field_70161_v) : sz;
+        int gx = owner != null ? MathHelper.floor_double(owner.posX) : sx;
+        int gy = owner != null ? MathHelper.floor_double(owner.posY + 1.5) : world.getHeightValue(sx, sz) + 2;
+        int gz = owner != null ? MathHelper.floor_double(owner.posZ) : sz;
 
         List<int[]> digPath = findDigEscapePath(world, ctrl, sx, sy, sz, gx, gy, gz, true);
         int dug = 0;
@@ -352,24 +352,24 @@ public class CaveEscapeService {
         List<double[]> escapeWps = new ArrayList<double[]>();
         for (int[] step : digPath) {
             int bx = step[0], by = step[1], bz = step[2];
-            if (step[3] == 1 && !world.func_147437_c(bx, by, bz) && ItemClassifier.isMineableBlock(world, bx, by, bz)) {
-                if (d.func_70011_f(bx + 0.5, by + 0.5, bz + 0.5) <= 4.5 && dug < 4) {
-                    Block b = world.func_147439_a(bx, by, bz);
-                    int meta = world.func_72805_g(bx, by, bz);
+            if (step[3] == 1 && !world.isAirBlock(bx, by, bz) && ItemClassifier.isMineableBlock(world, bx, by, bz)) {
+                if (d.getDistance(bx + 0.5, by + 0.5, bz + 0.5) <= 4.5 && dug < 4) {
+                    Block b = world.getBlock(bx, by, bz);
+                    int meta = world.getBlockMetadata(bx, by, bz);
                     List<ItemStack> drops = this.manager.getBlockActionService().getBlockDrops(world, b, bx, by, bz, meta, 0);
-                    world.func_72926_e(2001, bx, by, bz, Block.func_149682_b(b) + (meta << 12));
-                    world.func_147468_f(bx, by, bz);
+                    world.playAuxSFX(2001, bx, by, bz, Block.getIdFromBlock(b) + (meta << 12));
+                    world.setBlockToAir(bx, by, bz);
                     if (drops != null) {
                         for (ItemStack drop : drops) {
-                            if (drop != null && drop.field_77994_a > 0) {
-                                ItemStack copy = drop.func_77946_l();
-                                // Null copy guard: func_77946_l() can return null
+                            if (drop != null && drop.stackSize > 0) {
+                                ItemStack copy = drop.copy();
+                                // Null copy guard: copy() can return null
                                 // for exotic drops — insertIntoInventory would NPE.
                                 if (copy == null) continue;
                                 InventoryService.insertIntoInventory(d.mainInventory(), copy);
-                                if (copy.field_77994_a > 0) {
-                                    EntityItem ei = new EntityItem(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, copy);
-                                    world.func_72838_d(ei);
+                                if (copy.stackSize > 0) {
+                                    EntityItem ei = new EntityItem(world, d.posX, d.posY, d.posZ, copy);
+                                    world.spawnEntityInWorld(ei);
                                 }
                             }
                         }

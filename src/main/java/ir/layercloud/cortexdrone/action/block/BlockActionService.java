@@ -105,9 +105,9 @@ public class BlockActionService implements Action<BlockActionContext> {
 
     private static boolean hasPassableHeadroom(World world, double[] st) {
         if (st == null || st.length < 3) return false;
-        int bx = MathHelper.func_76128_c(st[0]);
-        int by = MathHelper.func_76128_c(st[1]);
-        int bz = MathHelper.func_76128_c(st[2]);
+        int bx = MathHelper.floor_double(st[0]);
+        int by = MathHelper.floor_double(st[1]);
+        int bz = MathHelper.floor_double(st[2]);
         return ItemClassifier.isPassableVoxel(world, bx, by, bz)
             && ItemClassifier.isPassableVoxel(world, bx, by + 1, bz);
     }
@@ -125,22 +125,22 @@ public class BlockActionService implements Action<BlockActionContext> {
             }
         }
         if (drops.isEmpty()) {
-            int count = Math.max(1, block.func_149745_a(world.field_73012_v));
-            Item item = block.func_149650_a(meta, world.field_73012_v, fortune);
+            int count = Math.max(1, block.quantityDropped(world.rand));
+            Item item = block.getItemDropped(meta, world.rand, fortune);
             if (item == null) {
-                item = Item.func_150898_a(block);
+                item = Item.getItemFromBlock(block);
             }
             if (item != null) {
-                drops.add(new ItemStack(item, count, block.func_149692_a(meta)));
+                drops.add(new ItemStack(item, count, block.damageDropped(meta)));
             }
         }
         return drops;
     }
 
     public void tick(DroneController ctrl, EntityPlayerMP owner) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return;
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) return;
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
+        World world = d.worldObj;
         d.lightColor_$eq(0x00FF66);
 
         if (InventoryService.isInventoryFull(d.mainInventory())) {
@@ -157,7 +157,7 @@ public class BlockActionService implements Action<BlockActionContext> {
                 this.manager.setDroneMode(ctrl, ctrl.isScriptRunning() ? Mode.FOLLOW : Mode.DROP, "Completed mineUntilFull");
                 return;
             }
-            TileEntity nearbyChest = this.inventoryService.findNearestInventoryWithSpace(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, 20, d.mainInventory());
+            TileEntity nearbyChest = this.inventoryService.findNearestInventoryWithSpace(world, d.posX, d.posY, d.posZ, 20, d.mainInventory());
             if (nearbyChest != null) {
                 if (owner != null) {
                     this.manager.droneSay(owner, ctrl, "Inventory full! Depositing into nearby chest and resuming (" + ctrl.mineQueue.size() + " blocks left).");
@@ -181,7 +181,7 @@ public class BlockActionService implements Action<BlockActionContext> {
                 // A temporarily unloaded chunk must NOT purge its queued targets:
                 // doing so silently truncates a mine task ("damaged logic") as soon
                 // as the drone crosses a chunk border. Keep them until loaded.
-                if (!world.func_72863_F().func_73149_a(p[0] >> 4, p[2] >> 4)) {
+                if (!world.getChunkProvider().chunkExists(p[0] >> 4, p[2] >> 4)) {
                     continue;
                 }
                 if (!ItemClassifier.isMineableBlock(world, p[0], p[1], p[2])) {
@@ -197,11 +197,11 @@ public class BlockActionService implements Action<BlockActionContext> {
                 if (p[1] > highestY) highestY = p[1];
             }
 
-            int curBx = MathHelper.func_76128_c(d.field_70165_t);
-            int curBy = MathHelper.func_76128_c(d.field_70163_u);
-            int curBz = MathHelper.func_76128_c(d.field_70161_v);
-            int topCur = world.func_72976_f(curBx, curBz);
-            boolean droneInOpenSky = world.func_72937_j(curBx, curBy, curBz) || d.field_70163_u >= topCur - 1;
+            int curBx = MathHelper.floor_double(d.posX);
+            int curBy = MathHelper.floor_double(d.posY);
+            int curBz = MathHelper.floor_double(d.posZ);
+            int topCur = world.getHeightValue(curBx, curBz);
+            boolean droneInOpenSky = world.canBlockSeeTheSky(curBx, curBy, curBz) || d.posY >= topCur - 1;
             // Surface digs are ordered top-down; underground work is ordered by
             // proximity to the drone so a vertical shaft is consumed from the
             // current level instead of the drone targeting the far surface lip.
@@ -213,10 +213,10 @@ public class BlockActionService implements Action<BlockActionContext> {
                 if (++scanned > 256) break;
                 double[] st = FlightPathfinder.findMiningStandoff(world, d, p[0], p[1], p[2]);
                 if (st != null) {
-                    double dist = d.func_70011_f(st[0], st[1], st[2]);
+                    double dist = d.getDistance(st[0], st[1], st[2]);
                     boolean losKnown = checked < 32 && dist <= 18.0;
                     boolean hasLos = losKnown && FlightPathfinder.isFlightLineClear(
-                        world, d.field_70165_t, d.field_70163_u, d.field_70161_v, st[0], st[1], st[2]);
+                        world, d.posX, d.posY, d.posZ, st[0], st[1], st[2]);
                     if (losKnown) checked++;
                     // An exposed cell is not reachable just because it has air next
                     // to it. Underground, a target 20 blocks up with no line of sight
@@ -243,8 +243,8 @@ public class BlockActionService implements Action<BlockActionContext> {
                 ctrl.mineProgressTicks = 0;
                 ctrl.stuckTicks = 0;
                 ctrl.pathWaypoints.clear();
-                Block cb = world.func_147439_a(bestExposed[0], bestExposed[1], bestExposed[2]);
-                int cbMeta = world.func_72805_g(bestExposed[0], bestExposed[1], bestExposed[2]);
+                Block cb = world.getBlock(bestExposed[0], bestExposed[1], bestExposed[2]);
+                int cbMeta = world.getBlockMetadata(bestExposed[0], bestExposed[1], bestExposed[2]);
                 this.logger.log("MINE", ctrl,
                     String.format("Selected mine target %s at (%d,%d,%d)",
                         cb != null ? ItemClassifier.getBlockDisplayName(cb, cbMeta) : "block", bestExposed[0], bestExposed[1], bestExposed[2]),
@@ -253,7 +253,7 @@ public class BlockActionService implements Action<BlockActionContext> {
                 int[] nearestBuried = null;
                 double nearestDistSq = Double.MAX_VALUE;
                 for (int[] p : ctrl.mineQueue) {
-                    double dSq = d.func_70092_e(p[0] + 0.5, p[1] + 0.5, p[2] + 0.5);
+                    double dSq = d.getDistanceSq(p[0] + 0.5, p[1] + 0.5, p[2] + 0.5);
                     if (dSq < nearestDistSq) {
                         nearestDistSq = dSq;
                         nearestBuried = p;
@@ -270,8 +270,8 @@ public class BlockActionService implements Action<BlockActionContext> {
                         ctrl.mineProgressTicks = 0;
                         ctrl.stuckTicks = 0;
                         ctrl.pathWaypoints.clear();
-                        Block tb = world.func_147439_a(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
-                        int tbMeta = world.func_72805_g(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
+                        Block tb = world.getBlock(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
+                        int tbMeta = world.getBlockMetadata(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
                         this.logger.log("MINE", ctrl,
                             String.format("Tunneling through %s at (%d,%d,%d) to reach buried (%d,%d,%d)",
                                 tb != null ? ItemClassifier.getBlockDisplayName(tb, tbMeta) : "block",
@@ -312,7 +312,7 @@ public class BlockActionService implements Action<BlockActionContext> {
         int by = ctrl.currentMineTarget[1];
         int bz = ctrl.currentMineTarget[2];
         if (!ItemClassifier.isMineableBlock(world, bx, by, bz)) {
-            world.func_147443_d(d.func_145782_y(), bx, by, bz, -1);
+            world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, -1);
             ctrl.currentMineTarget = null;
             ctrl.currentMineStandoff = null;
             return;
@@ -325,14 +325,14 @@ public class BlockActionService implements Action<BlockActionContext> {
                 // the block it must break, so there is no standoff with headroom.
                 // Mine it from the current position instead of dropping the target
                 // (this is exactly what made "dig out of the rock" stall forever).
-                if (d.func_70011_f(bx + 0.5, by + 0.5, bz + 0.5) <= 2.2) {
-                    ctrl.currentMineStandoff = new double[]{d.field_70165_t, d.field_70163_u, d.field_70161_v};
+                if (d.getDistance(bx + 0.5, by + 0.5, bz + 0.5) <= 2.2) {
+                    ctrl.currentMineStandoff = new double[]{d.posX, d.posY, d.posZ};
                 } else {
                     // Buried target with no reachable standoff: this target is
                     // temporarily unreachable, but bombarding the floor with a
                     // 4-tick crack loop never yields progress. Null-guard drop +
                     // crack-reset, then let the loop pick the next queued block.
-                    world.func_147443_d(d.func_145782_y(), bx, by, bz, -1);
+                    world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, -1);
                     ctrl.currentMineTarget = null;
                     ctrl.mineProgressTicks = 0;
                     ctrl.stuckTicks = 0;
@@ -341,9 +341,9 @@ public class BlockActionService implements Action<BlockActionContext> {
             }
         }
 
-        Block block = world.func_147439_a(bx, by, bz);
+        Block block = world.getBlock(bx, by, bz);
         if (block == null) {
-            world.func_147443_d(d.func_145782_y(), bx, by, bz, -1);
+            world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, -1);
             ctrl.currentMineTarget = null;
             ctrl.currentMineStandoff = null;
             ctrl.mineProgressTicks = 0;
@@ -356,14 +356,14 @@ public class BlockActionService implements Action<BlockActionContext> {
         double sy = ctrl.currentMineStandoff[1];
         double sz = ctrl.currentMineStandoff[2];
 
-        double distToBlock = d.func_70011_f(tx, ty, tz);
-        double distToStandoff = d.func_70011_f(sx, sy, sz);
+        double distToBlock = d.getDistance(tx, ty, tz);
+        double distToStandoff = d.getDistance(sx, sy, sz);
 
         boolean partialBlocked = ctrl.lastPathPartial && !ctrl.pathWaypoints.isEmpty() && ctrl.pathIndex >= ctrl.pathWaypoints.size();
         if ((ctrl.stuckTicks >= 10 || partialBlocked) && distToBlock > 3.2) {
             int[] blocking = FlightPathfinder.findBlockingTunnelBlock(world, d, bx, by, bz);
             if (blocking != null && (blocking[0] != bx || blocking[1] != by || blocking[2] != bz)) {
-                world.func_147443_d(d.func_145782_y(), bx, by, bz, -1);
+                world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, -1);
                 // Duplicate guard: only requeue the obstructed target if it isn't
                 // already queued behind the blocker; otherwise the obstructed
                 // target would requeue endlessly in front of itself.
@@ -380,7 +380,7 @@ public class BlockActionService implements Action<BlockActionContext> {
                 ctrl.currentMineTarget = blocking;
                 ctrl.currentMineStandoff = FlightPathfinder.findMiningStandoff(world, d, blocking[0], blocking[1], blocking[2]);
                 if (ctrl.currentMineStandoff == null) {
-                    ctrl.currentMineStandoff = new double[]{d.field_70165_t, d.field_70163_u, d.field_70161_v};
+                    ctrl.currentMineStandoff = new double[]{d.posX, d.posY, d.posZ};
                 }
                 ctrl.mineProgressTicks = 0;
                 ctrl.stuckTicks = 0;
@@ -396,18 +396,18 @@ public class BlockActionService implements Action<BlockActionContext> {
 
         if (distToBlock <= 3.6 || distToStandoff <= 1.25) {
             FlightPathfinder.setDroneFlightTarget(d, sx, sy, sz, 0.08f);
-            d.field_70159_w *= 0.4;
-            d.field_70181_x *= 0.4;
-            d.field_70179_y *= 0.4;
+            d.motionX *= 0.4;
+            d.motionY *= 0.4;
+            d.motionZ *= 0.4;
 
-            float hardness = Math.max(0.2f, block.func_149712_f(world, bx, by, bz));
+            float hardness = Math.max(0.2f, block.getBlockHardness(world, bx, by, bz));
             ctrl.miningRequiredTicks = ToolInspector.computeRequiredMiningTicks(d.mainInventory(), block, hardness);
             ctrl.mineProgressTicks++;
 
-            int meta = world.func_72805_g(bx, by, bz);
-            int blockId = Block.func_149682_b(block);
+            int meta = world.getBlockMetadata(bx, by, bz);
+            int blockId = Block.getIdFromBlock(block);
             int crackStage = Math.min(9, (ctrl.mineProgressTicks * 10) / ctrl.miningRequiredTicks);
-            world.func_147443_d(d.func_145782_y(), bx, by, bz, crackStage);
+            world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, crackStage);
 
             if (world instanceof WorldServer && ctrl.mineProgressTicks % 2 == 0) {
                 ((WorldServer) world).func_147487_a(
@@ -419,11 +419,11 @@ public class BlockActionService implements Action<BlockActionContext> {
             d.statusText_$eq("Mining " + (ctrl.mineProgressTicks * 100 / ctrl.miningRequiredTicks) + "%\n" + AIDroneManager.trimStatus(blockDisp));
 
             if (ctrl.mineProgressTicks >= ctrl.miningRequiredTicks) {
-                world.func_147443_d(d.func_145782_y(), bx, by, bz, -1);
+                world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, -1);
                 int fortune = ToolInspector.getBestFortuneLevel(d.mainInventory());
                 List<ItemStack> drops = getBlockDrops(world, block, bx, by, bz, meta, fortune);
-                world.func_72926_e(2001, bx, by, bz, blockId + (meta << 12));
-                boolean removed = world.func_147468_f(bx, by, bz);
+                world.playAuxSFX(2001, bx, by, bz, blockId + (meta << 12));
+                boolean removed = world.setBlockToAir(bx, by, bz);
 
                 if (removed) {
                     ctrl.minedCount++;
@@ -431,13 +431,13 @@ public class BlockActionService implements Action<BlockActionContext> {
                     IInventory inv = d.mainInventory();
                     if (drops != null) {
                         for (ItemStack drop : drops) {
-                            if (drop == null || drop.field_77994_a <= 0) continue;
-                            ItemStack copy = drop.func_77946_l();
+                            if (drop == null || drop.stackSize <= 0) continue;
+                            ItemStack copy = drop.copy();
                             insertedTotal += InventoryService.insertIntoInventory(inv, copy);
-                            if (copy.field_77994_a > 0) {
-                                EntityItem leftover = new EntityItem(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, copy);
-                                leftover.field_145804_b = 0;
-                                world.func_72838_d(leftover);
+                            if (copy.stackSize > 0) {
+                                EntityItem leftover = new EntityItem(world, d.posX, d.posY, d.posZ, copy);
+                                leftover.delayBeforeCanPickup = 0;
+                                world.spawnEntityInWorld(leftover);
                             }
                         }
                     }
@@ -453,7 +453,7 @@ public class BlockActionService implements Action<BlockActionContext> {
             }
         } else {
             this.pathfinder.navigateToward(ctrl, sx, sy, sz, 0.1f);
-            d.statusText_$eq("To Ore " + (int) distToBlock + "m\n" + AIDroneManager.trimStatus(ItemClassifier.getBlockDisplayName(block, world.func_72805_g(bx, by, bz))));
+            d.statusText_$eq("To Ore " + (int) distToBlock + "m\n" + AIDroneManager.trimStatus(ItemClassifier.getBlockDisplayName(block, world.getBlockMetadata(bx, by, bz))));
         }
     }
 
@@ -526,19 +526,19 @@ public class BlockActionService implements Action<BlockActionContext> {
      * the coordinates with {@code inspect}; navigation is a separate primitive.
      */
     public boolean startSingleBlockTask(DroneController ctrl, EntityPlayerMP player, int x, int y, int z) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return false;
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) return false;
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
+        World world = d.worldObj;
         if (!ItemClassifier.isMineableBlock(world, x, y, z)) return false;
         if (ctrl.currentMineTarget != null) {
-            world.func_147443_d(d.func_145782_y(), ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2], -1);
+            world.destroyBlockInWorldPartially(d.getEntityId(), ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2], -1);
         }
         ctrl.clearSelfRescue(false);
         ctrl.mineQueue.clear();
         ctrl.currentMineTarget = new int[]{x, y, z};
         double[] standoff = FlightPathfinder.findMiningStandoff(world, d, x, y, z);
-        if (standoff == null && d.func_70011_f(x + 0.5, y + 0.5, z + 0.5) <= 2.2) {
-            standoff = new double[]{d.field_70165_t, d.field_70163_u, d.field_70161_v};
+        if (standoff == null && d.getDistance(x + 0.5, y + 0.5, z + 0.5) <= 2.2) {
+            standoff = new double[]{d.posX, d.posY, d.posZ};
         }
         ctrl.currentMineStandoff = standoff;
         ctrl.mineFilter = "all";
@@ -566,8 +566,8 @@ public class BlockActionService implements Action<BlockActionContext> {
      */
     public boolean placeBlock(DroneController ctrl, EntityPlayerMP owner, int x, int y, int z,
                               String filter, int metaOverride) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return false;
-        World world = ctrl.drone.field_70170_p;
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) return false;
+        World world = ctrl.drone.worldObj;
         if (!ItemClassifier.isReplaceableBlock(world, x, y, z)) return false;
         IInventory inv = ctrl.drone.mainInventory();
         int slot = InventoryService.findPlaceableItemSlot(inv, filter);
@@ -581,21 +581,21 @@ public class BlockActionService implements Action<BlockActionContext> {
         }
         if (slot < 0) return false;
 
-        ItemStack st = inv.func_70301_a(slot);
-        if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) return false;
-        Item item = st.func_77973_b();
-        Block block = Block.func_149634_a(item);
-        if (block == null || block == Blocks.field_150350_a) return false;
-        int meta = metaOverride >= 0 ? metaOverride : item.func_77647_b(st.func_77960_j());
+        ItemStack st = inv.getStackInSlot(slot);
+        if (st == null || st.stackSize <= 0 || st.getItem() == null) return false;
+        Item item = st.getItem();
+        Block block = Block.getBlockFromItem(item);
+        if (block == null || block == Blocks.air) return false;
+        int meta = metaOverride >= 0 ? metaOverride : item.getMetadata(st.getItemDamage());
 
-        boolean placed = world.func_147465_d(x, y, z, block, meta, 3);
+        boolean placed = world.setBlock(x, y, z, block, meta, 3);
         if (placed) {
-            world.func_72926_e(2001, x, y, z, Block.func_149682_b(block) + (meta << 12));
-            inv.func_70298_a(slot, 1);
-            inv.func_70296_d();
+            world.playAuxSFX(2001, x, y, z, Block.getIdFromBlock(block) + (meta << 12));
+            inv.decrStackSize(slot, 1);
+            inv.markDirty();
             ctrl.builtCount++;
             this.logger.log("BUILD", ctrl,
-                String.format("Placed %s at (%d,%d,%d)", block.func_149732_F(), x, y, z), "");
+                String.format("Placed %s at (%d,%d,%d)", block.getLocalizedName(), x, y, z), "");
         }
         return placed;
     }

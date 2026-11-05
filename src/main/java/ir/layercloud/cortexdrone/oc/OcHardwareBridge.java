@@ -42,6 +42,20 @@ public class OcHardwareBridge {
         }
     }
 
+    /**
+     * Scala objects cannot be referenced reliably by their binary name in all
+     * compilers. Resolve the Paused state through reflection instead.
+     */
+    private static Enumeration.Value pausedState() {
+        try {
+            Class<?> stateClass = Class.forName("li.cil.oc.server.machine.Machine$State$");
+            Object module = stateClass.getField("MODULE$").get(null);
+            return (Enumeration.Value) stateClass.getMethod("Paused").invoke(module);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     public boolean ensureMachineRunningState(Drone drone) {
         if (drone == null) return false;
@@ -83,9 +97,9 @@ public class OcHardwareBridge {
                     m.node().changeBuffer(100000.0);
                 }
                 Stack<Enumeration.Value> st = m.state();
-                if (st != null) {
+                Enumeration.Value pausedVal = pausedState();
+                if (st != null && pausedVal != null) {
                     synchronized (st) {
-                        Enumeration.Value pausedVal = li.cil.oc.server.machine.Machine$State$.MODULE$.Paused();
                         if (st.isEmpty() || !pausedVal.equals(st.top())) {
                             st.clear();
                             st.push(pausedVal);
@@ -98,7 +112,7 @@ public class OcHardwareBridge {
             }
             drone.setRunning(true);
 
-            if (drone.control() == null && !drone.field_70170_p.field_72995_K
+            if (drone.control() == null && !drone.worldObj.isRemote
                 && this.componentNodeField != null && this.droneControlField != null) {
                 Object compProxy = Proxy.newProxyInstance(
                     li.cil.oc.api.network.Component.class.getClassLoader(),

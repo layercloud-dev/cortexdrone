@@ -37,8 +37,8 @@ public class TickService {
 
     public void tickController(DroneController ctrl) {
         Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        if (world == null || world.field_72995_K) return;
+        World world = d.worldObj;
+        if (world == null || world.isRemote) return;
         ctrl.tickClock++;
         if (ctrl.followAnchorCooldown > 0) ctrl.followAnchorCooldown--;
         if (ctrl.breadcrumbCooldown > 0) ctrl.breadcrumbCooldown--;
@@ -50,35 +50,35 @@ public class TickService {
         if (ctrl.pickupCooldown > 0) ctrl.pickupCooldown--;
         if (ctrl.repathCooldown > 0) ctrl.repathCooldown--;
 
-        double movedSq = (d.field_70165_t - ctrl.lastX) * (d.field_70165_t - ctrl.lastX)
-            + (d.field_70163_u - ctrl.lastY) * (d.field_70163_u - ctrl.lastY)
-            + (d.field_70161_v - ctrl.lastZ) * (d.field_70161_v - ctrl.lastZ);
-        ctrl.lastX = d.field_70165_t;
-        ctrl.lastY = d.field_70163_u;
-        ctrl.lastZ = d.field_70161_v;
+        double movedSq = (d.posX - ctrl.lastX) * (d.posX - ctrl.lastX)
+            + (d.posY - ctrl.lastY) * (d.posY - ctrl.lastY)
+            + (d.posZ - ctrl.lastZ) * (d.posZ - ctrl.lastZ);
+        ctrl.lastX = d.posX;
+        ctrl.lastY = d.posY;
+        ctrl.lastZ = d.posZ;
 
-        int curBx = MathHelper.func_76128_c(d.field_70165_t);
-        int curBy = MathHelper.func_76128_c(d.field_70163_u);
-        int curBz = MathHelper.func_76128_c(d.field_70161_v);
+        int curBx = MathHelper.floor_double(d.posX);
+        int curBy = MathHelper.floor_double(d.posY);
+        int curBz = MathHelper.floor_double(d.posZ);
         // Breadcrumb + sky-raycast is the hottest per-tick cost; throttle to every 4 ticks (still lossless,
         // because recordBreadcrumb already dedupes |dx|+|dy|+|dz| < 2 block moves)
         if (ctrl.breadcrumbCooldown <= 0 && ItemClassifier.isPassableVoxel(world, curBx, curBy, curBz)) {
             ctrl.breadcrumbCooldown = 4;
-            ctrl.recordBreadcrumb(curBx, curBy, curBz, world.func_72937_j(curBx, curBy, curBz));
+            ctrl.recordBreadcrumb(curBx, curBy, curBz, world.canBlockSeeTheSky(curBx, curBy, curBz));
         }
 
-        double distToTarget = d.func_70011_f(d.targetX(), d.targetY(), d.targetZ());
+        double distToTarget = d.getDistance(d.targetX(), d.targetY(), d.targetZ());
         if (distToTarget > 0.70 && movedSq < 0.0002 && !ctrl.playerLookHold && ctrl.mode != Mode.STAY) {
             ctrl.stuckTicks++;
             if (ctrl.stuckTicks == 18 || ctrl.stuckTicks % 30 == 0) {
-                ctrl.lastStuckReason = FlightPathfinder.describeNearestObstruction(world, d.field_70165_t, d.field_70163_u, d.field_70161_v);
+                ctrl.lastStuckReason = FlightPathfinder.describeNearestObstruction(world, d.posX, d.posY, d.posZ);
                 // Throttle identical STUCK spam: same obstruction + same waypoint = log once per 240 ticks (12s).
-                String stuckKey = ctrl.id + "|" + ctrl.lastStuckReason + "|" + (int) (d.field_70165_t * 4) + "," + (int) (d.field_70163_u * 4) + "," + (int) (d.field_70161_v * 4)
+                String stuckKey = ctrl.id + "|" + ctrl.lastStuckReason + "|" + (int) (d.posX * 4) + "," + (int) (d.posY * 4) + "," + (int) (d.posZ * 4)
                     + "->" + (int) ((double) d.targetX() * 4) + "," + (int) ((double) d.targetY() * 4) + "," + (int) ((double) d.targetZ() * 4);
                 if (!stuckKey.equals(ctrl.lastStuckKey) || ctrl.tickClock - ctrl.lastStuckLogTick >= 240) {
                     this.logger.log("STUCK", ctrl,
                         String.format("Velocity blocked at (%.2f,%.2f,%.2f) -> wp(%.2f,%.2f,%.2f)",
-                            d.field_70165_t, d.field_70163_u, d.field_70161_v, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ()),
+                            d.posX, d.posY, d.posZ, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ()),
                         "obstruction=" + ctrl.lastStuckReason);
                     ctrl.lastStuckKey = stuckKey;
                     ctrl.lastStuckLogTick = ctrl.tickClock;
@@ -92,14 +92,14 @@ public class TickService {
                 }
                 int[] open = FlightPathfinder.findNearestPassableVoxel(world, curBx, curBy, curBz, 2);
                 if (open != null) {
-                    double ox = (open[0] + 0.5) - d.field_70165_t;
-                    double oy = (open[1] + 0.65) - d.field_70163_u;
-                    double oz = (open[2] + 0.5) - d.field_70161_v;
+                    double ox = (open[0] + 0.5) - d.posX;
+                    double oy = (open[1] + 0.65) - d.posY;
+                    double oz = (open[2] + 0.5) - d.posZ;
                     double olen = Math.sqrt(ox * ox + oy * oy + oz * oz);
                     if (olen > 0.01) {
-                        d.field_70159_w += (ox / olen) * 0.14;
-                        d.field_70181_x += (oy / olen) * 0.14 + 0.05;
-                        d.field_70179_y += (oz / olen) * 0.14;
+                        d.motionX += (ox / olen) * 0.14;
+                        d.motionY += (oy / olen) * 0.14 + 0.05;
+                        d.motionZ += (oz / olen) * 0.14;
                     }
                 }
             }
@@ -109,7 +109,7 @@ public class TickService {
 
         if (ctrl.pickupCooldown <= 0 && (ctrl.mode == Mode.FOLLOW || ctrl.mode == Mode.MINE)) {
             ctrl.pickupCooldown = 5;
-            InventoryService.suckNearbyItems(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, 3.5);
+            InventoryService.suckNearbyItems(d, d.posX, d.posY, d.posZ, 3.5);
         }
 
         if (ctrl.autoTorch || !ctrl.lightCells.isEmpty()) {
@@ -132,12 +132,12 @@ public class TickService {
         if (!ctrl.playerLookHold && (ctrl.customLedColor != null || (ctrl.ledEffect != null && !"NONE".equalsIgnoreCase(ctrl.ledEffect)))) {
             d.lightColor_$eq(ctrl.resolveEffectiveLedColor(d.lightColor()));
             if ("DISCO".equalsIgnoreCase(ctrl.ledEffect) && ctrl.ledEffectTick % 6 == 0 && world instanceof WorldServer) {
-                ((WorldServer) world).func_147487_a("note", d.field_70165_t, d.field_70163_u + 0.45, d.field_70161_v, 2, 0.25, 0.25, 0.25, 0.5);
+                ((WorldServer) world).func_147487_a("note", d.posX, d.posY + 0.45, d.posZ, 2, 0.25, 0.25, 0.25, 0.5);
             }
         }
 
-        double postTargetDist = d.func_70011_f(d.targetX(), d.targetY(), d.targetZ());
-        double distFinalGoal = Double.isNaN(ctrl.goalX) ? postTargetDist : d.func_70011_f(ctrl.goalX, ctrl.goalY, ctrl.goalZ);
+        double postTargetDist = d.getDistance(d.targetX(), d.targetY(), d.targetZ());
+        double distFinalGoal = Double.isNaN(ctrl.goalX) ? postTargetDist : d.getDistance(ctrl.goalX, ctrl.goalY, ctrl.goalZ);
         boolean longRangeFlight = !ctrl.playerLookHold && ctrl.mode != Mode.STAY && distFinalGoal > 14.0;
         if (!machineRunningOk || (postTargetDist > 0.30 && movedSq < 0.0004 && !ctrl.playerLookHold) || longRangeFlight) {
             double maxSpeed = distFinalGoal > 24.0 ? 1.15 : (longRangeFlight ? 0.85 : 0.42);
@@ -151,16 +151,16 @@ public class TickService {
                 EntityPlayerMP target = CortexDroneMod.findPlayer(
                     ctrl.targetPlayerName != null ? ctrl.targetPlayerName : ctrl.ownerName
                 );
-                if (target != null && target.field_70170_p == world) {
+                if (target != null && target.worldObj == world) {
                     if (FlightPathfinder.isPlayerLookingAtDrone(target, d)) {
                         ctrl.playerLookHold = true;
-                        ctrl.goalX = d.field_70165_t;
-                        ctrl.goalY = d.field_70163_u;
-                        ctrl.goalZ = d.field_70161_v;
-                        FlightPathfinder.setDroneFlightTarget(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, 0.12f);
-                        d.field_70159_w *= 0.25;
-                        d.field_70181_x *= 0.25;
-                        d.field_70179_y *= 0.25;
+                        ctrl.goalX = d.posX;
+                        ctrl.goalY = d.posY;
+                        ctrl.goalZ = d.posZ;
+                        FlightPathfinder.setDroneFlightTarget(d, d.posX, d.posY, d.posZ, 0.12f);
+                        d.motionX *= 0.25;
+                        d.motionY *= 0.25;
+                        d.motionZ *= 0.25;
                         d.lightColor_$eq(0x55FF55);
                         d.statusText_$eq("Ready\n[Right-Click]");
                         break;
@@ -168,15 +168,15 @@ public class TickService {
                     ctrl.playerLookHold = false;
 
                     double anchorPlayerDist = Math.sqrt(
-                        (ctrl.anchorX - target.field_70165_t) * (ctrl.anchorX - target.field_70165_t)
-                            + (ctrl.anchorY - (target.field_70163_u + 1.15)) * (ctrl.anchorY - (target.field_70163_u + 1.15))
-                            + (ctrl.anchorZ - target.field_70161_v) * (ctrl.anchorZ - target.field_70161_v)
+                        (ctrl.anchorX - target.posX) * (ctrl.anchorX - target.posX)
+                            + (ctrl.anchorY - (target.posY + 1.15)) * (ctrl.anchorY - (target.posY + 1.15))
+                            + (ctrl.anchorZ - target.posZ) * (ctrl.anchorZ - target.posZ)
                     );
                     boolean anchorPassable = ItemClassifier.isPassableVoxel(
                         world,
-                        MathHelper.func_76128_c(ctrl.anchorX),
-                        MathHelper.func_76128_c(ctrl.anchorY),
-                        MathHelper.func_76128_c(ctrl.anchorZ)
+                        MathHelper.floor_double(ctrl.anchorX),
+                        MathHelper.floor_double(ctrl.anchorY),
+                        MathHelper.floor_double(ctrl.anchorZ)
                     );
 
                     // Anchor solve is expensive (raycast walk + candidate scan); amortize over 6 ticks and
@@ -192,26 +192,26 @@ public class TickService {
                         ctrl.followAnchorCooldown = 6;
                     }
 
-                    double distToAnchor = d.func_70011_f(ctrl.anchorX, ctrl.anchorY, ctrl.anchorZ);
+                    double distToAnchor = d.getDistance(ctrl.anchorX, ctrl.anchorY, ctrl.anchorZ);
                     if (distToAnchor > 0.35) {
                         this.pathfinder.navigateToward(ctrl, ctrl.anchorX, ctrl.anchorY, ctrl.anchorZ, 0.08f);
                     } else {
                         FlightPathfinder.setDroneFlightTarget(d, ctrl.anchorX, ctrl.anchorY, ctrl.anchorZ, 0.06f);
-                        d.field_70159_w *= 0.5;
-                        d.field_70181_x *= 0.5;
-                        d.field_70179_y *= 0.5;
+                        d.motionX *= 0.5;
+                        d.motionY *= 0.5;
+                        d.motionZ *= 0.5;
                     }
                     d.lightColor_$eq(0x00FFFF);
-                    d.statusText_$eq("Following\n" + AIDroneManager.trimStatus(target.func_70005_c_()));
+                    d.statusText_$eq("Following\n" + AIDroneManager.trimStatus(target.getCommandSenderName()));
                 } else {
                     // Owner offline (e.g. right after a restart): the stale flight target persisted
                     // inside OC's entity NBT may now sit in solid blocks. Hover in place —
                     // grinding into the floor forever silently drains the machine and spams STUCK.
                     ctrl.playerLookHold = false;
-                    FlightPathfinder.setDroneFlightTarget(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, 0.05f);
-                    d.field_70159_w *= 0.5;
-                    d.field_70181_x *= 0.5;
-                    d.field_70179_y *= 0.5;
+                    FlightPathfinder.setDroneFlightTarget(d, d.posX, d.posY, d.posZ, 0.05f);
+                    d.motionX *= 0.5;
+                    d.motionY *= 0.5;
+                    d.motionZ *= 0.5;
                     d.statusText_$eq("Owner offline\nHovering");
                     d.lightColor_$eq(0x00AA88);
                 }
@@ -231,7 +231,7 @@ public class TickService {
             }
             case GOTO: {
                 this.pathfinder.navigateToward(ctrl, ctrl.goalX, ctrl.goalY, ctrl.goalZ, 0.1f);
-                double dist = d.func_70011_f(ctrl.goalX, ctrl.goalY, ctrl.goalZ);
+                double dist = d.getDistance(ctrl.goalX, ctrl.goalY, ctrl.goalZ);
                 if (dist <= 0.85) {
                     if (ctrl.navViaSurface && !Double.isNaN(ctrl.navFinalX)) {
                         ctrl.navViaSurface = false;
@@ -283,27 +283,27 @@ public class TickService {
     }
 
     private void tickDropBehavior(DroneController ctrl, Drone d, World world, EntityPlayerMP owner) {
-        if (owner == null || owner.field_70170_p != world) {
+        if (owner == null || owner.worldObj != world) {
             ctrl.pickupCooldown = 100;
-            InventoryService.dropAllDroneItemsAt(d, world, d.field_70165_t, d.field_70163_u, d.field_70161_v);
+            InventoryService.dropAllDroneItemsAt(d, world, d.posX, d.posY, d.posZ);
             this.manager.setDroneMode(ctrl, Mode.STAY, "Owner offline during DROP");
             return;
         }
-        double px = owner.field_70165_t;
-        double py = owner.field_70163_u + 1.25;
-        double pz = owner.field_70161_v;
+        double px = owner.posX;
+        double py = owner.posY + 1.25;
+        double pz = owner.posZ;
         this.pathfinder.navigateToward(ctrl, px, py, pz, 0.1f);
         d.lightColor_$eq(0x00FFAA);
         d.statusText_$eq("Delivering\nItems");
-        if (d.func_70011_f(px, py, pz) <= 3.5) {
+        if (d.getDistance(px, py, pz) <= 3.5) {
             ctrl.pickupCooldown = 100;
             String filter = (ctrl.dropFilter != null && !ctrl.dropFilter.isEmpty()) ? ctrl.dropFilter : "all";
             int count = this.inventoryService.giveToPlayerInventory(ctrl, owner, filter, 9999);
             if ("all".equalsIgnoreCase(filter) || "any".equalsIgnoreCase(filter) || "*".equals(filter)) {
-                count += InventoryService.dropAllDroneItemsAt(d, world, owner.field_70165_t, owner.field_70163_u + 0.5, owner.field_70161_v);
+                count += InventoryService.dropAllDroneItemsAt(d, world, owner.posX, owner.posY + 0.5, owner.posZ);
             }
             ctrl.dropFilter = "all";
-            world.func_72956_a(d, "random.pop", 0.6f, 1.2f);
+            world.playSoundAtEntity(d, "random.pop", 0.6f, 1.2f);
             this.logger.log("MINE", ctrl, "Delivered inventory items to owner", "count=" + count + " remainingMineQueue=" + ctrl.mineQueue.size());
             if (!ctrl.mineQueue.isEmpty()) {
                 if (!ctrl.isScriptRunning()) {
@@ -322,7 +322,7 @@ public class TickService {
     private void tickDepositBehavior(DroneController ctrl, Drone d, World world, EntityPlayerMP owner) {
         TileEntity chestTe = null;
         if (ctrl.targetDepositChestPos != null) {
-            TileEntity explicit = world.func_147438_o(ctrl.targetDepositChestPos[0], ctrl.targetDepositChestPos[1], ctrl.targetDepositChestPos[2]);
+            TileEntity explicit = world.getTileEntity(ctrl.targetDepositChestPos[0], ctrl.targetDepositChestPos[1], ctrl.targetDepositChestPos[2]);
             if (explicit instanceof IInventory) {
                 chestTe = explicit;
             } else {
@@ -330,10 +330,10 @@ public class TickService {
             }
         }
         if (chestTe == null) {
-            chestTe = this.inventoryService.findNearestInventoryWithSpace(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, 28, d.mainInventory());
+            chestTe = this.inventoryService.findNearestInventoryWithSpace(world, d.posX, d.posY, d.posZ, 28, d.mainInventory());
         }
-        if (chestTe == null && owner != null && owner.field_70170_p == world) {
-            chestTe = this.inventoryService.findNearestInventoryWithSpace(world, owner.field_70165_t, owner.field_70163_u, owner.field_70161_v, 28, d.mainInventory());
+        if (chestTe == null && owner != null && owner.worldObj == world) {
+            chestTe = this.inventoryService.findNearestInventoryWithSpace(world, owner.posX, owner.posY, owner.posZ, 28, d.mainInventory());
         }
         if (chestTe == null) {
             if (!ctrl.isScriptRunning() && owner != null) {
@@ -342,21 +342,21 @@ public class TickService {
             this.manager.setDroneMode(ctrl, ctrl.isScriptRunning() ? Mode.FOLLOW : Mode.DROP, "No chest with space found");
             return;
         }
-        double[] standoff = FlightPathfinder.findMiningStandoff(world, d, chestTe.field_145851_c, chestTe.field_145848_d, chestTe.field_145849_e);
-        double cx = standoff != null ? standoff[0] : (chestTe.field_145851_c + 0.5);
-        double cy = standoff != null ? standoff[1] : (chestTe.field_145848_d + 1.2);
-        double cz = standoff != null ? standoff[2] : (chestTe.field_145849_e + 0.5);
+        double[] standoff = FlightPathfinder.findMiningStandoff(world, d, chestTe.xCoord, chestTe.yCoord, chestTe.zCoord);
+        double cx = standoff != null ? standoff[0] : (chestTe.xCoord + 0.5);
+        double cy = standoff != null ? standoff[1] : (chestTe.yCoord + 1.2);
+        double cz = standoff != null ? standoff[2] : (chestTe.zCoord + 0.5);
         this.pathfinder.navigateToward(ctrl, cx, cy, cz, 0.1f);
         d.lightColor_$eq(0xFFAA00);
         d.statusText_$eq("Depositing\nChest");
 
-        if (d.func_70011_f(chestTe.field_145851_c + 0.5, chestTe.field_145848_d + 0.5, chestTe.field_145849_e + 0.5) <= 3.8) {
+        if (d.getDistance(chestTe.xCoord + 0.5, chestTe.yCoord + 0.5, chestTe.zCoord + 0.5) <= 3.8) {
             int deposited = this.inventoryService.depositDroneItemsIntoTile(d, chestTe);
             ctrl.targetDepositChestPos = null;
-            world.func_72908_a(chestTe.field_145851_c + 0.5, chestTe.field_145848_d + 0.5, chestTe.field_145849_e + 0.5, "random.chestclosed", 0.5f, 1.0f);
+            world.playSoundEffect(chestTe.xCoord + 0.5, chestTe.yCoord + 0.5, chestTe.zCoord + 0.5, "random.chestclosed", 0.5f, 1.0f);
             this.logger.log("MINE", ctrl, "Deposited items into chest",
                 String.format("count=%d chest=(%d,%d,%d) remainingMineQueue=%d",
-                    deposited, chestTe.field_145851_c, chestTe.field_145848_d, chestTe.field_145849_e, ctrl.mineQueue.size()));
+                    deposited, chestTe.xCoord, chestTe.yCoord, chestTe.zCoord, ctrl.mineQueue.size()));
             if (!ctrl.mineQueue.isEmpty() && !InventoryService.isInventoryFull(d.mainInventory())) {
                 if (!ctrl.isScriptRunning() && owner != null) {
                     this.manager.droneSay(owner, ctrl, String.format("Deposited %d item(s) into chest! Resuming mining (%d blocks left).", deposited, ctrl.mineQueue.size()));
@@ -365,7 +365,7 @@ public class TickService {
             } else {
                 if (!ctrl.isScriptRunning()) {
                     this.manager.droneSay(owner, ctrl, String.format("Deposited %d item(s) into chest at (%d, %d, %d).",
-                        deposited, chestTe.field_145851_c, chestTe.field_145848_d, chestTe.field_145849_e));
+                        deposited, chestTe.xCoord, chestTe.yCoord, chestTe.zCoord));
                 }
                 this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Finished chest deposit");
             }

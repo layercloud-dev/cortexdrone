@@ -65,11 +65,11 @@ public class StructureArchitect {
 
     private static int getSolidGroundY(World world, int x, int z, int refY) {
         if (!ChunkAccess.isBlockLoaded(world, x, z)) return refY;
-        int top = Math.min(250, Math.max(refY + 14, world.func_72976_f(x, z) + 2));
+        int top = Math.min(250, Math.max(refY + 14, world.getHeightValue(x, z) + 2));
         int minY = Math.max(4, refY - 16);
         for (int y = top; y >= minY; y--) {
-            if (world.func_147437_c(x, y, z)) continue;
-            Block b = world.func_147439_a(x, y, z);
+            if (world.isAirBlock(x, y, z)) continue;
+            Block b = world.getBlock(x, y, z);
             if (b == null) continue;
             if (ItemClassifier.isLeafBlock(b) || ItemClassifier.isLogBlock(b) || ItemClassifier.isCropOrReedBlock(b)) {
                 continue;
@@ -79,7 +79,7 @@ public class StructureArchitect {
             }
             return y;
         }
-        return Math.max(4, world.func_72976_f(x, z) - 1);
+        return Math.max(4, world.getHeightValue(x, z) - 1);
     }
 
     /**
@@ -91,22 +91,22 @@ public class StructureArchitect {
         int d = Math.max(3, Math.min(21, depth));
         int r = Math.max(8, Math.min(40, maxRadius));
 
-        double px = player != null ? player.field_70165_t : ctrl.drone.field_70165_t;
-        double py = player != null ? player.field_70163_u : ctrl.drone.field_70163_u;
-        double pz = player != null ? player.field_70161_v : ctrl.drone.field_70161_v;
-        int refY = MathHelper.func_76128_c(py);
+        double px = player != null ? player.posX : ctrl.drone.posX;
+        double py = player != null ? player.posY : ctrl.drone.posY;
+        double pz = player != null ? player.posZ : ctrl.drone.posZ;
+        int refY = MathHelper.floor_double(py);
 
-        int prefCenterX = MathHelper.func_76128_c(px);
-        int prefCenterZ = MathHelper.func_76128_c(pz);
+        int prefCenterX = MathHelper.floor_double(px);
+        int prefCenterZ = MathHelper.floor_double(pz);
         if (player != null) {
             JsonObject look = WorldScanner.raycastPlayerLook(world, player, 32.0);
             if (look != null && look.has("x") && look.has("z") && look.get("distance").getAsDouble() >= 4.0) {
                 prefCenterX = look.get("x").getAsInt();
                 prefCenterZ = look.get("z").getAsInt();
             } else {
-                double yawRad = Math.toRadians(player.field_70177_z);
-                prefCenterX = MathHelper.func_76128_c(px - Math.sin(yawRad) * (Math.max(w, d) / 2.0 + 4.0));
-                prefCenterZ = MathHelper.func_76128_c(pz + Math.cos(yawRad) * (Math.max(w, d) / 2.0 + 4.0));
+                double yawRad = Math.toRadians(player.rotationYaw);
+                prefCenterX = MathHelper.floor_double(px - Math.sin(yawRad) * (Math.max(w, d) / 2.0 + 4.0));
+                prefCenterZ = MathHelper.floor_double(pz + Math.cos(yawRad) * (Math.max(w, d) / 2.0 + 4.0));
             }
         }
 
@@ -145,7 +145,7 @@ public class StructureArchitect {
                             touchesProtected = true;
                             break;
                         }
-                        Block gb = world.func_147439_a(x, gy, z);
+                        Block gb = world.getBlock(x, gy, z);
                         if (ItemClassifier.isLiquidBlock(gb)) {
                             liquidPenalty += 25;
                         }
@@ -188,8 +188,8 @@ public class StructureArchitect {
         res.addProperty("z2", bestZ2);
         res.addProperty("width", w);
         res.addProperty("depth", d);
-        res.addProperty("centerX", MathHelper.func_76128_c(centerX));
-        res.addProperty("centerZ", MathHelper.func_76128_c(centerZ));
+        res.addProperty("centerX", MathHelper.floor_double(centerX));
+        res.addProperty("centerZ", MathHelper.floor_double(centerZ));
         res.addProperty("groundY", bestGroundY);
         res.addProperty("floorY", bestGroundY);
         res.addProperty("wallBaseY", bestGroundY + 1);
@@ -239,11 +239,11 @@ public class StructureArchitect {
             z2 = Math.max(spec.get("z1").getAsInt(), spec.get("z2").getAsInt());
             width = x2 - x1 + 1;
             depth = z2 - z1 + 1;
-            int refY = player != null ? MathHelper.func_76128_c(player.field_70163_u) : MathHelper.func_76128_c(ctrl.drone.field_70163_u);
+            int refY = player != null ? MathHelper.floor_double(player.posY) : MathHelper.floor_double(ctrl.drone.posY);
             floorY = spec.has("y") ? spec.get("y").getAsInt()
                 : (spec.has("floorY") ? spec.get("floorY").getAsInt() : getSolidGroundY(world, (x1 + x2) / 2, (z1 + z2) / 2, refY));
-            double px = player != null ? player.field_70165_t : ctrl.drone.field_70165_t;
-            double pz = player != null ? player.field_70161_v : ctrl.drone.field_70161_v;
+            double px = player != null ? player.posX : ctrl.drone.posX;
+            double pz = player != null ? player.posZ : ctrl.drone.posZ;
             doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase()
                 : resolveDoorSideTowardPlayer(px, pz, (x1 + x2) * 0.5, (z1 + z2) * 0.5);
         } else if (spec.has("x") && spec.has("z")) {
@@ -253,11 +253,11 @@ public class StructureArchitect {
             z1 = cz - depth / 2;
             x2 = x1 + width - 1;
             z2 = z1 + depth - 1;
-            int refY = player != null ? MathHelper.func_76128_c(player.field_70163_u) : MathHelper.func_76128_c(ctrl.drone.field_70163_u);
+            int refY = player != null ? MathHelper.floor_double(player.posY) : MathHelper.floor_double(ctrl.drone.posY);
             floorY = spec.has("y") ? spec.get("y").getAsInt()
                 : (spec.has("floorY") ? spec.get("floorY").getAsInt() : getSolidGroundY(world, cx, cz, refY));
-            double px = player != null ? player.field_70165_t : ctrl.drone.field_70165_t;
-            double pz = player != null ? player.field_70161_v : ctrl.drone.field_70161_v;
+            double px = player != null ? player.posX : ctrl.drone.posX;
+            double pz = player != null ? player.posZ : ctrl.drone.posZ;
             doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase()
                 : resolveDoorSideTowardPlayer(px, pz, cx, cz);
         } else {

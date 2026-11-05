@@ -71,8 +71,8 @@ public class WorldScanner {
         List<int[]> found = new ArrayList<int[]>();
         Set<Long> seen = new HashSet<Long>();
         String f = target.toLowerCase();
-        int ix = MathHelper.func_76128_c(startX);
-        int iz = MathHelper.func_76128_c(startZ);
+        int ix = MathHelper.floor_double(startX);
+        int iz = MathHelper.floor_double(startZ);
         boolean checkUnderground = ItemClassifier.isLikelyUndergroundQuery(f);
         boolean checkBiome = RegistryIntrospector.hasBiomeAffinity(f);
 
@@ -91,13 +91,13 @@ public class WorldScanner {
                     int sz = iz + (int) Math.round(Math.sin(ang) * r);
 
                     boolean isLoaded = !(world instanceof WorldServer)
-                        || ((WorldServer) world).field_73059_b.func_73149_a(sx >> 4, sz >> 4);
+                        || ((WorldServer) world).theChunkProviderServer.chunkExists(sx >> 4, sz >> 4);
                     if (loadedOnly && !isLoaded) continue;
                     if (!loadedOnly && isLoaded) continue;
 
                     if (checkBiome) {
                         try {
-                            BiomeGenBase biome = world.func_72807_a(sx, sz);
+                            BiomeGenBase biome = world.getBiomeGenForCoords(sx, sz);
                             if (!RegistryIntrospector.matchesBiome(biome, f)) {
                                 continue;
                             }
@@ -110,7 +110,7 @@ public class WorldScanner {
                         if (!ChunkAccess.isBlockLoaded(world, sx, sz)) continue;
                         chunksLoadedCount++;
                     }
-                    int topY = world.func_72976_f(sx, sz);
+                    int topY = world.getHeightValue(sx, sz);
                     for (int dx = -5; dx <= 5; dx++) {
                         for (int dz = -5; dz <= 5; dz++) {
                             int bx = sx + dx;
@@ -119,8 +119,8 @@ public class WorldScanner {
                             int maxY = Math.min(250, topY + 18);
                             for (int by = maxY; by >= minY; by--) {
                                 if (!ItemClassifier.isMineableBlock(world, bx, by, bz)) continue;
-                                Block b = world.func_147439_a(bx, by, bz);
-                                int meta = world.func_72805_g(bx, by, bz);
+                                Block b = world.getBlock(bx, by, bz);
+                                int meta = world.getBlockMetadata(bx, by, bz);
                                 if (ItemClassifier.matchesMineFilter(b, meta, f)) {
                                     long key = FlightPathfinder.packBlockPos(bx, by, bz);
                                     if (seen.add(key)) {
@@ -156,14 +156,14 @@ public class WorldScanner {
     }
 
     public Map<String, int[]> scanNearbyResources(World world, double cx, double cy, double cz, int radius) {
-        int ix = MathHelper.func_76128_c(cx);
-        int iy = MathHelper.func_76128_c(cy);
-        int iz = MathHelper.func_76128_c(cz);
+        int ix = MathHelper.floor_double(cx);
+        int iy = MathHelper.floor_double(cy);
+        int iz = MathHelper.floor_double(cz);
 
         int dimId = 0;
-        if (world != null && world.field_73011_w != null) {
+        if (world != null && world.provider != null) {
             try {
-                dimId = world.field_73011_w.field_76574_g;
+                dimId = world.provider.dimensionId;
             } catch (RuntimeException ignored) {
                 dimId = 0;
             }
@@ -235,16 +235,16 @@ public class WorldScanner {
 
         for (int x = ix - radius; x <= ix + radius; x++) {
             for (int z = iz - radius; z <= iz + radius; z++) {
-                if (world instanceof WorldServer && !((WorldServer) world).field_73059_b.func_73149_a(x >> 4, z >> 4)) {
+                if (world instanceof WorldServer && !((WorldServer) world).theChunkProviderServer.chunkExists(x >> 4, z >> 4)) {
                     continue;
                 }
                 for (int y = Math.max(2, iy - radius); y <= Math.min(254, iy + radius); y++) {
                     try {
-                        if (world.func_147437_c(x, y, z)) continue;
-                        Block b = world.func_147439_a(x, y, z);
+                        if (world.isAirBlock(x, y, z)) continue;
+                        Block b = world.getBlock(x, y, z);
                         if (b == null) continue;
-                        int meta = world.func_72805_g(x, y, z);
-                        if (ItemClassifier.isOreBlock(b, meta) || ItemClassifier.isLogBlock(b) || b == Blocks.field_150486_ae) {
+                        int meta = world.getBlockMetadata(x, y, z);
+                        if (ItemClassifier.isOreBlock(b, meta) || ItemClassifier.isLogBlock(b) || b == Blocks.chest) {
                             String name = ItemClassifier.getBlockDisplayName(b, meta);
                             int distSq = (x - ix) * (x - ix) + (y - iy) * (y - iy) + (z - iz) * (z - iz);
                             int[] cur = summary.get(name);
@@ -275,21 +275,22 @@ public class WorldScanner {
      * 3) Checks the player's bed spawn point.
      * 4) Falls back to world spawn coordinates.
      */
+    @SuppressWarnings("deprecation")
     public double[] findBaseLocation(World world, EntityPlayerMP player) {
         if (player != null && this.config != null) {
-            double[] saved = this.config.getPlayerBase(player.func_70005_c_());
+            double[] saved = this.config.getPlayerBase(player.getCommandSenderName());
             if (saved != null) {
                 return saved;
             }
         }
 
-        if (world != null && world.field_147482_g != null) {
+        if (world != null && world.loadedTileEntityList != null) {
             Map<Long, List<TileEntity>> byChunk = new HashMap<Long, List<TileEntity>>();
             List<TileEntity> bestList = null;
-            for (Object o : world.field_147482_g) {
+            for (Object o : world.loadedTileEntityList) {
                 if (o instanceof TileEntityChest) {
                     TileEntity te = (TileEntity) o;
-                    long ck = (((long) (te.field_145851_c >> 4)) << 32) | ((te.field_145849_e >> 4) & 0xFFFFFFFFL);
+                    long ck = (((long) (te.xCoord >> 4)) << 32) | ((te.zCoord >> 4) & 0xFFFFFFFFL);
                     List<TileEntity> list = byChunk.get(ck);
                     if (list == null) {
                         list = new ArrayList<TileEntity>();
@@ -304,29 +305,29 @@ public class WorldScanner {
             if (bestList != null && !bestList.isEmpty()) {
                 double sx = 0, sy = 0, sz = 0;
                 for (TileEntity te : bestList) {
-                    sx += te.field_145851_c + 0.5;
-                    sy += te.field_145848_d + 1.0;
-                    sz += te.field_145849_e + 0.5;
+                    sx += te.xCoord + 0.5;
+                    sy += te.yCoord + 1.0;
+                    sz += te.zCoord + 0.5;
                 }
                 return new double[]{sx / bestList.size(), sy / bestList.size(), sz / bestList.size()};
             }
         }
 
         if (player != null) {
-            ChunkCoordinates bed = player.func_70997_bJ();
+            ChunkCoordinates bed = player.getBedLocation();
             if (bed != null) {
-                return new double[]{bed.field_71574_a + 0.5, bed.field_71572_b + 1.0, bed.field_71573_c + 0.5};
+                return new double[]{bed.posX + 0.5, bed.posY + 1.0, bed.posZ + 0.5};
             }
         }
 
-        if (world != null && world.func_72861_E() != null) {
-            ChunkCoordinates spawn = world.func_72861_E();
-            int topY = world.func_72976_f(spawn.field_71574_a, spawn.field_71573_c);
-            return new double[]{spawn.field_71574_a + 0.5, Math.max(topY + 1.0, (double) spawn.field_71572_b), spawn.field_71573_c + 0.5};
+        if (world != null && world.getSpawnPoint() != null) {
+            ChunkCoordinates spawn = world.getSpawnPoint();
+            int topY = world.getHeightValue(spawn.posX, spawn.posZ);
+            return new double[]{spawn.posX + 0.5, Math.max(topY + 1.0, (double) spawn.posY), spawn.posZ + 0.5};
         }
 
         if (player != null) {
-            return new double[]{player.field_70165_t, player.field_70163_u, player.field_70161_v};
+            return new double[]{player.posX, player.posY, player.posZ};
         }
         return new double[]{0.5, 65.0, 0.5};
     }

@@ -24,30 +24,30 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
     private final AIDroneManager manager;
 
     @Override
-    public String func_71517_b() {
+    public String getCommandName() {
         return this.cmdName;
     }
 
     @Override
-    public String func_71518_a(ICommandSender sender) {
+    public String getCommandUsage(ICommandSender sender) {
         return "/" + this.cmdName + " <spawn|link|despawn|list|status|follow|come|stay|goto|guard|cover|patrol|setbase|carry|take|give|torch|drop|chest|debug|config|js|mine|farm|cook|smelt|sort|scoop|plug|replace...>";
     }
 
     @Override
-    public int func_82362_a() {
+    public int getRequiredPermissionLevel() {
         return 0;
     }
 
     @Override
-    public boolean func_71519_b(ICommandSender sender) {
+    public boolean canCommandSenderUseCommand(ICommandSender sender) {
         return true;
     }
 
     @Override
     @SuppressWarnings("rawtypes")
-    public List func_71516_a(ICommandSender sender, String[] args) {
+    public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
-            return func_71530_a(args,
+            return getListOfStringsMatchingLastWord(args,
                 "spawn", "link", "despawn", "list", "status", "follow", "come", "stay", "goto",
                 "guard", "cover", "patrol", "mine", "farm", "cook", "smelt", "sort", "carry", "setbase",
                 "scoop", "plug", "replace", "take", "give", "torch", "drop", "chest", "scan", "js", "debug", "config", "help");
@@ -55,33 +55,33 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
             if (sub.equals("debug")) {
-                return func_71530_a(args, "on", "off", "tail", "clear");
+                return getListOfStringsMatchingLastWord(args, "on", "off", "tail", "clear");
             }
             if (sub.equals("config")) {
-                return func_71530_a(args, "url", "model", "key");
+                return getListOfStringsMatchingLastWord(args, "url", "model", "key");
             }
             if (sub.equals("scoop")) {
                 Set<String> fluidNames = net.minecraftforge.fluids.FluidRegistry.getRegisteredFluids().keySet();
-                return func_71530_a(args, fluidNames.toArray(new String[0]));
+                return getListOfStringsMatchingLastWord(args, fluidNames.toArray(new String[0]));
             }
             if (sub.equals("replace")) {
-                return func_71530_a(args, "floor", "walls", "ceiling", "north_wall", "south_wall", "west_wall", "east_wall", "all");
+                return getListOfStringsMatchingLastWord(args, "floor", "walls", "ceiling", "north_wall", "south_wall", "west_wall", "east_wall", "all");
             }
             if (sub.equals("mine")) {
                 Set<String> oreTokens = ir.layercloud.cortexdrone.world.RegistryIntrospector.getUndergroundResourceTokens();
-                return func_71530_a(args, oreTokens.toArray(new String[0]));
+                return getListOfStringsMatchingLastWord(args, oreTokens.toArray(new String[0]));
             }
             if (sub.equals("farm")) {
                 Set<String> cropTokens = ir.layercloud.cortexdrone.world.RegistryIntrospector.getCropAndPlantTokens();
-                return func_71530_a(args, cropTokens.toArray(new String[0]));
+                return getListOfStringsMatchingLastWord(args, cropTokens.toArray(new String[0]));
             }
             if (sub.equals("cook") || sub.equals("smelt")) {
-                return func_71530_a(args, "meat", "ores", "food", "all");
+                return getListOfStringsMatchingLastWord(args, "meat", "ores", "food", "all");
             }
             if (sub.equals("follow")) {
-                MinecraftServer srv = MinecraftServer.func_71276_C();
-                if (srv != null && srv.func_71213_z() != null) {
-                    return func_71530_a(args, srv.func_71213_z());
+                MinecraftServer srv = MinecraftServer.getServer();
+                if (srv != null && srv.getAllUsernames() != null) {
+                    return getListOfStringsMatchingLastWord(args, srv.getAllUsernames());
                 }
             }
         }
@@ -89,7 +89,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
     }
 
     @Override
-    public void func_71515_b(ICommandSender sender, String[] args) {
+    public void processCommand(ICommandSender sender, String[] args) {
         CortexDroneMod mod = this.manager.getMod();
         DroneLogger logger = this.manager.getLogger();
         AIConfig config = this.manager.getConfig();
@@ -129,7 +129,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
                 return;
             }
             if (player != null) {
-                String pName = player.func_70005_c_();
+                String pName = player.getCommandSenderName();
                 Set<String> subs = logger.getSubscribers();
                 boolean enable = mode.equals("on") || (mode.equals("toggle") && !subs.contains(pName));
                 if (enable) {
@@ -152,13 +152,13 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             }
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Active AI Drones (" + this.manager.getControllersById().size() + ") ===");
             for (DroneController c : this.manager.getControllersById().values()) {
-                if (c.drone == null || c.drone.field_70128_L) continue;
+                if (c.drone == null || c.drone.isDead) continue;
                 CortexDroneMod.sendMsg(sender, String.format(
                     EnumChatFormatting.AQUA + "#%d %s" + EnumChatFormatting.GRAY + " (Owner: %s) "
                         + EnumChatFormatting.YELLOW + "[%s] " + EnumChatFormatting.WHITE + "@ (%.1f, %.1f, %.1f) "
                         + EnumChatFormatting.GREEN + "Items: %d",
                     c.id, c.name, c.ownerName, c.mode.name(),
-                    c.drone.field_70165_t, c.drone.field_70163_u, c.drone.field_70161_v,
+                    c.drone.posX, c.drone.posY, c.drone.posZ,
                     InventoryService.countInventoryItems(c.drone.mainInventory())
                 ));
             }
@@ -166,7 +166,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         }
 
         if (sub.equals("config")) {
-            boolean isOp = !(sender instanceof EntityPlayerMP) || sender.func_70003_b(2, "drone");
+            boolean isOp = !(sender instanceof EntityPlayerMP) || sender.canCommandSenderUseCommand(2, "drone");
             if (!isOp) {
                 CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "[Drone] Only server operators can change AI config.");
                 return;
@@ -221,7 +221,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             return;
         }
 
-        DroneController ctrl = this.manager.getPlayerDrone(player.func_70005_c_());
+        DroneController ctrl = this.manager.getPlayerDrone(player.getCommandSenderName());
         if (sub.equals("despawn") || sub.equals("remove")) {
             if (args.length >= 2) {
                 String nameArg = args[1];
@@ -261,9 +261,9 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         }
 
         if (sub.equals("setbase")) {
-            double bx = player.field_70165_t;
-            double by = player.field_70163_u;
-            double bz = player.field_70161_v;
+            double bx = player.posX;
+            double by = player.posY;
+            double bz = player.posZ;
             if (args.length >= 4) {
                 try {
                     bx = parseCoord(bx, args[1]);
@@ -272,14 +272,14 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
                 } catch (NumberFormatException ignored) {
                 }
             }
-            config.setPlayerBase(player.func_70005_c_(), bx, by, bz);
+            config.setPlayerBase(player.getCommandSenderName(), bx, by, bz);
             this.manager.saveConfig();
             this.manager.droneSay(player, ctrl, String.format("Saved your base location at (%.1f, %.1f, %.1f)!", bx, by, bz));
             return;
         }
 
         if (sub.equals("follow")) {
-            String targetName = args.length >= 2 ? args[1] : player.func_70005_c_();
+            String targetName = args.length >= 2 ? args[1] : player.getCommandSenderName();
             ctrl.targetPlayerName = targetName;
             this.manager.clearActionState(ctrl);
             this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Command /drone follow " + targetName);
@@ -290,9 +290,9 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
 
         if (sub.equals("stay") || sub.equals("stop") || sub.equals("hover")) {
             ctrl.cancelOtherLoops(0);
-            ctrl.goalX = ctrl.drone.field_70165_t;
-            ctrl.goalY = ctrl.drone.field_70163_u;
-            ctrl.goalZ = ctrl.drone.field_70161_v;
+            ctrl.goalX = ctrl.drone.posX;
+            ctrl.goalY = ctrl.drone.posY;
+            ctrl.goalZ = ctrl.drone.posZ;
             this.manager.clearActionState(ctrl);
             this.manager.setDroneMode(ctrl, Mode.STAY, "Command /drone stay");
             this.manager.saveConfig();
@@ -306,9 +306,9 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
                 return;
             }
             try {
-                double gx = parseCoord(player.field_70165_t, args[1]);
-                double gy = parseCoord(player.field_70163_u, args[2]);
-                double gz = parseCoord(player.field_70161_v, args[3]);
+                double gx = parseCoord(player.posX, args[1]);
+                double gy = parseCoord(player.posY, args[2]);
+                double gz = parseCoord(player.posZ, args[3]);
                 ctrl.goalX = gx;
                 ctrl.goalY = gy;
                 ctrl.goalZ = gz;
@@ -322,7 +322,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         }
 
         if (sub.equals("guard") || sub.equals("cover") || sub.equals("defend") || sub.equals("protect")) {
-            ctrl.targetPlayerName = args.length >= 2 ? args[1] : player.func_70005_c_();
+            ctrl.targetPlayerName = args.length >= 2 ? args[1] : player.getCommandSenderName();
             ctrl.guardFilter = "hostile|mutant";
             this.manager.clearActionState(ctrl);
             this.manager.setDroneMode(ctrl, Mode.GUARD, "Command /drone " + sub + " " + ctrl.targetPlayerName);
@@ -336,7 +336,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             if (args.length >= 2) {
                 try { rad = Integer.parseInt(args[1]); } catch (NumberFormatException ignored) { }
             }
-            ctrl.targetPlayerName = player.func_70005_c_();
+            ctrl.targetPlayerName = player.getCommandSenderName();
             ctrl.patrolRadius = Math.max(16, rad);
             ctrl.guardFilter = "hostile|mutant";
             this.manager.setDroneMode(ctrl, Mode.PATROL, "Command /drone patrol " + ctrl.patrolRadius + "m");
@@ -352,12 +352,12 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         }
 
         if (sub.equals("carry") || sub.equals("airlift") || sub.equals("transport")) {
-            double[] dest = this.manager.getWorldScanner().findBaseLocation(ctrl.drone.field_70170_p, player);
+            double[] dest = this.manager.getWorldScanner().findBaseLocation(ctrl.drone.worldObj, player);
             if (args.length >= 4) {
                 try {
-                    dest[0] = parseCoord(player.field_70165_t, args[1]);
-                    dest[1] = parseCoord(player.field_70163_u, args[2]);
-                    dest[2] = parseCoord(player.field_70161_v, args[3]);
+                    dest[0] = parseCoord(player.posX, args[1]);
+                    dest[1] = parseCoord(player.posY, args[2]);
+                    dest[2] = parseCoord(player.posZ, args[3]);
                 } catch (NumberFormatException ignored) {
                 }
             }
@@ -428,10 +428,10 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         }
 
         if (sub.equals("scan")) {
-            double refX = player != null ? player.field_70165_t : ctrl.drone.field_70165_t;
-            double refY = player != null ? player.field_70163_u : ctrl.drone.field_70163_u;
-            double refZ = player != null ? player.field_70161_v : ctrl.drone.field_70161_v;
-            java.util.Map<String, int[]> scan = this.manager.getWorldScanner().scanNearbyResources(ctrl.drone.field_70170_p, refX, refY, refZ, 24);
+            double refX = player != null ? player.posX : ctrl.drone.posX;
+            double refY = player != null ? player.posY : ctrl.drone.posY;
+            double refZ = player != null ? player.posZ : ctrl.drone.posZ;
+            java.util.Map<String, int[]> scan = this.manager.getWorldScanner().scanNearbyResources(ctrl.drone.worldObj, refX, refY, refZ, 24);
             if (scan.isEmpty()) {
                 this.manager.droneSay(player, ctrl, "Scanned 24m radius: no ores, logs, or chests detected.");
             } else {

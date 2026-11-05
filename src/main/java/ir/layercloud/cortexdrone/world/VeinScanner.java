@@ -42,10 +42,10 @@ public final class VeinScanner {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = cz - r; z <= cz + r; z++) {
                     Block b = bsi.getBlock(x, y, z);
-                    if (b == null || b == Blocks.field_150350_a || b == Blocks.field_150357_h) continue;
-                    int meta = world.func_72805_g(x, y, z);
+                    if (b == null || b == Blocks.air || b == Blocks.bedrock) continue;
+                    int meta = world.getBlockMetadata(x, y, z);
                     if (ItemClassifier.matchesMineFilter(b, meta, filter)) {
-                        int id = Block.func_149682_b(b);
+                        int id = Block.getIdFromBlock(b);
                         matched.put(FlightPathfinder.packBlockPos(x, y, z), new int[]{x, y, z, id, meta});
                         String disp = ItemClassifier.getBlockDisplayName(b, meta);
                         histogram.put(disp, (histogram.containsKey(disp) ? histogram.get(disp) : 0) + 1);
@@ -63,9 +63,9 @@ public final class VeinScanner {
             int[] root = entry.getValue();
             int targetId = root[3];
             int targetMeta = root[4];
-            Block rootBlock = Block.func_149729_e(targetId);
+            Block rootBlock = Block.getBlockById(targetId);
             String veinName = ItemClassifier.getBlockDisplayName(rootBlock, targetMeta);
-            String reg = rootBlock != null ? Block.field_149771_c.func_148750_c(rootBlock) : "";
+            String reg = rootBlock != null ? Block.blockRegistry.getNameForObject(rootBlock) : "";
 
             List<int[]> cluster = new ArrayList<int[]>();
             Deque<int[]> q = new ArrayDeque<int[]>();

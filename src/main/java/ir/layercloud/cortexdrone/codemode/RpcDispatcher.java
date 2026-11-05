@@ -408,9 +408,9 @@ public class RpcDispatcher {
             // mirror WorldRpcHandler: anchor at drone/player position instead.
             // Mutate through a single helper to keep blank-final assignment legal.
             if (!hasExplicitCenter && (player != null || (ctrl != null && ctrl.drone != null))) {
-                double ax = player != null ? player.field_70165_t : ctrl.drone.field_70165_t;
-                double ay = player != null ? player.field_70163_u : ctrl.drone.field_70163_u;
-                double az = player != null ? player.field_70161_v : ctrl.drone.field_70161_v;
+                double ax = player != null ? player.posX : ctrl.drone.posX;
+                double ay = player != null ? player.posY : ctrl.drone.posY;
+                double az = player != null ? player.posZ : ctrl.drone.posZ;
                 this.cx = (int) Math.floor(ax);
                 this.cy = (int) Math.floor(ay + 0.5);
                 this.cz = (int) Math.floor(az);
@@ -460,7 +460,7 @@ public class RpcDispatcher {
             }
             this.scannedVoxels++;
             if (y < 1 || y > 254) return 1L;
-            if (this.ctrl == null || this.ctrl.drone == null || this.ctrl.drone.field_70170_p == null || this.ctrl.drone.field_70128_L) {
+            if (this.ctrl == null || this.ctrl.drone == null || this.ctrl.drone.worldObj == null || this.ctrl.drone.isDead) {
                 this.truncated = true;
                 this.done = true;
                 JsonObject err = new JsonObject();
@@ -478,12 +478,12 @@ public class RpcDispatcher {
                 return 1L;
             }
             try {
-                net.minecraft.world.World world = this.ctrl.drone.field_70170_p;
+                net.minecraft.world.World world = this.ctrl.drone.worldObj;
                 long key = FlightPathfinder.packBlockPos(x, y, z);
                 if (!this.seen.add(key)) return 1L;
-                if (world.func_147437_c(x, y, z)) return 1L;
-                net.minecraft.block.Block b = world.func_147439_a(x, y, z);
-                int meta = world.func_72805_g(x, y, z);
+                if (world.isAirBlock(x, y, z)) return 1L;
+                net.minecraft.block.Block b = world.getBlock(x, y, z);
+                int meta = world.getBlockMetadata(x, y, z);
                 boolean match = this.liquidOnly
                     ? ItemClassifier.isLiquidBlock(b)
                     : ItemClassifier.matchesMineFilter(b, meta, this.filter);
@@ -535,7 +535,7 @@ public class RpcDispatcher {
                 ? args.get("jobId").getAsString() : null;
             return this.pollScanResult(jobId);
         }
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70128_L) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.isDead) {
             JsonObject res = new JsonObject();
             res.addProperty("ok", false);
             res.addProperty("error", "No active drone");

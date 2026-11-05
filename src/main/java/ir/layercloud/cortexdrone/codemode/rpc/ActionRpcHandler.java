@@ -75,6 +75,11 @@ public class ActionRpcHandler implements RpcHandler {
 
         if (m.equals("queue_mine")) {
             ctrl.clearSelfRescue(false);
+            // An explicit queued list has no implicit harvest target. Without this,
+            // a stale target/counter from a previous "mine N" task could stop the
+            // new queue instantly or after the wrong number of blocks.
+            ctrl.mineTargetCount = 0;
+            ctrl.mineMatchedCount = 0;
             if (args.has("clear") && args.get("clear").getAsBoolean()) {
                 ctrl.mineQueue.clear();
                 ctrl.currentMineTarget = null;

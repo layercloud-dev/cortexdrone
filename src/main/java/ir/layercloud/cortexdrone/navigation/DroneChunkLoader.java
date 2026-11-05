@@ -40,9 +40,11 @@ import static ir.layercloud.cortexdrone.harness.PlayerChunkOwnership.isPlayerMan
  *
  * <p>Therefore this manager explicitly loads a small, budgeted hot set with
  * {@code World.getChunkFromChunkCoords} (chunk coordinates, not block coordinates),
- * and keeps the ticket's claim set equal to that hot set. Player-watched chunks
- * are vanilla-owned: we drop our claims on them instead of keeping a redundant
- * claim, and we never schedule a deferred release just because a player is near.
+ * and keeps the ticket's claim set equal to that hot set. Corridor lookahead
+ * leaves player-watched chunks to vanilla. The drone's own 3x3 is always
+ * claimed and loaded: Forge only ticks entities in forced chunks once they are
+ * more than 32 blocks from players, and an extra claim cannot unload a player
+ * chunk. Ticket release is never deferred just because a player is near.
  *
  * <p>Priority is nearest-first: the drone's own chunk, then its 3x3, then the
  * next few corridor chunks, then nearby work targets. Loading uses the same
@@ -50,10 +52,15 @@ import static ir.layercloud.cortexdrone.harness.PlayerChunkOwnership.isPlayerMan
  */
 public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     private static final int ANCHOR_CHUNK_RADIUS = 1;      // 3x3 around a base/waypoint
-    /** Keep a chunk this long after it stops being needed (5 seconds at 20 TPS). */
-    private static final int RELEASE_GRACE_TICKS = 100;
+    /** Keep a nearby chunk this long after it stops being needed (3s at 20 TPS). */
+    private static final int RELEASE_GRACE_TICKS = 60;
+    /** Far-behind chunks are released quickly so a moving ticket cannot saturate. */
+    private static final int FAR_RELEASE_GRACE_TICKS = 40;
+    private static final int NEAR_RETENTION_CHUNKS = 1;
     /** New chunk loads per 5-tick drone plan update. Prevents flight stutter. */
     private static final int DRONE_LOAD_BUDGET = 2;
+    /** Crossing a chunk border may need the next corridor chunk immediately. */
+    private static final int DRONE_MOVE_LOAD_BUDGET = 4;
     /** New chunk loads per 20-tick anchor refresh, shared by all anchors. */
     private static final int ANCHOR_LOAD_BUDGET = 4;
     /** One centre chunk per anchor is loaded when the anchor is first created. */
@@ -323,7 +330,8 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
                 data.func_74768_a("cz", cz);
                 data.func_74768_a("radius", DroneChunkPlanner.DRONE_CHUNK_RADIUS);
             }
-            int loadedNow = applyTicketChunks(world, ticket, plan, true, DRONE_LOAD_BUDGET);
+            int loadedNow = applyTicketChunks(world, ticket, plan, true,
+                movedChunk ? DRONE_MOVE_LOAD_BUDGET : DRONE_LOAD_BUDGET);
             int held = ticket.getChunkList().size();
             if (ctrl.tickClock - ctrl.lastChunkLogTick >= 100
                 && (managed != ctrl.lastChunkManaged || playerOwned != ctrl.lastChunkPlayerOwned
@@ -347,6 +355,37 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         ctrl.forcedChunkX = cx;
         ctrl.forcedChunkZ = cz;
         ctrl.forcedDim = dim;
+    }
+
+    /**
+     * Guarantees the drone's own chunk is claimed and loaded every tick. The
+     * 5-tick plan update is fine for lookahead, but the entity's current chunk
+     * must never depend on that cadence, a full ticket, or a delayed plan.
+     */
+    public synchronized void ensureDroneChunk(DroneController ctrl) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70128_L) return;
+        World w = ctrl.drone.field_70170_p;
+        if (!(w instanceof WorldServer)) return;
+        WorldServer world = (WorldServer) w;
+        Ticket ticket = this.droneTickets.get(ctrl.id);
+        if (ticket == null || ticket.world != world) return;
+        int cx = MathHelper.func_76128_c(ctrl.drone.field_70165_t) >> 4;
+        int cz = MathHelper.func_76128_c(ctrl.drone.field_70161_v) >> 4;
+        ChunkCoordIntPair pair = new ChunkCoordIntPair(cx, cz);
+        if (!force(ticket, pair)) {
+            // Invalid/released ticket: recreate on the next update instead of
+            // flying with an unclaimed current chunk.
+            release(ticket);
+            ctrl.lastChunkPlanTick = -1000;
+            return;
+        }
+        reorder(ticket, pair);
+        try {
+            if (!world.field_73059_b.func_73149_a(cx, cz)) {
+                world.func_72964_e(cx, cz);
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private Ticket adoptOrCreateTicket(DroneController ctrl, WorldServer world) {
@@ -440,11 +479,11 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
 
         long now = world.func_82737_E();
         Set<ChunkCoordIntPair> current = new HashSet<ChunkCoordIntPair>(ticket.getChunkList());
+        ChunkCoordIntPair center = desired.get(0);
 
-        // 1. Drop claims we no longer need. A player-owned chunk that is still
-        // desired keeps its claim: keeping a redundant claim cannot unload a
-        // player chunk, and it avoids a one-tick unload/reload race at the
-        // edge of the player's view. Undesired claims get the normal grace.
+        // 1. Drop claims we no longer need. Near chunks get the full grace so
+        // border crossings do not churn; chunks left far behind are released
+        // after a short grace so a moving ticket cannot saturate at 25 chunks.
         for (ChunkCoordIntPair old : current) {
             if (desiredSet.contains(old)) {
                 pending.remove(old);
@@ -452,18 +491,26 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
             }
             Long due = pending.get(old);
             if (due == null) {
-                pending.put(old, Long.valueOf(now + RELEASE_GRACE_TICKS));
+                boolean near = Math.abs(old.field_77276_a - center.field_77276_a) <= NEAR_RETENTION_CHUNKS
+                    && Math.abs(old.field_77275_b - center.field_77275_b) <= NEAR_RETENTION_CHUNKS;
+                long grace = near ? RELEASE_GRACE_TICKS : FAR_RELEASE_GRACE_TICKS;
+                pending.put(old, Long.valueOf(now + grace));
             } else if (now >= due.longValue()) {
                 pending.remove(old);
                 unforce(ticket, old);
             }
         }
 
-        // 2. Claim the desired set. Highest-priority chunks are reordered to the
-        // tail later so Forge's automatic eviction removes the least useful.
+        // 2. Claim the desired set. The drone's own 3x3 is always claimed, even
+        // when a player is nearby: an extra claim cannot unload a player chunk,
+        // and it removes the gap when the player walks out of view mid-flight.
         Set<ChunkCoordIntPair> held = new HashSet<ChunkCoordIntPair>(ticket.getChunkList());
-        for (ChunkCoordIntPair pair : desired) {
-            if (playerAware && isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) {
+        for (int di = 0; di < desired.size(); di++) {
+            ChunkCoordIntPair pair = desired.get(di);
+            boolean core = Math.abs(pair.field_77276_a - center.field_77276_a) <= DroneChunkPlanner.DRONE_CHUNK_RADIUS
+                && Math.abs(pair.field_77275_b - center.field_77275_b) <= DroneChunkPlanner.DRONE_CHUNK_RADIUS;
+            if (playerAware && !core
+                && isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) {
                 continue;
             }
             if (held.contains(pair)) continue;
@@ -493,7 +540,10 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         for (ChunkCoordIntPair pair : desired) {
             if (loadBudget <= 0) break;
             if (!held.contains(pair)) continue;
-            if (playerAware && isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) {
+            boolean core = Math.abs(pair.field_77276_a - center.field_77276_a) <= DroneChunkPlanner.DRONE_CHUNK_RADIUS
+                && Math.abs(pair.field_77275_b - center.field_77275_b) <= DroneChunkPlanner.DRONE_CHUNK_RADIUS;
+            if (playerAware && !core
+                && isPlayerManaged(world, pair.field_77276_a, pair.field_77275_b)) {
                 continue;
             }
             if (((WorldServer) world).field_73059_b.func_73149_a(pair.field_77276_a, pair.field_77275_b)) {

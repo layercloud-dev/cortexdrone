@@ -12,10 +12,10 @@ import net.minecraft.world.WorldServer;
  *
  * <p>A chunk is protected when Forge currently reports it as watched by a
  * player (exact, event-driven) or when it lies inside any player's view radius.
- * The drone never forces or explicitly loads a protected chunk. It may keep or
- * drop its own redundant ticket claim on one; vanilla's PlayerManager keeps the
- * chunk loaded independently, and {@code unforceChunk} cannot unload a
- * player-watched chunk.</p>
+ * Corridor and anchor lookahead never forces or explicitly loads a protected
+ * chunk. The drone's own 3x3 is still claimed/loaded: Forge only ticks an
+ * entity in a forced chunk when it is more than 32 blocks from players, and an
+ * extra claim/load cannot unload a player-watched chunk.</p>
  */
 public final class PlayerChunkOwnership {
     /** Chunks exactly inside the server view square are vanilla-owned. The

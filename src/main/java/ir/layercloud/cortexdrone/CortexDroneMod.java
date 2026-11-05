@@ -153,6 +153,13 @@ public class CortexDroneMod {
     }
 
     @SubscribeEvent
+    public void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event != null && event.player != null) {
+            PlayerChunkWatchRegistry.clearPlayer(event.player.func_110124_au());
+        }
+    }
+
+    @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
         PlayerChunkWatchRegistry.clear(event.world);
     }

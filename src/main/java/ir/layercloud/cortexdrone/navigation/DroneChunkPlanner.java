@@ -20,6 +20,7 @@ final class DroneChunkPlanner {
     private static final int CORRIDOR_MAX_CHUNKS = 8;
     private static final int MINE_QUEUE_LOOKAHEAD = 2;
     private static final int GOAL_LOOKAHEAD_CHUNKS = 2;
+    private static final int GOAL_AHEAD_CHUNKS = 4;
 
     private DroneChunkPlanner() {
     }
@@ -58,6 +59,17 @@ final class DroneChunkPlanner {
         if (ctrl.currentMineTarget != null) {
             addNearChunk(plan, seen, ctrl.currentMineTarget[0] >> 4,
                 ctrl.currentMineTarget[2] >> 4, cx, cz, GOAL_LOOKAHEAD_CHUNKS);
+        }
+        // Preload a few chunks toward the navigation goal. A moving drone can
+        // cross a chunk border faster than a synchronous chunk load; loading
+        // only the current path waypoint (often just 16 blocks ahead) left the
+        // next chunk to be loaded at the last moment. This is bounded to a few
+        // chunks and deduped against the corridor.
+        if (!Double.isNaN(ctrl.goalX) && !Double.isNaN(ctrl.goalZ)) {
+            int ahead = Math.min(GOAL_AHEAD_CHUNKS, CORRIDOR_MAX_CHUNKS - added);
+            if (ahead > 0) {
+                addLineChunks(plan, seen, px, pz, ctrl.goalX, ctrl.goalZ, ahead);
+            }
         }
         int queued = 0;
         for (int[] p : ctrl.mineQueue) {

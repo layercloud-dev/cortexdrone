@@ -636,6 +636,15 @@ public class AIDroneManager {
     }
 
     public void handleNaturalInstruction(final EntityPlayerMP player, final String prompt) {
+        if (!isServerThread()) {
+            dispatchToServerThread(new Runnable() {
+                @Override
+                public void run() {
+                    handleNaturalInstruction(player, prompt);
+                }
+            });
+            return;
+        }
         DroneController ctrl = player != null ? getPlayerDrone(player.func_70005_c_()) : null;
         if (ctrl == null && player != null) {
             ctrl = linkNearestDrone(player);
@@ -648,6 +657,34 @@ public class AIDroneManager {
     }
 
     public void handleNaturalInstruction(final EntityPlayerMP player, final DroneController ctrl, final String prompt) {
+        if (!isServerThread()) {
+            dispatchToServerThread(new Runnable() {
+                @Override
+                public void run() {
+                    handleNaturalInstruction(player, ctrl, prompt);
+                }
+            });
+            return;
+        }
         this.taskCoordinator.handle(player, ctrl, prompt);
+    }
+
+    /** World reads, chunk access and drone mutation all belong on the server thread. */
+    private static boolean isServerThread() {
+        return Thread.currentThread().getName().contains("Server thread");
+    }
+
+    private void dispatchToServerThread(final Runnable task) {
+        try {
+            this.callOnMainThread(new java.util.concurrent.Callable<Void>() {
+                @Override
+                public Void call() {
+                    task.run();
+                    return null;
+                }
+            }, 5000L);
+        } catch (Exception e) {
+            this.logger.log("ERROR", null, "Failed to dispatch instruction to server thread", e.toString());
+        }
     }
 }

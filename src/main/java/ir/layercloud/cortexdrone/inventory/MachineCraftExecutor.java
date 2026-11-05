@@ -354,12 +354,7 @@ public class MachineCraftExecutor {
         ensurePower(machine, recipe);
         ensureFluids(machine, ctrl, recipe);
         machineInv.func_70296_d();
-        if (machine instanceof IInventory) {
-            try {
-                machine.func_145839_a(new net.minecraft.nbt.NBTTagCompound());
-            } catch (Throwable ignored) {
-            }
-        }
+        machine.func_70296_d();
         lr.ok = true;
         lr.loadedItems = loadedItems;
         lr.loadedStacks = loadedStacks;

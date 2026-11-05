@@ -33,8 +33,8 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 public class LlmAgentService {
-    private static final int MAX_AGENT_TURNS = 100;
-    private static final long AGENT_DEADLINE_MS = 8L * 60L * 1000L; // 8 minutes
+    static final int MAX_AGENT_TURNS = 100;
+    static final long AGENT_DEADLINE_MS = 8L * 60L * 1000L;
     private static final String SYSTEM_PROMPT_TEMPLATE = CodeModeRuntime.loadResourceText("/system-prompt.md");
     private final AIDroneManager manager;
     private final DroneLogger logger;
@@ -43,37 +43,26 @@ public class LlmAgentService {
     private final RpcDispatcher rpcDispatcher;
     private int consecutiveConnectFailures = 0;
     private long lastConnectFailureAtMs = 0L;
-    // Actual LLM gateway error text (HTTP code + body or exception message) from the last
-    // failed call — surfaced to the player instead of a generic "unreachable" reply.
     private volatile String lastLlmError = null;
 
-    // Debug: log the API key presence + gateway health on first call (masked) so silent-failure
-    // ("why don't you respond") is visible in logs without leaking the secret.
     private static volatile boolean llmKeyLogged = false;
-    private static String maskKey(String key) {
-        if (key == null || key.isEmpty()) return "<empty>";
-        if (key.length() <= 12) return key.substring(0, 3) + "..." + key.substring(key.length() - 2);
-        return key.substring(0, 8) + "..." + key.substring(key.length() - 2) + " (len=" + key.length() + ")";
+    static String maskKey(String key) {
+        return LoopTracer.maskKey(key);
     }
 
-    private static void logKeyDiagnosticsOnce(DroneController ctrl, DroneLogger logger) {
-        if (llmKeyLogged) return;
-        llmKeyLogged = true;
+    static void logKeyDiagnostics(DroneController ctrl, DroneLogger logger, String reason) {
         try {
             String envKey = System.getenv("CORTEXDRONE_API_KEY");
-            logger.log("LLM", ctrl, "API-key diagnostics: env=" + (envKey == null || envKey.isEmpty() ? "<unset>" : maskKey(envKey)) + " | in-JVM default/fallback=" + maskKey((new AIConfig()).apiKey), "gateway=127.0.0.1:7002");
+            logger.log("LLM", ctrl, "API-key diagnostics (" + reason + "): env=" + (envKey == null || envKey.isEmpty() ? "<unset>" : maskKey(envKey)) + " key=" + maskKey((new AIConfig()).apiKey), "reason=" + reason);
         } catch (Throwable t) {
             logger.log("LLM", ctrl, "API-key diagnostics failed: " + t.toString(), "");
         }
     }
 
-    private static void logKeyDiagnostics(DroneController ctrl, DroneLogger logger, String reason) {
-        // always regenerates a small debug line so the running key is observable from /debug
-        try {
-            String envKey = System.getenv("CORTEXDRONE_API_KEY");
-            logger.log("LLM", ctrl, "API-key state (" + reason + "): env=" + (envKey == null || envKey.isEmpty() ? "<unset>" : maskKey(envKey))
-                + " | gateway health check: key=" + maskKey((new AIConfig()).apiKey), "reason=" + reason);
-        } catch (Throwable ignored) {}
+    private static void logKeyDiagnosticsOnce(DroneController ctrl, DroneLogger logger) {
+        if (llmKeyLogged) return;
+        llmKeyLogged = true;
+        logKeyDiagnostics(ctrl, logger, "once");
     }
     public LlmAgentService(
         AIDroneManager manager,
@@ -139,8 +128,6 @@ public class LlmAgentService {
         ctx.addProperty("droneInventory", InventoryService.formatInventorySummary(ctrl.drone.mainInventory()));
         ctx.addProperty("playerInventory", player != null ? InventoryService.formatInventorySummary(player.field_71071_by) : "Offline");
 
-        // Slim situational awareness for smarter tool selection (no scanNeighbors dump; LLM uses
-        // world.findItemInChests / world.scanBlocks / world.getEntities on demand instead)
         ctx.addProperty("distToPlayerM", Math.round(Math.hypot(
             ctrl.drone.field_70165_t - refX, ctrl.drone.field_70163_u - refY) * 10.0) / 10.0);
         ctx.addProperty("droneMode", ctrl.mode.name());
@@ -165,8 +152,6 @@ public class LlmAgentService {
             ctx.add("savedLocations", locsObj);
         }
 
-        // Hint-only: WorldScanner caches by centre bucket + radius for 7s, so the
-        // 24m scan here and any nearby 16m telemetry scan share one computation.
         JsonObject resources = new JsonObject();
         Map<String, int[]> scan = this.worldScanner.scanNearbyResources(world, refX, refY, refZ, 24);
         for (Map.Entry<String, int[]> e : scan.entrySet()) {
@@ -222,18 +207,18 @@ public class LlmAgentService {
             int emptySearchStreak = 0;
             JsonObject lastMachineBlocker = null;
             final long loopDeadline = System.currentTimeMillis() + AGENT_DEADLINE_MS;
+            final long loopStartMs = System.currentTimeMillis();
+            LoopTracer.traceStart(this.logger, ctrl, myLoopId, userPrompt);
 
             for (int turn = 1; turn <= MAX_AGENT_TURNS; turn++) {
                 if (ctrl.activeLoopId.get() != myLoopId || ctrl.drone == null || ctrl.drone.field_70128_L) {
-                    this.logger.log("THINK", ctrl, "Loop #" + myLoopId + " superseded at Turn " + turn, "");
+                    LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
+                    LoopTracer.saySuperseded(this.manager, player, ctrl, userPrompt);
                     return;
                 }
-                // Deterministic deadline: stop loitering instead of burning turns on
-                // re-queries. Always speak a partial reply so the player is not left
-                // staring at a silent drone.
                 if (System.currentTimeMillis() > loopDeadline) {
-                    this.logger.log("LLM", ctrl, "Agent loop hit wall-clock deadline (8 min) at Turn " + turn
-                        + " — reporting partial progress", "");
+                    this.logger.log("LLM", ctrl, "Agent loop hit wall-clock deadline (" + (AGENT_DEADLINE_MS / 60000) + " min) at Turn " + turn
+                        + " loopId=" + myLoopId + " — reporting partial progress", "hadProgress=" + hadProgress);
                     final String deadlineReply = AgentLoopHeuristics.progressReplyFor(
                         "Stopped at the time limit. No further progress was possible without more info.",
                         hadProgress, ctrl.lastThought);
@@ -244,24 +229,31 @@ public class LlmAgentService {
                 }
 
                 final int curTurn = turn;
-                this.manager.getMod().queueMain(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (ctrl.drone != null && !ctrl.drone.field_70128_L && ctrl.mode == Mode.FOLLOW) {
-                            ctrl.drone.lightColor_$eq(0xAA55FF);
-                            ctrl.drone.statusText_$eq("Thinking...\nTurn " + curTurn);
-                        }
-                    }
-                });
+                this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.field_70128_L && ctrl.mode == Mode.FOLLOW) { ctrl.drone.lightColor_$eq(0xAA55FF); ctrl.drone.statusText_$eq("Thinking...\nTurn " + curTurn); } } });
 
-                JsonObject plan = callOpenAiChatMessages(ctrl, messages);
+                final long turnStartMs = System.currentTimeMillis();
+                JsonObject plan;
+                try {
+                    plan = callOpenAiChatMessages(ctrl, messages);
+                } catch (Exception ex) {
+                    lastLlmError = "LLM gateway exception: " + ex.toString();
+                    this.logger.log("LLM", ctrl, lastLlmError + " loopId=" + myLoopId + " turn=" + turn,
+                        "url=" + this.manager.getConfig().apiUrl + " key=" + maskKey(this.manager.getConfig().apiKey));
+                    plan = null;
+                }
                 if (ctrl.activeLoopId.get() != myLoopId || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                    LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
+                    LoopTracer.saySuperseded(this.manager, player, ctrl, userPrompt);
                     return;
                 }
                 if (plan == null) {
+                    long elapsedMs = System.currentTimeMillis() - turnStartMs;
+                    LoopTracer.traceTurn(this.logger, ctrl, myLoopId, turn, elapsedMs, true, false, "", "");
                     String detail = lastLlmError != null ? lastLlmError : "no response from LLM gateway";
                     this.logger.log("LLM", ctrl, "LLM backend failed on Turn " + turn
-                        + " — reporting the error to the player and stopping", "detail=" + detail);
+                        + " loopId=" + myLoopId + " elapsedMs=" + elapsedMs
+                        + " — reporting the error to the player and stopping",
+                        "detail=" + detail + " key=" + maskKey(this.manager.getConfig().apiKey));
                     final String partialMsg = AgentLoopHeuristics.progressReplyFor(
                         "AI backend error: " + detail + ". Fix the API key / gateway then re-send your instruction.",
                         hadProgress, ctrl.lastThought);
@@ -277,22 +269,13 @@ public class LlmAgentService {
                 if (!thought.isEmpty()) {
                     ctrl.recordThought(turn, thought);
                     this.logger.log("THINK", ctrl, "Turn " + turn + ": " + thought, "");
-                    this.manager.getMod().queueMain(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (ctrl.drone != null && !ctrl.drone.field_70128_L && ctrl.mode == Mode.FOLLOW) {
-                                ctrl.drone.statusText_$eq("Think T" + curTurn + "\n" + AIDroneManager.trimStatus(thought));
-                            }
-                        }
-                    });
+                    this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.field_70128_L && ctrl.mode == Mode.FOLLOW) ctrl.drone.statusText_$eq("Think T" + curTurn + "\n" + AIDroneManager.trimStatus(thought)); } });
                 }
 
                 boolean isMalformed = plan.has("malformed") && plan.get("malformed").getAsBoolean();
                 String code = "";
                 JsonArray fallbackTools = null;
-                if (plan.has("code") && !plan.get("code").isJsonNull()) {
-                    code = plan.get("code").getAsString().trim();
-                }
+                if (plan.has("code") && !plan.get("code").isJsonNull()) code = plan.get("code").getAsString().trim();
                 if (code.isEmpty() && plan.has("tool_calls") && plan.get("tool_calls").isJsonArray()) {
                     JsonArray tcs = plan.getAsJsonArray("tool_calls");
                     for (JsonElement el : tcs) {
@@ -305,23 +288,20 @@ public class LlmAgentService {
                         fallbackTools = tcs;
                     }
                 }
-                if (code.isEmpty() && fallbackTools == null && plan.has("actions") && plan.get("actions").isJsonArray()) {
-                    JsonArray acts = plan.getAsJsonArray("actions");
-                    if (acts.size() > 0) {
-                        fallbackTools = acts;
-                    }
-                }
+                if (code.isEmpty() && fallbackTools == null && plan.has("actions") && plan.get("actions").isJsonArray()) { JsonArray acts = plan.getAsJsonArray("actions"); if (acts.size() > 0) fallbackTools = acts; }
 
                 boolean done = !isMalformed && plan.has("done") && !plan.get("done").isJsonNull() && plan.get("done").getAsBoolean();
                 final String reply = (!isMalformed && plan.has("reply") && !plan.get("reply").isJsonNull())
                     ? plan.get("reply").getAsString().trim()
                     : "";
-                // Deterministic early-finish for machine-config-only / empty / long no-code essay.
+                LoopTracer.traceTurn(this.logger, ctrl, myLoopId, turn, System.currentTimeMillis() - turnStartMs,
+                    false, isMalformed, thought, code);
+                if (isMalformed) this.logger.log("LLM", ctrl, "Malformed LLM response on Turn " + turn + " loopId=" + myLoopId, "thought=\"" + LoopTracer.snippet(thought, 200) + "\" codeLen=" + code.length() + " raw=" + LoopTracer.snippet(plan.toString(), 600));
                 if (AgentLoopHeuristics.shouldForceFinal(plan, messages)) {
                     final String earlyReply = "Blocked: the searched recipe/item path is machine-config-only or empty. "
                         + "Next step: provide the exact machine + missing ingredient, or pick the cheap vanilla "
                         + "alternative, then re-request.";
-                    this.logger.log("CODEMODE", ctrl, "Turn " + turn + " early-final forced done:true", "");
+                    this.logger.log("CODEMODE", ctrl, "Turn " + turn + " early-final forced done:true", "loopId=" + myLoopId);
                     this.manager.getMod().queueMain(new Runnable() {
                         @Override public void run() { manager.droneSay(player, ctrl, earlyReply); }
                     });
@@ -340,11 +320,9 @@ public class LlmAgentService {
                     });
                     return;
                 }
-                // Also: proseBlocker salvage (prose machine blocker) inside parse()
-                // already set done=true in one turn; nothing extra to do here.
                 if (isMalformed || (code.isEmpty() && fallbackTools == null && !executedAnyAction && AgentLoopHeuristics.promptExpectsActionQueue(userPrompt))) {
                     hadSelfCorrection = true;
-                    this.logger.log("CODEMODE", ctrl, "Turn " + turn + " malformed or missing JS code -> self-correcting", "thought=" + thought);
+                    this.logger.log("CODEMODE", ctrl, "Turn " + turn + " malformed or missing JS code -> self-correcting", "thought=" + LoopTracer.snippet(thought, 200));
                     if (turn < MAX_AGENT_TURNS) {
                         AgentLoopHeuristics.appendTurnFeedback(
                             messages,
@@ -394,14 +372,7 @@ public class LlmAgentService {
 
                 if (!code.isEmpty()) {
                     executedAnyAction = true;
-                    this.manager.getMod().queueMain(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (ctrl.drone != null && !ctrl.drone.field_70128_L && ctrl.mode == Mode.FOLLOW) {
-                                ctrl.drone.lightColor_$eq(0xAA55FF);
-                            }
-                        }
-                    });
+                    this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.field_70128_L && ctrl.mode == Mode.FOLLOW) ctrl.drone.lightColor_$eq(0xAA55FF); } });
 
                     final AtomicBoolean jsFinished = new AtomicBoolean(false);
                     if (done && !thought.isEmpty()) {
@@ -430,25 +401,23 @@ public class LlmAgentService {
                     jsFinished.set(true);
 
                     if (ctrl.activeLoopId.get() != myLoopId || ctrl.drone == null || ctrl.drone.field_70128_L) {
+                        LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
+                        LoopTracer.saySuperseded(this.manager, player, ctrl, userPrompt);
                         return;
                     }
                     if (execRes.has("superseded") && execRes.get("superseded").getAsBoolean()) {
+                        LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
+                        LoopTracer.saySuperseded(this.manager, player, ctrl, userPrompt);
                         return;
                     }
 
                     boolean ok = execRes.has("ok") && execRes.get("ok").getAsBoolean();
                     if (ok) {
                         hadProgress = hadProgress || AgentLoopHeuristics.hasConcreteProgress(execRes, code);
-                        if (hadProgress) {
-                            inspectionTurns = 0;
-                            sameQueryStreak = 0;
-                            emptySearchStreak = 0;
-                        }
+                        if (hadProgress) { inspectionTurns = 0; sameQueryStreak = 0; emptySearchStreak = 0; }
                         if (AgentLoopHeuristics.isMachineBlockerResult(execRes)) {
                             lastMachineBlocker = execRes;
                         }
-                        // Empty-search streak: meteor hunt re-queried findDistant/
-                        // kb.lookup dozens of times with found:false / count:0.
                         if (AgentLoopHeuristics.isEmptySearchResult(execRes) && !AgentLoopHeuristics.codeMentionsPhysicalAction(code)) {
                             emptySearchStreak++;
                         } else {
@@ -508,8 +477,6 @@ public class LlmAgentService {
                             feedback += "\n\nANTI-LOITER: 2 inspection-only turns with no physical action (mine/craft/withdraw/deposit/mineMany/place...). Next \"code\" MUST perform a physical action or finish done:true with a blocker — a 3rd inspection turn is forbidden.";
                             this.logger.log("CODEMODE", ctrl, "Turn " + turn + " inspectionTurns=" + inspectionTurns + " -> forced-action nudge", "");
                         }
-                        // Deterministic same-query streak (meteor hunt pattern):
-                        // same inspection tool + same target arg with no progress.
                         String qk = AgentLoopHeuristics.queryFingerprint(code);
                         if (!qk.isEmpty() && qk.equals(lastQueryKey) && !AgentLoopHeuristics.hasConcreteProgress(execRes, code)) {
                             sameQueryStreak++;
@@ -539,8 +506,6 @@ public class LlmAgentService {
                             feedback += "\n\n" + AgentLoopHeuristics.nudgeForRepeat(userPrompt);
                             this.logger.log("CODEMODE", ctrl, "Turn " + turn + " repeated tool result detected -> anti-requery nudge", "");
                         }
-                        // Progress relay: first concrete progress speaks once so the
-                        // player sees the drone is working (not holding chat spam).
                         if (!hadProgress && AgentLoopHeuristics.hasConcreteProgress(execRes, code)) {
                             final String relayMsg = "Progress: first step done. Continuing with next step.";
                             this.manager.getMod().queueMain(new Runnable() {
@@ -579,11 +544,11 @@ public class LlmAgentService {
                         "Next step: emit one JS \"code\" step (physical action preferred) or \"done\":true with final \"reply\" (partial reply OK: state what was delivered, the exact blocker, and the next concrete step).") ;
                 }
             }
-            // Cap reached without a clean done: report partial progress deterministically
-            // (done:true with a partial reply at cap — never a silent stop).
-            this.logger.log("LLM", ctrl, "Agent loop hit turn cap (" + MAX_AGENT_TURNS + ") — reporting partial progress", "");
+            this.logger.log("LLM", ctrl, "Agent loop hit turn cap (" + MAX_AGENT_TURNS + ") loopId=" + myLoopId
+                + " elapsedMs=" + (System.currentTimeMillis() - loopStartMs)
+                + " — reporting partial progress", "lastThought=\"" + LoopTracer.snippet(ctrl.lastThought, 200) + "\"");
             final String capReply = AgentLoopHeuristics.progressReplyFor(
-                "Stopped at the turn cap. What stands so far is in the last status/checkpoint above; "
+                "Stopped at the turn cap (" + MAX_AGENT_TURNS + "). What stands so far is in the last status/checkpoint above; "
                     + "the blocker (missing item/machine) is named there.",
                 hadProgress, ctrl.lastThought);
             this.manager.getMod().queueMain(new Runnable() {
@@ -591,13 +556,16 @@ public class LlmAgentService {
             });
             return;
         } catch (Exception e) {
-            this.logger.log("LLM", ctrl, "Pure Code Mode agent loop error", e.toString());
-            final String errReply = "Stopped due to an internal error (" + e.toString() + "). Re-send the instruction to retry.";
+            this.logger.log("LLM", ctrl, "Pure Code Mode agent loop error loopId=" + myLoopId,
+                "error=" + e.toString() + " key=" + maskKey(this.manager.getConfig().apiKey));
+            final String errDetail = e.toString();
+            final String errReply = "Stopped due to an internal error (" + errDetail + "). Re-send the instruction to retry.";
             try {
                 this.manager.getMod().queueMain(new Runnable() {
                     @Override public void run() { manager.droneSay(player, ctrl, errReply); }
                 });
             } catch (Exception ignored) {
+                LoopTracer.sayError(this.manager, player, ctrl, errDetail);
             }
         }
     }
@@ -608,7 +576,6 @@ public class LlmAgentService {
         JsonObject lastMalformed = null;
         int localFailures = 0;
 
-        // Backoff 500->1000->2000ms; honor open circuit (capped 5s/turn).
         if (consecutiveConnectFailures >= 5 && System.currentTimeMillis() - lastConnectFailureAtMs < 60000) {
             long waitMs = 60000 - (System.currentTimeMillis() - lastConnectFailureAtMs);
             if (waitMs > 0) {
@@ -617,15 +584,25 @@ public class LlmAgentService {
             }
         }
         for (int attempt = 1; attempt <= 3; attempt++) {
+            // FIX: setFixedLengthStreamingMode(0) before setDoOutput. Without it,
+            // AbstractDelegateHttpsURLConnection leaves useCaches=true, so every
+            // attempt reuses the JVM-wide KeepAliveCache socket. The Go gateway
+            // (layercloud-ai) closes an idle keep-alive connection after handling
+            // one response; Java then blocks forever in parseHTTPHeader ->
+            // NioSocketImpl.timedRead with NO timeout on the stale pooled socket
+            // (engine execute + LLM both silently hang, no log, no retry). Forcing
+            // chunked/initiate streaming makes every request a fresh connection.
             URL url = new URL(cfg.apiUrl);
             boolean isLocal = cfg.apiUrl.contains("127.0.0.1") || cfg.apiUrl.contains("localhost");
             HttpURLConnection conn = (HttpURLConnection) (isLocal
                 ? url.openConnection(Proxy.NO_PROXY)
                 : url.openConnection());
+            conn.setUseCaches(false);
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(10000);
-            conn.setReadTimeout(35000);
+            conn.setReadTimeout(30000);
             conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Connection", "close");
             if (cfg.apiKey != null && !cfg.apiKey.isEmpty()) {
                 conn.setRequestProperty("Authorization", "Bearer " + cfg.apiKey);
             }
@@ -645,7 +622,9 @@ public class LlmAgentService {
 
             try {
                 try (OutputStream os = conn.getOutputStream()) {
-                    os.write(req.toString().getBytes(StandardCharsets.UTF_8));
+                    byte[] body = req.toString().getBytes(StandardCharsets.UTF_8);
+                    conn.setFixedLengthStreamingMode(body.length);
+                    os.write(body);
                 }
 
                 int httpCode = conn.getResponseCode();
@@ -661,16 +640,16 @@ public class LlmAgentService {
                     String rawBody = rawSb.toString().trim();
                     if (httpCode < 200 || httpCode >= 300) {
                         String errDetail = "LLM gateway HTTP " + httpCode + (rawBody.isEmpty() ? "" : " - " + rawBody.substring(0, Math.min(800, rawBody.length())));
-                        // Provider error body is the single most useful debug diagnostic:
-                        // log the full body text (not just the HTTP code) so the player
-                        // can see whether it's a key issue, a model issue, or a rate limit.
                         lastLlmError = errDetail;
-                        this.logger.log("LLM", ctrl, errDetail, "url=" + cfg.apiUrl + " | in-JVM key=" + maskKey(cfg.apiKey) + " | env=" + maskKey(System.getenv("CORTEXDRONE_API_KEY")));
+                        this.logger.log("LLM", ctrl, errDetail, "url=" + cfg.apiUrl + " key=" + maskKey(cfg.apiKey));
                         if (attempt < 3) continue;
                         return lastMalformed;
                     }
                     JsonElement parsedResp = new JsonParser().parse(rawBody);
                     if (parsedResp == null || !parsedResp.isJsonObject()) {
+                        lastLlmError = "LLM gateway malformed JSON (attempt " + attempt + "): "
+                            + LoopTracer.snippet(rawBody, 300);
+                        this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl + " httpCode=" + httpCode);
                         if (attempt < 3) continue;
                         return lastMalformed;
                     }
@@ -691,6 +670,9 @@ public class LlmAgentService {
                         reasoning = msgObj.get("reasoning_content").getAsString().trim();
                     }
                     if (content.isEmpty() && reasoning.isEmpty()) {
+                        lastLlmError = "LLM gateway empty content and reasoning (attempt " + attempt + "): "
+                            + LoopTracer.snippet(rawBody, 300);
+                        this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl + " httpCode=" + httpCode);
                         if (attempt < 3) continue;
                         return lastMalformed;
                     }
@@ -707,7 +689,7 @@ public class LlmAgentService {
                 String exMsg = ex.getMessage();
                 String exDetail = "LLM gateway exception: " + ex.toString();
                 lastLlmError = exDetail;
-                this.logger.log("LLM", ctrl, exDetail, "url=" + cfg.apiUrl + " | in-JVM key=" + maskKey(cfg.apiKey) + " | env=" + maskKey(System.getenv("CORTEXDRONE_API_KEY")));
+                this.logger.log("LLM", ctrl, exDetail, "url=" + cfg.apiUrl + " key=" + maskKey(cfg.apiKey));
                 boolean connectFailure = ex instanceof java.net.ConnectException || ex instanceof java.net.SocketTimeoutException || (exMsg != null && (exMsg.contains("Connection refused") || exMsg.contains("timed out")));
                 if (attempt < 3) Thread.sleep(Math.min(2000, 500 << (attempt - 1)));
                 if (connectFailure) {

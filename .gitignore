@@ -1,5 +1,23 @@
+# Build outputs
+build/
+out/
 classes/
 mods/
 *.jar
 *.log
 *.class
+
+# Gradle
+.gradle/
+# Gradle wrapper hash dirs use a hash directory; keep properties file tracked
+!gradle/wrapper/gradle-wrapper.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db

@@ -151,7 +151,37 @@ public class DroneHttpServer {
                         EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : null;
                         String method = req.has("method") ? req.get("method").getAsString() : "";
                         JsonObject args = req.has("args") && req.get("args").isJsonObject() ? req.getAsJsonObject("args") : req;
-                        JsonObject res = manager.getRpcDispatcher().executeOnMainThread(ctrl, p, method, args);
+                        // executeOnMainThread has its own per-method budget; the
+                        // socket read adds ~1s. Log + 504 instead of silently hanging.
+                        long rpcT0 = System.currentTimeMillis();
+                        final AtomicReference<JsonObject> rpcRef = new AtomicReference<JsonObject>(null);
+                        final CountDownLatch rpcLatch = new CountDownLatch(1);
+                        CortexDroneMod.HTTP_POOL.submit(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    rpcRef.set(manager.getRpcDispatcher().executeOnMainThread(ctrl, p, method, args));
+                                } catch (Throwable t) {
+                                    JsonObject err = new JsonObject();
+                                    err.addProperty("ok", false);
+                                    err.addProperty("error", t.toString());
+                                    rpcRef.set(err);
+                                } finally {
+                                    rpcLatch.countDown();
+                                }
+                            }
+                        });
+                        if (!rpcLatch.await(60, TimeUnit.SECONDS)) {
+                            logger.log("HTTP", ctrl, "RPC '" + method + "' via /rpc TIMEOUT after " + (System.currentTimeMillis() - rpcT0) + "ms", "droneId=" + droneId + " player=" + pName);
+                            sendJsonResponse(exchange, 504, "{\"ok\":false,\"error\":\"RPC timeout: " + escapeJson(method) + "\"}");
+                            return;
+                        }
+                        JsonObject res = rpcRef.get();
+                        if (res == null) {
+                            res = new JsonObject();
+                            res.addProperty("ok", false);
+                            res.addProperty("error", "RPC returned no result for method: " + method);
+                        }
                         sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(res));
                     } catch (Exception e) {
                         sendJsonResponse(exchange, 400, "{\"ok\":false,\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
@@ -172,10 +202,38 @@ public class DroneHttpServer {
                         if (actType.equals("js") || actType.equals("execute_js")) {
                             int dId = req.has("droneId") ? req.get("droneId").getAsInt() : -1;
                             String pName = req.has("player") && !req.get("player").isJsonNull() ? req.get("player").getAsString() : null;
-                            DroneController ctrl = dId > 0 ? manager.getControllersById().get(dId) : manager.getOrAnyDrone(pName);
-                            EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : null;
-                            String code = req.has("code") ? req.get("code").getAsString() : "";
-                            JsonObject jsRes = manager.getCodeModeRuntime().executeJavaScript(ctrl, p, code);
+                            final DroneController ctrl = dId > 0 ? manager.getControllersById().get(dId) : manager.getOrAnyDrone(pName);
+                            final EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : null;
+                            final String code = req.has("code") ? req.get("code").getAsString() : "";
+                            // Bounded: never block the HTTP thread forever on a wedged node.
+                            final AtomicReference<JsonObject> jsRef = new AtomicReference<JsonObject>(null);
+                            final CountDownLatch jsLatch = new CountDownLatch(1);
+                            CortexDroneMod.HTTP_POOL.submit(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        jsRef.set(manager.getCodeModeRuntime().executeJavaScript(ctrl, p, code));
+                                    } catch (Throwable t) {
+                                        JsonObject err = new JsonObject();
+                                        err.addProperty("ok", false);
+                                        err.addProperty("error", t.toString());
+                                        jsRef.set(err);
+                                    } finally {
+                                        jsLatch.countDown();
+                                    }
+                                }
+                            });
+                            if (!jsLatch.await(60, TimeUnit.SECONDS)) {
+                                logger.log("HTTP", ctrl, "JS execute via /action TIMEOUT after 60s", "droneId=" + dId + " player=" + pName);
+                                sendJsonResponse(exchange, 504, "{\"ok\":false,\"error\":\"JS engine timeout\"}");
+                                return;
+                            }
+                            JsonObject jsRes = jsRef.get();
+                            if (jsRes == null) {
+                                jsRes = new JsonObject();
+                                jsRes.addProperty("ok", false);
+                                jsRes.addProperty("error", "JS engine returned no result");
+                            }
                             sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(jsRes));
                             return;
                         }
@@ -210,7 +268,7 @@ public class DroneHttpServer {
                 }
             });
 
-            this.httpServer.setExecutor(CortexDroneMod.HTTP_POOL);
+            this.httpServer.setExecutor(CortexDroneMod.HTTP_SERVER_POOL);
             this.httpServer.start();
             updateCachedSnapshots();
         } catch (Exception e) {

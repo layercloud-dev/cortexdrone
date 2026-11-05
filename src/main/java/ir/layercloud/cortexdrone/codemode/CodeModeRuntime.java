@@ -69,7 +69,11 @@ public class CodeModeRuntime {
     }
 
     public JsonObject executeJavaScript(DroneController ctrl, EntityPlayerMP player, String jsCode, int loopId, boolean isFinalTurn) {
-        JsonObject out = new JsonObject();
+        return executeJavaScript(ctrl, player, jsCode, loopId, isFinalTurn, 180000L);
+    }
+
+    public JsonObject executeJavaScript(DroneController ctrl, EntityPlayerMP player, String jsCode, int loopId, boolean isFinalTurn, long timeoutMs) {
+        final JsonObject out = new JsonObject();
         long t0 = System.currentTimeMillis();
         File scriptFile = new File("/tmp/opencode/drone-codemode-" + ctrl.id + "-" + System.nanoTime() + ".mjs");
         ctrl.activeScriptCount.incrementAndGet();
@@ -141,32 +145,83 @@ public class CodeModeRuntime {
             readerThread.setDaemon(true);
             readerThread.start();
 
-            // Wait up to 180s for physical multi-step workflows, aborting within 250ms if superseded by a newer command
-            for (int slice = 0; slice < 720; slice++) {
-                if (proc.waitFor(250, TimeUnit.MILLISECONDS)) {
+            // Bounded wait (default 180s via the overload) with a 250ms
+            // supersession poll. A wedged node process is destroyed, logged,
+            // and returned as an error — never a silent hang.
+            long deadline = t0 + Math.max(5000L, timeoutMs);
+            boolean timedOut = false;
+            boolean superseded = false;
+            while (true) {
+                long remaining = deadline - System.currentTimeMillis();
+                if (remaining <= 0) {
+                    timedOut = true;
+                    break;
+                }
+                if (proc.waitFor(Math.min(250L, remaining), TimeUnit.MILLISECONDS)) {
                     break;
                 }
                 if ((loopId > 0 && ctrl.activeLoopId.get() != loopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
-                    proc.destroyForcibly();
+                    superseded = true;
                     break;
                 }
             }
             if (proc.isAlive()) {
                 proc.destroyForcibly();
+                try {
+                    proc.waitFor(5, TimeUnit.SECONDS);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
             }
             readerThread.join(1000);
 
             long elapsed = System.currentTimeMillis() - t0;
             String rawOut = sb.toString().trim();
-            int fb = rawOut.indexOf('{');
-            int lb = rawOut.lastIndexOf('}');
-            if (fb >= 0 && lb > fb) {
-                out = new JsonParser().parse(rawOut.substring(fb, lb + 1)).getAsJsonObject();
-            } else {
+            if (superseded) {
+                out.addProperty("ok", true);
+                out.addProperty("superseded", true);
+                this.logger.log("CODEMODE", ctrl, "JS Code Mode superseded (" + elapsed + "ms)", "loopId=" + loopId);
+            } else if (timedOut) {
                 out.addProperty("ok", false);
+                out.addProperty("timeout", true);
+                out.addProperty("error", "JS Code Mode timed out after " + elapsed + "ms (loopId=" + loopId + ")");
                 out.addProperty("rawOutput", rawOut);
+                this.logger.log("CODEMODE", ctrl, "JS Code Mode TIMEOUT (" + elapsed + "ms)", "loopId=" + loopId + " raw=" + rawOut.substring(0, Math.min(400, rawOut.length())));
+            } else {
+                int fb = rawOut.indexOf('{');
+                int lb = rawOut.lastIndexOf('}');
+                if (fb >= 0 && lb > fb) {
+                    try {
+                        JsonObject parsedOut = new JsonParser().parse(rawOut.substring(fb, lb + 1)).getAsJsonObject();
+                        out.add("parsed", parsedOut);
+                        boolean parsedOk = parsedOut.has("ok") ? parsedOut.get("ok").getAsBoolean() : true;
+                        out.addProperty("ok", parsedOk);
+                        if (parsedOut.has("superseded") && parsedOut.get("superseded").getAsBoolean()) {
+                            out.addProperty("superseded", true);
+                        }
+                        if (parsedOut.has("result")) out.add("result", new JsonParser().parse(parsedOut.get("result").toString()));
+                        if (parsedOut.has("logs")) out.add("logs", new JsonParser().parse(parsedOut.get("logs").toString()));
+                        if (!parsedOk && parsedOut.has("error")) out.add("error", new JsonParser().parse(parsedOut.get("error").toString()));
+                        if (!parsedOk && parsedOut.has("rawOutput")) out.add("rawOutput", new JsonParser().parse(parsedOut.get("rawOutput").toString()));
+                    } catch (Exception parseEx) {
+                        out.addProperty("ok", false);
+                        out.addProperty("error", "JS output parse failed: " + parseEx.toString());
+                        out.addProperty("rawOutput", rawOut);
+                        this.logger.log("CODEMODE", ctrl, "JS Code Mode OUTPUT PARSE ERROR (" + elapsed + "ms)", parseEx.toString() + " raw=" + rawOut.substring(0, Math.min(400, rawOut.length())));
+                    }
+                } else {
+                    out.addProperty("ok", false);
+                    if (proc.exitValue() != 0 || !rawOut.isEmpty()) {
+                        out.addProperty("rawOutput", rawOut);
+                    } else {
+                        out.addProperty("error", "JS Code Mode exited with no output (exit=" + proc.exitValue() + ")");
+                    }
+                    this.logger.log("CODEMODE", ctrl, "JS Code Mode NO OUTPUT (" + elapsed + "ms)", "loopId=" + loopId + " exit=" + proc.exitValue());
+                }
+                if (out.has("ok")) {
+                    this.logger.log("CODEMODE", ctrl, "Executed JS Code Mode (" + elapsed + "ms)", out.toString());
+                }
             }
-            this.logger.log("CODEMODE", ctrl, "Executed JS Code Mode (" + elapsed + "ms)", out.toString());
         } catch (Exception e) {
             out.addProperty("ok", false);
             out.addProperty("error", e.toString());

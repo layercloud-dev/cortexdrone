@@ -40,7 +40,20 @@ public class CortexDroneMod {
     public static final String VERSION = "1.3.0";
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    public static final ExecutorService HTTP_POOL = Executors.newCachedThreadPool();
+    /** Agent loops (LLM + JS engine). Never share with the HTTP server: a hung
+     *  loop must not starve /state|/debug|/rpc (that made failures silent). */
+    public static final ExecutorService HTTP_POOL = Executors.newCachedThreadPool(runnable -> {
+        Thread t = new Thread(runnable, "CortexDrone-Agent-" + System.nanoTime());
+        t.setDaemon(true);
+        return t;
+    });
+    /** Drone HTTP server (port 25580) request threads. Separate pool so one
+     *  hung /rpc|/action cannot wedge the LLM agent loops or vice versa. */
+    public static final ExecutorService HTTP_SERVER_POOL = Executors.newCachedThreadPool(runnable -> {
+        Thread t = new Thread(runnable, "CortexDrone-Http-" + System.nanoTime());
+        t.setDaemon(true);
+        return t;
+    });
 
     private final List<Runnable> mainThreadTasks = Collections.synchronizedList(new ArrayList<Runnable>());
     private AIDroneManager aiDroneManager = null;

@@ -1,23 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd /root/forge-smp/cortexdrone-src
-mkdir -p classes
-rm -rf classes/*
 
-mapfile -t JAVA_SOURCES < <(find src -name "*.java" | sort)
+# Legacy manual javac build — replaced by the standard Gradle build.
+# This script is kept for compatibility and now delegates to Gradle.
+# Build configuration lives in:
+#   - settings.gradle   (project name)
+#   - gradle.properties (forgeDir, layercloudDir, modsDir, versions)
+#   - build.gradle      (source layout src/main/java, src/main/resources; validation; jar; deploy)
+#
+# Usage:
+#   ./build.sh                              # full build (validate + jar + deploy)
+#   ./gradlew jar                           # just the jar
+#   ./gradlew validate                      # just validation
+#   ./gradlew clean build
 
-/usr/lib/jvm/graalvm-jdk-25/bin/javac --release 8 -Xlint:-options \
-    -cp "/root/forge-smp/layercloud-smp-src/srg_gen/mc-srg.jar:/root/forge-smp/mods/OpenComputers-1.12.70-GTNH.jar:/root/forge-smp/lwjgl3ify-forgePatches.jar:/root/forge-smp/libraries/com/google/guava/guava/17.0/guava-17.0.jar" \
-    -d classes \
-    "${JAVA_SOURCES[@]}"
+cd "$(dirname "$0")"
 
-if [ -d resources ]; then
-    cp -r resources/. classes/
+# Gradle 8.14 requires JDK 17+ to run (not Java 25). Prefer JDK 21 if available.
+if [ -d /usr/lib/jvm/java-21-openjdk-amd64 ]; then
+  export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+  export PATH="$JAVA_HOME/bin:$PATH"
 fi
 
-/usr/lib/jvm/graalvm-jdk-25/bin/jar cf /tmp/opencode/CortexDrone-1.0.0.jar \
-    -C classes . \
-    -C /root/forge-smp/cortexdrone-src mcmod.info
-
-mv -f /tmp/opencode/CortexDrone-1.0.0.jar /root/forge-smp/mods/CortexDrone-1.0.0.jar
-echo "Built and deployed /root/forge-smp/mods/CortexDrone-1.0.0.jar successfully."
+exec ./gradlew build "$@"

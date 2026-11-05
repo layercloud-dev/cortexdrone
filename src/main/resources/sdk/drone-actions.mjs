@@ -105,7 +105,8 @@ const drone = {
   },
 
   // Uses an item (hoe, bucket, food, tool...). Accepts an object, a slot, or
-  // an item filter plus optional target block coordinates.
+  // an item filter plus optional target block coordinates. With entityId/attack
+  // it performs exactly one melee attack and moves into reach if needed.
   useItem: async (a = 0, b, c, d2, e) => {
     let target;
     if (_isObj(a)) target = { ...a };

@@ -4,12 +4,19 @@ import ir.layercloud.cortexdrone.action.Action;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
+import ir.layercloud.cortexdrone.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.ItemStack;
+import net.minecraft.inventory.IInventory;
+import net.minecraft.util.DamageSource;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
@@ -84,6 +91,9 @@ public class InteractionActionService implements Action {
                 res.addProperty("error", "No fake player on drone");
                 res.addProperty("used", false);
                 return res;
+            }
+            if (args.has("entityId") || args.has("attack")) {
+                return attackEntity(ctrl, d, world, fakePlayer, args);
             }
             int slot = args.has("slot") && !args.get("slot").isJsonNull()
                 ? args.get("slot").getAsInt() : fakePlayer.field_71071_by.field_70461_c;
@@ -181,6 +191,119 @@ public class InteractionActionService implements Action {
 
         res.addProperty("ok", false);
         res.addProperty("error", "Unhandled primitive action: " + m);
+        return res;
+    }
+
+    private static JsonObject attackEntity(DroneController ctrl, Drone d, World world,
+                                           EntityPlayer fakePlayer, JsonObject args) {
+        JsonObject res = new JsonObject();
+        int id;
+        try {
+            id = args.has("entityId") ? args.get("entityId").getAsInt() : args.get("attack").getAsInt();
+        } catch (Throwable t) {
+            res.addProperty("ok", false);
+            res.addProperty("error", "entityId/attack must be an entity id");
+            return res;
+        }
+        Entity target = world.func_73045_a(id);
+        if (!(target instanceof EntityLivingBase) || target.field_70128_L
+            || ((EntityLivingBase) target).func_110143_aJ() <= 0.0f) {
+            res.addProperty("ok", false);
+            res.addProperty("error", "No living entity with id " + id);
+            return res;
+        }
+        if (target instanceof EntityPlayer) {
+            res.addProperty("ok", false);
+            res.addProperty("error", "Refusing to attack a player");
+            return res;
+        }
+        double dist = d.func_70011_f(target.field_70165_t, target.field_70163_u, target.field_70161_v);
+        if (dist > 4.5) {
+            res.addProperty("ok", true);
+            res.addProperty("needsMovement", true);
+            res.addProperty("action", "attack");
+            res.addProperty("entityId", id);
+            res.addProperty("distance", Math.round(dist * 100.0) / 100.0);
+            JsonObject st = new JsonObject();
+            st.addProperty("x", Math.round(target.field_70165_t * 100.0) / 100.0);
+            st.addProperty("y", Math.round((target.field_70163_u + 0.5) * 100.0) / 100.0);
+            st.addProperty("z", Math.round(target.field_70161_v * 100.0) / 100.0);
+            res.add("standoff", st);
+            return res;
+        }
+        if (ctrl.attackCooldown > 0) {
+            res.addProperty("ok", false);
+            res.addProperty("error", "Attack cooling down");
+            res.addProperty("retryTicks", ctrl.attackCooldown);
+            return res;
+        }
+
+        IInventory inv = d.mainInventory();
+        int size = inv != null ? inv.func_70302_i_() : 0;
+        int slot = args.has("slot") && !args.get("slot").isJsonNull()
+            ? args.get("slot").getAsInt() : fakePlayer.field_71071_by.field_70461_c;
+        if (args.has("item") && !args.get("item").isJsonNull()) {
+            String filter = args.get("item").getAsString();
+            int found = -1;
+            for (int i = 0; i < size && found < 0; i++) {
+                ItemStack st = inv.func_70301_a(i);
+                if (st == null || st.func_77973_b() == null) continue;
+                if (ItemClassifier.scoreBlockOrItemMatch(
+                        st.func_82833_r(), ItemClassifier.getItemIdentifier(st),
+                        st.func_77960_j(), filter) > 0) {
+                    found = i;
+                }
+            }
+            if (found < 0) {
+                res.addProperty("ok", false);
+                res.addProperty("error", "No matching weapon/item in drone inventory for filter: " + filter);
+                return res;
+            }
+            slot = found;
+        }
+        if (slot < 0 || slot >= size) {
+            res.addProperty("ok", false);
+            res.addProperty("error", "Invalid attack slot " + slot);
+            return res;
+        }
+        if (slot >= 9) {
+            res.addProperty("ok", false);
+            res.addProperty("error", "Weapon must be in the drone's hotbar (slot 0-8)");
+            return res;
+        }
+        fakePlayer.field_71071_by.field_70461_c = slot;
+        syncFakePlayerToDrone(fakePlayer, d);
+        double dx = target.field_70165_t - d.field_70165_t;
+        double dy = target.field_70163_u - d.field_70163_u;
+        double dz = target.field_70161_v - d.field_70161_v;
+        fakePlayer.field_70177_z = (float) (Math.atan2(dz, dx) * 180.0 / Math.PI) - 90.0f;
+        fakePlayer.field_70125_A = (float) (-Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)) * 180.0 / Math.PI);
+
+        EntityLivingBase living = (EntityLivingBase) target;
+        float before = living.func_110143_aJ();
+        ItemStack weapon = inv.func_70301_a(slot);
+        float damage = ToolInspector.computeAttackDamage(inv, living, 20.0f);
+        int fireSec = ToolInspector.getFireAspectSeconds(inv);
+        if (fireSec > 0) living.func_70015_d(fireSec);
+        try {
+            living.func_70097_a(DamageSource.func_76365_a(fakePlayer), damage);
+        } catch (Throwable t) {
+            res.addProperty("ok", false);
+            res.addProperty("error", "Attack failed: " + t.getClass().getSimpleName());
+            return res;
+        }
+        ctrl.attackCooldown = 4;
+        float after = living.func_110143_aJ();
+        res.addProperty("ok", true);
+        res.addProperty("attacked", true);
+        res.addProperty("entityId", id);
+        res.addProperty("name", target.func_70005_c_());
+        res.addProperty("healthBefore", before);
+        res.addProperty("healthAfter", after);
+        res.addProperty("damage", Math.round(damage * 10.0) / 10.0);
+        res.addProperty("killed", target.field_70128_L || after <= 0.0f);
+        res.addProperty("item", weapon != null && weapon.func_77973_b() != null ? weapon.func_82833_r() : "Fist");
+        res.addProperty("distance", Math.round(dist * 100.0) / 100.0);
         return res;
     }
 

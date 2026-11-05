@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.harness;
+package ir.layercloud.cortexdrone.service;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
@@ -7,6 +7,9 @@ import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
+import ir.layercloud.cortexdrone.action.block.BlockActionService;
+import ir.layercloud.cortexdrone.action.combat.CombatService;
+import ir.layercloud.cortexdrone.action.effect.EffectActionService;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -23,13 +26,14 @@ import net.minecraft.world.WorldServer;
  * It contains no pre-made mining/building/farming/hunting action executor.
  */
 @RequiredArgsConstructor
-public class DroneTickPipeline {
+public class TickService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final InventoryService inventoryService;
-    private final BlockBreakAction blockBreakAction;
-    private final LightingAura lightingAura;
+    private final BlockActionService blockActionService;
+    private final EffectActionService effectService;
+    private final CombatService combatService;
 
     public void tickController(DroneController ctrl) {
         Drone d = ctrl.drone;
@@ -111,7 +115,7 @@ public class DroneTickPipeline {
         }
 
         if (ctrl.autoTorch || !ctrl.lightCells.isEmpty()) {
-            this.lightingAura.tick(ctrl);
+            this.effectService.tickLighting(ctrl);
         }
 
         EntityPlayerMP owner = CortexDroneMod.findPlayer(ctrl.ownerName);
@@ -255,8 +259,15 @@ public class DroneTickPipeline {
                 }
                 break;
             }
+            case GUARD:
+            case PATROL:
+                this.combatService.tickGuardOrPatrolBehavior(ctrl);
+                break;
+            case HUNT:
+                this.combatService.tickHuntBehavior(ctrl, owner);
+                break;
             case MINE:
-                this.blockBreakAction.tick(ctrl, owner);
+                this.blockActionService.tick(ctrl, owner);
                 break;
             case CARRY:
                 this.pathfinder.tickCarryBehavior(ctrl, owner);

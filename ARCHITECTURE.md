@@ -16,12 +16,19 @@ Removed from the tool surface:
   `waitUntilIdle` task queues)
 - the legacy tool-call fallback in the agent loop
 
-The entire `behavior` package was removed. What remains are small harness
-primitives: `BlockBreakAction` (one explicit block plus the navigator's
-transient dig path), `BlockPlacePrimitive` (one block), `LightingAura`,
-`DroneTickPipeline` (movement/single-action plumbing), and the task/session
-classes. No pre-made mining, building, farming, hunting, smelting, machine-craft
-or sorting executor is exposed. The remaining `mineQueue` field is only the
+The entire `behavior` package was removed. Operational code now lives in the
+categorized `action` package behind the common `Action` interface:
+
+- `action.movement.NavigationService` — route selection, movement, breadcrumbs, carry, cave escape
+- `action.block.BlockActionService` — one-block break and one-block place
+- `action.interact.InteractionActionService` — block interaction and item use
+- `action.combat.CombatService` — combat target selection and guard/patrol/hunt
+- `action.effect.EffectActionService` — LED, lighting aura, particles, sounds, notes, chat/status
+- `service.TickService` — the single-task 20-Hz pipeline
+
+The `harness` package keeps only task/session, chunk-ownership policy, and the
+master-tool catalog. No pre-made mining, building, farming, sorting or machine
+executor is exposed as a tool. The remaining `mineQueue` field is only the
 transient internal tunnel/self-rescue dig path; it is never populated by batched
 AI commands and there is no AI-facing instruction queue.
 

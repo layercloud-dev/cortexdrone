@@ -5,8 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.harness.BlockBreakAction;
-import ir.layercloud.cortexdrone.harness.BlockPlacePrimitive;
+import ir.layercloud.cortexdrone.action.block.BlockActionService;
 import ir.layercloud.cortexdrone.harness.MasterToolCatalog;
 import ir.layercloud.cortexdrone.inventory.ChestSorter;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
@@ -42,7 +41,7 @@ public class MasterRpcHandler implements RpcHandler {
     private final InventoryService inventoryService;
     private final ChestSorter chestSorter;
     private final SmeltingService smeltingService;
-    private final BlockBreakAction blockBreakAction;
+    private final BlockActionService blockActionService;
     private final WorldRpcHandler worldReader;
     private final InventoryRpcHandler inventoryReader;
     private final NavigationRpcHandler navigationReader;
@@ -56,7 +55,7 @@ public class MasterRpcHandler implements RpcHandler {
         InventoryService inventoryService,
         ChestSorter chestSorter,
         SmeltingService smeltingService,
-        BlockBreakAction blockBreakAction
+        BlockActionService blockActionService
     ) {
         this.manager = manager;
         this.worldScanner = worldScanner;
@@ -64,11 +63,11 @@ public class MasterRpcHandler implements RpcHandler {
         this.inventoryService = inventoryService;
         this.chestSorter = chestSorter;
         this.smeltingService = smeltingService;
-        this.blockBreakAction = blockBreakAction;
+        this.blockActionService = blockActionService;
         this.worldReader = new WorldRpcHandler(manager, worldScanner);
         this.inventoryReader = new InventoryRpcHandler(manager, inventoryService, chestSorter, smeltingService);
-        this.navigationReader = new NavigationRpcHandler(manager, pathfinder, worldScanner);
-        this.actionPrimitives = new ActionRpcHandler(manager, inventoryService);
+        this.navigationReader = new NavigationRpcHandler(manager);
+        this.actionPrimitives = new ActionRpcHandler(manager);
         this.effects = new EffectsRpcHandler(manager);
     }
 
@@ -85,7 +84,7 @@ public class MasterRpcHandler implements RpcHandler {
         }
         if ("state".equals(m)) return state(ctrl, player, args);
         if ("inspect".equals(m)) return inspect(ctrl, player, args);
-        if ("navigate".equals(m)) return navigate(ctrl, args);
+        if ("navigate".equals(m)) return this.manager.getNavigationService().navigate(ctrl, args);
         if ("break_block".equals(m)) return breakBlock(ctrl, player, args);
         if ("place_block".equals(m)) return placeBlock(ctrl, player, args);
         if ("interact_block".equals(m)) return interactBlock(ctrl, player, args);
@@ -163,71 +162,6 @@ public class MasterRpcHandler implements RpcHandler {
         return handler.handle(ctrl, player, method, args);
     }
 
-    private JsonObject navigate(DroneController ctrl, JsonObject args) {
-        String route = str(args, "route", "auto").trim().toLowerCase();
-        if (!route.equals("auto") && !route.equals("direct") && !route.equals("tunnel") && !route.equals("up")) {
-            route = "auto";
-        }
-        double gx;
-        double gy;
-        double gz;
-        JsonObject standoffOf = obj(args, "standoffOf");
-        if (standoffOf == null) standoffOf = obj(args, "nearBlock");
-        if (standoffOf != null) {
-            int bx = intValue(standoffOf, "x", 0);
-            int by = intValue(standoffOf, "y", 0);
-            int bz = intValue(standoffOf, "z", 0);
-            double[] st = FlightPathfinder.findMiningStandoff(ctrl.drone.field_70170_p, ctrl.drone, bx, by, bz);
-            if (st == null) {
-                int[] open = FlightPathfinder.findNearestPassableVoxel(ctrl.drone.field_70170_p, bx, by + 1, bz, 3);
-                if (open == null) return error("No reachable standoff near (" + bx + "," + by + "," + bz + ")");
-                st = new double[]{open[0] + 0.5, open[1] + 0.35, open[2] + 0.5};
-            }
-            gx = st[0]; gy = st[1]; gz = st[2];
-        } else {
-            if (!args.has("x") || !args.has("y") || !args.has("z")) {
-                return error("navigate requires x/y/z (or standoffOf:{x,y,z})");
-            }
-            gx = num(args, "x", 0.0);
-            gy = num(args, "y", 0.0);
-            gz = num(args, "z", 0.0);
-        }
-
-        ctrl.navigationRoute = route;
-        ctrl.navViaSurface = false;
-        ctrl.navFinalX = Double.NaN;
-        ctrl.navFinalY = Double.NaN;
-        ctrl.navFinalZ = Double.NaN;
-
-        if ("up".equals(route)) {
-            int cx = MathHelper.func_76128_c(ctrl.drone.field_70165_t);
-            int cy = MathHelper.func_76128_c(ctrl.drone.field_70163_u);
-            int cz = MathHelper.func_76128_c(ctrl.drone.field_70161_v);
-            boolean sky = ctrl.drone.field_70170_p.func_72937_j(cx, cy, cz)
-                || cy >= ctrl.drone.field_70170_p.func_72976_f(cx, cz) - 1;
-            if (!sky) {
-                ctrl.navFinalX = gx;
-                ctrl.navFinalY = gy;
-                ctrl.navFinalZ = gz;
-                int top = ctrl.drone.field_70170_p.func_72976_f(cx, cz);
-                gx = cx + 0.5;
-                gy = Math.min(250, top + 2.5);
-                gz = cz + 0.5;
-                ctrl.navViaSurface = true;
-            }
-        }
-
-        ctrl.goalX = gx;
-        ctrl.goalY = gy;
-        ctrl.goalZ = gz;
-        this.manager.setDroneMode(ctrl, Mode.GOTO, "Master navigate " + route + String.format(" (%.1f,%.1f,%.1f)", gx, gy, gz));
-        JsonObject res = ok();
-        res.addProperty("route", route);
-        res.addProperty("viaSurface", ctrl.navViaSurface);
-        res.add("goal", point(gx, gy, gz));
-        return res;
-    }
-
     private JsonObject breakBlock(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         if (!args.has("x") || !args.has("y") || !args.has("z")) return error("break_block requires x/y/z");
         int x = intValue(args, "x", 0);
@@ -242,7 +176,7 @@ public class MasterRpcHandler implements RpcHandler {
             JsonObject res = needsMovement(ctrl, x, y, z, "break", dist);
             if (res != null) return res;
         }
-        boolean started = this.blockBreakAction.startSingleBlockTask(ctrl, player, x, y, z);
+        boolean started = this.blockActionService.startSingleBlockTask(ctrl, player, x, y, z);
         JsonObject res = ok();
         res.addProperty("started", started);
         res.add("target", point(x, y, z));
@@ -267,7 +201,7 @@ public class MasterRpcHandler implements RpcHandler {
         String filter = args.has("block") ? str(args, "block", "any")
             : (args.has("with") ? str(args, "with", "any") : str(args, "item", "any"));
         int meta = intValue(args, "meta", -1);
-        boolean placed = BlockPlacePrimitive.placeFromInventory(this.manager, world, ctrl, player, x, y, z, filter, meta);
+        boolean placed = this.blockActionService.placeBlock(ctrl, player, x, y, z, filter, meta);
         JsonObject res = ok();
         res.addProperty("placed", placed);
         res.addProperty("block", filter);

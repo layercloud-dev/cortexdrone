@@ -1,4 +1,7 @@
-package ir.layercloud.cortexdrone.harness;
+package ir.layercloud.cortexdrone.action.block;
+
+import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.action.Action;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
@@ -16,6 +19,7 @@ import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -29,14 +33,14 @@ import net.minecraft.world.WorldServer;
  * path used by the navigator's tunnel/self-rescue. There is no filter/count
  * search, no farming, no neighbour propagation and no AI instruction queue.
  */
-public class BlockBreakAction {
+public class BlockActionService implements Action {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final InventoryService inventoryService;
     private Method blockGetDropsMethod = null;
 
-    public BlockBreakAction(
+    public BlockActionService(
         AIDroneManager manager,
         DroneLogger logger,
         FlightPathfinder pathfinder,
@@ -55,6 +59,36 @@ public class BlockBreakAction {
     }
 
 
+
+    @Override
+    public String category() { return "block"; }
+
+    @Override
+    public String[] operations() { return new String[]{"break_block", "place_block"}; }
+
+    @Override
+    public boolean supports(String operation) {
+        return "break_block".equals(operation) || "place_block".equals(operation);
+    }
+
+    @Override
+    public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String operation, JsonObject args) {
+        JsonObject res = new JsonObject();
+        if (args == null) args = new JsonObject();
+        if ("break_block".equals(operation)) {
+            if (!args.has("x") || !args.has("y") || !args.has("z")) { res.addProperty("ok", false); res.addProperty("error", "break_block requires x/y/z"); return res; }
+            boolean started = startSingleBlockTask(ctrl, player, args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
+            res.addProperty("ok", started); res.addProperty("started", started); return res;
+        }
+        if ("place_block".equals(operation)) {
+            if (!args.has("x") || !args.has("y") || !args.has("z")) { res.addProperty("ok", false); res.addProperty("error", "place_block requires x/y/z"); return res; }
+            String filter = args.has("block") ? args.get("block").getAsString() : (args.has("with") ? args.get("with").getAsString() : "any");
+            int meta = args.has("meta") ? args.get("meta").getAsInt() : -1;
+            boolean placed = placeBlock(ctrl, player, args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt(), filter, meta);
+            res.addProperty("ok", placed); res.addProperty("placed", placed); return res;
+        }
+        res.addProperty("ok", false); res.addProperty("error", "Unsupported block action: " + operation); return res;
+    }
 
     private static boolean hasPassableHeadroom(World world, double[] st) {
         if (st == null || st.length < 3) return false;
@@ -514,5 +548,45 @@ public class BlockBreakAction {
         d.lightColor_$eq(0x00FF66);
         d.statusText_$eq("Break block\n" + x + "," + y + "," + z);
         return true;
+    }
+
+    /**
+     * Master place primitive: exactly one explicit block from drone/chest/player
+     * inventory. No blueprint, no build queue, no hidden substitution.
+     */
+    public boolean placeBlock(DroneController ctrl, EntityPlayerMP owner, int x, int y, int z,
+                              String filter, int metaOverride) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return false;
+        World world = ctrl.drone.field_70170_p;
+        if (!ItemClassifier.isReplaceableBlock(world, x, y, z)) return false;
+        IInventory inv = ctrl.drone.mainInventory();
+        int slot = InventoryService.findPlaceableItemSlot(inv, filter);
+        if (slot < 0) {
+            int pulled = this.inventoryService.withdrawMatchingFromNearbyChests(world, ctrl, owner, filter, 64);
+            if (pulled > 0) slot = InventoryService.findPlaceableItemSlot(inv, filter);
+            if (slot < 0 && owner != null) {
+                int taken = this.inventoryService.takeFromPlayerInventory(ctrl, owner, filter, 64);
+                if (taken > 0) slot = InventoryService.findPlaceableItemSlot(inv, filter);
+            }
+        }
+        if (slot < 0) return false;
+
+        ItemStack st = inv.func_70301_a(slot);
+        if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) return false;
+        Item item = st.func_77973_b();
+        Block block = Block.func_149634_a(item);
+        if (block == null || block == Blocks.field_150350_a) return false;
+        int meta = metaOverride >= 0 ? metaOverride : item.func_77647_b(st.func_77960_j());
+
+        boolean placed = world.func_147465_d(x, y, z, block, meta, 3);
+        if (placed) {
+            world.func_72926_e(2001, x, y, z, Block.func_149682_b(block) + (meta << 12));
+            inv.func_70298_a(slot, 1);
+            inv.func_70296_d();
+            ctrl.builtCount++;
+            this.logger.log("BUILD", ctrl,
+                String.format("Placed %s at (%d,%d,%d)", block.func_149732_F(), x, y, z), "");
+        }
+        return placed;
     }
 }

@@ -78,14 +78,7 @@ public class FlightPathfinder {
     }
 
     public static void ensureChunkLoaded(World world, double x, double z) {
-        if (world instanceof WorldServer) {
-            try {
-                int cx = MathHelper.func_76128_c(x) >> 4;
-                int cz = MathHelper.func_76128_c(z) >> 4;
-                ((WorldServer) world).field_73059_b.func_73158_c(cx, cz);
-            } catch (Throwable ignored) {
-            }
-        }
+        DroneChunkLoader.ensureChunkLoadedStatic(world, x, z);
     }
 
     public static void setDroneFlightTarget(Drone d, double tx, double ty, double tz, float accel) {

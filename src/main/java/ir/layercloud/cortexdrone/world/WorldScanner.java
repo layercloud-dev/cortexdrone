@@ -234,29 +234,36 @@ public class WorldScanner {
 
     private static Map<String, int[]> scanNearbyResourcesUncached(World world, int ix, int iy, int iz, int radius) {
         Map<String, int[]> summary = new LinkedHashMap<String, int[]>();
+        if (world == null) return summary;
 
         for (int x = ix - radius; x <= ix + radius; x++) {
-            for (int y = Math.max(2, iy - radius); y <= Math.min(254, iy + radius); y++) {
-                for (int z = iz - radius; z <= iz + radius; z++) {
-                    if (world.func_147437_c(x, y, z)) continue;
-                    Block b = world.func_147439_a(x, y, z);
-                    if (b == null) continue;
-                    int meta = world.func_72805_g(x, y, z);
-                    if (ItemClassifier.isOreBlock(b, meta) || ItemClassifier.isLogBlock(b) || b == Blocks.field_150486_ae) {
-                        String name = ItemClassifier.getBlockDisplayName(b, meta);
-                        int distSq = (x - ix) * (x - ix) + (y - iy) * (y - iy) + (z - iz) * (z - iz);
-                        int[] cur = summary.get(name);
-                        if (cur == null) {
-                            summary.put(name, new int[]{1, x, y, z, distSq});
-                        } else {
-                            cur[0]++;
-                            if (distSq < cur[4]) {
-                                cur[1] = x;
-                                cur[2] = y;
-                                cur[3] = z;
-                                cur[4] = distSq;
+            for (int z = iz - radius; z <= iz + radius; z++) {
+                if (world instanceof WorldServer && !((WorldServer) world).field_73059_b.func_73149_a(x >> 4, z >> 4)) {
+                    continue;
+                }
+                for (int y = Math.max(2, iy - radius); y <= Math.min(254, iy + radius); y++) {
+                    try {
+                        if (world.func_147437_c(x, y, z)) continue;
+                        Block b = world.func_147439_a(x, y, z);
+                        if (b == null) continue;
+                        int meta = world.func_72805_g(x, y, z);
+                        if (ItemClassifier.isOreBlock(b, meta) || ItemClassifier.isLogBlock(b) || b == Blocks.field_150486_ae) {
+                            String name = ItemClassifier.getBlockDisplayName(b, meta);
+                            int distSq = (x - ix) * (x - ix) + (y - iy) * (y - iy) + (z - iz) * (z - iz);
+                            int[] cur = summary.get(name);
+                            if (cur == null) {
+                                summary.put(name, new int[]{1, x, y, z, distSq});
+                            } else {
+                                cur[0]++;
+                                if (distSq < cur[4]) {
+                                    cur[1] = x;
+                                    cur[2] = y;
+                                    cur[3] = z;
+                                    cur[4] = distSq;
+                                }
                             }
                         }
+                    } catch (Throwable ignored) {
                     }
                 }
             }

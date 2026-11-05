@@ -32,6 +32,10 @@ public class AIConfig {
         public Integer customLedColor;
         public String guardFilter;
         public int patrolRadius;
+        public int dimension;
+        public Double x;
+        public Double y;
+        public Double z;
     }
 
     public static class SavedLocation {
@@ -98,10 +102,17 @@ public class AIConfig {
     public synchronized void save(File configFile, Gson gson, Collection<DroneController> controllers) {
         if (configFile == null) return;
         try {
-            List<SavedDroneInfo> list = new ArrayList<SavedDroneInfo>();
+            Map<String, SavedDroneInfo> byUuid = new LinkedHashMap<String, SavedDroneInfo>();
+            if (this.savedDrones != null) {
+                for (SavedDroneInfo old : this.savedDrones) {
+                    if (old != null && old.uuid != null && !"Server".equalsIgnoreCase(old.owner)) {
+                        byUuid.put(old.uuid, old);
+                    }
+                }
+            }
             if (controllers != null) {
                 for (DroneController c : controllers) {
-                    if (c.drone == null || c.drone.field_70128_L || c.entityUuid == null) continue;
+                    if (c.drone == null || c.drone.field_70128_L || c.entityUuid == null || "Server".equalsIgnoreCase(c.ownerName)) continue;
                     SavedDroneInfo info = new SavedDroneInfo();
                     info.uuid = c.entityUuid.toString();
                     info.name = c.name;
@@ -114,10 +125,14 @@ public class AIConfig {
                     info.customLedColor = c.customLedColor;
                     info.guardFilter = c.guardFilter;
                     info.patrolRadius = c.patrolRadius;
-                    list.add(info);
+                    info.dimension = c.drone.field_71093_bK;
+                    info.x = Math.round(c.drone.field_70165_t * 10.0) / 10.0;
+                    info.y = Math.round(c.drone.field_70163_u * 10.0) / 10.0;
+                    info.z = Math.round(c.drone.field_70161_v * 10.0) / 10.0;
+                    byUuid.put(info.uuid, info);
                 }
             }
-            this.savedDrones = list;
+            this.savedDrones = new ArrayList<SavedDroneInfo>(byUuid.values());
             try (FileWriter writer = new FileWriter(configFile)) {
                 gson.toJson(this, writer);
             }

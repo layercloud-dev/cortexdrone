@@ -160,23 +160,26 @@ final class AgentLoopHeuristics {
 
     static boolean shouldForceFinal(JsonObject plan, JsonArray messages) {
         if (plan == null) return false;
+        if (plan.has("malformed") && plan.get("malformed").getAsBoolean()) return false;
         JsonElement doneEl = plan.has("done") ? plan.get("done") : null;
         boolean isDone = doneEl != null && doneEl.isJsonPrimitive() && doneEl.getAsBoolean();
         if (isDone) return false;
-        String s = "";
-        try { s = plan.toString().toLowerCase(); }
-        catch (Exception ignored) { return false; }
+        boolean hasCode = plan.has("code") && !plan.get("code").isJsonNull()
+            && !plan.get("code").getAsString().trim().isEmpty();
+        if (hasCode) return false;
+        String thought = plan.has("thought") && !plan.get("thought").isJsonNull()
+            ? plan.get("thought").getAsString() : "";
+        String reply = plan.has("reply") && !plan.get("reply").isJsonNull()
+            ? plan.get("reply").getAsString() : "";
+        String s = (thought + " " + reply).toLowerCase();
         boolean machineOnly = s.contains("machine_config") || s.contains("machine config")
             || s.contains("gui_only") || s.contains("gui only");
         boolean emptySearch = s.contains("\"found\":false") || s.contains("\"count\":0")
             || s.contains("\"matchcount\":0");
         if (machineOnly || emptySearch) return true;
-        boolean hasCode = plan.has("code") && !plan.get("code").isJsonNull()
-            && !plan.get("code").getAsString().trim().isEmpty();
         String lastUser = lastUserContent(messages);
-        if (!hasCode && lastUser != null && lastUser.contains("STRICT FORMAT")) return false;
-        return !hasCode && plan.has("thought") && !plan.get("thought").isJsonNull()
-            && plan.get("thought").getAsString().length() > 200;
+        if (lastUser != null && lastUser.contains("STRICT FORMAT")) return false;
+        return thought.length() > 200;
     }
 
     /**
@@ -209,10 +212,10 @@ final class AgentLoopHeuristics {
 
     static boolean isMachineBlockerResult(JsonObject result) {
         if (result == null || !result.has("result") || !result.get("result").isJsonObject()) return false;
-        String s = result.get("result").toString().toLowerCase();
-        return s.contains("machine_config") || s.contains("machine config") || s.contains("gui_only")
-            || s.contains("gui only") || s.contains("blocker") || s.contains("assembly machine")
-            || s.contains("chemical plant") || s.contains("blast furnace") || s.contains("anvil");
+        JsonObject r = result.getAsJsonObject("result");
+        if (r.has("blocker") && !r.get("blocker").isJsonNull()) return true;
+        String s = r.toString().toLowerCase();
+        return s.contains("\"gui_only\"") || s.contains("\"machine_config_only\"");
     }
 
     static boolean isEmptySearchResult(JsonObject execRes) {

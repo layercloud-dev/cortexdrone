@@ -24,6 +24,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
+import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.ServerChatEvent;
 
@@ -65,6 +66,7 @@ public class CortexDroneMod {
         MinecraftForge.EVENT_BUS.register(this);
         FMLCommonHandler.instance().bus().register(this);
         this.aiDroneManager = new AIDroneManager(this);
+        ForgeChunkManager.setForcedChunkLoadingCallback(this, this.aiDroneManager.getChunkLoader());
     }
 
     @Mod.EventHandler

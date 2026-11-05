@@ -44,7 +44,7 @@ public final class LlmResponseParser {
         + "\\bmachine.config\\b|\\bmachine config\\b)");
     private static final Pattern GENERIC_BLOCKER_PATTERN = Pattern.compile(
         "(?i)(\\bcannot\\b|\\bcan't\\b|\\bblocked\\b|\\bno (meteor|meteorite|block|item|chest|recipe)[^.\\n]{0,50}(found|nearby|available|in (chests|inventory))|"
-        + "\\bnot (found|available|in chests)(\\b[^.\\n]{0,60})?\\band (nothing|nowhere)");
+        + "\\bnot (found|available|in chests)(\\b[^.\\n]{0,60})?\\band (nothing|nowhere))");
 
     private LlmResponseParser() {
     }
@@ -186,6 +186,9 @@ public final class LlmResponseParser {
      * blocker — so it finishes in one turn rather than burning retries.
      */
     public static JsonObject proseBlocker(String s, String reasoning) {
+        if (s != null && s.trim().startsWith("{")) {
+            return null;
+        }
         String hay = ((s != null ? s : "") + "\n" + (reasoning != null ? reasoning : "")).trim();
         if (hay.isEmpty() || hay.length() < 40) {
             return null;
@@ -194,7 +197,7 @@ public final class LlmResponseParser {
         Matcher mAction = BLOCKER_ACTION_PATTERN.matcher(hay);
         boolean hasMachine = mMachine.find();
         boolean hasAction = mAction.find();
-        if (!hasMachine && !hasAction) {
+        if (!hasMachine || !hasAction) {
             return null;
         }
         // Generic (machine-less) blocker: only fires on long essay-like prose
@@ -230,6 +233,9 @@ public final class LlmResponseParser {
      * the machine path above handles short machine notes.
      */
     public static JsonObject genericProseBlocker(String s, String reasoning) {
+        if (s != null && s.trim().startsWith("{")) {
+            return null;
+        }
         String hay = ((s != null ? s : "") + "\n" + (reasoning != null ? reasoning : "")).trim();
         if (hay.isEmpty() || hay.length() < 180) {
             return null;

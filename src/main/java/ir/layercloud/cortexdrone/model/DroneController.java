@@ -141,6 +141,9 @@ public class DroneController {
     public double lastZ;
     public float orbitAngle = 0.0f;
     public volatile boolean despawned = false;
+    public int forcedChunkX = Integer.MIN_VALUE;
+    public int forcedChunkZ = Integer.MIN_VALUE;
+    public int forcedDim = Integer.MIN_VALUE;
 
     public DroneController(int id, Drone drone, String name, String ownerName) {
         this.id = id;

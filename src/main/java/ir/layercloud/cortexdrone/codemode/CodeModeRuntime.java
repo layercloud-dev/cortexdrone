@@ -193,16 +193,15 @@ public class CodeModeRuntime {
                 if (fb >= 0 && lb > fb) {
                     try {
                         JsonObject parsedOut = new JsonParser().parse(rawOut.substring(fb, lb + 1)).getAsJsonObject();
-                        out.add("parsed", parsedOut);
                         boolean parsedOk = parsedOut.has("ok") ? parsedOut.get("ok").getAsBoolean() : true;
                         out.addProperty("ok", parsedOk);
                         if (parsedOut.has("superseded") && parsedOut.get("superseded").getAsBoolean()) {
                             out.addProperty("superseded", true);
                         }
-                        if (parsedOut.has("result")) out.add("result", new JsonParser().parse(parsedOut.get("result").toString()));
-                        if (parsedOut.has("logs")) out.add("logs", new JsonParser().parse(parsedOut.get("logs").toString()));
-                        if (!parsedOk && parsedOut.has("error")) out.add("error", new JsonParser().parse(parsedOut.get("error").toString()));
-                        if (!parsedOk && parsedOut.has("rawOutput")) out.add("rawOutput", new JsonParser().parse(parsedOut.get("rawOutput").toString()));
+                        if (parsedOut.has("result")) out.add("result", parsedOut.get("result"));
+                        if (parsedOut.has("logs")) out.add("logs", parsedOut.get("logs"));
+                        if (!parsedOk && parsedOut.has("error")) out.add("error", parsedOut.get("error"));
+                        if (!parsedOk && parsedOut.has("rawOutput")) out.add("rawOutput", parsedOut.get("rawOutput"));
                     } catch (Exception parseEx) {
                         out.addProperty("ok", false);
                         out.addProperty("error", "JS output parse failed: " + parseEx.toString());

@@ -19,6 +19,7 @@ import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.inventory.SmeltingService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.navigation.DroneChunkLoader;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.world.DocLookupService;
@@ -53,6 +54,7 @@ public class AIDroneManager {
     private AIConfig config = new AIConfig();
 
     private final DroneLogger logger = new DroneLogger();
+    private final DroneChunkLoader chunkLoader;
     private final FlightPathfinder pathfinder;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
@@ -78,6 +80,7 @@ public class AIDroneManager {
     private final java.util.Set<UUID> despawnedUuids = java.util.Collections.synchronizedSet(new java.util.HashSet<UUID>());
     public AIDroneManager(CortexDroneMod mod) {
         this.mod = mod;
+        this.chunkLoader = new DroneChunkLoader(mod, this.logger);
         this.pathfinder = new FlightPathfinder(this, this.logger);
         this.worldScanner = new WorldScanner(this.logger, this.config);
         this.inventoryService = new InventoryService(this, this.logger, this.pathfinder);
@@ -131,69 +134,30 @@ public class AIDroneManager {
     public CortexDroneMod getMod() { return this.mod; }
     public AIConfig getConfig() { return this.config; }
     public DroneLogger getLogger() { return this.logger; }
+    public DroneChunkLoader getChunkLoader() { return this.chunkLoader; }
     public TickProfiler getTickProfiler() { return this.tickProfiler; }
-
-    public FlightPathfinder getPathfinder() {
-        return this.pathfinder;
-    }
-
-    public WorldScanner getWorldScanner() {
-        return this.worldScanner;
-    }
-
-    public InventoryService getInventoryService() {
-        return this.inventoryService;
-    }
-
-    public ChestSorter getChestSorter() {
-        return this.chestSorter;
-    }
-
-    public SmeltingService getSmeltingService() {
-        return this.smeltingService;
-    }
-
-    public MiningService getMiningService() {
-        return this.miningService;
-    }
-
-    public BuildingService getBuildingService() {
-        return this.buildingService;
-    }
-
-    public CombatService getCombatService() {
-        return this.combatService;
-    }
-
-    public DocLookupService getDocLookupService() {
-        return this.docLookupService;
-    }
-
-    public SkillLibrary getSkillLibrary() {
-        return this.skillLibrary;
-    }
-
-    public CodeModeRuntime getCodeModeRuntime() {
-        return this.codeModeRuntime;
-    }
-
-    public RpcDispatcher getRpcDispatcher() {
-        return this.rpcDispatcher;
-    }
-
-    public LlmAgentService getAgentService() {
-        return this.agentService;
-    }
-
-    public Map<Integer, DroneController> getControllersById() {
-        return this.controllersById;
-    }
+    public FlightPathfinder getPathfinder() { return this.pathfinder; }
+    public WorldScanner getWorldScanner() { return this.worldScanner; }
+    public InventoryService getInventoryService() { return this.inventoryService; }
+    public ChestSorter getChestSorter() { return this.chestSorter; }
+    public SmeltingService getSmeltingService() { return this.smeltingService; }
+    public MiningService getMiningService() { return this.miningService; }
+    public BuildingService getBuildingService() { return this.buildingService; }
+    public CombatService getCombatService() { return this.combatService; }
+    public DocLookupService getDocLookupService() { return this.docLookupService; }
+    public SkillLibrary getSkillLibrary() { return this.skillLibrary; }
+    public CodeModeRuntime getCodeModeRuntime() { return this.codeModeRuntime; }
+    public RpcDispatcher getRpcDispatcher() { return this.rpcDispatcher; }
+    public LlmAgentService getAgentService() { return this.agentService; }
+    public Map<Integer, DroneController> getControllersById() { return this.controllersById; }
 
     public void onServerStarting(FMLServerStartingEvent event, File worldDir) {
         this.configFile = new File(worldDir, "layercloud-ai.json");
         this.skillLibrary = new SkillLibrary(worldDir);
         this.logger.setDebugLogFile(new File(worldDir, "layercloud-drone-debug.log"));
         loadConfig();
+        this.chunkLoader.forceSavedStateChunks(this.config);
+        reconnectUnlinkedWorldDrones();
         this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION + " (Modular Pure Code Mode Engine) initialized", "worldDir=" + worldDir.getAbsolutePath());
 
         event.registerServerCommand(new DroneCommand("drone", this));
@@ -479,6 +443,7 @@ public class AIDroneManager {
         if (ownerName != null && !"Server".equalsIgnoreCase(ownerName)) {
             this.controllersByOwner.put(CortexDroneMod.normKey(ownerName), ctrl);
         }
+        this.chunkLoader.updateDroneTicket(ctrl);
         return ctrl;
     }
 
@@ -583,8 +548,18 @@ public class AIDroneManager {
 
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
         ctrl.despawned = true;
+        this.chunkLoader.releaseDroneTicket(ctrl);
         UUID duid = d.func_110124_au();
-        if (duid != null) this.despawnedUuids.add(duid);
+        if (duid != null) {
+            this.despawnedUuids.add(duid);
+            if (this.config != null && this.config.savedDrones != null) {
+                Iterator<AIConfig.SavedDroneInfo> sit = this.config.savedDrones.iterator();
+                while (sit.hasNext()) {
+                    AIConfig.SavedDroneInfo s = sit.next();
+                    if (s != null && duid.toString().equals(s.uuid)) sit.remove();
+                }
+            }
+        }
         d.func_70106_y();
         this.controllersById.remove(ctrl.id);
         this.httpServer.updateCachedSnapshots();

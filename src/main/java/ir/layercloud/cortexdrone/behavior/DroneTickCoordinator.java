@@ -60,6 +60,7 @@ public class DroneTickCoordinator {
         if (ctrl.followAnchorCooldown > 0) ctrl.followAnchorCooldown--;
         if (ctrl.breadcrumbCooldown > 0) ctrl.breadcrumbCooldown--;
 
+        this.manager.getChunkLoader().updateDroneTicket(ctrl);
         FlightPathfinder.ensureChunkLoaded(world, d.field_70165_t, d.field_70161_v);
         // OC hardware bridge is expensive (reflection + buffer top-ups); amortize every 40 ticks per drone
         boolean machineRunningOk = (ctrl.tickClock % 40 == 1) ? this.manager.ensureMachineRunningState(d) : d.isRunning();

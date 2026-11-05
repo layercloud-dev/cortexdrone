@@ -101,14 +101,12 @@ public class LlmAgentService {
         if (player != null) {
             ctx.addProperty("playerYaw", Math.round(player.field_70177_z * 10.0f) / 10.0f);
             ctx.addProperty("playerPitch", Math.round(player.field_70125_A * 10.0f) / 10.0f);
-            JsonObject lookBlock = WorldScanner.raycastPlayerLook(world, player, 80.0);
-            if (lookBlock != null) {
-                ctx.add("playerCrosshairLookBlock", lookBlock);
-            }
-            JsonObject supportBlock = WorldScanner.findPlayerSupportBlock(world, player);
-            if (supportBlock != null) {
-                ctx.add("playerStandingOnBlock", supportBlock);
-            }
+            try {
+                JsonObject lookBlock = WorldScanner.raycastPlayerLook(world, player, 80.0);
+                if (lookBlock != null) ctx.add("playerCrosshairLookBlock", lookBlock);
+                JsonObject supportBlock = WorldScanner.findPlayerSupportBlock(world, player);
+                if (supportBlock != null) ctx.add("playerStandingOnBlock", supportBlock);
+            } catch (Throwable ignored) {}
             ItemStack held = player.func_71045_bC();
             ctx.addProperty("playerHeldItem", (held != null && held.field_77994_a > 0)
                 ? (held.func_82833_r() + ":" + held.func_77960_j() + " x" + held.field_77994_a)
@@ -119,11 +117,11 @@ public class LlmAgentService {
         ctx.addProperty("droneY", Math.round(ctrl.drone.field_70163_u * 10.0) / 10.0);
         ctx.addProperty("droneZ", Math.round(ctrl.drone.field_70161_v * 10.0) / 10.0);
         ctx.addProperty("mode", ctrl.mode.name());
-        ctx.addProperty("droneCanSeeSky", world.func_72937_j(
-            MathHelper.func_76128_c(ctrl.drone.field_70165_t),
-            MathHelper.func_76128_c(ctrl.drone.field_70163_u),
-            MathHelper.func_76128_c(ctrl.drone.field_70161_v)
-        ));
+        boolean canSeeSky = false;
+        try {
+            canSeeSky = world.func_72937_j(MathHelper.func_76128_c(ctrl.drone.field_70165_t), MathHelper.func_76128_c(ctrl.drone.field_70163_u), MathHelper.func_76128_c(ctrl.drone.field_70161_v));
+        } catch (Throwable ignored) {}
+        ctx.addProperty("droneCanSeeSky", canSeeSky);
         ctx.addProperty("breadcrumbCount", ctrl.navigationHistory.size());
         ctx.addProperty("droneInventory", InventoryService.formatInventorySummary(ctrl.drone.mainInventory()));
         ctx.addProperty("playerInventory", player != null ? InventoryService.formatInventorySummary(player.field_71071_by) : "Offline");
@@ -153,11 +151,13 @@ public class LlmAgentService {
         }
 
         JsonObject resources = new JsonObject();
-        Map<String, int[]> scan = this.worldScanner.scanNearbyResources(world, refX, refY, refZ, 24);
-        for (Map.Entry<String, int[]> e : scan.entrySet()) {
-            int[] v = e.getValue();
-            resources.addProperty(e.getKey(), v[0] + " (nearest: " + v[1] + "," + v[2] + "," + v[3] + ")");
-        }
+        try {
+            Map<String, int[]> scan = this.worldScanner.scanNearbyResources(world, refX, refY, refZ, 24);
+            for (Map.Entry<String, int[]> e : scan.entrySet()) {
+                int[] v = e.getValue();
+                resources.addProperty(e.getKey(), v[0] + " (nearest: " + v[1] + "," + v[2] + "," + v[3] + ")");
+            }
+        } catch (Throwable ignored) {}
         ctx.add("nearbyBlocks24m", resources);
         return ctx;
     }
@@ -235,7 +235,7 @@ public class LlmAgentService {
                 JsonObject plan;
                 try {
                     plan = callOpenAiChatMessages(ctrl, messages);
-                } catch (Exception ex) {
+                } catch (Throwable ex) {
                     lastLlmError = "LLM gateway exception: " + ex.toString();
                     this.logger.log("LLM", ctrl, lastLlmError + " loopId=" + myLoopId + " turn=" + turn,
                         "url=" + this.manager.getConfig().apiUrl + " key=" + maskKey(this.manager.getConfig().apiKey));
@@ -555,7 +555,9 @@ public class LlmAgentService {
                 @Override public void run() { manager.droneSay(player, ctrl, capReply); }
             });
             return;
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            // Catch Throwable, not Exception: an Error (OOM/NoClassDefFound/...) on a
+            // pool thread otherwise dies silently after TRACE turn=0. Always log + speak.
             this.logger.log("LLM", ctrl, "Pure Code Mode agent loop error loopId=" + myLoopId,
                 "error=" + e.toString() + " key=" + maskKey(this.manager.getConfig().apiKey));
             final String errDetail = e.toString();
@@ -564,7 +566,7 @@ public class LlmAgentService {
                 this.manager.getMod().queueMain(new Runnable() {
                     @Override public void run() { manager.droneSay(player, ctrl, errReply); }
                 });
-            } catch (Exception ignored) {
+            } catch (Throwable ignored) {
                 LoopTracer.sayError(this.manager, player, ctrl, errDetail);
             }
         }
@@ -584,14 +586,7 @@ public class LlmAgentService {
             }
         }
         for (int attempt = 1; attempt <= 3; attempt++) {
-            // FIX: setFixedLengthStreamingMode(0) before setDoOutput. Without it,
-            // AbstractDelegateHttpsURLConnection leaves useCaches=true, so every
-            // attempt reuses the JVM-wide KeepAliveCache socket. The Go gateway
-            // (layercloud-ai) closes an idle keep-alive connection after handling
-            // one response; Java then blocks forever in parseHTTPHeader ->
-            // NioSocketImpl.timedRead with NO timeout on the stale pooled socket
-            // (engine execute + LLM both silently hang, no log, no retry). Forcing
-            // chunked/initiate streaming makes every request a fresh connection.
+            final long attemptT0 = System.currentTimeMillis();
             URL url = new URL(cfg.apiUrl);
             boolean isLocal = cfg.apiUrl.contains("127.0.0.1") || cfg.apiUrl.contains("localhost");
             HttpURLConnection conn = (HttpURLConnection) (isLocal
@@ -620,72 +615,67 @@ public class LlmAgentService {
             }
             req.add("messages", AgentLoopHeuristics.pruneMessagesWindow(messages));
 
+            final byte[] body = req.toString().getBytes(StandardCharsets.UTF_8);
+            conn.setFixedLengthStreamingMode(body.length);
+
             try {
                 try (OutputStream os = conn.getOutputStream()) {
-                    byte[] body = req.toString().getBytes(StandardCharsets.UTF_8);
-                    conn.setFixedLengthStreamingMode(body.length);
                     os.write(body);
                 }
 
                 int httpCode = conn.getResponseCode();
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                    httpCode >= 200 && httpCode < 300 ? conn.getInputStream() : conn.getErrorStream(),
-                    StandardCharsets.UTF_8
-                ))) {
-                    StringBuilder rawSb = new StringBuilder();
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        rawSb.append(line).append('\n');
+                java.io.InputStream respStream = httpCode >= 200 && httpCode < 300 ? conn.getInputStream() : conn.getErrorStream();
+                String rawBody = "";
+                if (respStream != null) {
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(respStream, StandardCharsets.UTF_8))) {
+                        StringBuilder rawSb = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            rawSb.append(line).append('\n');
+                        }
+                        rawBody = rawSb.toString().trim();
                     }
-                    String rawBody = rawSb.toString().trim();
-                    if (httpCode < 200 || httpCode >= 300) {
-                        String errDetail = "LLM gateway HTTP " + httpCode + (rawBody.isEmpty() ? "" : " - " + rawBody.substring(0, Math.min(800, rawBody.length())));
-                        lastLlmError = errDetail;
-                        this.logger.log("LLM", ctrl, errDetail, "url=" + cfg.apiUrl + " key=" + maskKey(cfg.apiKey));
-                        if (attempt < 3) continue;
-                        return lastMalformed;
-                    }
-                    JsonElement parsedResp = new JsonParser().parse(rawBody);
-                    if (parsedResp == null || !parsedResp.isJsonObject()) {
-                        lastLlmError = "LLM gateway malformed JSON (attempt " + attempt + "): "
-                            + LoopTracer.snippet(rawBody, 300);
-                        this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl + " httpCode=" + httpCode);
-                        if (attempt < 3) continue;
-                        return lastMalformed;
-                    }
-                    JsonObject resp = parsedResp.getAsJsonObject();
-                    if (!resp.has("choices") || !resp.get("choices").isJsonArray() || resp.getAsJsonArray("choices").size() == 0) {
-                        lastLlmError = "LLM gateway returned no choices: " + rawBody.substring(0, Math.min(300, rawBody.length()));
-                        this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl);
-                        if (attempt < 3) continue;
-                        return lastMalformed;
-                    }
-                    JsonObject msgObj = resp.getAsJsonArray("choices").get(0).getAsJsonObject().getAsJsonObject("message");
-                    String content = "";
-                    String reasoning = "";
-                    if (msgObj != null && msgObj.has("content") && !msgObj.get("content").isJsonNull()) {
-                        content = msgObj.get("content").getAsString().trim();
-                    }
-                    if (msgObj != null && msgObj.has("reasoning_content") && !msgObj.get("reasoning_content").isJsonNull()) {
-                        reasoning = msgObj.get("reasoning_content").getAsString().trim();
-                    }
-                    if (content.isEmpty() && reasoning.isEmpty()) {
-                        lastLlmError = "LLM gateway empty content and reasoning (attempt " + attempt + "): "
-                            + LoopTracer.snippet(rawBody, 300);
-                        this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl + " httpCode=" + httpCode);
-                        if (attempt < 3) continue;
-                        return lastMalformed;
-                    }
-                    JsonObject parsed = LlmResponseParser.parse(content.isEmpty() ? reasoning : content, reasoning);
-                    if (parsed != null && parsed.has("malformed") && parsed.get("malformed").getAsBoolean()) {
-                        lastMalformed = parsed;
-                        if (attempt < 2) continue;
-                    } else if (parsed != null) {
-                        consecutiveConnectFailures = 0;
-                    }
-                    return parsed;
                 }
-            } catch (Exception ex) {
+                if (httpCode < 200 || httpCode >= 300) {
+                    String errDetail = "LLM gateway HTTP " + httpCode + (rawBody.isEmpty() ? "" : " - " + rawBody.substring(0, Math.min(800, rawBody.length())));
+                    lastLlmError = errDetail;
+                    this.logger.log("LLM", ctrl, errDetail, "url=" + cfg.apiUrl + " key=" + maskKey(cfg.apiKey));
+                    if (attempt < 3) continue;
+                    return lastMalformed;
+                }
+                JsonElement parsedResp = new JsonParser().parse(rawBody);
+                if (parsedResp == null || !parsedResp.isJsonObject()) {
+                    lastLlmError = "LLM gateway malformed JSON (attempt " + attempt + "): " + LoopTracer.snippet(rawBody, 300);
+                    this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl + " httpCode=" + httpCode);
+                    if (attempt < 3) continue;
+                    return lastMalformed;
+                }
+                JsonObject resp = parsedResp.getAsJsonObject();
+                if (!resp.has("choices") || !resp.get("choices").isJsonArray() || resp.getAsJsonArray("choices").size() == 0) {
+                    lastLlmError = "LLM gateway returned no choices: " + rawBody.substring(0, Math.min(300, rawBody.length()));
+                    this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl);
+                    if (attempt < 3) continue;
+                    return lastMalformed;
+                }
+                JsonObject msgObj = resp.getAsJsonArray("choices").get(0).getAsJsonObject().getAsJsonObject("message");
+                String content = (msgObj != null && msgObj.has("content") && !msgObj.get("content").isJsonNull()) ? msgObj.get("content").getAsString().trim() : "";
+                String reasoning = (msgObj != null && msgObj.has("reasoning_content") && !msgObj.get("reasoning_content").isJsonNull()) ? msgObj.get("reasoning_content").getAsString().trim() : "";
+                if (content.isEmpty() && reasoning.isEmpty()) {
+                    lastLlmError = "LLM gateway empty content and reasoning (attempt " + attempt + "): " + LoopTracer.snippet(rawBody, 300);
+                    this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl + " httpCode=" + httpCode);
+                    if (attempt < 3) continue;
+                    return lastMalformed;
+                }
+                JsonObject parsed = LlmResponseParser.parse(content.isEmpty() ? reasoning : content, reasoning);
+                if (parsed != null && parsed.has("malformed") && parsed.get("malformed").getAsBoolean()) {
+                    lastMalformed = parsed;
+                    if (attempt < 2) continue;
+                } else if (parsed != null) {
+                    consecutiveConnectFailures = 0;
+                    this.logger.log("LLM", ctrl, "LLM response OK (" + (System.currentTimeMillis() - attemptT0) + "ms)", LoopTracer.snippet(content.isEmpty() ? reasoning : content, 600));
+                }
+                return parsed;
+            } catch (Throwable ex) {
                 String exMsg = ex.getMessage();
                 String exDetail = "LLM gateway exception: " + ex.toString();
                 lastLlmError = exDetail;
@@ -696,8 +686,10 @@ public class LlmAgentService {
                     localFailures++;
                     consecutiveConnectFailures++;
                     lastConnectFailureAtMs = System.currentTimeMillis();
-                    if (attempt >= 3) throw ex;
-                } else if (attempt >= 3) throw ex;
+                }
+                if (attempt >= 3) throw ex instanceof Exception ? (Exception) ex : new RuntimeException(ex);
+            } finally {
+                try { conn.disconnect(); } catch (Throwable ignored) {}
             }
         }
         return lastMalformed;

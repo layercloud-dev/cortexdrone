@@ -16,11 +16,14 @@ Removed from the tool surface:
   `waitUntilIdle` task queues)
 - the legacy tool-call fallback in the agent loop
 
-The old domain services still exist as internal implementation details where
-they are useful (chunk safety, pathfinding, inventory helpers). They are **not
-registered as RPC tools**. The remaining `mineQueue` field is only a transient
-internal dig-path used by the navigator's tunnel/self-rescue; it is never
-populated by batched AI commands and there is no AI-facing instruction queue.
+The entire `behavior` package was removed. What remains are small harness
+primitives: `BlockBreakAction` (one explicit block plus the navigator's
+transient dig path), `BlockPlacePrimitive` (one block), `LightingAura`,
+`DroneTickPipeline` (movement/single-action plumbing), and the task/session
+classes. No pre-made mining, building, farming, hunting, smelting, machine-craft
+or sorting executor is exposed. The remaining `mineQueue` field is only the
+transient internal tunnel/self-rescue dig path; it is never populated by batched
+AI commands and there is no AI-facing instruction queue.
 
 ## Master tool contract
 

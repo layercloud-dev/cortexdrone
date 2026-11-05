@@ -5,9 +5,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.behavior.BuildingService;
-import ir.layercloud.cortexdrone.behavior.CombatService;
-import ir.layercloud.cortexdrone.behavior.MiningService;
+import ir.layercloud.cortexdrone.harness.BlockBreakAction;
+import ir.layercloud.cortexdrone.harness.BlockPlacePrimitive;
 import ir.layercloud.cortexdrone.harness.MasterToolCatalog;
 import ir.layercloud.cortexdrone.inventory.ChestSorter;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
@@ -43,9 +42,7 @@ public class MasterRpcHandler implements RpcHandler {
     private final InventoryService inventoryService;
     private final ChestSorter chestSorter;
     private final SmeltingService smeltingService;
-    private final MiningService miningService;
-    private final BuildingService buildingService;
-    private final CombatService combatService;
+    private final BlockBreakAction blockBreakAction;
     private final WorldRpcHandler worldReader;
     private final InventoryRpcHandler inventoryReader;
     private final NavigationRpcHandler navigationReader;
@@ -59,9 +56,7 @@ public class MasterRpcHandler implements RpcHandler {
         InventoryService inventoryService,
         ChestSorter chestSorter,
         SmeltingService smeltingService,
-        MiningService miningService,
-        BuildingService buildingService,
-        CombatService combatService
+        BlockBreakAction blockBreakAction
     ) {
         this.manager = manager;
         this.worldScanner = worldScanner;
@@ -69,10 +64,8 @@ public class MasterRpcHandler implements RpcHandler {
         this.inventoryService = inventoryService;
         this.chestSorter = chestSorter;
         this.smeltingService = smeltingService;
-        this.miningService = miningService;
-        this.buildingService = buildingService;
-        this.combatService = combatService;
-        this.worldReader = new WorldRpcHandler(manager, worldScanner, buildingService);
+        this.blockBreakAction = blockBreakAction;
+        this.worldReader = new WorldRpcHandler(manager, worldScanner);
         this.inventoryReader = new InventoryRpcHandler(manager, inventoryService, chestSorter, smeltingService);
         this.navigationReader = new NavigationRpcHandler(manager, pathfinder, worldScanner);
         this.actionPrimitives = new ActionRpcHandler(manager, inventoryService);
@@ -249,7 +242,7 @@ public class MasterRpcHandler implements RpcHandler {
             JsonObject res = needsMovement(ctrl, x, y, z, "break", dist);
             if (res != null) return res;
         }
-        boolean started = this.miningService.startSingleBlockTask(ctrl, player, x, y, z);
+        boolean started = this.blockBreakAction.startSingleBlockTask(ctrl, player, x, y, z);
         JsonObject res = ok();
         res.addProperty("started", started);
         res.add("target", point(x, y, z));
@@ -274,7 +267,7 @@ public class MasterRpcHandler implements RpcHandler {
         String filter = args.has("block") ? str(args, "block", "any")
             : (args.has("with") ? str(args, "with", "any") : str(args, "item", "any"));
         int meta = intValue(args, "meta", -1);
-        boolean placed = this.miningService.placeSingleBlock(ctrl, player, x, y, z, filter, meta);
+        boolean placed = BlockPlacePrimitive.placeFromInventory(this.manager, world, ctrl, player, x, y, z, filter, meta);
         JsonObject res = ok();
         res.addProperty("placed", placed);
         res.addProperty("block", filter);

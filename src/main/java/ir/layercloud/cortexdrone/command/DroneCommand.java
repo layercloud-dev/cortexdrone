@@ -3,7 +3,6 @@ package ir.layercloud.cortexdrone.command;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.behavior.MiningService;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
@@ -32,7 +31,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
 
     @Override
     public String func_71518_a(ICommandSender sender) {
-        return "/" + this.cmdName + " <spawn|link|despawn|list|status|follow|come|stay|goto|guard|cover|patrol|setbase|carry|take|give|torch|drop|chest|debug|config|js|mine|farm|hunt|cook|smelt|sort|scoop|plug|replace...>";
+        return "/" + this.cmdName + " <spawn|link|despawn|list|status|follow|come|stay|goto|setbase|carry|take|give|torch|drop|chest|debug|config|js|mine|farm|cook|smelt|sort|scoop|plug|replace...>";
     }
 
     @Override
@@ -51,7 +50,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         if (args.length == 1) {
             return func_71530_a(args,
                 "spawn", "link", "despawn", "list", "status", "follow", "come", "stay", "goto",
-                "guard", "cover", "patrol", "mine", "farm", "hunt", "cook", "smelt", "sort", "carry", "setbase",
+                "mine", "farm", "cook", "smelt", "sort", "carry", "setbase",
                 "scoop", "plug", "replace", "take", "give", "torch", "drop", "chest", "scan", "js", "debug", "config", "help");
         }
         if (args.length == 2) {
@@ -80,7 +79,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             if (sub.equals("cook") || sub.equals("smelt")) {
                 return func_71530_a(args, "meat", "ores", "food", "all");
             }
-            if (sub.equals("follow") || sub.equals("guard") || sub.equals("cover")) {
+            if (sub.equals("follow")) {
                 MinecraftServer srv = MinecraftServer.func_71276_C();
                 if (srv != null && srv.func_71213_z() != null) {
                     return func_71530_a(args, srv.func_71213_z());
@@ -106,8 +105,8 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v1.4.0 (Master-Tool Harness) Commands ===");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone follow [player] | come | stay | goto <x> <y> <z> | carry [x y z] | setbase");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone guard [player] | cover [player] | patrol [radius] | take | give | drop | chest");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone mine|farm|hunt|cook|smelt|sort|scoop|plug|replace ..." + EnumChatFormatting.GRAY + " (composed by the AI)");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone take | give | drop | chest");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone mine|farm|cook|smelt|sort|scoop|plug|replace ..." + EnumChatFormatting.GRAY + " (composed by the AI)");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone torch | js <code> | debug [on|off|tail|clear]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
             return;
@@ -323,27 +322,6 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             return;
         }
 
-        if (sub.equals("guard") || sub.equals("cover") || sub.equals("defend") || sub.equals("protect")) {
-            String targetName = args.length >= 2 ? args[1] : player.func_70005_c_();
-            ctrl.targetPlayerName = targetName;
-            ctrl.guardFilter = "hostile|mutant";
-            ctrl.clearAllTaskQueues();
-            this.manager.setDroneMode(ctrl, Mode.GUARD, "Command /drone " + sub + " " + targetName);
-            this.manager.saveConfig();
-            this.manager.droneSay(player, ctrl, "Cover/Guard mode engaged for " + targetName + "! Will intercept reachable hostile & mutant mobs within 24m.");
-            return;
-        }
-
-        if (sub.equals("patrol")) {
-            int rad = (args.length >= 2 && MiningService.isNumericFilter(args[1])) ? Integer.parseInt(args[1]) : 36;
-            ctrl.targetPlayerName = player.func_70005_c_();
-            ctrl.patrolRadius = Math.max(16, rad);
-            ctrl.guardFilter = "hostile|mutant";
-            this.manager.setDroneMode(ctrl, Mode.PATROL, "Command /drone patrol " + ctrl.patrolRadius + "m");
-            this.manager.droneSay(player, ctrl, "Patrolling " + ctrl.patrolRadius + "m around you and eliminating reachable hostile/mutant mobs!");
-            return;
-        }
-
         // All composite physical commands are natural-language tasks now. The
         // agent composes them from the master primitives; no pre-made tool path.
         if (isMasterComposedCommand(sub)) {
@@ -406,7 +384,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             } else {
                 lightArgs.addProperty("toggle", true);
             }
-            JsonObject r = this.manager.getLightingService().configure(ctrl, lightArgs);
+            JsonObject r = this.manager.getLightingAura().configure(ctrl, lightArgs);
             this.manager.saveConfig();
             boolean on = r.has("active") && r.get("active").getAsBoolean();
             this.manager.droneSay(player, ctrl, "Torch-free light aura " + (on ? "ENABLED" : "DISABLED")

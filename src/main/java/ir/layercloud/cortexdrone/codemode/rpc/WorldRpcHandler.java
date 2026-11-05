@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.behavior.BuildingService;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
@@ -48,7 +47,7 @@ public class WorldRpcHandler implements RpcHandler {
 
     private final AIDroneManager manager;
     private final WorldScanner worldScanner;
-    private final BuildingService buildingService;
+    private final StructureArchitect structureArchitect = new StructureArchitect();
 
     @Override
     public String[] getSupportedMethods() {
@@ -459,11 +458,11 @@ public class WorldRpcHandler implements RpcHandler {
             int width = args.has("width") ? args.get("width").getAsInt() : 5;
             int depth = args.has("depth") ? args.get("depth").getAsInt() : width;
             int maxR = args.has("maxRadius") ? args.get("maxRadius").getAsInt() : 24;
-            return this.buildingService.getStructureArchitect().findBestBuildSite(world, player, ctrl, width, depth, maxR);
+            return this.structureArchitect.findBestBuildSite(world, player, ctrl, width, depth, maxR);
         }
 
         if (m.equals("plan_structure")) {
-            StructureArchitect.StructurePlan plan = this.buildingService.getStructureArchitect().generateStructureBlueprint(world, player, ctrl, args);
+            StructureArchitect.StructurePlan plan = this.structureArchitect.generateStructureBlueprint(world, player, ctrl, args);
             return plan.toJson();
         }
 

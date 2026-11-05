@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.behavior;
+package ir.layercloud.cortexdrone.harness;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.config.DroneLogger;
@@ -28,7 +28,7 @@ import net.minecraft.world.chunk.Chunk;
  * is white. The colour is still stored and reported so callers can drive it.
  */
 @RequiredArgsConstructor
-public class LightingService {
+public class LightingAura {
     private static final int MIN_RADIUS = 2;
     private static final int MAX_RADIUS = 12;
     private static final int MIN_LEVEL = 4;

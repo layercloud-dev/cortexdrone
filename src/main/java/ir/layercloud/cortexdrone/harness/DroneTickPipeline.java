@@ -1,10 +1,9 @@
-package ir.layercloud.cortexdrone.behavior;
+package ir.layercloud.cortexdrone.harness;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
-import ir.layercloud.cortexdrone.inventory.SmeltingService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
@@ -19,20 +18,18 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
 /**
- * Coordinates the 20-Hz server tick loop for each active DroneController:
- * machine state maintenance, breadcrumb recording, velocity stuck recovery,
- * item vacuuming, auto-torch, mode state machine dispatch, and 20-FPS LED animations.
+ * Single-task 20-Hz pipeline: movement, breadcrumbs, stuck recovery, item
+ * pickup, lighting aura, the one active break primitive, carry/drop/deposit.
+ * It contains no pre-made mining/building/farming/hunting action executor.
  */
 @RequiredArgsConstructor
-public class DroneTickCoordinator {
+public class DroneTickPipeline {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final InventoryService inventoryService;
-    private final SmeltingService smeltingService;
-    private final MiningService miningService;
-    private final BuildingService buildingService;
-    private final CombatService combatService;
+    private final BlockBreakAction blockBreakAction;
+    private final LightingAura lightingAura;
 
     public void tickController(DroneController ctrl) {
         Drone d = ctrl.drone;
@@ -108,17 +105,17 @@ public class DroneTickCoordinator {
             ctrl.stuckTicks = 0;
         }
 
-        if (ctrl.pickupCooldown <= 0 && (ctrl.mode == Mode.FOLLOW || ctrl.mode == Mode.GUARD || ctrl.mode == Mode.PATROL || ctrl.mode == Mode.MINE)) {
+        if (ctrl.pickupCooldown <= 0 && (ctrl.mode == Mode.FOLLOW || ctrl.mode == Mode.MINE)) {
             ctrl.pickupCooldown = 5;
             InventoryService.suckNearbyItems(d, d.field_70165_t, d.field_70163_u, d.field_70161_v, 3.5);
         }
 
         if (ctrl.autoTorch || !ctrl.lightCells.isEmpty()) {
-            this.manager.getLightingService().tick(ctrl);
+            this.lightingAura.tick(ctrl);
         }
 
         EntityPlayerMP owner = CortexDroneMod.findPlayer(ctrl.ownerName);
-        if (ctrl.mode != Mode.FOLLOW && ctrl.mode != Mode.GUARD && ctrl.mode != Mode.PATROL) {
+        if (ctrl.mode != Mode.FOLLOW) {
             ctrl.playerLookHold = false;
         }
 
@@ -258,33 +255,8 @@ public class DroneTickCoordinator {
                 }
                 break;
             }
-            case GUARD:
-            case PATROL:
-                this.combatService.tickGuardOrPatrolBehavior(ctrl);
-                break;
             case MINE:
-                this.miningService.tickMiningBehavior(ctrl, owner);
-                break;
-            case HUNT:
-                this.combatService.tickHuntBehavior(ctrl, owner);
-                break;
-            case BUILD:
-                this.buildingService.tickBuildBehavior(ctrl, owner);
-                break;
-            case SCOOP:
-                this.inventoryService.tickScoopBehavior(ctrl, owner);
-                break;
-            case SMELT:
-                this.smeltingService.tickSmeltBehavior(ctrl, owner);
-                break;
-            case MACHINE:
-                try {
-                    this.inventoryService.getMachineCraftExecutor().tickMachineCraftBehavior(ctrl, owner);
-                } catch (Throwable t) {
-                    this.logger.log("ERROR", ctrl, "Exception in tickMachineCraftBehavior: " + t.toString(),
-                        t.getStackTrace().length > 0 ? t.getStackTrace()[0].toString() : "");
-                    this.manager.setDroneMode(ctrl, Mode.FOLLOW, "MachineCraft tick error");
-                }
+                this.blockBreakAction.tick(ctrl, owner);
                 break;
             case CARRY:
                 this.pathfinder.tickCarryBehavior(ctrl, owner);
@@ -294,6 +266,8 @@ public class DroneTickCoordinator {
                 break;
             case DEPOSIT:
                 tickDepositBehavior(ctrl, d, world, owner);
+                break;
+            default:
                 break;
         }
     }

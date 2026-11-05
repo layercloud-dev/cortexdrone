@@ -2,11 +2,6 @@ package ir.layercloud.cortexdrone;
 
 import com.google.gson.JsonObject;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import ir.layercloud.cortexdrone.behavior.BuildingService;
-import ir.layercloud.cortexdrone.behavior.CombatService;
-import ir.layercloud.cortexdrone.behavior.DroneTickCoordinator;
-import ir.layercloud.cortexdrone.behavior.LightingService;
-import ir.layercloud.cortexdrone.behavior.MiningService;
 import ir.layercloud.cortexdrone.codemode.CodeModeRuntime;
 import ir.layercloud.cortexdrone.codemode.LlmAgentService;
 import ir.layercloud.cortexdrone.codemode.RpcDispatcher;
@@ -14,6 +9,9 @@ import ir.layercloud.cortexdrone.codemode.SkillLibrary;
 import ir.layercloud.cortexdrone.command.DroneCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.harness.BlockBreakAction;
+import ir.layercloud.cortexdrone.harness.DroneTickPipeline;
+import ir.layercloud.cortexdrone.harness.LightingAura;
 import ir.layercloud.cortexdrone.harness.TaskCoordinator;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.inventory.ChestSorter;
@@ -64,16 +62,14 @@ public class AIDroneManager {
     private final InventoryService inventoryService;
     private final ChestSorter chestSorter;
     private final SmeltingService smeltingService;
-    private final MiningService miningService;
-    private final BuildingService buildingService;
-    private final CombatService combatService;
-    private final LightingService lightingService;
+    private final BlockBreakAction blockBreakAction;
+    private final LightingAura lightingAura;
     private final DocLookupService docLookupService;
     private SkillLibrary skillLibrary;
     private final CodeModeRuntime codeModeRuntime;
     private final RpcDispatcher rpcDispatcher;
     private final LlmAgentService agentService;
-    private final DroneTickCoordinator tickCoordinator;
+    private final DroneTickPipeline tickPipeline;
     private final TickProfiler tickProfiler;
     private final DroneHttpServer httpServer;
     private final TaskCoordinator taskCoordinator;
@@ -92,10 +88,8 @@ public class AIDroneManager {
         this.inventoryService = new InventoryService(this, this.logger, this.pathfinder);
         this.chestSorter = new ChestSorter(this.logger, this.inventoryService);
         this.smeltingService = new SmeltingService(this, this.logger, this.pathfinder, this.inventoryService);
-        this.miningService = new MiningService(this, this.logger, this.pathfinder, this.worldScanner, this.inventoryService);
-        this.buildingService = new BuildingService(this, this.logger, this.pathfinder, this.worldScanner, this.inventoryService, this.miningService);
-        this.combatService = new CombatService(this, this.logger, this.pathfinder);
-        this.lightingService = new LightingService(this.logger);
+        this.blockBreakAction = new BlockBreakAction(this, this.logger, this.pathfinder, this.inventoryService);
+        this.lightingAura = new LightingAura(this.logger);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));
         this.codeModeRuntime = new CodeModeRuntime(this.logger, this.config);
@@ -106,9 +100,7 @@ public class AIDroneManager {
             this.inventoryService,
             this.chestSorter,
             this.smeltingService,
-            this.miningService,
-            this.buildingService,
-            this.combatService
+            this.blockBreakAction
         );
         this.agentService = new LlmAgentService(
             this,
@@ -117,15 +109,13 @@ public class AIDroneManager {
             this.codeModeRuntime,
             this.rpcDispatcher
         );
-        this.tickCoordinator = new DroneTickCoordinator(
+        this.tickPipeline = new DroneTickPipeline(
             this,
             this.logger,
             this.pathfinder,
             this.inventoryService,
-            this.smeltingService,
-            this.miningService,
-            this.buildingService,
-            this.combatService
+            this.blockBreakAction,
+            this.lightingAura
         );
         this.tickProfiler = new TickProfiler(this.logger);
         this.httpServer = new DroneHttpServer(this, this.logger);
@@ -151,7 +141,7 @@ public class AIDroneManager {
         this.logger.log("SYSTEM", null, "Server stopping; saving AI drone config and stopping HTTP server", "");
         for (DroneController ctrl : this.controllersById.values()) {
             if (ctrl != null && !ctrl.lightCells.isEmpty()) {
-                this.lightingService.clearAura(ctrl);
+                this.lightingAura.clearAura(ctrl);
             }
         }
         saveConfig();
@@ -298,7 +288,7 @@ public class AIDroneManager {
                 continue;
             }
             try {
-                this.tickCoordinator.tickController(ctrl);
+                this.tickPipeline.tickController(ctrl);
             } catch (Throwable t) {
                 if (this.tickCounter % 40 == 0) {
                     this.logger.log("ERROR", ctrl, "Exception in tickController: " + t.toString(),
@@ -550,7 +540,7 @@ public class AIDroneManager {
         double dz = dropTargetPlayer != null ? dropTargetPlayer.field_70161_v : d.field_70161_v;
 
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
-        this.lightingService.clearAura(ctrl);
+        this.lightingAura.clearAura(ctrl);
         ctrl.despawned = true;
         this.chunkLoader.releaseDroneTicket(ctrl);
         UUID duid = d.func_110124_au();

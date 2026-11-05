@@ -355,7 +355,7 @@ public class CaveEscapeService {
                 if (d.func_70011_f(bx + 0.5, by + 0.5, bz + 0.5) <= 4.5 && dug < 4) {
                     Block b = world.func_147439_a(bx, by, bz);
                     int meta = world.func_72805_g(bx, by, bz);
-                    List<ItemStack> drops = this.manager.getMiningService().getBlockDrops(world, b, bx, by, bz, meta, 0);
+                    List<ItemStack> drops = this.manager.getBlockBreakAction().getBlockDrops(world, b, bx, by, bz, meta, 0);
                     world.func_72926_e(2001, bx, by, bz, Block.func_149682_b(b) + (meta << 12));
                     world.func_147468_f(bx, by, bz);
                     if (drops != null) {

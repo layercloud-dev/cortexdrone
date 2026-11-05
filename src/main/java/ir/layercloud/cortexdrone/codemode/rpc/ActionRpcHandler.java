@@ -183,7 +183,7 @@ public class ActionRpcHandler implements RpcHandler {
         }
 
         if (m.equals("light")) {
-            return this.manager.getLightingService().configure(ctrl, args);
+            return this.manager.getLightingAura().configure(ctrl, args);
         }
 
         res.addProperty("ok", false);

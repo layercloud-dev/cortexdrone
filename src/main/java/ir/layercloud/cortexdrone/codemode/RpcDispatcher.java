@@ -5,11 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.behavior.BuildingService;
-import ir.layercloud.cortexdrone.behavior.CombatService;
-import ir.layercloud.cortexdrone.behavior.MiningService;
 import ir.layercloud.cortexdrone.codemode.rpc.MasterRpcHandler;
 import ir.layercloud.cortexdrone.codemode.rpc.RpcHandler;
+import ir.layercloud.cortexdrone.harness.BlockBreakAction;
 import ir.layercloud.cortexdrone.inventory.ChestSorter;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.inventory.SmeltingService;
@@ -75,16 +73,14 @@ public class RpcDispatcher {
         InventoryService inventoryService,
         ChestSorter chestSorter,
         SmeltingService smeltingService,
-        MiningService miningService,
-        BuildingService buildingService,
-        CombatService combatService
+        BlockBreakAction blockBreakAction
     ) {
         this.manager = manager;
         // Single master tool surface. Legacy handlers remain internal delegates
         // inside MasterRpcHandler; they are deliberately NOT registered as tools.
         registerHandler(new MasterRpcHandler(
             manager, worldScanner, pathfinder, inventoryService, chestSorter,
-            smeltingService, miningService, buildingService, combatService
+            smeltingService, blockBreakAction
         ));
     }
 

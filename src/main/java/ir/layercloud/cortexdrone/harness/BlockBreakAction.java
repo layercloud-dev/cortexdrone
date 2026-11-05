@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.behavior;
+package ir.layercloud.cortexdrone.harness;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
@@ -8,21 +8,14 @@ import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
-import ir.layercloud.cortexdrone.world.WorldScanner;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
-import net.minecraft.block.BlockCrops;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -30,35 +23,29 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
-import net.minecraft.world.chunk.Chunk;
-import lombok.Getter;
 
-public class MiningService {
+/**
+ * Master break primitive: one explicit block at a time, plus the transient dig
+ * path used by the navigator's tunnel/self-rescue. There is no filter/count
+ * search, no farming, no neighbour propagation and no AI instruction queue.
+ */
+public class BlockBreakAction {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
-    private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
-    @Getter
-    private final FarmingService farmingService;
-    @Getter
-    private final ExcavationPlanner excavationPlanner;
     private Method blockGetDropsMethod = null;
 
-    public MiningService(
+    public BlockBreakAction(
         AIDroneManager manager,
         DroneLogger logger,
         FlightPathfinder pathfinder,
-        WorldScanner worldScanner,
         InventoryService inventoryService
     ) {
         this.manager = manager;
         this.logger = logger;
         this.pathfinder = pathfinder;
-        this.worldScanner = worldScanner;
         this.inventoryService = inventoryService;
-        this.farmingService = new FarmingService(manager, logger, worldScanner, inventoryService);
-        this.excavationPlanner = new ExcavationPlanner(manager, logger, worldScanner);
         try {
             this.blockGetDropsMethod = Block.class.getMethod(
                 "getDrops", World.class, int.class, int.class, int.class, int.class, int.class
@@ -69,16 +56,6 @@ public class MiningService {
 
 
 
-    public static boolean isNumericFilter(String f) {
-        if (f == null || f.isEmpty()) return false;
-        try {
-            int n = Integer.parseInt(f);
-            return n >= 1 && n <= 16;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
     private static boolean hasPassableHeadroom(World world, double[] st) {
         if (st == null || st.length < 3) return false;
         int bx = MathHelper.func_76128_c(st[0]);
@@ -86,15 +63,6 @@ public class MiningService {
         int bz = MathHelper.func_76128_c(st[2]);
         return ItemClassifier.isPassableVoxel(world, bx, by, bz)
             && ItemClassifier.isPassableVoxel(world, bx, by + 1, bz);
-    }
-
-    private static boolean hasPassableNeighbor(World world, int x, int y, int z) {
-        return ItemClassifier.isPassableVoxel(world, x + 1, y, z)
-            || ItemClassifier.isPassableVoxel(world, x - 1, y, z)
-            || ItemClassifier.isPassableVoxel(world, x, y + 1, z)
-            || ItemClassifier.isPassableVoxel(world, x, y - 1, z)
-            || ItemClassifier.isPassableVoxel(world, x, y, z + 1)
-            || ItemClassifier.isPassableVoxel(world, x, y, z - 1);
     }
 
     @SuppressWarnings("unchecked")
@@ -122,30 +90,11 @@ public class MiningService {
         return drops;
     }
 
-    public void tickMiningBehavior(DroneController ctrl, EntityPlayerMP owner) {
+    public void tick(DroneController ctrl, EntityPlayerMP owner) {
         if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return;
         Drone d = ctrl.drone;
         World world = d.field_70170_p;
         d.lightColor_$eq(0x00FF66);
-
-        if (ctrl.mineTargetCount > 0 && ctrl.mineMatchedCount >= ctrl.mineTargetCount) {
-            if (ctrl.currentMineTarget != null) {
-                world.func_147443_d(d.func_145782_y(), ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2], -1);
-            }
-            ctrl.mineQueue.clear();
-            ctrl.currentMineTarget = null;
-            ctrl.currentMineStandoff = null;
-            boolean deliverBack = !ctrl.isScriptRunning() && (ctrl.returnToOwnerAfterMine || ctrl.mineUntilFull);
-            ctrl.returnToOwnerAfterMine = false;
-            ctrl.mineUntilFull = false;
-            ctrl.mineTargetCount = 0;
-            if (!ctrl.isScriptRunning() && owner != null) {
-                this.manager.droneSay(owner, ctrl, "Reached target of " + ctrl.mineMatchedCount + " harvested block(s)! "
-                    + (deliverBack ? "Flying back to deliver your items." : "Returning to follow mode."));
-            }
-            this.manager.setDroneMode(ctrl, deliverBack ? Mode.DROP : Mode.FOLLOW, "Reached mineTargetCount");
-            return;
-        }
 
         if (InventoryService.isInventoryFull(d.mainInventory())) {
             ctrl.currentMineTarget = null;
@@ -298,16 +247,6 @@ public class MiningService {
         }
 
         if (ctrl.currentMineTarget == null) {
-            if (!ctrl.mineExactQueueOnly && (ctrl.mineUntilFull || (ctrl.mineTargetCount > 0 && ctrl.mineMatchedCount < ctrl.mineTargetCount))) {
-                List<int[]> more = this.worldScanner.findDistantResourceOrBiome(world, ctrl, d.field_70165_t, d.field_70163_u, d.field_70161_v, ctrl.mineFilter, 256);
-                if (!more.isEmpty()) {
-                    for (int[] p : more) {
-                        ctrl.mineQueue.addLast(p);
-                    }
-                    this.logger.log("MINE", ctrl, "Auto-queued " + more.size() + " additional '" + ctrl.mineFilter + "' block(s) to continue harvesting", "minedSoFar=" + ctrl.minedCount);
-                    return;
-                }
-            }
             boolean deliverBack = !ctrl.isScriptRunning() && (ctrl.returnToOwnerAfterMine || ctrl.mineUntilFull);
             if (ctrl.escapeResume != null) {
                 resumeAfterSelfRescue(ctrl);
@@ -319,12 +258,8 @@ public class MiningService {
             ctrl.replantAfterHarvest = false;
             ctrl.mineExactQueueOnly = false;
             ctrl.pendingReplants.clear();
-            if (!ctrl.isScriptRunning() && owner != null) {
-                this.manager.droneSay(owner, ctrl, "Finished harvesting " + ctrl.minedCount + " block(s)! "
-                    + (deliverBack ? "Flying back to deliver your items." : "Returning to follow mode."));
-            }
-            this.logger.log("MINE", ctrl, "Mining queue completed", "harvested=" + ctrl.minedCount + " deliverBack=" + deliverBack + " scriptRunning=" + ctrl.isScriptRunning());
-            this.manager.setDroneMode(ctrl, deliverBack ? Mode.DROP : Mode.FOLLOW, "Mining queue empty");
+            this.logger.log("MINE", ctrl, "Break queue completed", "harvested=" + ctrl.minedCount + " scriptRunning=" + ctrl.isScriptRunning());
+            this.manager.setDroneMode(ctrl, deliverBack ? Mode.DROP : Mode.FOLLOW, "Break queue empty");
             return;
         }
 
@@ -447,16 +382,6 @@ public class MiningService {
 
                 if (removed) {
                     ctrl.minedCount++;
-                    // The task target ("mine 8 iron") must count only blocks that
-                    // actually match the requested filter. Counting tunnel dirt and
-                    // stone made the drone stop after 8 obstacle blocks without a
-                    // single iron. Box/rect/break tasks are exact-queue, so every
-                    // block they remove is intentional.
-                    if (ctrl.mineTargetCount > 0
-                        && (ctrl.mineExactQueueOnly
-                            || ItemClassifier.matchesMineFilter(block, meta, ctrl.mineFilter))) {
-                        ctrl.mineMatchedCount++;
-                    }
                     int insertedTotal = 0;
                     IInventory inv = d.mainInventory();
                     if (drops != null) {
@@ -472,15 +397,9 @@ public class MiningService {
                         }
                     }
                     InventoryService.suckNearbyItems(d, tx, ty, tz, 3.8);
-                    if (ctrl.replantAfterHarvest && ItemClassifier.isReplantableCrop(block)) {
-                        this.farmingService.tryReplantAt(world, ctrl, bx, by, bz, block, meta);
-                    }
                     this.logger.log("MINE", ctrl,
                         String.format("Harvested %s at (%d,%d,%d)", blockDisp, bx, by, bz),
                         "insertedItems=" + insertedTotal + " totalMined=" + ctrl.minedCount);
-                    if (!ctrl.mineExactQueueOnly && !isNumericFilter(ctrl.mineFilter)) {
-                        ExcavationPlanner.enqueueMatchingNeighbors(world, ctrl, bx, by, bz);
-                    }
                 }
                 ctrl.currentMineTarget = null;
                 ctrl.currentMineStandoff = null;
@@ -596,16 +515,4 @@ public class MiningService {
         d.statusText_$eq("Break block\n" + x + "," + y + "," + z);
         return true;
     }
-
-    /**
-     * Master primitive: place exactly one explicit block from drone/chest/player
-     * inventory. No blueprint, no queue and no hidden substitution.
-     */
-    public boolean placeSingleBlock(DroneController ctrl, EntityPlayerMP player, int x, int y, int z, String filter, int meta) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return false;
-        String resolved = ItemClassifier.resolveHeldFilter(player, filter);
-        return this.manager.getBuildingService().placeBlockFromInventory(
-            ctrl.drone.field_70170_p, ctrl, player, x, y, z, resolved, meta);
-    }
-
 }

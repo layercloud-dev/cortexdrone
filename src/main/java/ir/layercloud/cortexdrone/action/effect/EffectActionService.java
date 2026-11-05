@@ -14,7 +14,6 @@ import ir.layercloud.cortexdrone.model.LedEffectEngine;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
-import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -25,7 +24,6 @@ import net.minecraft.world.WorldServer;
  * Handles drone telemetry, chat, LED colors/effects, particle bursts,
  * musical notes/sound effects, and RLM skill library queries.
  */
-@RequiredArgsConstructor
 public class EffectActionService implements Action {
     private final AIDroneManager manager;
     private final LightingAura lightingAura;
@@ -40,13 +38,7 @@ public class EffectActionService implements Action {
 
     @Override
     public String[] operations() {
-        return new String[]{"set_led", "led_effect", "spawn_particles", "play_sound", "play_note", "say", "set_status_text", "light"};
-    }
-
-    @Override
-    public boolean supports(String operation) {
-        for (String op : operations()) if (op.equals(operation)) return true;
-        return false;
+        return new String[]{"set_led", "led_effect", "spawn_particles", "play_sound", "play_note", "say", "set_status_text"};
     }
 
     public JsonObject configureLight(DroneController ctrl, JsonObject args) {
@@ -62,7 +54,6 @@ public class EffectActionService implements Action {
     }
 
     public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String m, JsonObject args) {
-        if (m.equals("light") || m.equals("torch")) return this.lightingAura.configure(ctrl, args);
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);
         Drone d = ctrl.drone;
@@ -91,13 +82,10 @@ public class EffectActionService implements Action {
             res.addProperty("mineExactQueueOnly", ctrl.mineExactQueueOnly);
             res.addProperty("mineFilter", ctrl.mineFilter != null ? ctrl.mineFilter : "");
             res.addProperty("selfRescue", ctrl.escapeResume != null);
-            res.addProperty("buildQueueSize", ctrl.buildQueue.size());
-            res.addProperty("scoopQueueSize", ctrl.scoopQueue.size());
             res.addProperty("minedCount", ctrl.minedCount);
             res.addProperty("builtCount", ctrl.builtCount);
             res.addProperty("huntedCount", ctrl.huntedCount);
             res.addProperty("scoopedCount", ctrl.scoopedCount);
-            res.addProperty("smeltedCount", ctrl.smeltedCount);
             JsonArray invArr = new JsonArray();
             IInventory inv = d.mainInventory();
             int usedSlots = 0;

@@ -17,7 +17,6 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.MathHelper;
 
 @RequiredArgsConstructor
 public class DroneCommand extends CortexDroneMod.BaseCmd {
@@ -282,7 +281,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         if (sub.equals("follow")) {
             String targetName = args.length >= 2 ? args[1] : player.func_70005_c_();
             ctrl.targetPlayerName = targetName;
-            ctrl.clearAllTaskQueues();
+            ctrl.clearActionState();
             this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Command /drone follow " + targetName);
             this.manager.saveConfig();
             this.manager.droneSay(player, ctrl, "Now following " + targetName + " (look at me within 4.5m to hold still for right-click!).");
@@ -294,7 +293,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             ctrl.goalX = ctrl.drone.field_70165_t;
             ctrl.goalY = ctrl.drone.field_70163_u;
             ctrl.goalZ = ctrl.drone.field_70161_v;
-            ctrl.clearAllTaskQueues();
+            ctrl.clearActionState();
             this.manager.setDroneMode(ctrl, Mode.STAY, "Command /drone stay");
             this.manager.saveConfig();
             this.manager.droneSay(player, ctrl, String.format("Hovering in place at (%.1f, %.1f, %.1f).", ctrl.goalX, ctrl.goalY, ctrl.goalZ));
@@ -313,7 +312,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
                 ctrl.goalX = gx;
                 ctrl.goalY = gy;
                 ctrl.goalZ = gz;
-                ctrl.clearAllTaskQueues();
+                ctrl.clearActionState();
                 this.manager.setDroneMode(ctrl, Mode.GOTO, String.format("Command /drone goto (%.1f,%.1f,%.1f)", gx, gy, gz));
                 this.manager.droneSay(player, ctrl, String.format("Pathfinding to (%.1f, %.1f, %.1f)...", gx, gy, gz));
             } catch (NumberFormatException e) {
@@ -325,7 +324,7 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
         if (sub.equals("guard") || sub.equals("cover") || sub.equals("defend") || sub.equals("protect")) {
             ctrl.targetPlayerName = args.length >= 2 ? args[1] : player.func_70005_c_();
             ctrl.guardFilter = "hostile|mutant";
-            ctrl.clearAllTaskQueues();
+            ctrl.clearActionState();
             this.manager.setDroneMode(ctrl, Mode.GUARD, "Command /drone " + sub + " " + ctrl.targetPlayerName);
             this.manager.saveConfig();
             this.manager.droneSay(player, ctrl, "Guard/Combat service engaged for " + ctrl.targetPlayerName + ".");

@@ -1,24 +1,16 @@
 package ir.layercloud.cortexdrone.codemode.rpc;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.action.block.BlockActionService;
 import ir.layercloud.cortexdrone.harness.MasterToolCatalog;
-import ir.layercloud.cortexdrone.inventory.ChestSorter;
-import ir.layercloud.cortexdrone.inventory.InventoryService;
-import ir.layercloud.cortexdrone.inventory.SmeltingService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
-import ir.layercloud.cortexdrone.world.WorldScanner;
-import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 /**
@@ -36,39 +28,13 @@ public class MasterRpcHandler implements RpcHandler {
     private static final double REACH = 4.5;
 
     private final AIDroneManager manager;
-    private final WorldScanner worldScanner;
-    private final FlightPathfinder pathfinder;
-    private final InventoryService inventoryService;
-    private final ChestSorter chestSorter;
-    private final SmeltingService smeltingService;
-    private final BlockActionService blockActionService;
     private final WorldRpcHandler worldReader;
     private final InventoryRpcHandler inventoryReader;
-    private final NavigationRpcHandler navigationReader;
-    private final ActionRpcHandler actionPrimitives;
-    private final EffectsRpcHandler effects;
 
-    public MasterRpcHandler(
-        AIDroneManager manager,
-        WorldScanner worldScanner,
-        FlightPathfinder pathfinder,
-        InventoryService inventoryService,
-        ChestSorter chestSorter,
-        SmeltingService smeltingService,
-        BlockActionService blockActionService
-    ) {
+    public MasterRpcHandler(AIDroneManager manager) {
         this.manager = manager;
-        this.worldScanner = worldScanner;
-        this.pathfinder = pathfinder;
-        this.inventoryService = inventoryService;
-        this.chestSorter = chestSorter;
-        this.smeltingService = smeltingService;
-        this.blockActionService = blockActionService;
-        this.worldReader = new WorldRpcHandler(manager, worldScanner);
-        this.inventoryReader = new InventoryRpcHandler(manager, inventoryService, chestSorter, smeltingService);
-        this.navigationReader = new NavigationRpcHandler(manager);
-        this.actionPrimitives = new ActionRpcHandler(manager);
-        this.effects = new EffectsRpcHandler(manager);
+        this.worldReader = new WorldRpcHandler(manager, manager.getWorldScanner());
+        this.inventoryReader = new InventoryRpcHandler(manager, manager.getInventoryService());
     }
 
     @Override
@@ -84,7 +50,7 @@ public class MasterRpcHandler implements RpcHandler {
         }
         if ("state".equals(m)) return state(ctrl, player, args);
         if ("inspect".equals(m)) return inspect(ctrl, player, args);
-        if ("navigate".equals(m)) return this.manager.getNavigationService().navigate(ctrl, args);
+        if ("navigate".equals(m)) return this.manager.getActionRegistry().handle(ctrl, player, "navigate", args);
         if ("break_block".equals(m)) return breakBlock(ctrl, player, args);
         if ("place_block".equals(m)) return placeBlock(ctrl, player, args);
         if ("interact_block".equals(m)) return interactBlock(ctrl, player, args);
@@ -98,7 +64,7 @@ public class MasterRpcHandler implements RpcHandler {
     }
 
     private JsonObject state(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
-        JsonObject res = this.effects.handle(ctrl, player, "get_drone", args);
+        JsonObject res = this.manager.getEffectService().handle(ctrl, player, "get_drone", args);
         String summary = ctrl.task.getSummary();
         res.addProperty("activeTask", ctrl.task.isActive());
         res.addProperty("taskPrompt", ctrl.task.getPrompt());
@@ -156,7 +122,7 @@ public class MasterRpcHandler implements RpcHandler {
         else if (op.equals("machinerecipe")) { method = "get_machine_recipe"; handler = this.inventoryReader; }
         else if (op.equals("machines") || op.equals("scanmachines")) { method = "scan_machines"; handler = this.inventoryReader; }
         else if (op.equals("machineingredients")) { method = "machine_ingredients"; handler = this.inventoryReader; }
-        else if (op.equals("breadcrumbs")) { method = "get_breadcrumbs"; handler = this.navigationReader; }
+        else if (op.equals("breadcrumbs")) return this.manager.getActionRegistry().handle(ctrl, player, "get_breadcrumbs", args);
         else if (op.equals("doc") || op.equals("lookup") || op.equals("lookupdoc")) { method = "lookup_doc"; handler = this.worldReader; }
         else return error("Unknown inspect op: " + op);
         return handler.handle(ctrl, player, method, args);
@@ -176,11 +142,8 @@ public class MasterRpcHandler implements RpcHandler {
             JsonObject res = needsMovement(ctrl, x, y, z, "break", dist);
             if (res != null) return res;
         }
-        boolean started = this.blockActionService.startSingleBlockTask(ctrl, player, x, y, z);
-        JsonObject res = ok();
-        res.addProperty("started", started);
+        JsonObject res = this.manager.getActionRegistry().handle(ctrl, player, "break_block", args);
         res.add("target", point(x, y, z));
-        if (!started) res.addProperty("error", "Could not start single-block break");
         return res;
     }
 
@@ -200,13 +163,9 @@ public class MasterRpcHandler implements RpcHandler {
         }
         String filter = args.has("block") ? str(args, "block", "any")
             : (args.has("with") ? str(args, "with", "any") : str(args, "item", "any"));
-        int meta = intValue(args, "meta", -1);
-        boolean placed = this.blockActionService.placeBlock(ctrl, player, x, y, z, filter, meta);
-        JsonObject res = ok();
-        res.addProperty("placed", placed);
+        JsonObject res = this.manager.getActionRegistry().handle(ctrl, player, "place_block", args);
         res.addProperty("block", filter);
         res.add("target", point(x, y, z));
-        if (!placed) res.addProperty("error", "Cannot place: no matching block in drone/chest/player inventory or target invalid");
         return res;
     }
 
@@ -220,7 +179,7 @@ public class MasterRpcHandler implements RpcHandler {
             JsonObject res = needsMovement(ctrl, x, y, z, "interact", dist);
             if (res != null) return res;
         }
-        return this.actionPrimitives.handle(ctrl, player, "interact_block", args);
+        return this.manager.getActionRegistry().handle(ctrl, player, "interact_block", args);
     }
 
     private JsonObject useItem(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
@@ -234,7 +193,7 @@ public class MasterRpcHandler implements RpcHandler {
                 if (res != null) return res;
             }
         }
-        return this.actionPrimitives.handle(ctrl, player, "use_item", args);
+        return this.manager.getActionRegistry().handle(ctrl, player, "use_item", args);
     }
 
     private JsonObject transfer(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
@@ -266,7 +225,7 @@ public class MasterRpcHandler implements RpcHandler {
         else if (kind.equals("status")) method = "set_status_text";
         else if (kind.equals("say")) method = "say";
         else return error("Unknown effect kind: " + kind);
-        return this.effects.handle(ctrl, player, method, args);
+        return this.manager.getActionRegistry().handle(ctrl, player, method, args);
     }
 
     private JsonObject skills(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
@@ -276,13 +235,13 @@ public class MasterRpcHandler implements RpcHandler {
         else if (op.equals("list")) method = "list_skills";
         else if (op.equals("save")) method = "save_skill";
         else return error("Unknown skills op: " + op);
-        return this.effects.handle(ctrl, player, method, args);
+        return this.manager.getEffectService().handle(ctrl, player, method, args);
     }
 
     private JsonObject cancel(DroneController ctrl, JsonObject args) {
         int callerLoopId = intValue(args, "loopId", 0);
         int cancelled = ctrl.cancelOtherLoops(callerLoopId);
-        ctrl.clearAllTaskQueues();
+        ctrl.clearActionState();
         ctrl.task.cancel();
         ctrl.navViaSurface = false;
         ctrl.navFinalX = Double.NaN;
@@ -336,19 +295,9 @@ public class MasterRpcHandler implements RpcHandler {
         return res;
     }
 
-    private static JsonObject obj(JsonObject args, String key) {
-        if (args == null || !args.has(key) || args.get(key).isJsonNull() || !args.get(key).isJsonObject()) return null;
-        return args.getAsJsonObject(key);
-    }
-
     private static String str(JsonObject args, String key, String fallback) {
         if (args == null || !args.has(key) || args.get(key).isJsonNull()) return fallback;
         try { return args.get(key).getAsString(); } catch (Exception e) { return fallback; }
-    }
-
-    private static double num(JsonObject args, String key, double fallback) {
-        if (args == null || !args.has(key) || args.get(key).isJsonNull()) return fallback;
-        try { return args.get(key).getAsDouble(); } catch (Exception e) { return fallback; }
     }
 
     private static int intValue(JsonObject args, String key, int fallback) {

@@ -49,7 +49,7 @@ public final class TaskCoordinator {
             this.manager.getLogger().log("TASK", ctrl, "Message classified as " + intent.name() + "; replacing active task",
                 "prompt=\"" + cleanPrompt + "\"");
             ctrl.cancelOtherLoops(0);
-            ctrl.clearAllTaskQueues();
+            ctrl.clearActionState();
             ctrl.task.cancel();
             if (intent == TaskIntent.MODIFY && previous != null && !previous.isEmpty()) {
                 cleanPrompt = cleanPrompt + "\n\n[Task modification. Previous task: " + previous + "]";
@@ -87,7 +87,7 @@ public final class TaskCoordinator {
     private void cancel(DroneController ctrl, String reason) {
         this.manager.getLogger().log("TASK", ctrl, "Message classified as CANCEL", "reason=" + reason);
         ctrl.cancelOtherLoops(0);
-        ctrl.clearAllTaskQueues();
+        ctrl.clearActionState();
         ctrl.task.cancel();
         ctrl.navViaSurface = false;
         ctrl.navFinalX = Double.NaN;

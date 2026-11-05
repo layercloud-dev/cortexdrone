@@ -13,9 +13,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemFood;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.FurnaceRecipes;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
@@ -122,11 +120,6 @@ public final class ItemClassifier {
 
     public static boolean isCropOrReedBlock(Block b) {
         return RegistryIntrospector.isCropOrPlantBlock(b);
-    }
-
-    /** True only for real crops/reeds that may be auto-replanted after harvest. */
-    public static boolean isReplantableCrop(Block b) {
-        return RegistryIntrospector.isReplantableCropBlock(b);
     }
 
     public static boolean isLikelyUndergroundQuery(String filter) {
@@ -370,26 +363,6 @@ public final class ItemClassifier {
 
     public static boolean isStorageChestTile(World world, TileEntity te) {
         return RegistryIntrospector.isStorageContainerTile(world, te);
-    }
-
-    public static boolean matchesSmeltFilter(ItemStack st, String rawFilter) {
-        if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) return false;
-        ItemStack result = FurnaceRecipes.func_77602_a().func_151395_a(st);
-        if (result == null || result.func_77973_b() == null) return false;
-        String f = (rawFilter == null || rawFilter.trim().isEmpty()) ? "all" : rawFilter.trim().toLowerCase().replace('_', ' ');
-        if (f.equals("all") || f.equals("any") || f.equals("everything") || f.equals("*")) return true;
-        boolean resultIsFood = (result.func_77973_b() instanceof ItemFood) || (st.func_77973_b() instanceof ItemFood);
-        if (f.equals("meat") || f.equals("meats") || f.equals("raw meat") || f.equals("raw meats") || f.equals("food") || f.equals("foods")) {
-            return resultIsFood || hasOreDictPrefix(st, "listAllmeat", "listAllfish", "food");
-        }
-        if (f.equals("ore") || f.equals("ores") || f.equals("metal") || f.equals("metals") || f.equals("ingot") || f.equals("ingots")) {
-            return !resultIsFood;
-        }
-        String inDisp = st.func_82833_r() != null ? st.func_82833_r() : "";
-        String outDisp = result.func_82833_r() != null ? result.func_82833_r() : "";
-        String combined = getItemIdentifier(st) + " " + getItemIdentifier(result);
-        return matchesBlockOrItemName(inDisp, combined, st.func_77960_j(), f)
-            || matchesBlockOrItemName(outDisp, combined, result.func_77960_j(), f);
     }
 
     public static boolean isHostileOrMutantEntity(EntityLivingBase el) {

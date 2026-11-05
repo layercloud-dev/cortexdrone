@@ -67,25 +67,26 @@ public class BlockActionService implements Action {
     public String[] operations() { return new String[]{"break_block", "place_block"}; }
 
     @Override
-    public boolean supports(String operation) {
-        return "break_block".equals(operation) || "place_block".equals(operation);
-    }
-
-    @Override
     public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String operation, JsonObject args) {
         JsonObject res = new JsonObject();
         if (args == null) args = new JsonObject();
         if ("break_block".equals(operation)) {
             if (!args.has("x") || !args.has("y") || !args.has("z")) { res.addProperty("ok", false); res.addProperty("error", "break_block requires x/y/z"); return res; }
             boolean started = startSingleBlockTask(ctrl, player, args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt());
-            res.addProperty("ok", started); res.addProperty("started", started); return res;
+            res.addProperty("ok", started); res.addProperty("started", started);
+            if (!started) res.addProperty("error", "Could not start single-block break");
+            return res;
         }
         if ("place_block".equals(operation)) {
             if (!args.has("x") || !args.has("y") || !args.has("z")) { res.addProperty("ok", false); res.addProperty("error", "place_block requires x/y/z"); return res; }
-            String filter = args.has("block") ? args.get("block").getAsString() : (args.has("with") ? args.get("with").getAsString() : "any");
+            String filter = args.has("block") ? args.get("block").getAsString()
+                : (args.has("with") ? args.get("with").getAsString()
+                : (args.has("item") ? args.get("item").getAsString() : "any"));
             int meta = args.has("meta") ? args.get("meta").getAsInt() : -1;
             boolean placed = placeBlock(ctrl, player, args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt(), filter, meta);
-            res.addProperty("ok", placed); res.addProperty("placed", placed); return res;
+            res.addProperty("ok", placed); res.addProperty("placed", placed);
+            if (!placed) res.addProperty("error", "Cannot place: no matching block in drone/chest/player inventory or target invalid");
+            return res;
         }
         res.addProperty("ok", false); res.addProperty("error", "Unsupported block action: " + operation); return res;
     }
@@ -289,9 +290,7 @@ public class BlockActionService implements Action {
             ctrl.returnToOwnerAfterMine = false;
             ctrl.mineUntilFull = false;
             ctrl.mineTargetCount = 0;
-            ctrl.replantAfterHarvest = false;
             ctrl.mineExactQueueOnly = false;
-            ctrl.pendingReplants.clear();
             this.logger.log("MINE", ctrl, "Break queue completed", "harvested=" + ctrl.minedCount + " scriptRunning=" + ctrl.isScriptRunning());
             this.manager.setDroneMode(ctrl, deliverBack ? Mode.DROP : Mode.FOLLOW, "Break queue empty");
             return;
@@ -537,7 +536,6 @@ public class BlockActionService implements Action {
         ctrl.minedCount = 0;
         ctrl.returnToOwnerAfterMine = false;
         ctrl.mineUntilFull = false;
-        ctrl.replantAfterHarvest = false;
         ctrl.mineProgressTicks = 0;
         ctrl.stuckTicks = 0;
         ctrl.lastPathPartial = false;

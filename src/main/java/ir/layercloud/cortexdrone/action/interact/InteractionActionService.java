@@ -3,7 +3,6 @@ package ir.layercloud.cortexdrone.action.interact;
 import ir.layercloud.cortexdrone.action.Action;
 
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
@@ -21,7 +20,6 @@ import net.minecraft.world.World;
  */
 @RequiredArgsConstructor
 public class InteractionActionService implements Action {
-    private final AIDroneManager manager;
     private final InventoryService inventoryService;
 
     @Override
@@ -31,8 +29,6 @@ public class InteractionActionService implements Action {
     public String[] operations() { return new String[]{"interact_block", "use_item"}; }
 
     @Override
-    public boolean supports(String operation) { return "interact_block".equals(operation) || "use_item".equals(operation); }
-
     public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String m, JsonObject args) {
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);

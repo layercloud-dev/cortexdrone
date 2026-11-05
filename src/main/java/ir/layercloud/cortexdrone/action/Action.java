@@ -14,7 +14,5 @@ public interface Action {
     /** Canonical operation names handled by this action. */
     String[] operations();
 
-    boolean supports(String operation);
-
     JsonObject handle(DroneController ctrl, EntityPlayerMP player, String operation, JsonObject args);
 }

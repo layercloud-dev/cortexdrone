@@ -1,11 +1,8 @@
 package ir.layercloud.cortexdrone.inventory;
 
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,10 +17,8 @@ import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.FurnaceRecipes;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityChest;
-import net.minecraft.tileentity.TileEntityFurnace;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -32,12 +27,10 @@ import lombok.Getter;
 /**
  * Core inventory service handling slot transfers, multi-chest discovery,
  * smart slot-swapping withdrawals, deposits, and item vacuuming.
- * Delegates crafting to CraftingService and fluid operations to FluidOpsService.
+ * Delegates crafting and fluid scooping to focused helpers.
  */
 public class InventoryService {
-    private final AIDroneManager manager;
     private final DroneLogger logger;
-    private final FlightPathfinder pathfinder;
     @Getter
     private final CraftingService craftingService;
     @Getter
@@ -47,26 +40,15 @@ public class InventoryService {
     private final PlayerInventoryOps playerInventoryOps;
     @Getter
     private final MachineRecipeService machineRecipeService;
-    @Getter
-    private final MachineCraftExecutor machineCraftExecutor;
-    @Getter
-    private final AnvilService anvilService;
 
-    public InventoryService(AIDroneManager manager, DroneLogger logger, FlightPathfinder pathfinder) {
-        this.manager = manager;
+    public InventoryService(DroneLogger logger) {
         this.logger = logger;
-        this.pathfinder = pathfinder;
         this.craftingService = new CraftingService(logger, this);
-        this.fluidOpsService = new FluidOpsService(manager, logger, pathfinder, this);
+        this.fluidOpsService = new FluidOpsService(logger, this);
         this.containerSearchService = new ContainerSearchService(this);
         this.playerInventoryOps = new PlayerInventoryOps(logger);
         this.machineRecipeService = new MachineRecipeService(this);
-        this.machineCraftExecutor = new MachineCraftExecutor(manager, logger, pathfinder, this, this.machineRecipeService);
-        this.anvilService = new AnvilService(manager, logger, this, this.machineRecipeService);
     }
-
-
-
 
     public static boolean isInventoryFull(IInventory inv) {
         if (inv == null) return true;
@@ -175,25 +157,6 @@ public class InventoryService {
             }
         }
         return bestSlot;
-    }
-
-    public static boolean consumeItemMatching(IInventory inv, String... keywords) {
-        if (inv == null) return false;
-        int size = inv.func_70302_i_();
-        for (int i = 0; i < size; i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st != null && st.field_77994_a > 0 && st.func_77973_b() != null) {
-                String combined = ItemClassifier.getItemIdentifier(st);
-                for (String kw : keywords) {
-                    if (combined.contains(kw.toLowerCase())) {
-                        inv.func_70298_a(i, 1);
-                        inv.func_70296_d();
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
     }
 
     public static void syncPlayerInventory(EntityPlayerMP player) {
@@ -532,18 +495,6 @@ public class InventoryService {
         return this.fluidOpsService.scoopLiquidAt(world, ctrl, owner, x, y, z);
     }
 
-    public boolean placeLiquidFromBucket(World world, DroneController ctrl, EntityPlayerMP owner, int x, int y, int z, String type) {
-        return this.fluidOpsService.placeLiquidFromBucket(world, ctrl, owner, x, y, z, type);
-    }
-
-    public int startScoopLiquidTask(DroneController ctrl, EntityPlayerMP player, String rawType, int maxCount) {
-        return this.fluidOpsService.startScoopLiquidTask(ctrl, player, rawType, maxCount);
-    }
-
-    public void tickScoopBehavior(DroneController ctrl, EntityPlayerMP owner) {
-        this.fluidOpsService.tickScoopBehavior(ctrl, owner);
-    }
-
     public JsonObject getRecipesForFilter(String filter) {
         return this.craftingService.getRecipesForFilter(filter);
     }
@@ -551,7 +502,4 @@ public class InventoryService {
     public JsonObject craftItem(World world, DroneController ctrl, EntityPlayerMP owner, String targetFilter, int wantedCount) {
         return this.craftingService.craftItem(world, ctrl, owner, targetFilter, wantedCount);
     }
-
-
-
 }

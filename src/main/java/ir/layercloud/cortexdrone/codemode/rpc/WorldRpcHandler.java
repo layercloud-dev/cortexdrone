@@ -40,8 +40,7 @@ public class WorldRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "get_block", "get_blocks_in_box", "get_top_y", "scan_room", "scan_blocks",
         "scan_veins", "find_distant", "get_entities", "get_drops", "raycast_player",
-        "find_base", "set_base", "save_location", "get_location",
-        "list_locations", "delete_location", "lookup_doc",
+        "find_base", "get_location", "list_locations", "lookup_doc",
         "find_build_site", "plan_structure"
     };
 
@@ -351,41 +350,6 @@ public class WorldRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("set_base")) {
-            EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
-            double bx = args.has("x") ? args.get("x").getAsDouble() : (p != null ? p.field_70165_t : d.field_70165_t);
-            double by = args.has("y") ? args.get("y").getAsDouble() : (p != null ? p.field_70163_u : d.field_70163_u);
-            double bz = args.has("z") ? args.get("z").getAsDouble() : (p != null ? p.field_70161_v : d.field_70161_v);
-            String ownerKey = p != null ? p.func_70005_c_() : ctrl.ownerName;
-            this.manager.getConfig().setPlayerBase(ownerKey, bx, by, bz);
-            this.manager.saveConfig();
-            res.addProperty("x", bx);
-            res.addProperty("y", by);
-            res.addProperty("z", bz);
-            return res;
-        }
-
-        if (m.equals("save_location")) {
-            EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
-            String ownerKey = p != null ? p.func_70005_c_() : ctrl.ownerName;
-            String name = args.has("name") ? args.get("name").getAsString() : "base";
-            double lx = args.has("x") ? args.get("x").getAsDouble() : (p != null ? p.field_70165_t : d.field_70165_t);
-            double ly = args.has("y") ? args.get("y").getAsDouble() : (p != null ? p.field_70163_u : d.field_70163_u);
-            double lz = args.has("z") ? args.get("z").getAsDouble() : (p != null ? p.field_70161_v : d.field_70161_v);
-            String tags = args.has("tags") ? args.get("tags").getAsString() : "";
-            AIConfig.SavedLocation loc = this.manager.getConfig().saveLocation(ownerKey, name, lx, ly, lz, tags);
-            this.manager.saveConfig();
-            if (loc != null) {
-                res.addProperty("name", loc.getName());
-                res.addProperty("owner", loc.getOwner());
-                res.addProperty("x", loc.getX());
-                res.addProperty("y", loc.getY());
-                res.addProperty("z", loc.getZ());
-                res.addProperty("tags", loc.getTags());
-            }
-            return res;
-        }
-
         if (m.equals("get_location")) {
             EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
             String ownerKey = p != null ? p.func_70005_c_() : ctrl.ownerName;
@@ -433,16 +397,6 @@ public class WorldRpcHandler implements RpcHandler {
             }
             res.addProperty("count", arr.size());
             res.add("locations", arr);
-            return res;
-        }
-
-        if (m.equals("delete_location")) {
-            EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
-            String ownerKey = p != null ? p.func_70005_c_() : ctrl.ownerName;
-            String name = args.has("name") ? args.get("name").getAsString() : "";
-            boolean deleted = this.manager.getConfig().deleteLocation(ownerKey, name);
-            if (deleted) this.manager.saveConfig();
-            res.addProperty("deleted", deleted);
             return res;
         }
 

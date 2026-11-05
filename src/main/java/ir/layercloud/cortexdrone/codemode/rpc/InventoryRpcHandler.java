@@ -4,9 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.inventory.ChestSorter;
+import ir.layercloud.cortexdrone.inventory.FurnaceScanner;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
-import ir.layercloud.cortexdrone.inventory.SmeltingService;
+import ir.layercloud.cortexdrone.inventory.MachineTileInspector;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
@@ -25,24 +25,22 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 /**
- * Handles player, chest, furnace, crafting, smelting, and fluid inventory RPCs.
+ * Read/transfer inventory RPCs: player, chest, furnace, crafting and machine
+ * inspection. No batch sorter, smelter, anvil-drive or fluid executor lives
+ * here; those were removed with the legacy behavior layer.
  */
 @RequiredArgsConstructor
 public class InventoryRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "get_player", "get_player_inventory", "take_from_player", "give_to_player",
         "move_slot", "scan_chests", "find_item_in_chests", "find_item",
-        "get_chest", "withdraw_chest", "deposit_chest", "sort_chests",
-        "transfer_containers", "drop", "suck_items", "craft", "get_recipes",
-        "scan_furnaces", "smelt", "cook", "scoop_liquid", "place_liquid",
-        "machine_craft", "get_machine_recipes", "get_machine_recipe",
-        "scan_machines", "machine_ingredients", "anvil_drive"
+        "get_chest", "withdraw_chest", "deposit_chest", "drop", "suck_items",
+        "craft", "get_recipes", "scan_furnaces", "get_machine_recipes",
+        "get_machine_recipe", "scan_machines", "machine_ingredients"
     };
 
     private final AIDroneManager manager;
     private final InventoryService inventoryService;
-    private final ChestSorter chestSorter;
-    private final SmeltingService smeltingService;
 
     @Override
     public String[] getSupportedMethods() {
@@ -303,21 +301,6 @@ public class InventoryRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("sort_chests")) {
-            int radius = args.has("radius") ? args.get("radius").getAsInt() : 24;
-            String mode = args.has("mode") ? args.get("mode").getAsString() : "all";
-            return this.chestSorter.sortNearbyChests(world, ctrl, player, radius, mode);
-        }
-
-        if (m.equals("transfer_containers")) {
-            String fromF = args.has("from") ? args.get("from").getAsString() : "crate";
-            String toF = args.has("to") ? args.get("to").getAsString() : "chest";
-            int radius = args.has("radius") ? args.get("radius").getAsInt() : 32;
-            boolean create = !args.has("autoCreateChests") || args.get("autoCreateChests").getAsBoolean();
-            boolean sort = !args.has("sortAfter") || args.get("sortAfter").getAsBoolean();
-            return this.chestSorter.transferContainers(world, ctrl, player, fromF, toF, radius, create, sort);
-        }
-
         if (m.equals("drop")) {
             ctrl.dropFilter = args.has("filter") ? args.get("filter").getAsString() : "all";
             if (InventoryService.countInventoryItems(d.mainInventory()) > 0) {
@@ -349,7 +332,7 @@ public class InventoryRpcHandler implements RpcHandler {
 
         if (m.equals("scan_furnaces")) {
             int radius = args.has("radius") ? Math.min(36, Math.max(4, args.get("radius").getAsInt())) : 24;
-            List<TileEntity> furnaces = this.smeltingService.findAllFurnaceTiles(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, radius);
+            List<TileEntity> furnaces = FurnaceScanner.findAllFurnaceTiles(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, radius);
             JsonArray arr = new JsonArray();
             for (TileEntity te : furnaces) {
                 if (te instanceof IInventory) {
@@ -380,64 +363,13 @@ public class InventoryRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("smelt") || m.equals("cook")) {
-            String filter = args.has("filter") ? args.get("filter").getAsString()
-                : (args.has("target") ? args.get("target").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "meat"));
-            int count = args.has("count") ? args.get("count").getAsInt() : 64;
-            int queued = this.smeltingService.startSmeltTask(ctrl, player, filter, count);
-            res.addProperty("queued", queued);
-            res.addProperty("mode", ctrl.mode.name());
-            return res;
-        }
-
-        if (m.equals("scoop_liquid")) {
-            if (args.has("x") && args.has("y") && args.has("z")) {
-                int lx = args.get("x").getAsInt(), ly = args.get("y").getAsInt(), lz = args.get("z").getAsInt();
-                if (d.func_70011_f(lx + 0.5, ly + 0.5, lz + 0.5) <= 4.5) {
-                    boolean scooped = this.inventoryService.scoopLiquidAt(world, ctrl, player, lx, ly, lz);
-                    res.addProperty("scooped", scooped ? 1 : 0);
-                    return res;
-                }
-            }
-            String type = args.has("type") ? args.get("type").getAsString()
-                : (args.has("target") ? args.get("target").getAsString()
-                : (args.has("filter") ? args.get("filter").getAsString() : "lava"));
-            int count = args.has("count") ? args.get("count").getAsInt() : 1;
-            int sources = this.inventoryService.startScoopLiquidTask(ctrl, player, type, count);
-            res.addProperty("queued", sources);
-            res.addProperty("sourcesFound", sources);
-            res.addProperty("targetCount", count);
-            return res;
-        }
-
-        if (m.equals("place_liquid")) {
-            int lx = args.get("x").getAsInt(), ly = args.get("y").getAsInt(), lz = args.get("z").getAsInt();
-            String type = args.has("type") ? args.get("type").getAsString()
-                : (args.has("liquid") ? args.get("liquid").getAsString() : "water");
-            boolean placed = this.inventoryService.placeLiquidFromBucket(world, ctrl, player, lx, ly, lz, type);
-            res.addProperty("placed", placed);
-            return res;
-        }
-
-        if (m.equals("machine_craft")) {
-            String filter = args.has("filter") ? args.get("filter").getAsString()
-                : (args.has("target") ? args.get("target").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "plate_iron"));
-            String machine = args.has("machine") ? args.get("machine").getAsString()
-                : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
-            int count = args.has("count") ? args.get("count").getAsInt() : 1;
-            int radius = args.has("radius") ? Math.min(64, Math.max(8, args.get("radius").getAsInt())) : 32;
-            return this.inventoryService.getMachineCraftExecutor().machineCraft(world, ctrl, player, filter, machine, count, radius);
-        }
-
         if (m.equals("get_machine_recipes")) {
             String filter = args.has("filter") ? args.get("filter").getAsString()
                 : (args.has("target") ? args.get("target").getAsString()
                 : (args.has("item") ? args.get("item").getAsString() : ""));
             String machine = args.has("machine") ? args.get("machine").getAsString()
                 : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
-            return this.inventoryService.getMachineCraftExecutor().machineCraftRecipes(filter, machine);
+            return this.inventoryService.getMachineRecipeService().getMachineRecipesForFilter(filter, machine);
         }
 
         if (m.equals("get_machine_recipe")) {
@@ -455,15 +387,16 @@ public class InventoryRpcHandler implements RpcHandler {
                 : (args.has("machineKind") ? args.get("machineKind").getAsString()
                 : (args.has("filter") ? args.get("filter").getAsString() : ""));
             int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
-            return this.inventoryService.getMachineCraftExecutor().scanMachines(world, ctrl, player, machine, radius);
-        }
-
-        if (m.equals("anvil_drive")) {
-            String filter = args.has("filter") ? args.get("filter").getAsString()
-                : (args.has("target") ? args.get("target").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "plate_iron"));
-            int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
-            return this.inventoryService.getAnvilService().driveAnvil(world, ctrl, player, filter, radius);
+            String want = MachineTileInspector.normalizeMachineAlias(machine);
+            double refX = player != null && player.field_70170_p == world ? player.field_70165_t : d.field_70165_t;
+            double refY = player != null && player.field_70170_p == world ? player.field_70163_u : d.field_70163_u;
+            double refZ = player != null && player.field_70170_p == world ? player.field_70161_v : d.field_70161_v;
+            List<TileEntity> machines = MachineTileInspector.findMachineTiles(world, refX, refY, refZ, radius, want);
+            JsonArray arr = new JsonArray();
+            for (TileEntity te : machines) arr.add(MachineTileInspector.describeMachineTile(world, te));
+            res.addProperty("count", arr.size());
+            res.add("machines", arr);
+            return res;
         }
 
         if (m.equals("machine_ingredients")) {

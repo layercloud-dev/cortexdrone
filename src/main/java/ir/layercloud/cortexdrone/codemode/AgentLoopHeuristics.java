@@ -146,7 +146,7 @@ final class AgentLoopHeuristics {
     }
 
     static String nudgeForRepeat(String originalPrompt) {
-        return "REPETITION WARNING: you just re-queried the same recipe/chest data with no progress. Do NOT call kb.lookup/getRecipes/findItemInChests for the same target again. Act on what you already know: if 'found:true' in chests, withdraw/craft with those items; if an ingredient is missing, report the machine-config blocker as your final reply (done=true). Original task: " + truncateForPrompt(originalPrompt, 300);
+        return "REPETITION WARNING: you just re-queried the same block/chest/recipe data with no progress. Do NOT call drone.inspect for the same target again. Act on what you already know: move to the target and use breakBlock/placeBlock/transfer, or report the exact blocker as your final reply (done=true). Original task: " + truncateForPrompt(originalPrompt, 300);
     }
 
     static String fingerprintAndAction(String code) {
@@ -241,7 +241,7 @@ final class AgentLoopHeuristics {
             + " Re-send the instruction to continue from here.";
     }
 
-    static boolean promptExpectsActionQueue(String prompt) {
+    static boolean promptExpectsPhysicalAction(String prompt) {
         if (prompt == null) return false;
         String p = prompt.toLowerCase();
         return p.contains("mine") || p.contains("dig") || p.contains("break") || p.contains("clear")
@@ -250,7 +250,7 @@ final class AgentLoopHeuristics {
             || p.contains("plug") || p.contains("scoop") || p.contains("cook") || p.contains("smelt");
     }
 
-    static boolean hasZeroQueuedWarning(JsonObject execRes) {
+    static boolean attemptHadNoEffect(JsonObject execRes) {
         if (execRes == null || !execRes.has("result") || !execRes.get("result").isJsonObject()) {
             return false;
         }

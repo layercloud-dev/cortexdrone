@@ -17,20 +17,23 @@ Removed from the tool surface:
 - the legacy tool-call fallback in the agent loop
 
 The entire `behavior` package was removed. Operational code now lives in the
-categorized `action` package behind the common `Action` interface:
+categorized `action` package behind the common `Action` interface and an
+`ActionRegistry` that resolves master operations to their owning category:
 
-- `action.movement.NavigationService` — route selection, movement, breadcrumbs, carry, cave escape
+- `action.movement.NavigationService` — route selection and breadcrumbs
 - `action.block.BlockActionService` — one-block break and one-block place
 - `action.interact.InteractionActionService` — block interaction and item use
-- `action.combat.CombatService` — combat target selection and guard/patrol/hunt
 - `action.effect.EffectActionService` — LED, lighting aura, particles, sounds, notes, chat/status
+- `action.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
 
-The `harness` package keeps only task/session, chunk-ownership policy, and the
-master-tool catalog. No pre-made mining, building, farming, sorting or machine
-executor is exposed as a tool. The remaining `mineQueue` field is only the
-transient internal tunnel/self-rescue dig path; it is never populated by batched
-AI commands and there is no AI-facing instruction queue.
+The legacy one-shot executors (`AnvilService`, `MachineCraftExecutor`,
+`SmeltingService`, `ChestSorter`) and their batch queues (fluid scoop/place,
+TSP route optimization) were deleted. Machine recipes, furnaces and containers
+remain read-only inspect data; there is no pre-made smelt, sort, anvil-drive or
+machine-craft action. The remaining `mineQueue` field is only the transient
+internal tunnel/self-rescue dig path; it is never populated by batched AI
+commands and there is no AI-facing instruction queue.
 
 ## Master tool contract
 

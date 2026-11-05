@@ -46,12 +46,6 @@ public final class TaskSession {
         this.lastUpdateMs = System.currentTimeMillis();
     }
 
-    public synchronized void updateSummary(String text) {
-        if (text == null || text.trim().isEmpty()) return;
-        this.summary = text.trim();
-        this.lastUpdateMs = System.currentTimeMillis();
-    }
-
     public synchronized void complete() {
         this.active = false;
         this.lastUpdateMs = System.currentTimeMillis();
@@ -77,14 +71,6 @@ public final class TaskSession {
 
     public synchronized String getSummary() {
         return this.summary;
-    }
-
-    public synchronized long getStartedAtMs() {
-        return this.startedAtMs;
-    }
-
-    public synchronized long getLastUpdateMs() {
-        return this.lastUpdateMs;
     }
 
     public synchronized List<String> getNotes() {

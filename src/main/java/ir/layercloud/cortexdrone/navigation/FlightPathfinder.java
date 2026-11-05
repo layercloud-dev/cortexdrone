@@ -2,7 +2,6 @@ package ir.layercloud.cortexdrone.navigation;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
@@ -17,23 +16,15 @@ import java.util.Set;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraft.util.MathHelper;
-import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
-import net.minecraft.world.chunk.Chunk;
 import lombok.RequiredArgsConstructor;
 
 public class FlightPathfinder {
     // Baritone-inspired multi-coefficient backoff weights for partial path selection
     private static final double[] BARITONE_COEFFICIENTS = new double[]{1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 10.0};
     private static final double MIN_IMPROVEMENT = 0.01;
-    private static final double COST_INF = 1000000.0;
 
     @RequiredArgsConstructor
     static class AStarNode implements Comparable<AStarNode> {
@@ -366,19 +357,6 @@ public class FlightPathfinder {
     }
 
     // ==================== Delegated Breadcrumb Backtracking & Cave Escape ====================
-
-    public List<int[]> findDigEscapePath(World world, DroneController ctrl, int sx, int sy, int sz, int gx, int gy, int gz, boolean toOpenSky) {
-        return this.caveEscapeService.findDigEscapePath(world, ctrl, sx, sy, sz, gx, gy, gz, toOpenSky);
-    }
-
-    public int retraceBreadcrumbs(DroneController ctrl, int maxSteps, boolean stopAtSky) {
-        return this.caveEscapeService.retraceBreadcrumbs(ctrl, maxSteps, stopAtSky, true);
-    }
-
-    public int retraceBreadcrumbs(DroneController ctrl, int maxSteps, boolean stopAtSky, boolean switchToGoto) {
-        return this.caveEscapeService.retraceBreadcrumbs(ctrl, maxSteps, stopAtSky, switchToGoto);
-    }
-
     public int escapeCaveOrDigOut(DroneController ctrl, EntityPlayerMP owner) {
         return this.caveEscapeService.escapeCaveOrDigOut(ctrl, owner);
     }

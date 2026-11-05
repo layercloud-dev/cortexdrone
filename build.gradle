@@ -83,14 +83,7 @@ tasks.register('validate') {
         javaFiles.each { f ->
             def rel = file('src/main/java').toPath().relativize(f.toPath())
             def lines = f.readLines().size()
-            // Legacy per-file exemptions, pinned to exact line counts.
-            def legacyCaps = [
-                'ir/layercloud/cortexdrone/inventory/AnvilService.java'           : 760,
-                'ir/layercloud/cortexdrone/inventory/MachineCraftExecutor.java'  : 748,
-                'ir/layercloud/cortexdrone/codemode/LlmAgentService.java'         : 706,
-            ]
-            def cap = legacyCaps[rel.toString()]
-            def limit = cap ?: 696
+            def limit = 696
             if (lines > limit) {
                 failures << "FAIL: ${rel} exceeds modular line limit (${lines} > ${limit})"
             }

@@ -7,20 +7,14 @@ import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.codemode.rpc.MasterRpcHandler;
 import ir.layercloud.cortexdrone.codemode.rpc.RpcHandler;
-import ir.layercloud.cortexdrone.action.block.BlockActionService;
-import ir.layercloud.cortexdrone.inventory.ChestSorter;
-import ir.layercloud.cortexdrone.inventory.InventoryService;
-import ir.layercloud.cortexdrone.inventory.SmeltingService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
-import ir.layercloud.cortexdrone.world.WorldScanner;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,22 +60,11 @@ public class RpcDispatcher {
     private volatile ScanJob activeJob;
     private final Map<String, ScanJob> jobByKey = new ConcurrentHashMap<String, ScanJob>();
 
-    public RpcDispatcher(
-        AIDroneManager manager,
-        WorldScanner worldScanner,
-        FlightPathfinder pathfinder,
-        InventoryService inventoryService,
-        ChestSorter chestSorter,
-        SmeltingService smeltingService,
-        BlockActionService blockActionService
-    ) {
+    public RpcDispatcher(AIDroneManager manager) {
         this.manager = manager;
-        // Single master tool surface. Legacy handlers remain internal delegates
-        // inside MasterRpcHandler; they are deliberately NOT registered as tools.
-        registerHandler(new MasterRpcHandler(
-            manager, worldScanner, pathfinder, inventoryService, chestSorter,
-            smeltingService, blockActionService
-        ));
+        // Single master tool surface. Read-only handlers remain internal
+        // delegates; they are deliberately NOT registered as tools.
+        registerHandler(new MasterRpcHandler(manager));
     }
 
     public void registerHandler(RpcHandler handler) {

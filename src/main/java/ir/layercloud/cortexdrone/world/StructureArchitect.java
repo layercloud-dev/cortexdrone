@@ -1,6 +1,5 @@
 package ir.layercloud.cortexdrone.world;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.model.BuildTask;
 import ir.layercloud.cortexdrone.model.DroneController;
@@ -38,7 +37,7 @@ public class StructureArchitect {
         private final Map<String, Integer> materialCounts = new LinkedHashMap<String, Integer>();
 
         public void addTask(int x, int y, int z, String blockFilter, int meta, boolean replace) {
-            this.buildTasks.add(new BuildTask(x, y, z, blockFilter, meta, replace, null));
+            this.buildTasks.add(new BuildTask(x, y, z, blockFilter, meta, replace));
             Integer prev = this.materialCounts.get(blockFilter);
             this.materialCounts.put(blockFilter, (prev != null ? prev.intValue() : 0) + 1);
         }

@@ -54,13 +54,6 @@ public class DroneController {
     public String lastStuckReason = "";
     public String lastStuckKey = "";
     public int lastStuckLogTick = -10000;
-    // BuildTask retry streak: consecutive placeBlock failures for the head task.
-    // BuildingService rotates the task to the BACK of the queue every K failures
-    // so a poison/frozen cell can never wedge the whole build (infinite tight
-    // retry, zero progress). Reset on every successful placement. Single
-    // per-queue-head counter: BuildTask has no intrinsic identity beyond its
-    // coords, so the streak is keyed to "head of queue" by the caller.
-    public int buildHeadFailures = 0;
     // Separate solid-waypoint throttle: FlightPathfinder and DroneTickCoordinator
     // share lastStuckKey/lastStuckLogTick, so their keys overwrote each other
     // and the throttle never held — one STUCK line per tick for minutes.
@@ -102,7 +95,7 @@ public class DroneController {
     public final Deque<int[]> navigationHistory = new ConcurrentLinkedDeque<int[]>();
     public int[] lastSurfaceAnchor = null;
 
-    // Mining, building, farming, scooping & smelting state
+    // Single-block break/place and illumination state.
     // autoTorch == "illumination aura active". No torch item is consumed and no
     // block is placed: the drone raises the surrounding block light directly and
     // restores it when the aura is switched off.
@@ -114,19 +107,12 @@ public class DroneController {
     public long lightAnchor = Long.MIN_VALUE;
     // packed world position -> original block-light level, for exact restore
     public final Map<Long, Integer> lightCells = new HashMap<Long, Integer>();
-    // Opt-in only. When false (default) a build never swaps in a different block
-    // than the one requested; the task is dropped and reported instead.
-    public boolean allowBuildSubstitution = false;
     public String mineFilter = "ores";
     public boolean mineExactQueueOnly = false;
-    public boolean replantAfterHarvest = false;
     public boolean returnToOwnerAfterMine = false;
     public boolean mineUntilFull = false;
     public int mineTargetCount = 0;
     public final Deque<int[]> mineQueue = new ConcurrentLinkedDeque<int[]>();
-    public final Deque<BuildTask> buildQueue = new ConcurrentLinkedDeque<BuildTask>();
-    public final Deque<int[]> scoopQueue = new ConcurrentLinkedDeque<int[]>();
-    public final Map<Long, int[]> pendingReplants = new HashMap<Long, int[]>();
     public int[] currentMineTarget = null;
     public double[] currentMineStandoff = null;
     public int mineProgressTicks = 0;
@@ -135,26 +121,10 @@ public class DroneController {
     public int mineMatchedCount = 0;
     public int builtCount = 0;
 
-    public String scoopFilter = "lava";
-    public int scoopTargetCount = 1;
     public int scoopedCount = 0;
-
-    public String smeltFilter = "meat";
-    public int smeltTargetCount = 64;
-    public int smeltedCount = 0;
-    public int[] smeltFurnacePos = null;
-
-    public String machineTarget = "";
-    public String machineKind = "";
-    public int machineTargetCount = 1;
-    public int machineProducedCount = 0;
-    public int[] machinePos = null;
-    public String machineRecipeName = "";
-    public int machineTicksWaiting = 0;
 
     // Deposit / delivery target state
     public int[] targetDepositChestPos = null;
-    public String depositFilter = "all";
     public String dropFilter = "all";
 
     // Hunting, guard & patrol state
@@ -185,7 +155,6 @@ public class DroneController {
     public double velX = 0.0;
     public double velY = 0.0;
     public double velZ = 0.0;
-    public double cruiseSpeedCap = 1.15;
     // Path-cache signature (world-revision + endpoint bucket) for findFlightPath reuse
     public long cachedPathSignature = Long.MIN_VALUE;
     public long cachedPathCreatedTick = -1;
@@ -259,8 +228,7 @@ public class DroneController {
                 return true;
             }
         }
-        return this.activeScriptCount.get() > 0 || !this.mineQueue.isEmpty() || !this.buildQueue.isEmpty()
-            || !this.scoopQueue.isEmpty()
+        return this.activeScriptCount.get() > 0 || !this.mineQueue.isEmpty()
             || (this.mode != Mode.FOLLOW && this.mode != Mode.STAY && this.mode != Mode.GUARD && this.mode != Mode.PATROL);
     }
 
@@ -365,23 +333,17 @@ public class DroneController {
         }
     }
 
-    public void clearAllTaskQueues() {
+    public void clearActionState() {
         this.escapeResume = null;
         this.mineQueue.clear();
-        this.buildQueue.clear();
-        this.scoopQueue.clear();
-        this.pendingReplants.clear();
         this.currentMineTarget = null;
         this.currentMineStandoff = null;
         this.mineExactQueueOnly = false;
         this.targetDepositChestPos = null;
         this.targetAttackEntityId = -1;
         this.unreachableEntities.clear();
-        this.buildHeadFailures = 0;
         this.mineUntilFull = false;
         this.mineTargetCount = 0;
         this.mineMatchedCount = 0;
-        this.machinePos = null;
-        this.machineTicksWaiting = 0;
     }
 }

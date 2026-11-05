@@ -1,8 +1,5 @@
 package ir.layercloud.cortexdrone.action.combat;
 
-import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.action.Action;
-
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.DroneLogger;
@@ -27,56 +24,10 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
 @RequiredArgsConstructor
-public class CombatService implements Action {
+public class CombatService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
-
-    @Override
-    public String category() { return "combat"; }
-
-    @Override
-    public String[] operations() { return new String[]{"attack_entity", "hunt", "guard", "patrol"}; }
-
-    @Override
-    public boolean supports(String operation) {
-        return "attack_entity".equals(operation) || "hunt".equals(operation)
-            || "guard".equals(operation) || "patrol".equals(operation);
-    }
-
-    @Override
-    public JsonObject handle(DroneController ctrl, EntityPlayerMP player, String operation, JsonObject args) {
-        JsonObject res = new JsonObject();
-        if (args == null) args = new JsonObject();
-        if ("attack_entity".equals(operation)) {
-            int id = args.has("id") ? args.get("id").getAsInt() : -1;
-            String filter = args.has("filter") ? args.get("filter").getAsString() : "hostile";
-            res.addProperty("ok", startAttackEntityTask(ctrl, player, id, filter));
-            res.addProperty("targetId", ctrl.targetAttackEntityId);
-            return res;
-        }
-        if ("hunt".equals(operation)) {
-            String filter = args.has("filter") ? args.get("filter").getAsString() : "sheep|cow|pig";
-            int count = args.has("count") ? args.get("count").getAsInt() : 10;
-            res.addProperty("ok", true);
-            res.addProperty("nearbyMatching", startHuntTask(ctrl, player, filter, count));
-            return res;
-        }
-        if ("guard".equals(operation)) {
-            ctrl.targetPlayerName = args.has("target") ? args.get("target").getAsString() : (player != null ? player.func_70005_c_() : ctrl.ownerName);
-            ctrl.guardFilter = args.has("filter") ? args.get("filter").getAsString() : "hostile|mutant";
-            this.manager.setDroneMode(ctrl, Mode.GUARD, "Combat guard");
-            res.addProperty("ok", true); return res;
-        }
-        if ("patrol".equals(operation)) {
-            ctrl.targetPlayerName = args.has("target") ? args.get("target").getAsString() : (player != null ? player.func_70005_c_() : ctrl.ownerName);
-            ctrl.patrolRadius = args.has("radius") ? Math.max(12, Math.min(80, args.get("radius").getAsInt())) : 36;
-            ctrl.guardFilter = args.has("filter") ? args.get("filter").getAsString() : "hostile|mutant";
-            this.manager.setDroneMode(ctrl, Mode.PATROL, "Combat patrol");
-            res.addProperty("ok", true); return res;
-        }
-        res.addProperty("ok", false); res.addProperty("error", "Unsupported combat action: " + operation); return res;
-    }
 
     public EntityLivingBase findEntityById(World world, int entityId) {
         if (world == null || entityId <= 0) return null;
@@ -170,69 +121,6 @@ public class CombatService implements Action {
             }
         }
         return best;
-    }
-
-    public boolean startAttackEntityTask(DroneController ctrl, EntityPlayerMP player, int entityId, String filter) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return false;
-        Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        EntityLivingBase target = entityId > 0
-            ? findEntityById(world, entityId)
-            : findNearestMatchingEntity(world, ctrl, d.field_70165_t, d.field_70163_u, d.field_70161_v, 256.0, filter != null ? filter : "hostile");
-        if (target == null && player != null && player.field_70170_p == world && entityId <= 0) {
-            target = findNearestMatchingEntity(world, ctrl, player.field_70165_t, player.field_70163_u, player.field_70161_v, 256.0, filter != null ? filter : "hostile");
-        }
-        if (target == null) return false;
-        ctrl.targetAttackEntityId = target.func_145782_y();
-        ctrl.huntFilter = target.func_70005_c_();
-        ctrl.huntTargetCount = 1;
-        ctrl.huntedCount = 0;
-        this.manager.setDroneMode(ctrl, Mode.HUNT, "Attacking entity #" + ctrl.targetAttackEntityId + " (" + ctrl.huntFilter + ")");
-        d.lightColor_$eq(0xFF2222);
-        d.statusText_$eq("Attacking\n" + AIDroneManager.trimStatus(ctrl.huntFilter));
-        return true;
-    }
-
-    public int startHuntTask(DroneController ctrl, EntityPlayerMP player, String filter, int maxCount) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.field_70170_p == null) return 0;
-        Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        ctrl.targetAttackEntityId = -1;
-        ctrl.huntFilter = (filter == null || filter.trim().isEmpty()) ? "sheep|cow|pig|chicken" : filter.trim();
-        ctrl.huntedCount = 0;
-
-        double cx = player != null && player.field_70170_p == world ? player.field_70165_t : d.field_70165_t;
-        double cy = player != null && player.field_70170_p == world ? player.field_70163_u : d.field_70163_u;
-        double cz = player != null && player.field_70170_p == world ? player.field_70161_v : d.field_70161_v;
-
-        int matching = 0;
-        double nearestDist = Double.MAX_VALUE;
-        List<?> list = world.field_72996_f;
-        if (list != null) {
-            for (Object o : list) {
-                if (o instanceof EntityLivingBase) {
-                    EntityLivingBase el = (EntityLivingBase) o;
-                    if (ItemClassifier.matchesEntityFilter(el, ctrl.huntFilter)) {
-                        double dist = el.func_70011_f(cx, cy, cz);
-                        if (dist <= 1000.0) {
-                            matching++;
-                            if (dist < nearestDist) nearestDist = dist;
-                        }
-                    }
-                }
-            }
-        }
-
-        ctrl.huntTargetCount = Math.max(1, Math.min(64, maxCount));
-
-        if (matching > 0) {
-            this.manager.setDroneMode(ctrl, Mode.HUNT, "Hunting '" + ctrl.huntFilter + "' (target=" + ctrl.huntTargetCount + ", nearby=" + matching + ", nearest=" + Math.round(nearestDist) + "m)");
-            d.lightColor_$eq(0xFF2222);
-            d.statusText_$eq("Hunting 0/" + ctrl.huntTargetCount + "\n" + AIDroneManager.trimStatus(ctrl.huntFilter));
-        } else {
-            this.logger.log("HUNT", ctrl, "No entities matching '" + ctrl.huntFilter + "' within 1000m", "");
-        }
-        return matching;
     }
 
     private static int countRawMeatInInventory(IInventory inv) {

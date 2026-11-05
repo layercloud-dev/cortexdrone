@@ -12,33 +12,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockChest;
-import net.minecraft.block.BlockCocoa;
 import net.minecraft.block.BlockCrops;
-import net.minecraft.block.BlockDeadBush;
-import net.minecraft.block.BlockDoublePlant;
-import net.minecraft.block.BlockFlower;
 import net.minecraft.block.BlockLeaves;
 import net.minecraft.block.BlockLiquid;
 import net.minecraft.block.BlockLog;
 import net.minecraft.block.BlockOre;
 import net.minecraft.block.BlockReed;
 import net.minecraft.block.BlockRotatedPillar;
-import net.minecraft.block.BlockSapling;
-import net.minecraft.block.BlockStem;
-import net.minecraft.block.BlockTallGrass;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
-import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.EnumCreatureType;
-import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.monster.EntityMob;
-import net.minecraft.entity.monster.IMob;
-import net.minecraft.entity.passive.EntityAnimal;
-import net.minecraft.entity.passive.EntityTameable;
-import net.minecraft.entity.passive.IAnimals;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.ISidedInventory;
@@ -65,7 +50,6 @@ import net.minecraftforge.common.IShearable;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidContainerRegistry;
 import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.IFluidBlock;
 import net.minecraftforge.fluids.IFluidHandler;
 import net.minecraftforge.oredict.OreDictionary;
@@ -84,7 +68,6 @@ public final class RegistryIntrospector {
 
     private static volatile Set<String> cachedUndergroundTokens = Collections.emptySet();
     private static volatile Set<String> cachedCropTokens = Collections.emptySet();
-    private static volatile Set<String> cachedBiomeTokens = Collections.emptySet();
     private static volatile int lastOreDictCount = -1;
 
     private static Method blockIsWoodMethod = null;
@@ -229,24 +212,6 @@ public final class RegistryIntrospector {
         return "minecraft:bucket".equalsIgnoreCase(reg);
     }
 
-    public static boolean isFilledFluidContainer(ItemStack st) {
-        if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) return false;
-        try {
-            return FluidContainerRegistry.isFilledContainer(st);
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    public static FluidStack getFluidInContainer(ItemStack st) {
-        if (st == null || st.field_77994_a <= 0 || st.func_77973_b() == null) return null;
-        try {
-            return FluidContainerRegistry.getFluidForFilledItem(st);
-        } catch (Throwable ignored) {
-            return null;
-        }
-    }
-
     // ==================== Dynamic Wood, Leaf, Crop & Ore Detection ====================
 
     public static boolean isLogBlock(Block b) {
@@ -302,39 +267,10 @@ public final class RegistryIntrospector {
         return result;
     }
 
-    private static Material Material_field_149688_o_leavesFallback() {
-        return Material.field_151584_j;
-    }
-
     public static boolean isCropOrPlantBlock(Block b) {
         if (b == null || b == Blocks.field_150350_a) return false;
         if (b instanceof BlockCrops || b instanceof BlockReed || b instanceof IPlantable) return true;
         return hasOreDictPrefix(b, 0, "crop", "reed", "seed", "listAllveggie", "listAllgrain");
-    }
-
-    /**
-     * A block that is safe to automatically replant after harvest: real crops and
-     * reeds only. Decorative IPlantable blocks (tall grass / shrub, ferns, flowers,
-     * dead bushes, saplings) are deliberately excluded - harvesting those must not
-     * conjure a replacement plant out of the drone's inventory.
-     */
-    public static boolean isReplantableCropBlock(Block b) {
-        if (b == null || b == Blocks.field_150350_a) return false;
-        if (isDecorativePlantBlock(b)) return false;
-        if (b instanceof BlockCrops || b instanceof BlockReed) return true;
-        if (b instanceof BlockStem || b instanceof BlockCocoa) return true;
-        return hasOreDictPrefix(b, 0, "crop", "reed", "listAllveggie", "listAllgrain");
-    }
-
-    private static boolean isDecorativePlantBlock(Block b) {
-        if (b instanceof BlockTallGrass || b instanceof BlockDeadBush
-            || b instanceof BlockFlower || b instanceof BlockDoublePlant
-            || b instanceof BlockSapling) {
-            return true;
-        }
-        String cls = b.getClass().getName().toLowerCase();
-        return cls.contains("tallgrass") || cls.contains("deadbush") || cls.contains("flower")
-            || cls.contains("doubleplant") || cls.contains("sapling") || cls.contains("shrub");
     }
 
     public static boolean isOreBlock(Block b, int meta) {
@@ -486,19 +422,6 @@ public final class RegistryIntrospector {
         }
         cachedCropTokens = tokens;
         return cachedCropTokens;
-    }
-
-    public static boolean isLikelyCropOrPlantQuery(String filter) {
-        if (filter == null) return false;
-        List<String> queryTokens = LexicalItemMatcher.tokenize(filter);
-        if (queryTokens.isEmpty()) return false;
-        Set<String> cropTokens = getCropAndPlantTokens();
-        for (String tok : queryTokens) {
-            if (cropTokens.contains(tok) || cropTokens.contains(LexicalItemMatcher.singularize(tok))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     // ==================== Dynamic Storage Container vs. Processing Machine Detection ====================

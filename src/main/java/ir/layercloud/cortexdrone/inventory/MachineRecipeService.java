@@ -143,10 +143,6 @@ public class MachineRecipeService {
         return res;
     }
 
-    public List<NormalizedRecipe> getAllRecipesForInspection() {
-        return loadAllRecipes();
-    }
-
     private JsonObject recipeToJson(NormalizedRecipe r) {
         JsonObject o = new JsonObject();
         o.addProperty("machine", r.machine);
@@ -201,11 +197,9 @@ public class MachineRecipeService {
         if (out.isEmpty()) {
             out.addAll(readLiveRecipesViaReflection());
         } else {
-            // JSON templates cover most kinds, but two data families exist ONLY in
-            // memory: AnvilSmithingHot/Mold 2-input pairs (registerSmithing) and
-            // AnvilConstruction constructionIndex tags (AnvilService drives its
-            // InventoryUtil path by index). Merge the live-only entries without
-            // duplicating what JSON already produced (matched by machine+recipe).
+            // JSON templates cover most kinds, but some recipe families exist ONLY
+            // in memory (smithing pairs and construction-index tags). Merge the
+            // live-only entries without duplicating what JSON already produced.
             List<NormalizedRecipe> live = readLiveRecipesViaReflection();
             Set<String> seen = new HashSet<String>();
             for (NormalizedRecipe r : out) {

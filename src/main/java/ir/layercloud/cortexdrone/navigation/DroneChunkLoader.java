@@ -3,7 +3,6 @@ package ir.layercloud.cortexdrone.navigation;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.model.BuildTask;
 import ir.layercloud.cortexdrone.model.DroneController;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,7 +53,6 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     private static final int CORRIDOR_LOOKAHEAD_WAYPOINTS = 4;
     private static final int CORRIDOR_MAX_CHUNKS = 8;
     private static final int MINE_QUEUE_LOOKAHEAD = 4;
-    private static final int BUILD_QUEUE_LOOKAHEAD = 2;
     /** Keep a chunk this long after it stops being needed (ChickenChunks uses 100). */
     private static final int RELEASE_GRACE_TICKS = 200;
     /** New chunk loads per 5-tick drone plan update. Prevents flight stutter. */
@@ -382,13 +380,6 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
             addChunk(plan, seen, p[0] >> 4, p[2] >> 4);
             if (++queued >= MINE_QUEUE_LOOKAHEAD) break;
         }
-        queued = 0;
-        for (BuildTask bt : ctrl.buildQueue) {
-            if (bt == null) continue;
-            addChunk(plan, seen, bt.getX() >> 4, bt.getZ() >> 4);
-            if (++queued >= BUILD_QUEUE_LOOKAHEAD) break;
-        }
-
         if (!Double.isNaN(ctrl.goalX) && !Double.isNaN(ctrl.goalZ)) {
             addChunk(plan, seen, MathHelper.func_76128_c(ctrl.goalX) >> 4,
                 MathHelper.func_76128_c(ctrl.goalZ) >> 4);

@@ -137,7 +137,7 @@ final class MachineRecipeReflection {
             }
             // Construction recipes are executed by the AnvilCraftPacket path:
             // InventoryUtil.doesPlayerHaveAStacks / giveChanceStacksToPlayer on the
-            // fake player's main inventory. Tag the index so AnvilService can drive it.
+            // fake player's main inventory and tag the construction index.
             r.overlay = (r.overlay == null || r.overlay.isEmpty()) ? "CONSTRUCTION" : r.overlay;
             r.constructionIndex = recipeIndex;
             return r;

@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
@@ -82,71 +81,6 @@ public final class MachineTileInspector {
             if (invName.contains(kw)) return true;
         }
         return false;
-    }
-
-    public static boolean isAnvilBlock(World world, int x, int y, int z) {
-        if (world == null) return false;
-        try {
-            Block b = world.func_147439_a(x, y, z);
-            if (b == null) return false;
-            String bcls = b.getClass().getName().toLowerCase();
-            if (bcls.contains("anvil")) return true;
-            String reg = Block.field_149771_c.func_148750_c(b);
-            if (reg != null && reg.toLowerCase().contains("anvil")) return true;
-            return MachineTileInspector.machineKindForBlock(b).equals("anvil");
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    public static String machineKindForBlock(Block b) {
-        if (b == null) return "";
-        String bcls = b.getClass().getName().toLowerCase();
-        if (bcls.contains("anvil")) return "anvil";
-        String reg = Block.field_149771_c.func_148750_c(b);
-        if (reg != null && reg.toLowerCase().contains("anvil")) return "anvil";
-        return machineKindForName(reg);
-    }
-
-    public static String machineKindForName(String raw) {
-        if (raw == null) return "";
-        String n = raw.toLowerCase();
-        if (n.contains("anvil")) return "anvil";
-        if (n.contains("assembly")) return "assembly_machine";
-        if (n.contains("chemical")) return "chemical_plant";
-        if (n.contains("blast")) return "blast_furnace";
-        if (n.contains("arcwelder")) return "arc_welder";
-        if (n.contains("arcfurnace") || n.contains("arc_furnace")) return "arc_furnace";
-        if (n.contains("crucible") || n.contains("smelting")) return "crucible";
-        if (n.contains("electrolyser") || n.contains("electrolyzer")) return "electrolyser";
-        if (n.contains("pedestal")) return "pedestal";
-        if (n.contains("plasmaforge") || n.contains("plasma")) return "plasma_forge";
-        if (n.contains("fusion")) return "fusion";
-        if (n.contains("breeder")) return "breeder";
-        if (n.contains("cyclotron")) return "cyclotron";
-        if (n.contains("pyro")) return "pyrolysis";
-        if (n.contains("cracking") || n.contains("cracker")) return "cracking";
-        if (n.contains("alkyl")) return "alkylation";
-        if (n.contains("fraction")) return "fractions";
-        if (n.contains("vacuumcircuit") || n.contains("vacuum_circuit") || n.contains("soldering")) return "soldering_station";
-        if (n.contains("rotary")) return "rotary_furnace";
-        if (n.contains("refinery")) return "refinery";
-        if (n.contains("vacuumdistill") || n.contains("vacuum_distill") || n.contains("distill") || n.contains("cryodistillator") || n.contains("cryo")) return "cryodistillator";
-        if (n.contains("vacuum")) return "refinery";
-        if (n.contains("hydrotreat")) return "hydrotreating";
-        if (n.contains("liquefact") || n.contains("liquefactor")) return "liquefactor";
-        if (n.contains("irradiat")) return "irradiation";
-        if (n.contains("solidif") || n.contains("solidifier")) return "solidifier";
-        if (n.contains("supercomputer") || n.contains("computer")) return "supercomputer";
-        if (n.contains("space")) return "space_assembler";
-        if (n.contains("reforming") || n.contains("reformer")) return "reforming";
-        if (n.contains("atmosphere")) return "atmosphere";
-        if (n.contains("combination")) return "combination";
-        if (n.contains("fuelpool")) return "fuelpool";
-        if (n.contains("purex")) return "purex";
-        if (n.contains("particle")) return "particle_accelerator";
-        if (n.contains("exposure")) return "exposure_chamber";
-        return recipeFileToMachine(raw);
     }
 
     public static String machineKind(TileEntity te) {
@@ -335,19 +269,6 @@ public final class MachineTileInspector {
         if (base.contains("particle")) return "particle_accelerator";
         if (base.contains("exposure")) return "exposure_chamber";
         return base;
-    }
-
-    public static boolean isPedestalBlock(World world, int x, int y, int z) {
-        if (world == null) return false;
-        try {
-            Block b = world.func_147439_a(x, y, z);
-            if (b == null) return false;
-            if (b.getClass().getName().toLowerCase().contains("pedestal")) return true;
-            String reg = Block.field_149771_c.func_148750_c(b);
-            return reg != null && reg.toLowerCase().contains("pedestal");
-        } catch (Throwable ignored) {
-            return false;
-        }
     }
 
     public static List<TileEntity> findMachineTiles(World world, double x, double y, double z, int radius, String machineFilter) {

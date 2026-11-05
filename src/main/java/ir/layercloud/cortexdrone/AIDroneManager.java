@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone;
 
-import com.google.gson.JsonObject;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import ir.layercloud.cortexdrone.action.ActionRegistry;
 import ir.layercloud.cortexdrone.codemode.CodeModeRuntime;
 import ir.layercloud.cortexdrone.codemode.LlmAgentService;
 import ir.layercloud.cortexdrone.codemode.RpcDispatcher;
@@ -17,9 +17,7 @@ import ir.layercloud.cortexdrone.action.interact.InteractionActionService;
 import ir.layercloud.cortexdrone.action.movement.NavigationService;
 import ir.layercloud.cortexdrone.service.TickService;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
-import ir.layercloud.cortexdrone.inventory.ChestSorter;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
-import ir.layercloud.cortexdrone.inventory.SmeltingService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.DroneChunkLoader;
@@ -63,13 +61,12 @@ public class AIDroneManager {
     private final FlightPathfinder pathfinder;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
-    private final ChestSorter chestSorter;
-    private final SmeltingService smeltingService;
     private final BlockActionService blockActionService;
     private final EffectActionService effectService;
     private final InteractionActionService actionService;
     private final NavigationService navigationService;
     private final CombatService combatService;
+    private final ActionRegistry actionRegistry;
     private final DocLookupService docLookupService;
     private SkillLibrary skillLibrary;
     private final CodeModeRuntime codeModeRuntime;
@@ -91,26 +88,21 @@ public class AIDroneManager {
         this.chunkLoader = new DroneChunkLoader(mod, this.logger);
         this.pathfinder = new FlightPathfinder(this, this.logger);
         this.worldScanner = new WorldScanner(this.logger, this.config);
-        this.inventoryService = new InventoryService(this, this.logger, this.pathfinder);
-        this.chestSorter = new ChestSorter(this.logger, this.inventoryService);
-        this.smeltingService = new SmeltingService(this, this.logger, this.pathfinder, this.inventoryService);
+        this.inventoryService = new InventoryService(this.logger);
         this.effectService = new EffectActionService(this, this.logger);
-        this.actionService = new InteractionActionService(this, this.inventoryService);
+        this.actionService = new InteractionActionService(this.inventoryService);
         this.blockActionService = new BlockActionService(this, this.logger, this.pathfinder, this.inventoryService);
-        this.navigationService = new NavigationService(this, this.pathfinder, this.worldScanner);
+        this.navigationService = new NavigationService(this);
         this.combatService = new CombatService(this, this.logger, this.pathfinder);
+        this.actionRegistry = new ActionRegistry();
+        this.actionRegistry.register(this.navigationService);
+        this.actionRegistry.register(this.blockActionService);
+        this.actionRegistry.register(this.actionService);
+        this.actionRegistry.register(this.effectService);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));
         this.codeModeRuntime = new CodeModeRuntime(this.logger, this.config);
-        this.rpcDispatcher = new RpcDispatcher(
-            this,
-            this.worldScanner,
-            this.pathfinder,
-            this.inventoryService,
-            this.chestSorter,
-            this.smeltingService,
-            this.blockActionService
-        );
+        this.rpcDispatcher = new RpcDispatcher(this);
         this.agentService = new LlmAgentService(
             this,
             this.logger,
@@ -619,7 +611,7 @@ public class AIDroneManager {
         ctrl.goalX = gx;
         ctrl.goalY = gy;
         ctrl.goalZ = gz;
-        ctrl.clearAllTaskQueues();
+        ctrl.clearActionState();
         setDroneMode(ctrl, Mode.GOTO, "Come in front of player for interaction");
         droneSay(player, ctrl, "Coming right in front of you and holding position so you can access my inventory!");
     }

@@ -8,10 +8,6 @@ public enum Mode {
     PATROL,
     HUNT,
     MINE,
-    BUILD,
-    SCOOP,
-    SMELT,
-    MACHINE,
     CARRY,
     DEPOSIT,
     DROP

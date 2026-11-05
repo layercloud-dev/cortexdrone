@@ -30,19 +30,6 @@ public final class ToolInspector {
         return Math.min(5, best);
     }
 
-    public static boolean hasSilkTouch(IInventory inv) {
-        if (inv == null) return false;
-        int silkId = Enchantment.field_77348_q != null ? Enchantment.field_77348_q.field_77352_x : 33;
-        for (int i = 0; i < inv.func_70302_i_(); i++) {
-            ItemStack st = inv.func_70301_a(i);
-            if (st != null && st.field_77994_a <= 0) continue;
-            if (st != null && EnchantmentHelper.func_77506_a(silkId, st) > 0) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static int computeRequiredMiningTicks(IInventory inv, Block block, float hardness) {
         float baseTicks = Math.max(4.0f, Math.min(16.0f, (float) Math.ceil(hardness * 3.0f)));
         if (inv == null || block == null) return (int) baseTicks;

@@ -38,7 +38,6 @@ final class AgentHeartbeat {
     private final EntityPlayerMP player;
     private final String userPrompt;
     private final int loopId;
-    private final long startedMs = System.currentTimeMillis();
 
     private int lastTurn = 0;
     private String lastCode = "";
@@ -98,7 +97,7 @@ final class AgentHeartbeat {
      */
     boolean rejectIncompleteDone(String reply) {
         if (this.forcedDoneChecks >= 2) return false;
-        if (!AgentLoopHeuristics.promptExpectsActionQueue(this.userPrompt)) return false;
+        if (!AgentLoopHeuristics.promptExpectsPhysicalAction(this.userPrompt)) return false;
         if (looksBlocked(reply) || looksBlocked(this.ctrl.lastThought)) return false;
         boolean concrete = AgentLoopHeuristics.hasConcreteProgress(this.lastExec, this.lastCode) || deliveredEvidence(this.lastExec);
         boolean active = hasActiveWork();
@@ -119,7 +118,7 @@ final class AgentHeartbeat {
             + "Original task: " + LoopTracer.snippet(this.userPrompt, 320) + "\n"
             + "Current drone: " + statusSummary() + "\n"
             + "Do NOT answer done again until the goal is actually finished. Continue with the next "
-            + "PHYSICAL JavaScript step (fly / mine / queue / withdraw / deliver) and then verify the "
+            + "PHYSICAL JavaScript step (inspect / moveTo / breakBlock / transfer) and then verify the "
             + "result. Only when the requested items/actions are truly complete, reply done:true with "
             + "the delivered amount. If genuinely blocked, reply done:true and name the exact blocker.";
     }
@@ -142,7 +141,7 @@ final class AgentHeartbeat {
             return;
         }
 
-        boolean actionTask = AgentLoopHeuristics.promptExpectsActionQueue(this.userPrompt);
+        boolean actionTask = AgentLoopHeuristics.promptExpectsPhysicalAction(this.userPrompt);
         boolean active = hasActiveWork();
         boolean deliveryPending = promptMentionsDelivery(this.userPrompt)
             && countInventory() > 0 && !deliveredEvidence(this.lastExec);
@@ -205,8 +204,6 @@ final class AgentHeartbeat {
             .append(Math.round(this.ctrl.drone.field_70163_u)).append(',')
             .append(Math.round(this.ctrl.drone.field_70161_v)).append(')');
         sb.append(" mineQueue=").append(this.ctrl.mineQueue.size());
-        sb.append(" buildQueue=").append(this.ctrl.buildQueue.size());
-        sb.append(" scoopQueue=").append(this.ctrl.scoopQueue.size());
         sb.append(" inventory=").append(countInventory()).append(" items");
         if (this.lastExec != null) {
             sb.append(" lastResult=").append(LoopTracer.snippet(this.lastExec.toString(), 320));
@@ -216,12 +213,9 @@ final class AgentHeartbeat {
 
     private boolean hasActiveWork() {
         if (this.ctrl == null) return false;
-        if (!this.ctrl.mineQueue.isEmpty() || !this.ctrl.buildQueue.isEmpty() || !this.ctrl.scoopQueue.isEmpty()) {
-            return true;
-        }
+        if (!this.ctrl.mineQueue.isEmpty()) return true;
         Mode m = this.ctrl.mode;
-        return m == Mode.MINE || m == Mode.BUILD || m == Mode.SCOOP || m == Mode.SMELT
-            || m == Mode.MACHINE || m == Mode.CARRY || m == Mode.DROP || m == Mode.DEPOSIT;
+        return m == Mode.MINE || m == Mode.CARRY || m == Mode.DROP || m == Mode.DEPOSIT;
     }
 
     private int countInventory() {

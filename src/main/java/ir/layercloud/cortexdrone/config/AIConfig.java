@@ -124,7 +124,7 @@ public class AIConfig {
                     info.setUuid(c.entityUuid.toString());
                     info.setName(c.name);
                     info.setOwner(c.ownerName);
-                    info.setMode((c.mode == Mode.MINE || c.mode == Mode.BUILD || c.mode == Mode.SCOOP || c.mode == Mode.SMELT || c.mode == Mode.CARRY || c.mode == Mode.DROP || c.mode == Mode.DEPOSIT)
+                    info.setMode((c.mode == Mode.MINE || c.mode == Mode.CARRY || c.mode == Mode.DROP || c.mode == Mode.DEPOSIT)
                         ? Mode.FOLLOW.name()
                         : c.mode.name());
                     info.setAutoTorch(c.autoTorch);
@@ -152,30 +152,6 @@ public class AIConfig {
         String o = (owner != null && !owner.trim().isEmpty()) ? owner.trim().toLowerCase() : "global";
         String n = (name != null && !name.trim().isEmpty()) ? name.trim().toLowerCase().replace(' ', '_') : "waypoint";
         return o + ":" + n;
-    }
-
-    public synchronized SavedLocation saveLocation(String owner, String name, double x, double y, double z, String tags) {
-        if (name == null || name.trim().isEmpty()) return null;
-        if (this.savedLocations == null) {
-            this.savedLocations = new LinkedHashMap<String, SavedLocation>();
-        }
-        String cleanName = name.trim();
-        String cleanOwner = (owner != null && !owner.trim().isEmpty()) ? owner.trim() : "global";
-        SavedLocation loc = new SavedLocation();
-        loc.setName(cleanName);
-        loc.setOwner(cleanOwner);
-        loc.setX(Math.round(x * 10.0) / 10.0);
-        loc.setY(Math.round(y * 10.0) / 10.0);
-        loc.setZ(Math.round(z * 10.0) / 10.0);
-        loc.setTags(tags != null ? tags.trim() : "");
-        loc.setUpdatedAt(System.currentTimeMillis());
-        this.savedLocations.put(normLocationKey(cleanOwner, cleanName), loc);
-        this.savedLocations.put(normLocationKey("global", cleanName), loc);
-        String lower = cleanName.toLowerCase();
-        if (lower.equals("base") || lower.equals("home") || lower.equals("main_base") || lower.equals("main base")) {
-            setPlayerBase(cleanOwner, x, y, z);
-        }
-        return loc;
     }
 
     public synchronized SavedLocation getLocation(String owner, String query) {
@@ -220,16 +196,6 @@ public class AIConfig {
         }
         out.addAll(dedup.values());
         return out;
-    }
-
-    public synchronized boolean deleteLocation(String owner, String name) {
-        if (name == null || this.savedLocations == null) return false;
-        boolean removed = false;
-        if (owner != null) {
-            removed |= (this.savedLocations.remove(normLocationKey(owner, name)) != null);
-        }
-        removed |= (this.savedLocations.remove(normLocationKey("global", name)) != null);
-        return removed;
     }
 
     public synchronized void setPlayerBase(String playerName, double x, double y, double z) {

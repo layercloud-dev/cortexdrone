@@ -304,7 +304,7 @@ public class LlmAgentService {
                     executedAnyAction = true;
                     AgentLoopHeuristics.executePreCodeModeStop(ctrl, player, myLoopId, turn, this.logger, this.rpcDispatcher);
                 }
-                if (isMalformed || (code.isEmpty() && !executedAnyAction && AgentLoopHeuristics.promptExpectsActionQueue(userPrompt))) {
+                if (isMalformed || (code.isEmpty() && !executedAnyAction && AgentLoopHeuristics.promptExpectsPhysicalAction(userPrompt))) {
                     hadSelfCorrection = true;
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn + " malformed or missing JS code -> self-correcting", "thought=" + LoopTracer.snippet(thought, 200));
                     if (turn < MAX_AGENT_TURNS) {
@@ -382,7 +382,7 @@ public class LlmAgentService {
                         continue;
                     }
 
-                    if (done && turn < 24 && AgentLoopHeuristics.promptExpectsActionQueue(userPrompt) && AgentLoopHeuristics.hasZeroQueuedWarning(execRes)) {
+                    if (done && turn < 24 && AgentLoopHeuristics.promptExpectsPhysicalAction(userPrompt) && AgentLoopHeuristics.attemptHadNoEffect(execRes)) {
                         done = false;
                         hadSelfCorrection = true;
                         this.logger.log("CODEMODE", ctrl, "Turn " + turn + " suspicious 0-queued result -> prompting self-correction", execRes.toString());

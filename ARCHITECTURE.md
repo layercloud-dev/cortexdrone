@@ -75,6 +75,14 @@ No instruction is queued for later. A modification replaces the session instead
 of stacking behind it. The classifier lives in
 `harness/TaskIntentClassifier.java` and is covered by JUnit tests.
 
+## Chunk ownership
+
+`PlayerChunkWatchRegistry` tracks Forge `ChunkWatchEvent.Watch/UnWatch`, i.e.
+the exact chunks the server is currently sending/keeping for players.
+`PlayerChunkOwnership` also protects the vanilla view radius plus a small border
+margin. Any protected chunk is never forced, loaded, re-ordered, unforced, or
+released by the drone; ticket releases containing watched chunks are deferred.
+
 ## Verification
 
 ```bash

@@ -3,7 +3,6 @@ package ir.layercloud.cortexdrone.navigation;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.harness.PlayerChunkPolicy;
 import ir.layercloud.cortexdrone.model.BuildTask;
 import ir.layercloud.cortexdrone.model.DroneController;
 import java.util.ArrayList;
@@ -15,7 +14,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.MathHelper;
@@ -24,6 +22,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.ForgeChunkManager.Ticket;
+import static ir.layercloud.cortexdrone.harness.PlayerChunkOwnership.isPlayerManaged;
 
 /**
  * Forge 1.7.10 chunk manager for drones and persistent anchors.
@@ -565,7 +564,9 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         }
     }
 
-    private static void unforce(Ticket ticket, ChunkCoordIntPair pair) {
+    private void unforce(Ticket ticket, ChunkCoordIntPair pair) {
+        if (ticket == null || pair == null) return;
+        if (isPlayerManaged(ticket.world, pair.field_77276_a, pair.field_77275_b)) return;
         try {
             ForgeChunkManager.unforceChunk(ticket, pair);
         } catch (Throwable ignored) {
@@ -597,6 +598,11 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     }
 
     private void releaseNow(Ticket ticket) {
+        if (ticket == null) return;
+        if (this.ticketHasPlayerManagedChunk(ticket)) {
+            this.pendingPlayerSafeReleases.add(ticket);
+            return;
+        }
         try {
             ForgeChunkManager.releaseTicket(ticket);
         } catch (Throwable ignored) {
@@ -627,39 +633,6 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
     // ------------------------------------------------------------------
     // Player ownership
     // ------------------------------------------------------------------
-
-    /**
-     * True when a player's vanilla chunk view already keeps this chunk loaded.
-     * Uses the exact view distance used by {@code PlayerManager.updatePlayerPertinentChunks};
-     * no margin, so we never hand a chunk back to vanilla one chunk early.
-     */
-    public static boolean isPlayerManaged(World world, int cx, int cz) {
-        if (!(world instanceof WorldServer)) return false;
-        List<?> players = world.field_73010_i;
-        if (players == null || players.isEmpty()) return false;
-        int view = viewDistanceChunks();
-        for (Object o : players) {
-            if (!(o instanceof EntityPlayerMP)) continue;
-            EntityPlayerMP p = (EntityPlayerMP) o;
-            if (p.field_70170_p != world) continue;
-            int pcx = MathHelper.func_76128_c(p.field_70165_t) >> 4;
-            int pcz = MathHelper.func_76128_c(p.field_70161_v) >> 4;
-            if (PlayerChunkPolicy.isWithinViewDistance(pcx, pcz, cx, cz, view)) return true;
-        }
-        return false;
-    }
-
-    private static int viewDistanceChunks() {
-        try {
-            MinecraftServer srv = MinecraftServer.func_71276_C();
-            if (srv != null && srv.func_71203_ab() != null) {
-                int v = srv.func_71203_ab().func_72395_o();
-                return Math.max(3, Math.min(15, v));
-            }
-        } catch (Throwable ignored) {
-        }
-        return 10;
-    }
 
     // ------------------------------------------------------------------
     // Helpers used by navigation

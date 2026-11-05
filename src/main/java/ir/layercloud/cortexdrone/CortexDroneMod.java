@@ -10,6 +10,7 @@ import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import ir.layercloud.cortexdrone.harness.PlayerChunkWatchRegistry;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -27,6 +28,8 @@ import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.ServerChatEvent;
+import net.minecraftforge.event.world.ChunkWatchEvent;
+import net.minecraftforge.event.world.WorldEvent;
 
 @Mod(
     modid = CortexDroneMod.MODID,
@@ -123,6 +126,25 @@ public class CortexDroneMod {
         if (this.aiDroneManager != null) {
             this.aiDroneManager.onPlayerChat(event);
         }
+    }
+
+    @SubscribeEvent
+    public void onChunkWatch(ChunkWatchEvent.Watch event) {
+        if (event != null && event.player != null) {
+            PlayerChunkWatchRegistry.watch(event.player.field_70170_p, event.chunk);
+        }
+    }
+
+    @SubscribeEvent
+    public void onChunkUnwatch(ChunkWatchEvent.UnWatch event) {
+        if (event != null && event.player != null) {
+            PlayerChunkWatchRegistry.unwatch(event.player.field_70170_p, event.chunk);
+        }
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        PlayerChunkWatchRegistry.clear(event.world);
     }
 
     public boolean isAuthenticated(EntityPlayer player) {

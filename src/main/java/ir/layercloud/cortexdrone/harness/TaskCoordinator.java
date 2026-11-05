@@ -63,6 +63,15 @@ public final class TaskCoordinator {
             return;
         }
 
+        if (!this.manager.getChunkLoader().isLoadAllowed()) {
+            this.manager.getLogger().log("TASK", ctrl,
+                "Task start deferred: AI chunk loading is closed until a player is online (10s grace)",
+                "prompt=\"" + cleanPrompt + "\"");
+            this.manager.droneSay(player, ctrl,
+                "AI chunk loading is paused until a player is online (10s after login).");
+            return;
+        }
+
         final int myLoopId = ctrl.activeLoopId.incrementAndGet();
         ctrl.task.begin(myLoopId, cleanPrompt);
         String senderName = player != null ? player.func_70005_c_() : ctrl.ownerName;

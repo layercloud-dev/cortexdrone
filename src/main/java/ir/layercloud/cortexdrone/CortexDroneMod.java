@@ -162,6 +162,9 @@ public class CortexDroneMod {
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
         PlayerChunkWatchRegistry.clear(event.world);
+        if (this.aiDroneManager != null) {
+            this.aiDroneManager.getChunkLoader().releaseWorld(event.world);
+        }
     }
 
     public boolean isAuthenticated(EntityPlayer player) {

@@ -129,7 +129,6 @@ public class AIDroneManager {
         this.skillLibrary = new SkillLibrary(worldDir);
         this.logger.setDebugLogFile(new File(worldDir, "layercloud-drone-debug.log"));
         loadConfig();
-        this.chunkLoader.forceSavedStateChunks(this.config);
         reconnectUnlinkedWorldDrones();
         this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION + " (Master-Tool Code Mode Harness) initialized", "worldDir=" + worldDir.getAbsolutePath());
 
@@ -270,13 +269,9 @@ public class AIDroneManager {
     }
 
     public void onServerTickEnd() {
+        this.chunkLoader.tickPolicy();
         this.rpcDispatcher.onServerTickEnd();
         this.tickCounter++;
-        // Keep anchor ownership in sync with player movement: chunks inside a
-        // player's view are vanilla-owned; anchors re-claim them when players leave.
-        if (this.tickCounter % 20 == 0) {
-            this.chunkLoader.refreshAnchors();
-        }
         if (this.tickCounter % 40 == 0) {
             reconnectUnlinkedWorldDrones();
         }

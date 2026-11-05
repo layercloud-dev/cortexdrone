@@ -10,18 +10,11 @@ import net.minecraft.world.WorldServer;
 /**
  * Player-owned chunk policy used by DroneChunkLoader.
  *
- * <p>A chunk is protected when Forge currently reports it as watched by a
- * player (exact, event-driven) or when it lies inside any player's view radius.
- * Corridor and anchor lookahead never forces or explicitly loads a protected
- * chunk. The drone's own 3x3 is still claimed/loaded: Forge only ticks an
- * entity in a forced chunk when it is more than 32 blocks from players, and an
- * extra claim/load cannot unload a player-watched chunk.</p>
+ * <p>A chunk is player-managed when Forge reports it watched by a player or
+ * when it lies inside any player's server view square. The AI only loads
+ * chunks inside that square; AI-loaded chunks outside it are unloaded.</p>
  */
 public final class PlayerChunkOwnership {
-    /** Chunks exactly inside the server view square are vanilla-owned. The
-     *  event-driven watch set covers border chunks that outlive the square by
-     *  a tick; do not extend protection past the square, or a drone flying at
-     *  the edge can enter a chunk neither vanilla nor the drone loads. */
     public static final int PROTECTION_MARGIN = 0;
 
     private PlayerChunkOwnership() {
@@ -30,6 +23,12 @@ public final class PlayerChunkOwnership {
     public static boolean isPlayerManaged(World world, int cx, int cz) {
         if (!(world instanceof WorldServer)) return false;
         if (PlayerChunkWatchRegistry.isWatched(world, cx, cz)) return true;
+        return isWithinAnyPlayerView(world, cx, cz);
+    }
+
+    /** True when the chunk is inside any online player's server view square. */
+    public static boolean isWithinAnyPlayerView(World world, int cx, int cz) {
+        if (!(world instanceof WorldServer)) return false;
         List<?> players = world.field_73010_i;
         if (players == null || players.isEmpty()) return false;
         int view = viewDistanceChunks() + PROTECTION_MARGIN;

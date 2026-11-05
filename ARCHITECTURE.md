@@ -90,30 +90,29 @@ of stacking behind it. The classifier lives in
 
 ## Chunk ownership
 
-`PlayerChunkWatchRegistry` tracks Forge `ChunkWatchEvent.Watch/UnWatch`
-per player (not as a shared counter, because 1.7.10 can fire UnWatch without a
-matching Watch). `PlayerChunkOwnership` also protects every chunk inside the
-vanilla server view square. Corridor and anchor lookahead never force or load a
-protected chunk. The drone's own 3x3 is still claimed and loaded even when a
-player is nearby: Forge only ticks an entity in a forced chunk once it is more
-than 32 blocks from players, and an extra claim cannot unload a player chunk.
+The AI chunk manager is player-driven:
 
-Forge ticket semantics drive the rest: `forceChunk` only records a claim and
-never loads; `reorderChunk` only changes eviction order; `releaseTicket` and
-`unforceChunk` only drop the mod's own claims. They cannot unload a chunk that
-vanilla's `PlayerManager` keeps for a player, so ticket release is immediate and
-never deferred because a player is nearby.
+- after a player logs in, AI loading stays closed for 10 seconds;
+- while loading is open, AI chunks are loaded/forced only inside a player's
+  server view distance;
+- AI-loaded chunks outside every player's view distance are dropped;
+- after the last player logs out, AI chunks are kept for 10 seconds, then all
+  AI tickets and AI-loaded chunks are released.
 
-`DroneChunkLoader` keeps each ticket's claim set equal to a small hot set
-(own 3x3 plus the next corridor chunks, nearest first) and explicitly loads
-missing chunks in that same order. The current chunk is claimed and loaded
-every tick, independent of the 5-tick lookahead plan. It uses chunk coordinates
-with `World.getChunkFromChunkCoords`; `World.getChunkFromBlockCoords` must not
-be fed chunk coordinates because it shifts right by four internally. Persistent
-anchors are reconciled against the config at startup, which also releases
-legacy/stale anchor tickets. Instruction handling and world-context scans are
-dispatched to the server thread, so no chunk/world object is read from the LLM
-or heartbeat threads.
+Only chunks explicitly loaded by the AI are candidates for unloading; chunks
+loaded by players or other mods are never dropped by this manager. Chunks are
+loaded with `World.getChunkFromChunkCoords` (chunk coordinates). Feeding chunk
+coordinates to `World.getChunkFromBlockCoords` is wrong because it shifts right
+by four internally.
+
+Forge ticket semantics: `forceChunk` only records a claim and never loads;
+`reorderChunk` only changes eviction order; `releaseTicket` and `unforceChunk`
+only drop the mod's own claims. The drone's current chunk is still claimed while
+the policy is open because Forge only ticks an entity in a non-forced chunk if a
+large surrounding chunk box is loaded.
+
+Instruction handling and world-context scans are dispatched to the server
+thread, so no chunk/world object is read from the LLM or heartbeat threads.
 
 ## Verification
 

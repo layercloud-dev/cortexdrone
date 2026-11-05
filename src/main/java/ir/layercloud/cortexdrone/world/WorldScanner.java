@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.navigation.DroneChunkLoader;
 import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -108,6 +109,7 @@ public class WorldScanner {
                     if (!isLoaded) {
                         if (chunksLoadedCount >= 16) continue;
                         FlightPathfinder.ensureChunkLoaded(world, sx, sz);
+                        if (!DroneChunkLoader.canUseChunk(world, sx >> 4, sz >> 4)) continue;
                         chunksLoadedCount++;
                     }
                     int topY = world.func_72976_f(sx, sz);

@@ -37,10 +37,13 @@ public class ChunkCacheContext {
      */
     private Chunk chunkAt(int gridX, int gridZ) {
         if (!this.resolved[gridX][gridZ]) {
-            try {
-                this.chunks[gridX][gridZ] = this.world.func_72964_e(
-                    this.baseChunkX + gridX, this.baseChunkZ + gridZ);
-            } catch (Throwable ignored) {
+            int cx = this.baseChunkX + gridX;
+            int cz = this.baseChunkZ + gridZ;
+            if (DroneChunkLoader.requestChunk(this.world, cx, cz)) {
+                try {
+                    this.chunks[gridX][gridZ] = this.world.func_72964_e(cx, cz);
+                } catch (Throwable ignored) {
+                }
             }
             this.resolved[gridX][gridZ] = true;
         }
@@ -65,6 +68,12 @@ public class ChunkCacheContext {
                 if (b != null) this.blockCache.put(key, b);
                 return b;
             }
+            // Unknown/unloaded chunk: treat it as solid so A* never plans a
+            // route through a chunk the AI is not allowed to load.
+            return Blocks.field_150357_h;
+        }
+        if (!DroneChunkLoader.requestChunk(this.world, x >> 4, z >> 4)) {
+            return Blocks.field_150357_h;
         }
         return this.world.func_147439_a(x, y, z);
     }

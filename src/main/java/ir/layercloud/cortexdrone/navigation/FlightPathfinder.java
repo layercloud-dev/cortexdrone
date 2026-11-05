@@ -27,6 +27,7 @@ import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
+import lombok.RequiredArgsConstructor;
 
 public class FlightPathfinder {
     // Baritone-inspired multi-coefficient backoff weights for partial path selection
@@ -34,6 +35,7 @@ public class FlightPathfinder {
     private static final double MIN_IMPROVEMENT = 0.01;
     private static final double COST_INF = 1000000.0;
 
+    @RequiredArgsConstructor
     static class AStarNode implements Comparable<AStarNode> {
         final int x;
         final int y;
@@ -43,17 +45,6 @@ public class FlightPathfinder {
         final double f;
         final boolean requiresDig;
         final AStarNode parent;
-
-        AStarNode(int x, int y, int z, double g, double h, double f, boolean requiresDig, AStarNode parent) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-            this.g = g;
-            this.h = h;
-            this.f = f;
-            this.requiresDig = requiresDig;
-            this.parent = parent;
-        }
 
         @Override
         public int compareTo(AStarNode o) {

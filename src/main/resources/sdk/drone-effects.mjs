@@ -30,7 +30,6 @@ Object.assign(drone, {
   },
   particles: (type = 'heart', count = 12, spread = 0.35, speed = 0.05) =>
     _isObj(type) ? rpc('spawn_particles', type) : rpc('spawn_particles', { type, count, spread, speed }),
-  spawnParticles: (type = 'heart', count = 12, spread = 0.35, speed = 0.05) => drone.particles(type, count, spread, speed),
   playSound: (sound = 'note.pling', volume = 1.0, pitch = 1.0) =>
     _isObj(sound) ? rpc('play_sound', sound) : rpc('play_sound', { sound, volume, pitch }),
   playNote: (instrument = 'pling', semitone = 12, volume = 1.0) =>
@@ -44,7 +43,6 @@ Object.assign(drone, {
     const off = Array.isArray(dx) ? { dx: dx[0], dy: dx[1], dz: dx[2] } : (_isObj(dx) ? dx : { dx, dy, dz });
     return await drone.flyTo((st.x || 0) + (off.dx || 0), (st.y || 0) + (off.dy || 0), (st.z || 0) + (off.dz || 0), 8000);
   },
-  nudge: async (dx = 0, dy = 0, dz = 0) => await drone.moveOffset(dx, dy, dz),
   spin: async (durationMs = 2500) => {
     const st = await rpc('get_drone', {});
     const cx = st.x, cy = st.y, cz = st.z;
@@ -147,7 +145,6 @@ Object.assign(drone, {
     }
     return { ok: true, pattern: 'flip' };
   },
-  barrelRoll: async (radius = 2.2) => await drone.flip(radius),
   fireworks: async (bursts = 5) => {
     const n = Math.min(15, Math.max(1, Number(bursts) || 5));
     for (let i = 0; i < n; i++) {
@@ -195,7 +192,7 @@ const skills = {
   save: (name, description, code, tags = '') => _isObj(name) ? rpc('save_skill', name) : rpc('save_skill', { name, description, code, tags })
 };
 
-const docs = {
+const kb = {
   lookup: (query, modId = null, includeWeb = false) => _isObj(query) ? rpc('lookup_doc', query) : rpc('lookup_doc', { query, ...(modId ? { modId } : {}), includeWeb })
 };
 
@@ -204,34 +201,13 @@ const tools = {
   player,
   drone,
   skills,
-  docs,
-  ...world,
-  ...player,
-  ...drone,
-  searchSkills: skills.search,
-  listSkills: skills.list,
-  saveSkill: skills.save,
-  lookupDoc: docs.lookup,
-  docsLookup: docs.lookup,
-  machineCraft: drone.machineCraft,
-  anvilCraft: drone.anvilCraft,
-  getMachineRecipes: drone.getMachineRecipes,
-  getMachineRecipe: drone.getMachineRecipe,
-  scanMachines: drone.scanMachines,
-  getMachines: drone.getMachines,
-  machineIngredients: drone.machineIngredients,
-  getMachineIngredients: drone.getMachineIngredients,
-  driveAnvil: drone.driveAnvil,
-  anvilDrive: drone.anvilDrive
+  kb
 };
 globalThis.world = world;
 globalThis.player = player;
 globalThis.drone = drone;
 globalThis.skills = skills;
-globalThis.docs = docs;
-// ESM top-level `const docs = ...` in a user script shadows the global and crashes the harness
-// (ReferenceError: Cannot access 'docs' before initialization). `kb` is a collision-free alias.
-globalThis.kb = docs;
+globalThis.kb = kb;
 globalThis._worldApi = world;
 globalThis._playerApi = player;
 globalThis._droneApi = drone;

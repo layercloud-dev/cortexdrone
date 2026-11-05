@@ -33,29 +33,20 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.IPlantable;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Dynamic agricultural harvesting, replanting, shoreline propagation, and fertilization service.
  * Uses Forge's IPlantable, Vanilla's IGrowable, and block placement rules (canPlaceBlockAt/canBlockStay)
  * to support all Vanilla and modded crops, reeds, cacti, and saplings without hardcoded item lists.
  */
+@RequiredArgsConstructor
 public class FarmingService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
 
-    public FarmingService(
-        AIDroneManager manager,
-        DroneLogger logger,
-        WorldScanner worldScanner,
-        InventoryService inventoryService
-    ) {
-        this.manager = manager;
-        this.logger = logger;
-        this.worldScanner = worldScanner;
-        this.inventoryService = inventoryService;
-    }
 
     /**
      * Determines if a block is a vertical stem plant (e.g. Sugar Cane, Cactus, Bamboo, Reed)

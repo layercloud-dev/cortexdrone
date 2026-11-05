@@ -26,7 +26,7 @@ import net.minecraft.world.WorldServer;
 public class EffectsRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "get_drone", "say", "set_status_text", "set_led", "led_effect",
-        "spawn_particles", "particles", "play_sound", "play_note",
+        "spawn_particles", "play_sound", "play_note",
         "save_skill", "search_skills", "list_skills"
     };
 
@@ -170,7 +170,7 @@ public class EffectsRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("spawn_particles") || m.equals("particles")) {
+        if (m.equals("spawn_particles")) {
             String type = args.has("type") ? args.get("type").getAsString() : "heart";
             int count = args.has("count") ? Math.min(80, Math.max(1, args.get("count").getAsInt())) : 12;
             double spread = args.has("spread") ? args.get("spread").getAsDouble() : 0.35;

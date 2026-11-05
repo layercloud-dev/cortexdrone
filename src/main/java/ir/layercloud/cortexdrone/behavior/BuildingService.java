@@ -29,7 +29,10 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 
+@RequiredArgsConstructor
 public class BuildingService {
     // After this many consecutive placeBlock()==false on the head task, rotate it
     // to the back of the queue so one poison cell (protected, concurrently
@@ -41,27 +44,10 @@ public class BuildingService {
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
     private final MiningService miningService;
+    @Getter
     private final StructureArchitect structureArchitect = new StructureArchitect();
 
-    public BuildingService(
-        AIDroneManager manager,
-        DroneLogger logger,
-        FlightPathfinder pathfinder,
-        WorldScanner worldScanner,
-        InventoryService inventoryService,
-        MiningService miningService
-    ) {
-        this.manager = manager;
-        this.logger = logger;
-        this.pathfinder = pathfinder;
-        this.worldScanner = worldScanner;
-        this.inventoryService = inventoryService;
-        this.miningService = miningService;
-    }
 
-    public StructureArchitect getStructureArchitect() {
-        return this.structureArchitect;
-    }
 
     private static int findPlacementStandoffY(World world, int x, int y, int z) {
         return ItemClassifier.isPassableVoxel(world, x, y, z) && ItemClassifier.isPassableVoxel(world, x, y + 1, z) ? y : y + 1;

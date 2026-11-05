@@ -61,7 +61,7 @@ public class DroneHttpServer {
     public void start() {
         stop();
         try {
-            int port = this.manager.getConfig().httpPort > 0 ? this.manager.getConfig().httpPort : 25580;
+            int port = this.manager.getConfig().getHttpPort() > 0 ? this.manager.getConfig().getHttpPort() : 25580;
             this.httpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
 
             this.httpServer.createContext("/state", new HttpHandler() {

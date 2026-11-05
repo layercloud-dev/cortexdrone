@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import lombok.experimental.UtilityClass;
 
 /**
  * JSON schema parsing for HBM machine recipes. Moved verbatim from
@@ -16,9 +17,8 @@ import net.minecraft.item.ItemStack;
  * Fractions shapes, including nested Mixer recipes, pedestal-shaped
  * inputs, and fluid-only entries.
  */
+@UtilityClass
 final class MachineRecipeParser {
-    private MachineRecipeParser() {
-    }
 
     static MachineRecipeService.NormalizedRecipe normalizeJsonRecipe(JsonObject o, String machine, String fileName) {
         try {

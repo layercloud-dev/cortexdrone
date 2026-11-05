@@ -109,13 +109,6 @@ public class AIDroneManager {
             this,
             this.logger,
             this.worldScanner,
-            this.pathfinder,
-            this.inventoryService,
-            this.chestSorter,
-            this.smeltingService,
-            this.miningService,
-            this.buildingService,
-            this.combatService,
             this.codeModeRuntime,
             this.rpcDispatcher
         );
@@ -156,13 +149,13 @@ public class AIDroneManager {
 
     public synchronized void loadConfig() {
         AIConfig loaded = AIConfig.load(this.configFile, CortexDroneMod.GSON);
-        this.config.apiUrl = loaded.apiUrl;
-        this.config.model = loaded.model;
-        this.config.apiKey = loaded.apiKey;
-        this.config.httpPort = loaded.httpPort;
-        this.config.savedDrones = loaded.savedDrones;
-        this.config.playerBases = loaded.playerBases;
-        this.config.savedLocations = loaded.savedLocations;
+        this.config.setApiUrl(loaded.getApiUrl());
+        this.config.setModel(loaded.getModel());
+        this.config.setApiKey(loaded.getApiKey());
+        this.config.setHttpPort(loaded.getHttpPort());
+        this.config.setSavedDrones(loaded.getSavedDrones());
+        this.config.setPlayerBases(loaded.getPlayerBases());
+        this.config.setSavedLocations(loaded.getSavedLocations());
     }
 
     public synchronized void saveConfig() {
@@ -320,36 +313,36 @@ public class AIDroneManager {
                     String restoredGuardFilter = "hostile|mutant";
                     int restoredPatrolRadius = 36;
 
-                    if (this.config.savedDrones != null) {
+                    if (this.config.getSavedDrones() != null) {
                         AIConfig.SavedDroneInfo matchedSaved = null;
-                        for (AIConfig.SavedDroneInfo s : this.config.savedDrones) {
-                            if (uid != null && uid.toString().equals(s.uuid)) {
+                        for (AIConfig.SavedDroneInfo s : this.config.getSavedDrones()) {
+                            if (uid != null && uid.toString().equals(s.getUuid())) {
                                 matchedSaved = s;
                                 break;
                             }
                         }
                         if (matchedSaved == null && !"Server".equalsIgnoreCase(owner)) {
-                            for (AIConfig.SavedDroneInfo s : this.config.savedDrones) {
-                                if (owner.equalsIgnoreCase(s.owner)) {
+                            for (AIConfig.SavedDroneInfo s : this.config.getSavedDrones()) {
+                                if (owner.equalsIgnoreCase(s.getOwner())) {
                                     matchedSaved = s;
                                     break;
                                 }
                             }
                         }
                         if (matchedSaved != null) {
-                            if (matchedSaved.name != null && !matchedSaved.name.isEmpty()) name = matchedSaved.name;
-                            if (matchedSaved.owner != null && !matchedSaved.owner.isEmpty()) owner = matchedSaved.owner;
-                            if (matchedSaved.mode != null) {
+                            if (matchedSaved.getName() != null && !matchedSaved.getName().isEmpty()) name = matchedSaved.getName();
+                            if (matchedSaved.getOwner() != null && !matchedSaved.getOwner().isEmpty()) owner = matchedSaved.getOwner();
+                            if (matchedSaved.getMode() != null) {
                                 try {
-                                    restoredMode = Mode.valueOf(matchedSaved.mode);
+                                    restoredMode = Mode.valueOf(matchedSaved.getMode());
                                 } catch (Exception ignored) {
                                 }
                             }
-                            restoredTorch = matchedSaved.autoTorch;
-                            if (matchedSaved.ledEffect != null) restoredLedEffect = matchedSaved.ledEffect;
-                            restoredCustomLed = matchedSaved.customLedColor;
-                            if (matchedSaved.guardFilter != null) restoredGuardFilter = matchedSaved.guardFilter;
-                            if (matchedSaved.patrolRadius > 0) restoredPatrolRadius = matchedSaved.patrolRadius;
+                            restoredTorch = matchedSaved.isAutoTorch();
+                            if (matchedSaved.getLedEffect() != null) restoredLedEffect = matchedSaved.getLedEffect();
+                            restoredCustomLed = matchedSaved.getCustomLedColor();
+                            if (matchedSaved.getGuardFilter() != null) restoredGuardFilter = matchedSaved.getGuardFilter();
+                            if (matchedSaved.getPatrolRadius() > 0) restoredPatrolRadius = matchedSaved.getPatrolRadius();
                         }
                     }
 
@@ -534,11 +527,11 @@ public class AIDroneManager {
         UUID duid = d.func_110124_au();
         if (duid != null) {
             this.despawnedUuids.add(duid);
-            if (this.config != null && this.config.savedDrones != null) {
-                Iterator<AIConfig.SavedDroneInfo> sit = this.config.savedDrones.iterator();
+            if (this.config != null && this.config.getSavedDrones() != null) {
+                Iterator<AIConfig.SavedDroneInfo> sit = this.config.getSavedDrones().iterator();
                 while (sit.hasNext()) {
                     AIConfig.SavedDroneInfo s = sit.next();
-                    if (s != null && duid.toString().equals(s.uuid)) sit.remove();
+                    if (s != null && duid.toString().equals(s.getUuid())) sit.remove();
                 }
             }
         }

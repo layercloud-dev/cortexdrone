@@ -29,11 +29,11 @@ import net.minecraft.world.World;
 @RequiredArgsConstructor
 public class ActionRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
-        "queue_mine", "mine_rect", "mine_box", "gather_distant", "long_range_gather",
+        "queue_mine", "mine_rect", "mine_box", "gather_distant",
         "mine_filter", "break_block", "queue_build", "build_box", "build_structure",
         "replace_room", "replace_box", "replace_blocks", "plug_liquids", "farm",
         "fertilize", "interact_block", "torch", "hunt", "attack_entity", "guard",
-        "cover", "patrol", "clear_queues", "chop", "harvest", "interact", "use_item"
+        "patrol", "clear_queues", "chop", "use_item"
     };
 
     private final AIDroneManager manager;
@@ -129,7 +129,7 @@ public class ActionRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("gather_distant") || m.equals("long_range_gather") || m.equals("mine_filter")) {
+        if (m.equals("gather_distant") || m.equals("mine_filter")) {
             String target = args.has("target") ? args.get("target").getAsString()
                 : (args.has("filter") ? args.get("filter").getAsString() : "ores");
             if (!ItemClassifier.isLogBlock(Block.func_149684_b(target))
@@ -330,17 +330,6 @@ public class ActionRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("harvest")) {
-            // harvest = break mature crops/trees and auto-replant (uses FarmingService, not raw mining)
-            String target = args.has("target") ? args.get("target").getAsString()
-                : (args.has("filter") ? args.get("filter").getAsString() : "crop");
-            int radius = args.has("radius") ? Math.min(1200, Math.max(16, args.get("radius").getAsInt())) : 48;
-            int queued = this.miningService.startFarmingTask(ctrl, player, target, radius);
-            res.addProperty("queued", queued);
-            res.addProperty("harvested", queued);
-            return res;
-        }
-
         if (m.equals("chop")) {
             // Chop = break the log block at (x,y,z) and chain-chop connected log columns
             if (!args.has("x") || !args.has("y") || !args.has("z") || args.get("x").isJsonNull() || args.get("y").isJsonNull() || args.get("z").isJsonNull()) {
@@ -385,7 +374,7 @@ public class ActionRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("interact_block") || m.equals("interact")) {
+        if (m.equals("interact_block")) {
             if (!args.has("x") || !args.has("y") || !args.has("z") || args.get("x").isJsonNull() || args.get("y").isJsonNull() || args.get("z").isJsonNull()) {
                 res.addProperty("ok", false);
                 res.addProperty("error", "Missing x/y/z for interact_block");
@@ -512,7 +501,7 @@ public class ActionRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("guard") || m.equals("cover")) {
+        if (m.equals("guard")) {
             ctrl.targetPlayerName = args.has("target") && !args.get("target").isJsonNull()
                 ? args.get("target").getAsString()
                 : (player != null ? player.func_70005_c_() : ctrl.ownerName);

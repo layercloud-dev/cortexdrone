@@ -31,6 +31,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
+import lombok.Getter;
 
 public class MiningService {
     private final AIDroneManager manager;
@@ -38,7 +39,9 @@ public class MiningService {
     private final FlightPathfinder pathfinder;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
+    @Getter
     private final FarmingService farmingService;
+    @Getter
     private final ExcavationPlanner excavationPlanner;
     private Method blockGetDropsMethod = null;
 
@@ -64,13 +67,7 @@ public class MiningService {
         }
     }
 
-    public FarmingService getFarmingService() {
-        return this.farmingService;
-    }
 
-    public ExcavationPlanner getExcavationPlanner() {
-        return this.excavationPlanner;
-    }
 
     public static boolean isNumericFilter(String f) {
         if (f == null || f.isEmpty()) return false;

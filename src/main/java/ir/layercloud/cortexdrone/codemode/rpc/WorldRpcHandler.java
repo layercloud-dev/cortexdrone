@@ -41,8 +41,8 @@ public class WorldRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "get_block", "get_blocks_in_box", "get_top_y", "scan_room", "scan_blocks",
         "scan_veins", "find_distant", "get_entities", "get_drops", "raycast_player",
-        "raycast", "find_base", "get_base", "set_base", "save_location", "get_location",
-        "list_locations", "delete_location", "lookup_doc", "docs_lookup",
+        "find_base", "set_base", "save_location", "get_location",
+        "list_locations", "delete_location", "lookup_doc",
         "find_build_site", "plan_structure"
     };
 
@@ -330,7 +330,7 @@ public class WorldRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("raycast_player") || m.equals("raycast")) {
+        if (m.equals("raycast_player")) {
             EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
             double maxDist = args.has("maxDist") ? args.get("maxDist").getAsDouble() : (args.has("distance") ? args.get("distance").getAsDouble() : 80.0);
             JsonObject hit = WorldScanner.raycastPlayerLook(world, p, maxDist);
@@ -344,7 +344,7 @@ public class WorldRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("find_base") || m.equals("get_base")) {
+        if (m.equals("find_base")) {
             double[] base = this.worldScanner.findBaseLocation(world, player);
             res.addProperty("x", Math.round(base[0] * 10.0) / 10.0);
             res.addProperty("y", Math.round(base[1] * 10.0) / 10.0);
@@ -377,12 +377,12 @@ public class WorldRpcHandler implements RpcHandler {
             AIConfig.SavedLocation loc = this.manager.getConfig().saveLocation(ownerKey, name, lx, ly, lz, tags);
             this.manager.saveConfig();
             if (loc != null) {
-                res.addProperty("name", loc.name);
-                res.addProperty("owner", loc.owner);
-                res.addProperty("x", loc.x);
-                res.addProperty("y", loc.y);
-                res.addProperty("z", loc.z);
-                res.addProperty("tags", loc.tags);
+                res.addProperty("name", loc.getName());
+                res.addProperty("owner", loc.getOwner());
+                res.addProperty("x", loc.getX());
+                res.addProperty("y", loc.getY());
+                res.addProperty("z", loc.getZ());
+                res.addProperty("tags", loc.getTags());
             }
             return res;
         }
@@ -395,12 +395,12 @@ public class WorldRpcHandler implements RpcHandler {
             AIConfig.SavedLocation loc = this.manager.getConfig().getLocation(ownerKey, name);
             if (loc != null) {
                 res.addProperty("found", true);
-                res.addProperty("name", loc.name);
-                res.addProperty("owner", loc.owner);
-                res.addProperty("x", loc.x);
-                res.addProperty("y", loc.y);
-                res.addProperty("z", loc.z);
-                res.addProperty("tags", loc.tags);
+                res.addProperty("name", loc.getName());
+                res.addProperty("owner", loc.getOwner());
+                res.addProperty("x", loc.getX());
+                res.addProperty("y", loc.getY());
+                res.addProperty("z", loc.getZ());
+                res.addProperty("tags", loc.getTags());
                 return res;
             }
             if (name.equalsIgnoreCase("base") || name.equalsIgnoreCase("home")) {
@@ -423,13 +423,13 @@ public class WorldRpcHandler implements RpcHandler {
             JsonArray arr = new JsonArray();
             for (AIConfig.SavedLocation loc : list) {
                 JsonObject lo = new JsonObject();
-                lo.addProperty("name", loc.name);
-                lo.addProperty("owner", loc.owner);
-                lo.addProperty("x", loc.x);
-                lo.addProperty("y", loc.y);
-                lo.addProperty("z", loc.z);
-                lo.addProperty("tags", loc.tags != null ? loc.tags : "");
-                lo.addProperty("dist", Math.round(d.func_70011_f(loc.x, loc.y, loc.z) * 10.0) / 10.0);
+                lo.addProperty("name", loc.getName());
+                lo.addProperty("owner", loc.getOwner());
+                lo.addProperty("x", loc.getX());
+                lo.addProperty("y", loc.getY());
+                lo.addProperty("z", loc.getZ());
+                lo.addProperty("tags", loc.getTags() != null ? loc.getTags() : "");
+                lo.addProperty("dist", Math.round(d.func_70011_f(loc.getX(), loc.getY(), loc.getZ()) * 10.0) / 10.0);
                 arr.add(lo);
             }
             res.addProperty("count", arr.size());
@@ -447,7 +447,7 @@ public class WorldRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("lookup_doc") || m.equals("docs_lookup")) {
+        if (m.equals("lookup_doc")) {
             String query = args.has("query") ? args.get("query").getAsString()
                 : (args.has("item") ? args.get("item").getAsString() : "");
             String modId = args.has("modId") && !args.get("modId").isJsonNull() ? args.get("modId").getAsString() : null;

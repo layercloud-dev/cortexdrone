@@ -241,9 +241,9 @@ public class DroneTelemetrySerializer {
 
         AIConfig cfg = this.manager.getConfig();
         JsonObject cfgObj = new JsonObject();
-        cfgObj.addProperty("apiUrl", cfg.apiUrl);
-        cfgObj.addProperty("model", cfg.model);
-        cfgObj.addProperty("hasApiKey", cfg.apiKey != null && !cfg.apiKey.isEmpty());
+        cfgObj.addProperty("apiUrl", cfg.getApiUrl());
+        cfgObj.addProperty("model", cfg.getModel());
+        cfgObj.addProperty("hasApiKey", cfg.getApiKey() != null && !cfg.getApiKey().isEmpty());
         root.add("aiConfig", cfgObj);
         return root;
     }

@@ -4,6 +4,8 @@ import li.cil.oc.api.machine.Architecture;
 import li.cil.oc.api.machine.ExecutionResult;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /**
  * Inert no-op machine architecture for OC Drones spawned by this mod.
@@ -19,11 +21,10 @@ import net.minecraft.nbt.NBTTagCompound;
  * state or on energy/buffer bookkeeping. If a real EEPROM is later inserted and OC boots the machine,
  * OC replaces this with the real architecture on start().
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class InertMachineArchitecture implements Architecture {
     public static final InertMachineArchitecture INSTANCE = new InertMachineArchitecture();
 
-    private InertMachineArchitecture() {
-    }
 
     @Override
     public boolean isInitialized() {

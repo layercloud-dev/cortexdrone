@@ -5,17 +5,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.behavior.BuildingService;
-import ir.layercloud.cortexdrone.behavior.CombatService;
-import ir.layercloud.cortexdrone.behavior.MiningService;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.inventory.ChestSorter;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
-import ir.layercloud.cortexdrone.inventory.SmeltingService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.WorldScanner;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -31,7 +25,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public class LlmAgentService {
     static final int MAX_AGENT_TURNS = 100;
     static final long AGENT_DEADLINE_MS = 8L * 60L * 1000L;
@@ -53,7 +49,7 @@ public class LlmAgentService {
     static void logKeyDiagnostics(DroneController ctrl, DroneLogger logger, String reason) {
         try {
             String envKey = System.getenv("CORTEXDRONE_API_KEY");
-            logger.log("LLM", ctrl, "API-key diagnostics (" + reason + "): env=" + (envKey == null || envKey.isEmpty() ? "<unset>" : maskKey(envKey)) + " key=" + maskKey((new AIConfig()).apiKey), "reason=" + reason);
+            logger.log("LLM", ctrl, "API-key diagnostics (" + reason + "): env=" + (envKey == null || envKey.isEmpty() ? "<unset>" : maskKey(envKey)) + " key=" + maskKey((new AIConfig()).getApiKey()), "reason=" + reason);
         } catch (Throwable t) {
             logger.log("LLM", ctrl, "API-key diagnostics failed: " + t.toString(), "");
         }
@@ -64,27 +60,6 @@ public class LlmAgentService {
         llmKeyLogged = true;
         logKeyDiagnostics(ctrl, logger, "once");
     }
-    public LlmAgentService(
-        AIDroneManager manager,
-        DroneLogger logger,
-        WorldScanner worldScanner,
-        FlightPathfinder pathfinder,
-        InventoryService inventoryService,
-        ChestSorter chestSorter,
-        SmeltingService smeltingService,
-        MiningService miningService,
-        BuildingService buildingService,
-        CombatService combatService,
-        CodeModeRuntime codeModeRuntime,
-        RpcDispatcher rpcDispatcher
-    ) {
-        this.manager = manager;
-        this.logger = logger;
-        this.worldScanner = worldScanner;
-        this.codeModeRuntime = codeModeRuntime;
-        this.rpcDispatcher = rpcDispatcher;
-    }
-
     public JsonObject buildDroneContextForLlm(EntityPlayerMP player, DroneController ctrl) {
         JsonObject ctx = new JsonObject();
         World world = ctrl.drone.field_70170_p;
@@ -146,8 +121,8 @@ public class LlmAgentService {
         if (!savedLocs.isEmpty()) {
             JsonObject locsObj = new JsonObject();
             for (AIConfig.SavedLocation loc : savedLocs) {
-                locsObj.addProperty(loc.name, "(" + loc.x + "," + loc.y + "," + loc.z + ")"
-                    + (loc.tags != null && !loc.tags.isEmpty() ? " [" + loc.tags + "]" : ""));
+                locsObj.addProperty(loc.getName(), "(" + loc.getX() + "," + loc.getY() + "," + loc.getZ() + ")"
+                    + (loc.getTags() != null && !loc.getTags().isEmpty() ? " [" + loc.getTags() + "]" : ""));
             }
             ctx.add("savedLocations", locsObj);
         }
@@ -240,7 +215,7 @@ public class LlmAgentService {
                 } catch (Throwable ex) {
                     lastLlmError = "LLM gateway exception: " + ex.toString();
                     this.logger.log("LLM", ctrl, lastLlmError + " loopId=" + myLoopId + " turn=" + turn,
-                        "url=" + this.manager.getConfig().apiUrl + " key=" + maskKey(this.manager.getConfig().apiKey));
+                        "url=" + this.manager.getConfig().getApiUrl() + " key=" + maskKey(this.manager.getConfig().getApiKey()));
                     plan = null;
                 }
                 if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.field_70128_L) {
@@ -254,7 +229,7 @@ public class LlmAgentService {
                     this.logger.log("LLM", ctrl, "LLM backend failed on Turn " + turn
                         + " loopId=" + myLoopId + " elapsedMs=" + elapsedMs
                         + " — reporting the error to the player and stopping",
-                        "detail=" + detail + " key=" + maskKey(this.manager.getConfig().apiKey));
+                        "detail=" + detail + " key=" + maskKey(this.manager.getConfig().getApiKey()));
                     final String partialMsg = AgentLoopHeuristics.progressReplyFor(
                         "AI backend error: " + detail + ". Fix the API key / gateway then re-send your instruction.",
                         hadProgress, ctrl.lastThought);
@@ -563,7 +538,7 @@ public class LlmAgentService {
             // Catch Throwable, not Exception: an Error (OOM/NoClassDefFound/...) on a
             // pool thread otherwise dies silently after TRACE turn=0. Always log + speak.
             this.logger.log("LLM", ctrl, "Pure Code Mode agent loop error loopId=" + myLoopId,
-                "error=" + e.toString() + " key=" + maskKey(this.manager.getConfig().apiKey));
+                "error=" + e.toString() + " key=" + maskKey(this.manager.getConfig().getApiKey()));
             final String errDetail = e.toString();
             final String errReply = "Stopped due to an internal error (" + errDetail + "). Re-send the instruction to retry.";
             try {
@@ -593,8 +568,8 @@ public class LlmAgentService {
         }
         for (int attempt = 1; attempt <= 3; attempt++) {
             final long attemptT0 = System.currentTimeMillis();
-            URL url = new URL(cfg.apiUrl);
-            boolean isLocal = cfg.apiUrl.contains("127.0.0.1") || cfg.apiUrl.contains("localhost");
+            URL url = new URL(cfg.getApiUrl());
+            boolean isLocal = cfg.getApiUrl().contains("127.0.0.1") || cfg.getApiUrl().contains("localhost");
             HttpURLConnection conn = (HttpURLConnection) (isLocal
                 ? url.openConnection(Proxy.NO_PROXY)
                 : url.openConnection());
@@ -604,13 +579,13 @@ public class LlmAgentService {
             conn.setReadTimeout(30000);
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("Connection", "close");
-            if (cfg.apiKey != null && !cfg.apiKey.isEmpty()) {
-                conn.setRequestProperty("Authorization", "Bearer " + cfg.apiKey);
+            if (cfg.getApiKey() != null && !cfg.getApiKey().isEmpty()) {
+                conn.setRequestProperty("Authorization", "Bearer " + cfg.getApiKey());
             }
             conn.setDoOutput(true);
 
             JsonObject req = new JsonObject();
-            req.addProperty("model", cfg.model);
+            req.addProperty("model", cfg.getModel());
             req.addProperty("temperature", 0.2);
             req.addProperty("reasoning_effort", "low");
             req.addProperty("max_tokens", 1400);
@@ -645,21 +620,21 @@ public class LlmAgentService {
                 if (httpCode < 200 || httpCode >= 300) {
                     String errDetail = "LLM gateway HTTP " + httpCode + (rawBody.isEmpty() ? "" : " - " + rawBody.substring(0, Math.min(800, rawBody.length())));
                     lastLlmError = errDetail;
-                    this.logger.log("LLM", ctrl, errDetail, "url=" + cfg.apiUrl + " key=" + maskKey(cfg.apiKey));
+                    this.logger.log("LLM", ctrl, errDetail, "url=" + cfg.getApiUrl() + " key=" + maskKey(cfg.getApiKey()));
                     if (attempt < 3) continue;
                     return lastMalformed;
                 }
                 JsonElement parsedResp = new JsonParser().parse(rawBody);
                 if (parsedResp == null || !parsedResp.isJsonObject()) {
                     lastLlmError = "LLM gateway malformed JSON (attempt " + attempt + "): " + LoopTracer.snippet(rawBody, 300);
-                    this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl + " httpCode=" + httpCode);
+                    this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.getApiUrl() + " httpCode=" + httpCode);
                     if (attempt < 3) continue;
                     return lastMalformed;
                 }
                 JsonObject resp = parsedResp.getAsJsonObject();
                 if (!resp.has("choices") || !resp.get("choices").isJsonArray() || resp.getAsJsonArray("choices").size() == 0) {
                     lastLlmError = "LLM gateway returned no choices: " + rawBody.substring(0, Math.min(300, rawBody.length()));
-                    this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl);
+                    this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.getApiUrl());
                     if (attempt < 3) continue;
                     return lastMalformed;
                 }
@@ -668,7 +643,7 @@ public class LlmAgentService {
                 String reasoning = (msgObj != null && msgObj.has("reasoning_content") && !msgObj.get("reasoning_content").isJsonNull()) ? msgObj.get("reasoning_content").getAsString().trim() : "";
                 if (content.isEmpty() && reasoning.isEmpty()) {
                     lastLlmError = "LLM gateway empty content and reasoning (attempt " + attempt + "): " + LoopTracer.snippet(rawBody, 300);
-                    this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.apiUrl + " httpCode=" + httpCode);
+                    this.logger.log("LLM", ctrl, lastLlmError, "url=" + cfg.getApiUrl() + " httpCode=" + httpCode);
                     if (attempt < 3) continue;
                     return lastMalformed;
                 }
@@ -685,7 +660,7 @@ public class LlmAgentService {
                 String exMsg = ex.getMessage();
                 String exDetail = "LLM gateway exception: " + ex.toString();
                 lastLlmError = exDetail;
-                this.logger.log("LLM", ctrl, exDetail, "url=" + cfg.apiUrl + " key=" + maskKey(cfg.apiKey));
+                this.logger.log("LLM", ctrl, exDetail, "url=" + cfg.getApiUrl() + " key=" + maskKey(cfg.getApiKey()));
                 boolean connectFailure = ex instanceof java.net.ConnectException || ex instanceof java.net.SocketTimeoutException || (exMsg != null && (exMsg.contains("Connection refused") || exMsg.contains("timed out")));
                 if (attempt < 3) Thread.sleep(Math.min(2000, 500 << (attempt - 1)));
                 if (connectFailure) {

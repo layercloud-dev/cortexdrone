@@ -24,8 +24,8 @@ import net.minecraft.world.World;
 @RequiredArgsConstructor
 public class NavigationRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
-        "move_to", "goto", "set_velocity", "nudge", "follow", "stay", "stop",
-        "come", "carry_player", "transport_player", "airlift", "get_breadcrumbs",
+        "move_to", "set_velocity", "follow", "stay", "stop",
+        "come", "carry_player", "get_breadcrumbs",
         "retrace_breadcrumbs", "escape_cave"
     };
 
@@ -45,7 +45,7 @@ public class NavigationRpcHandler implements RpcHandler {
         Drone d = ctrl.drone;
         World world = d.field_70170_p;
 
-        if (m.equals("move_to") || m.equals("goto")) {
+        if (m.equals("move_to")) {
             ctrl.goalX = args.get("x").getAsDouble();
             ctrl.goalY = args.get("y").getAsDouble();
             ctrl.goalZ = args.get("z").getAsDouble();
@@ -53,7 +53,7 @@ public class NavigationRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("set_velocity") || m.equals("nudge")) {
+        if (m.equals("set_velocity")) {
             double vx = args.has("vx") ? args.get("vx").getAsDouble() : (args.has("dx") ? args.get("dx").getAsDouble() : 0.0);
             double vy = args.has("vy") ? args.get("vy").getAsDouble() : (args.has("dy") ? args.get("dy").getAsDouble() : 0.0);
             double vz = args.has("vz") ? args.get("vz").getAsDouble() : (args.has("dz") ? args.get("dz").getAsDouble() : 0.0);
@@ -90,7 +90,7 @@ public class NavigationRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("carry_player") || m.equals("transport_player") || m.equals("airlift")) {
+        if (m.equals("carry_player")) {
             EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
             double gx, gy, gz;
             if (args.has("x") && args.has("z") && !args.get("x").isJsonNull()) {

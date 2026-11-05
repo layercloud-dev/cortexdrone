@@ -5,15 +5,15 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import lombok.experimental.UtilityClass;
 
 /**
  * Reflective bridge to HBM's live in-memory recipes (GenericRecipes /
  * AnvilRecipes) used as a fallback when config JSON files are absent.
  * Package-private helper so MachineRecipeService stays under the line limit.
  */
+@UtilityClass
 final class MachineRecipeReflection {
-    private MachineRecipeReflection() {
-    }
 
     static List<MachineRecipeService.NormalizedRecipe> readLive(MachineRecipeService owner) {
         List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<MachineRecipeService.NormalizedRecipe>();

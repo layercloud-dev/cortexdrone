@@ -81,7 +81,7 @@ public class CodeModeRuntime {
                 .replaceAll("((?:const|let|var)\\s+world\\s*=[^;\\n]*?)\\bworld\\.", "$1_worldApi.")
                 : "";
             String pName = player != null ? player.func_70005_c_() : ctrl.ownerName;
-            int port = (this.config != null && this.config.httpPort > 0) ? this.config.httpPort : 25580;
+            int port = (this.config != null && this.config.getHttpPort() > 0) ? this.config.getHttpPort() : 25580;
 
             String script = "const DRONE_ID = " + ctrl.id + ";\n"
                 + "const LOOP_ID = " + loopId + ";\n"

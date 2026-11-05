@@ -4,17 +4,6 @@ const drone = {
     await _flushBatches();
     return await _waitIdle(maxWaitMs);
   },
-  moveTo: async (x, y, z) => {
-    await _flushBatches();
-    const target = Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : (_isObj(x) ? x : { x, y, z });
-    const r = await rpc('move_to', target);
-    const st = await _waitTask(
-      (s) => s.mode !== 'GOTO' || Math.hypot((s.x || 0) - target.x, (s.y || 0) - target.y, (s.z || 0) - target.z) <= 2.2,
-      45000
-    );
-    return { ...r, ...st };
-  },
-  goto: async (x, y, z) => await drone.moveTo(x, y, z),
   flyTo: async (x, y, z, maxWaitMs = 45000) => {
     await _flushBatches();
     const target = Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : (_isObj(x) ? x : { x, y, z });
@@ -36,10 +25,6 @@ const drone = {
     }
     return r;
   },
-  mineBlock: async (x, y, z) => {
-    if (Array.isArray(x)) { _mineBatch.push([x[0], x[1], x[2]]); } else if (_isObj(x)) { _mineBatch.push([x.x, x.y, x.z]); } else { _mineBatch.push([x, y, z]); }
-    return { ok: true, buffered: _mineBatch.length };
-  },
   mine: async (x, y, z) => {
     if (typeof x === 'string' || (_isObj(x) && (x.target || x.filter) && x.x === undefined)) {
       await _flushBatches();
@@ -54,7 +39,10 @@ const drone = {
       }
       return r;
     }
-    return await drone.mineBlock(x, y, z);
+    if (Array.isArray(x)) { _mineBatch.push([x[0], x[1], x[2]]); }
+    else if (_isObj(x)) { _mineBatch.push([x.x, x.y, x.z]); }
+    else { _mineBatch.push([x, y, z]); }
+    return { ok: true, buffered: _mineBatch.length };
   },
   mineMany: async (blocks, exactOnly = true) => {
     await _flushBatches();
@@ -102,7 +90,6 @@ const drone = {
     else { _buildBatch.push({ x, y, z, block, meta, replace: false }); }
     return { ok: true, buffered: _buildBatch.length };
   },
-  place: async (x, y, z, block = 'any', meta = -1) => await drone.placeBlock(x, y, z, block, meta),
   placeMany: async (tasks, block = 'any', meta = -1) => {
     await _flushBatches();
     const r = await rpc('queue_build', _isObj(tasks) ? tasks : { tasks, block, meta });
@@ -134,7 +121,6 @@ const drone = {
     }
     return r;
   },
-  buildHouse: async (spec = {}) => await drone.buildStructure(_isObj(spec) ? { style: 'house', ...spec } : { style: 'house', wall: String(spec || 'cobblestone'), roof: 'planks', corners: 'log' }),
   replaceBlock: async (x, y, z, block = 'any', meta = -1) => {
     if (_isObj(x)) { _buildBatch.push({ x: x.x, y: x.y, z: x.z, block: x.block || x.with || 'any', meta: x.meta ?? -1, replace: true, ...(x.onlyReplace ? { onlyReplace: x.onlyReplace } : {}) }); }
     else if (Array.isArray(x)) { _buildBatch.push({ x: x[0], y: x[1], z: x[2], block: y || 'any', meta: z ?? -1, replace: true }); }
@@ -191,13 +177,11 @@ const drone = {
     }
     return r;
   },
-  fillBucket: async (type = 'lava', count = 1) => await drone.scoopLiquid(type, count),
   placeLiquid: async (x, y, z, type = 'water') => {
     await _flushBatches();
     _handledItems = true;
     return await rpc('place_liquid', _isObj(x) ? x : (Array.isArray(x) ? { x: x[0], y: x[1], z: x[2], type: y || 'water' } : { x, y, z, type }));
   },
-  emptyBucket: async (x, y, z, type = 'water') => await drone.placeLiquid(x, y, z, type),
   clearQueues: async () => { _mineBatch.length = 0; _buildBatch.length = 0; return await rpc('clear_queues', {}); },
   farm: async (target = 'crop', radius = 48) => {
     await _flushBatches();
@@ -209,20 +193,6 @@ const drone = {
     }
     return r;
   },
-  /** Harvest (break) mature crops/trees and auto-replant via Forge IPlantable. */
-  harvest: async (target = 'crop', radius = 48) => {
-    await _flushBatches();
-    const targetObj = _isObj(target) ? target : (Array.isArray(target) ? { target: String(target[0]) } : { target, radius });
-    // harvest is an alias for farm; both share the same farming RPC path.
-    const r = await rpc('harvest', targetObj);
-    if (r && r.queued > 0) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, harvested: r.harvested ?? r.queued, ...st };
-    }
-    return r;
-  },
-  /** Chop (break) logs at (x,y,z) or chain-chop the tree column around it. */
   chop: async (x, y, z) => {
     await _flushBatches();
     const target = _isObj(x) ? x : (Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : { x, y, z });
@@ -239,18 +209,11 @@ const drone = {
     const target = _isObj(radius) ? radius : (typeof radius === 'number' ? { radius } : { radius: 12 });
     return await rpc('fertilize', target);
   },
-  /**
-   * Right-click / activate a block at (x,y,z): doors, levers, buttons, furnaces, machines.
-   * Awaitable: flies to within interaction range (4m) first, then activates.
-   * Resolves {activated, moved, ...} so `await drone.interact(...)` only returns
-   * once the action has actually fired, not once the RPC was queued.
-   */
   interactBlock: async (x, y, z) => {
     await _flushBatches();
     const target = _isObj(x) ? x : (Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : { x, y, z });
     const r = await rpc('interact_block', target);
     if (r && r.activated !== undefined) return r;
-    // RPC was queued rather than executed inline; move closer and retry once.
     try {
       const st = await _waitTask((s) => Math.hypot((s.x || 0) - (target.x || 0), (s.y || 0) - (target.y || 0), (s.z || 0) - (target.z || 0)) <= 4.5, 30000);
       if (st && !st.aborted) {
@@ -260,11 +223,6 @@ const drone = {
     } catch (e) { /* fall through with original result */ }
     return r;
   },
-  /**
-   * Bypass a GUI / right-click an item in hand (doors, food, bone meal, bucket, etc.).
-   * Awaitable: waits for the use to settle (idle or timeout) before resolving,
-   * so chains like `await drone.useItem(0); await drone.moveTo(...)` sequence.
-   */
   useItem: async (slotOrFilter = 0, itemFilter) => {
     await _flushBatches();
     const target = _isObj(slotOrFilter)
@@ -281,9 +239,6 @@ const drone = {
       return r;
     }
   },
-  /** Alias for interactBlock. Awaitable to the same completion contract. */
-  interact: async (x, y, z) => await drone.interactBlock(x, y, z),
-  /** Fight / hit an entity by id or filter (hostile/pig/creeper...). Flys to it and kills it. */
   attackEntity: async (target = 'hostile') => {
     await _flushBatches();
     const args = typeof target === 'number' ? { id: target } : (_isObj(target) ? target : { filter: String(target) });
@@ -333,7 +288,6 @@ const drone = {
     }
     return r;
   },
-  /** Machine craft via a nearby HBM processing TileEntity (Assembly/Chemical/Blast/Anvil...). */
   machineCraft: async (filter = 'plate_iron', machine = '', count = 1, radius = 32) => {
     await _flushBatches();
     const r = await rpc('machine_craft', _isObj(filter) ? filter : { filter, ...(machine ? { machine } : {}), count, radius });
@@ -344,38 +298,6 @@ const drone = {
     }
     return r;
   },
-  anvilCraft: async (filter = 'plate_iron', count = 1, radius = 32) => {
-    await _flushBatches();
-    const r = await rpc('anvil_craft', _isObj(filter) ? filter : { filter, machine: 'anvil', count, radius });
-    if (r && r.loaded) {
-      _gatheredItems = true;
-      const st = await _waitIdle();
-      return { ...r, ...st };
-    }
-    return r;
-  },
-  getMachineRecipes: async (filter = '', machine = '') => {
-    await _flushBatches();
-    return await rpc('get_machine_recipes', _isObj(filter) ? filter : { ...(filter ? { filter } : {}), ...(machine ? { machine } : {}) });
-  },
-  getMachineRecipe: async (filter = 'plate_iron', machine = '', radius = 32) => {
-    await _flushBatches();
-    return await rpc('get_machine_recipe', _isObj(filter) ? filter : { filter, ...(machine ? { machine } : {}), radius });
-  },
-  scanMachines: async (machine = '', radius = 32) => {
-    await _flushBatches();
-    return await rpc('scan_machines', _isObj(machine) ? machine : { ...(machine ? { machine } : {}), radius });
-  },
-  // Aliases kept in lockstep with world.*: probe logs showed "drone.machineCraft is
-  // not a function" and "world.scanMachines is not a function" depending on which
-  // surface the LLM drifted to; both surfaces must expose both names.
-  getMachines: async (machine = '', radius = 32) => await drone.scanMachines(machine, radius),
-  machineIngredients: async (filter = 'plate_iron', machine = '', radius = 32) => {
-    await _flushBatches();
-    return await rpc('machine_ingredients', _isObj(filter) ? filter : { filter, ...(machine ? { machine } : {}), radius });
-  },
-  getMachineIngredients: async (filter = 'plate_iron', machine = '', radius = 32) => await drone.machineIngredients(filter, machine, radius),
-  /** Drive the HBM NTM Anvil (GUI-only). Introspects via kb.lookup/machineConfigRecipes, stages ingredients, then tries ContainerAnvil on the fake player; if the GUI path is unavailable it returns blocker {tier, overlay, missingIngredients} and says it via droneSay. Construction recipes run the AnvilCraftPacket-equivalent server path (InventoryUtil on fake-player mainInventory); heat-aware smithing heats ItemHot inputs via ItemHot.heatUp. */
   driveAnvil: async (filter = 'plate_iron', radius = 32) => {
     await _flushBatches();
     const r = await rpc('anvil_drive', _isObj(filter) ? filter : { filter, radius });
@@ -384,7 +306,6 @@ const drone = {
     }
     return r;
   },
-  anvilDrive: async (filter = 'plate_iron', radius = 32) => await drone.driveAnvil(filter, radius),
   suckItems: async (radius = 8) => {
     await _flushBatches();
     return await rpc('suck_items', _isObj(radius) ? radius : { radius });
@@ -400,11 +321,6 @@ const drone = {
     }
     return r;
   },
-  transportPlayer: async (x, y, z) => await drone.carryPlayer(x, y, z),
-  setBase: (x, y, z) => world.setBase(x, y, z),
-  saveLocation: (name, x, y, z, tags) => world.saveLocation(name, x, y, z, tags),
-  getLocation: (name) => world.getLocation(name),
-  listLocations: () => world.listLocations(),
   getBreadcrumbs: (limit = 64) => _isObj(limit) ? rpc('get_breadcrumbs', limit) : rpc('get_breadcrumbs', { limit }),
   retraceBreadcrumbs: async (steps = 48, toSurface = true) => {
     await _flushBatches();
@@ -438,10 +354,6 @@ const drone = {
     }
     return r;
   },
-  deliverToPlayer: async (filter = 'all', count = 512, playerName) => await drone.giveToPlayer(filter, count, playerName),
-  findItemInChests: (filter = 'all', radius = 32) => world.findItemInChests(filter, radius),
-  searchChests: (filter = 'all', radius = 32) => world.findItemInChests(filter, radius),
-  findItem: (filter = 'all', radius = 32) => world.findItem(filter, radius),
   withdrawChest: async (a = 'any', b = 64, c, d, e) => {
     await _flushBatches();
     _gatheredItems = true;
@@ -463,7 +375,7 @@ const drone = {
   torch: async (enabled) => { await _flushBatches(); return await rpc('torch', typeof enabled === 'boolean' ? { enabled } : (_isObj(enabled) ? enabled : {})); },
   follow: async (target) => { await _flushBatches(); return await rpc('follow', _isObj(target) ? target : (target ? { target } : {})); },
   stay: async () => { await _flushBatches(); _handledItems = true; return await rpc('stay', {}); },
-  stop: async () => await drone.stay(),
+  stop: async () => { await _flushBatches(); _handledItems = true; return await rpc('stop', {}); },
   come: async () => {
     await _flushBatches();
     const r = await rpc('come', {});
@@ -471,12 +383,9 @@ const drone = {
     return { ...r, ...st };
   },
   guard: async (target, filter) => { await _flushBatches(); return await rpc('guard', _isObj(target) ? target : { ...(target ? { target } : {}), ...(filter ? { filter } : {}) }); },
-  cover: async (target, filter) => await drone.guard(target, filter),
   patrol: async (radius = 36, filter = 'hostile|mutant') => {
     await _flushBatches();
     const r = await rpc('patrol', _isObj(radius) ? radius : (typeof radius === 'string' ? { filter: radius, radius: typeof filter === 'number' ? filter : 36 } : { radius, filter }));
-    // Awaitable: resolve once PATROL is reached (or immediately if the RPC
-    // fails), so `await drone.patrol()` sequences with the next command.
     if (r && !r.ok) return r;
     try {
       const st = await _waitTask((s) => s.mode === 'PATROL', 30000);

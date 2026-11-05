@@ -177,12 +177,12 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
                 return;
             }
             if (args.length < 3) {
-                String maskedKey = (config.apiKey != null && config.apiKey.length() > 6)
-                    ? (config.apiKey.substring(0, 4) + "..." + config.apiKey.substring(config.apiKey.length() - 2))
-                    : (config.apiKey == null || config.apiKey.isEmpty() ? "<not set>" : "***");
+                String maskedKey = (config.getApiKey() != null && config.getApiKey().length() > 6)
+                    ? (config.getApiKey().substring(0, 4) + "..." + config.getApiKey().substring(config.getApiKey().length() - 2))
+                    : (config.getApiKey() == null || config.getApiKey().isEmpty() ? "<not set>" : "***");
                 CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "[Drone AI Config] "
-                    + EnumChatFormatting.YELLOW + "URL: " + EnumChatFormatting.WHITE + config.apiUrl
-                    + EnumChatFormatting.YELLOW + " | Model: " + EnumChatFormatting.WHITE + config.model
+                    + EnumChatFormatting.YELLOW + "URL: " + EnumChatFormatting.WHITE + config.getApiUrl()
+                    + EnumChatFormatting.YELLOW + " | Model: " + EnumChatFormatting.WHITE + config.getModel()
                     + EnumChatFormatting.YELLOW + " | Key: " + EnumChatFormatting.WHITE + maskedKey);
                 CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "Usage: /drone config <url|model|key> <value>");
                 return;
@@ -190,11 +190,11 @@ public class DroneCommand extends CortexDroneMod.BaseCmd {
             String key = args[1].toLowerCase();
             String val = args[2];
             if (key.equals("url")) {
-                config.apiUrl = val;
+                config.setApiUrl(val);
             } else if (key.equals("model")) {
-                config.model = val;
+                config.setModel(val);
             } else if (key.equals("key")) {
-                config.apiKey = val.equalsIgnoreCase("clear") ? "" : val;
+                config.setApiKey(val.equalsIgnoreCase("clear") ? "" : val);
             } else {
                 CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "Usage: /drone config <url|model|key> <value>");
                 return;

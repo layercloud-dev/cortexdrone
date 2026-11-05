@@ -31,13 +31,12 @@ import net.minecraft.world.World;
 public class InventoryRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
         "get_player", "get_player_inventory", "take_from_player", "give_to_player",
-        "deliver_to_player", "move_slot", "scan_chests", "search_chests",
-        "find_item_in_chests", "find_item", "search_item", "get_chest", "withdraw_chest",
-        "deposit_chest", "sort_chests", "sort", "transfer_containers", "transfer",
-        "drop", "suck_items", "craft", "get_recipes", "scan_furnaces", "smelt", "cook",
-        "scoop_liquid", "fill_bucket", "scoop", "place_liquid", "empty_bucket",
-        "anvil_craft", "machine_craft", "get_machine_recipes", "get_machine_recipe",
-        "scan_machines", "machine_ingredients", "anvil_drive", "drive_anvil"
+        "move_slot", "scan_chests", "find_item_in_chests", "find_item",
+        "get_chest", "withdraw_chest", "deposit_chest", "sort_chests",
+        "transfer_containers", "drop", "suck_items", "craft", "get_recipes",
+        "scan_furnaces", "smelt", "cook", "scoop_liquid", "place_liquid",
+        "machine_craft", "get_machine_recipes", "get_machine_recipe",
+        "scan_machines", "machine_ingredients", "anvil_drive"
     };
 
     private final AIDroneManager manager;
@@ -143,7 +142,7 @@ public class InventoryRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("give_to_player") || m.equals("deliver_to_player")) {
+        if (m.equals("give_to_player")) {
             String filter = args.has("filter") ? args.get("filter").getAsString()
                 : (args.has("target") ? args.get("target").getAsString() : "all");
             int count = args.has("count") ? args.get("count").getAsInt() : 512;
@@ -203,7 +202,7 @@ public class InventoryRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("find_item") || m.equals("search_item")) {
+        if (m.equals("find_item")) {
             String query = args.has("filter") ? args.get("filter").getAsString()
                 : (args.has("query") ? args.get("query").getAsString()
                 : (args.has("item") ? args.get("item").getAsString() : "all"));
@@ -211,7 +210,7 @@ public class InventoryRpcHandler implements RpcHandler {
             return this.inventoryService.getContainerSearchService().findItemEverywhere(world, ctrl, player, query, radius);
         }
 
-        if (m.equals("find_item_in_chests") || m.equals("search_chests") || m.equals("scan_chests")) {
+        if (m.equals("find_item_in_chests") || m.equals("scan_chests")) {
             String query = args.has("filter") ? args.get("filter").getAsString()
                 : (args.has("query") ? args.get("query").getAsString()
                 : (args.has("item") ? args.get("item").getAsString() : "all"));
@@ -304,13 +303,13 @@ public class InventoryRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("sort_chests") || m.equals("sort")) {
+        if (m.equals("sort_chests")) {
             int radius = args.has("radius") ? args.get("radius").getAsInt() : 24;
             String mode = args.has("mode") ? args.get("mode").getAsString() : "all";
             return this.chestSorter.sortNearbyChests(world, ctrl, player, radius, mode);
         }
 
-        if (m.equals("transfer_containers") || m.equals("transfer")) {
+        if (m.equals("transfer_containers")) {
             String fromF = args.has("from") ? args.get("from").getAsString() : "crate";
             String toF = args.has("to") ? args.get("to").getAsString() : "chest";
             int radius = args.has("radius") ? args.get("radius").getAsInt() : 32;
@@ -392,7 +391,7 @@ public class InventoryRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("scoop_liquid") || m.equals("fill_bucket") || m.equals("scoop")) {
+        if (m.equals("scoop_liquid")) {
             if (args.has("x") && args.has("y") && args.has("z")) {
                 int lx = args.get("x").getAsInt(), ly = args.get("y").getAsInt(), lz = args.get("z").getAsInt();
                 if (d.func_70011_f(lx + 0.5, ly + 0.5, lz + 0.5) <= 4.5) {
@@ -412,7 +411,7 @@ public class InventoryRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("place_liquid") || m.equals("empty_bucket")) {
+        if (m.equals("place_liquid")) {
             int lx = args.get("x").getAsInt(), ly = args.get("y").getAsInt(), lz = args.get("z").getAsInt();
             String type = args.has("type") ? args.get("type").getAsString()
                 : (args.has("liquid") ? args.get("liquid").getAsString() : "water");
@@ -421,13 +420,12 @@ public class InventoryRpcHandler implements RpcHandler {
             return res;
         }
 
-        if (m.equals("anvil_craft") || m.equals("machine_craft")) {
+        if (m.equals("machine_craft")) {
             String filter = args.has("filter") ? args.get("filter").getAsString()
                 : (args.has("target") ? args.get("target").getAsString()
                 : (args.has("item") ? args.get("item").getAsString() : "plate_iron"));
             String machine = args.has("machine") ? args.get("machine").getAsString()
-                : (args.has("machineKind") ? args.get("machineKind").getAsString()
-                : (m.equals("anvil_craft") ? "anvil" : ""));
+                : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
             int count = args.has("count") ? args.get("count").getAsInt() : 1;
             int radius = args.has("radius") ? Math.min(64, Math.max(8, args.get("radius").getAsInt())) : 32;
             return this.inventoryService.getMachineCraftExecutor().machineCraft(world, ctrl, player, filter, machine, count, radius);
@@ -460,7 +458,7 @@ public class InventoryRpcHandler implements RpcHandler {
             return this.inventoryService.getMachineCraftExecutor().scanMachines(world, ctrl, player, machine, radius);
         }
 
-        if (m.equals("anvil_drive") || m.equals("drive_anvil")) {
+        if (m.equals("anvil_drive")) {
             String filter = args.has("filter") ? args.get("filter").getAsString()
                 : (args.has("target") ? args.get("target").getAsString()
                 : (args.has("item") ? args.get("item").getAsString() : "plate_iron"));

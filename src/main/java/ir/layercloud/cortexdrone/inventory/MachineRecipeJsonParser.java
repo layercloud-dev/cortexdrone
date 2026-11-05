@@ -7,15 +7,15 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import lombok.experimental.UtilityClass;
 
 /**
  * JSON normalization for HBM machine recipes. Package-private helper so
  * MachineRecipeService stays under the line limit. Handles flat GenericRecipes,
  * Anvil, ArcFurnace, Mixer nested, CustomMachines, and fluid-only shapes.
  */
+@UtilityClass
 final class MachineRecipeJsonParser {
-    private MachineRecipeJsonParser() {
-    }
 
     static MachineRecipeService.NormalizedRecipe normalize(JsonObject o, String machine, String fileName) {
         try {

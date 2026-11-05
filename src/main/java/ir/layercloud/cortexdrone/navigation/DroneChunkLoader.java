@@ -87,19 +87,19 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
         if (overworld == null) return;
 
         int forcedAnchors = 0;
-        if (config.savedDrones != null) {
-            for (AIConfig.SavedDroneInfo sd : config.savedDrones) {
-                if (sd == null || sd.x == null || sd.z == null) continue;
-                WorldServer ws = srv.func_71218_a(sd.dimension);
+        if (config.getSavedDrones() != null) {
+            for (AIConfig.SavedDroneInfo sd : config.getSavedDrones()) {
+                if (sd == null || sd.getX() == null || sd.getZ() == null) continue;
+                WorldServer ws = srv.func_71218_a(sd.getDimension());
                 if (ws == null) ws = overworld;
-                String key = "saved_drone:" + (sd.uuid != null ? sd.uuid : sd.owner);
-                if (forceAnchorArea(ws, key, sd.x.doubleValue(), sd.z.doubleValue(), ANCHOR_CHUNK_RADIUS)) {
+                String key = "saved_drone:" + (sd.getUuid() != null ? sd.getUuid() : sd.getOwner());
+                if (forceAnchorArea(ws, key, sd.getX().doubleValue(), sd.getZ().doubleValue(), ANCHOR_CHUNK_RADIUS)) {
                     forcedAnchors++;
                 }
             }
         }
-        if (config.playerBases != null) {
-            for (Map.Entry<String, double[]> e : config.playerBases.entrySet()) {
+        if (config.getPlayerBases() != null) {
+            for (Map.Entry<String, double[]> e : config.getPlayerBases().entrySet()) {
                 double[] coords = e.getValue();
                 if (coords != null && coords.length >= 3) {
                     if (forceAnchorArea(overworld, "base:" + e.getKey(), coords[0], coords[2], ANCHOR_CHUNK_RADIUS)) {
@@ -108,11 +108,11 @@ public class DroneChunkLoader implements ForgeChunkManager.LoadingCallback {
                 }
             }
         }
-        if (config.savedLocations != null) {
-            for (Map.Entry<String, AIConfig.SavedLocation> e : config.savedLocations.entrySet()) {
+        if (config.getSavedLocations() != null) {
+            for (Map.Entry<String, AIConfig.SavedLocation> e : config.getSavedLocations().entrySet()) {
                 AIConfig.SavedLocation loc = e.getValue();
                 if (loc != null) {
-                    if (forceAnchorArea(overworld, "loc:" + e.getKey(), loc.x, loc.z, ANCHOR_CHUNK_RADIUS)) {
+                    if (forceAnchorArea(overworld, "loc:" + e.getKey(), loc.getX(), loc.getZ(), ANCHOR_CHUNK_RADIUS)) {
                         forcedAnchors++;
                     }
                 }

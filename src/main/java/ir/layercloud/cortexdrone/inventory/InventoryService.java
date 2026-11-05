@@ -27,6 +27,7 @@ import net.minecraft.tileentity.TileEntityFurnace;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import lombok.Getter;
 
 /**
  * Core inventory service handling slot transfers, multi-chest discovery,
@@ -37,12 +38,18 @@ public class InventoryService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
+    @Getter
     private final CraftingService craftingService;
+    @Getter
     private final FluidOpsService fluidOpsService;
+    @Getter
     private final ContainerSearchService containerSearchService;
     private final PlayerInventoryOps playerInventoryOps;
+    @Getter
     private final MachineRecipeService machineRecipeService;
+    @Getter
     private final MachineCraftExecutor machineCraftExecutor;
+    @Getter
     private final AnvilService anvilService;
 
     public InventoryService(AIDroneManager manager, DroneLogger logger, FlightPathfinder pathfinder) {
@@ -58,17 +65,8 @@ public class InventoryService {
         this.anvilService = new AnvilService(manager, logger, this, this.machineRecipeService);
     }
 
-    public CraftingService getCraftingService() {
-        return this.craftingService;
-    }
 
-    public FluidOpsService getFluidOpsService() {
-        return this.fluidOpsService;
-    }
 
-    public ContainerSearchService getContainerSearchService() {
-        return this.containerSearchService;
-    }
 
     public static boolean isInventoryFull(IInventory inv) {
         if (inv == null) return true;
@@ -554,15 +552,6 @@ public class InventoryService {
         return this.craftingService.craftItem(world, ctrl, owner, targetFilter, wantedCount);
     }
 
-    public MachineRecipeService getMachineRecipeService() {
-        return this.machineRecipeService;
-    }
 
-    public MachineCraftExecutor getMachineCraftExecutor() {
-        return this.machineCraftExecutor;
-    }
 
-    public AnvilService getAnvilService() {
-        return this.anvilService;
-    }
 }

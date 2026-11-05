@@ -14,6 +14,7 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
+import lombok.Data;
 
 /**
  * Dynamic, zero-hardcoded HBM/modified machine recipe introspection.
@@ -63,11 +64,12 @@ public class MachineRecipeService {
         }
     }
 
+    @Data
     static class Availability {
-        int available;
-        int missing;
-        int needed;
-        boolean sufficient;
+        private int available;
+        private int missing;
+        private int needed;
+        private boolean sufficient;
     }
 
     public JsonObject getMachineRecipesForFilter(String rawFilter, String rawMachine) {
@@ -123,7 +125,7 @@ public class MachineRecipeService {
         MachineRecipeService.Availability av = MachineRecipeRanker.assess(this.inventoryService, ranked.get(0), world, player, radius);
         for (NormalizedRecipe cand : ranked) {
             MachineRecipeService.Availability a = MachineRecipeRanker.assess(this.inventoryService, cand, world, player, radius);
-            if (a.sufficient) {
+            if (a.isSufficient()) {
                 av = a;
                 ranked.remove(cand);
                 ranked.add(0, cand);
@@ -131,10 +133,10 @@ public class MachineRecipeService {
             }
         }
         NormalizedRecipe best = ranked.get(0);
-        res.addProperty("bestError", av.sufficient ? "" : "Ingredients missing in drone+player+chests within radius " + radius + "m");
-        res.addProperty("sufficient", av.sufficient);
-        res.addProperty("available", av.available);
-        res.addProperty("missing", av.missing);
+        res.addProperty("bestError", av.isSufficient() ? "" : "Ingredients missing in drone+player+chests within radius " + radius + "m");
+        res.addProperty("sufficient", av.isSufficient());
+        res.addProperty("available", av.getAvailable());
+        res.addProperty("missing", av.getMissing());
         JsonObject o = recipeToJson(best);
         res.add("recipe", o);
         res.addProperty("machine", best.machine);

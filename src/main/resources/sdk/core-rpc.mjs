@@ -1,9 +1,7 @@
 const logs = [];
 console.log = (...a) => logs.push(a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' '));
 globalThis.log = console.log;
-globalThis.print = console.log;
 globalThis.sleep = (ms) => new Promise(r => setTimeout(r, Math.min(30000, Number(ms) || 0)));
-globalThis.wait = globalThis.sleep;
 
 const _killTimer = setTimeout(() => {
   process.stdout.write(JSON.stringify({ ok: true, result: { timedOutAfterMs: 175000 }, logs }));
@@ -221,7 +219,7 @@ async function _finalizeScript() {
   if (finalTurn && _gatheredItems && !_handledItems) {
     const st = await rpc('get_drone', { loopId: typeof LOOP_ID === 'number' ? LOOP_ID : 0 });
     if (st && !st.aborted && (st.totalItems || 0) > 0 && st.mode === 'FOLLOW') {
-      const dr = await rpc('deliver_to_player', { filter: 'all', count: 512 });
+      const dr = await rpc('give_to_player', { filter: 'all', count: 512 });
       if (dr && dr.flyingToPlayer) {
         await _waitIdle(60000);
       }

@@ -2,7 +2,6 @@ const world = {
   getBlock: (x, y, z) => Array.isArray(x) ? rpc('get_block', { x: x[0], y: x[1], z: x[2] }) : (_isObj(x) ? rpc('get_block', x) : rpc('get_block', { x, y, z })),
   getBlocksInBox: (x1, y1, z1, x2, y2, z2, includeAir = false) => _isObj(x1) ? rpc('get_blocks_in_box', x1) : rpc('get_blocks_in_box', { x1, y1, z1, x2, y2, z2, includeAir }),
   scanRoom: (x, y, z, maxRadius = 18) => _isObj(x) ? rpc('scan_room', x) : rpc('scan_room', { ...(typeof x === 'number' ? { x, y, z } : {}), maxRadius: (typeof x === 'number' && y === undefined) ? x : maxRadius }),
-  // findDistant: chest-first fast path — search chest sources before sweeping blocks (cheaper when chest search wins). Caller can pass {chestOnly} to skip block sweep.
   scanBlocks: async (filter = 'ores', radius = 24, x, y, z) => {
     if (typeof filter === 'function') {
       const fn = filter;
@@ -29,9 +28,6 @@ const world = {
   },
   findDistant: async (target, maxRadius = 1200) => {
     const args = _isObj(target) ? target : { target, maxRadius };
-    // Chest-first: if an item is already stored in a chest, a chest search is
-    // much cheaper than a 100km block sweep. Probe chest sources first; only
-    // fall back to block find_distant when chests miss.
     if (args.chestFirst !== false && !args.chestOnly) {
       try {
         const chestR = await rpc('find_item_in_chests', { filter: String(args.target || 'all'), radius: 32 });
@@ -61,7 +57,6 @@ const world = {
   getTopY: (x, z) => _isObj(x) ? rpc('get_top_y', x) : rpc('get_top_y', { x, z }),
   findItemInChests: (filter = 'all', radius = 32) =>
     _isObj(filter) ? rpc('find_item_in_chests', filter) : rpc('find_item_in_chests', { filter: String(filter), radius }),
-  searchChests: (filter = 'all', radius = 32) => world.findItemInChests(filter, radius),
   findItem: (filter = 'all', radius = 32) =>
     _isObj(filter) ? rpc('find_item', filter) : rpc('find_item', { filter: String(filter), radius }),
   scanChests: (radiusOrFilter = 24, filter = 'all') =>
@@ -71,17 +66,11 @@ const world = {
         ? rpc('scan_chests', { filter: radiusOrFilter, radius: typeof filter === 'number' ? filter : 28 })
         : rpc('scan_chests', { radius: radiusOrFilter, filter })),
   getChest: (x, y, z) => Array.isArray(x) ? rpc('get_chest', { x: x[0], y: x[1], z: x[2] }) : (_isObj(x) ? rpc('get_chest', x) : rpc('get_chest', { x, y, z })),
-  sortChests: (radius = 24, mode = 'all') => _isObj(radius) ? rpc('sort_chests', radius) : rpc('sort_chests', { radius, mode }),
-  transferContainers: (from = 'crate', to = 'chest', radius = 32, sortAfter = true) => _isObj(from) ? rpc('transfer_containers', from) : rpc('transfer_containers', { from, to, radius, sortAfter }),
   scanFurnaces: (radius = 24) => _isObj(radius) ? rpc('scan_furnaces', radius) : rpc('scan_furnaces', { radius }),
   getMachineRecipes: (filter = '', machine = '') => _isObj(filter) ? rpc('get_machine_recipes', filter) : rpc('get_machine_recipes', { ...(filter ? { filter } : {}), ...(machine ? { machine } : {}) }),
   getMachineRecipe: (filter = 'plate_iron', machine = '', radius = 32) => _isObj(filter) ? rpc('get_machine_recipe', filter) : rpc('get_machine_recipe', { filter, ...(machine ? { machine } : {}), radius }),
   scanMachines: (machine = '', radius = 32) => _isObj(machine) ? rpc('scan_machines', machine) : rpc('scan_machines', { ...(machine ? { machine } : {}), radius }),
-  getMachines: (machine = '', radius = 32) => world.scanMachines(machine, radius),
   machineIngredients: (filter = 'plate_iron', machine = '', radius = 32) => _isObj(filter) ? rpc('machine_ingredients', filter) : rpc('machine_ingredients', { filter, ...(machine ? { machine } : {}), radius }),
-  // Alias in lockstep with drone.*: probe logs showed "world.scanMachines is not a
-  // function" when the LLM drifted to drone.*; both surfaces must expose both names.
-  getMachineIngredients: (filter = 'plate_iron', machine = '', radius = 32) => world.machineIngredients(filter, machine, radius),
   scanVeins: (filter = 'ores', radius = 28, x, y, z) => _isObj(filter) ? rpc('scan_veins', filter) : rpc('scan_veins', { filter, radius, ...(typeof x === 'number' ? { x, y, z } : {}) }),
   findBase: () => rpc('find_base', {}),
   setBase: (x, y, z) => _isObj(x) ? rpc('set_base', x) : (typeof x === 'number' ? rpc('set_base', { x, y, z }) : rpc('set_base', {})),

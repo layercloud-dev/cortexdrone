@@ -11,6 +11,7 @@ import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
+import lombok.experimental.UtilityClass;
 
 /**
  * Ranking, filtering, and ingredient-availability assessment for HBM
@@ -18,9 +19,8 @@ import net.minecraft.world.World;
  * (rankAndFilter, assess, countAllNearby and helpers) so the core stays
  * under the line limit.
  */
+@UtilityClass
 final class MachineRecipeRanker {
-    private MachineRecipeRanker() {
-    }
 
     private static final long COUNT_CACHE_TTL_MS = 1000L;
     private static final java.util.Map<String, java.util.Map<String, Integer>> COUNT_CACHE = new java.util.HashMap<String, java.util.Map<String, Integer>>();
@@ -203,10 +203,10 @@ final class MachineRecipeRanker {
             have += Math.min(got, amt);
             miss += Math.max(0, amt - got);
         }
-        av.needed = needed;
-        av.available = have;
-        av.missing = miss;
-        av.sufficient = miss == 0 && !r.inputs.isEmpty();
+        av.setNeeded(needed);
+        av.setAvailable(have);
+        av.setMissing(miss);
+        av.setSufficient(miss == 0 && !r.inputs.isEmpty());
         return av;
     }
 

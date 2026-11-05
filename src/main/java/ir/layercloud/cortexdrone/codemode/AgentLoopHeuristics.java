@@ -3,12 +3,14 @@ package ir.layercloud.cortexdrone.codemode;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import lombok.experimental.UtilityClass;
 
 /**
  * Deterministic helpers for agent-loop re-query / loiter detection and message
  * pruning. Split verbatim from {@link LlmAgentService} so the core stays under
  * the modular line limit; all methods are package-private static.
  */
+@UtilityClass
 final class AgentLoopHeuristics {
     // Wall-clock deadline for one agent loop. The 100-turn cap alone does not stop
     // log-spam loops (meteor hunt burned 85 turns over ~45 min of kb.lookup/scan
@@ -16,8 +18,6 @@ final class AgentLoopHeuristics {
     // partial reply (done:true) instead of chasing another re-query.
     static final long AGENT_DEADLINE_MS = 8L * 60L * 1000L; // 8 minutes
 
-    private AgentLoopHeuristics() {
-    }
 
     static String truncateForPrompt(String s, int maxLen) {
         if (s == null || s.length() <= maxLen) return s != null ? s : "";
@@ -110,36 +110,38 @@ final class AgentLoopHeuristics {
     static boolean codeMentionsPhysicalAction(String code) {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();
-        return c.contains(".mine(") || c.contains(".minemany(") || c.contains(".mineblock(")
-            || c.contains(".craft(") || c.contains(".machinecraft(") || c.contains(".anvilcraft(")
+        return c.contains(".mine(") || c.contains(".minemany(") || c.contains(".minerect(")
+            || c.contains(".minebox(") || c.contains(".gatherdistant(") || c.contains(".breakblock(")
+            || c.contains(".craft(") || c.contains(".machinecraft(") || c.contains(".driveanvil(")
             || c.contains(".cook(") || c.contains(".smelt(") || c.contains(".withdrawchest(")
             || c.contains(".depositchest(") || c.contains(".givetoplayer(") || c.contains(".placeblock(")
             || c.contains(".placemany(") || c.contains(".placebox(") || c.contains(".replaceblock(")
             || c.contains(".replaceblocks(") || c.contains(".replacebox(") || c.contains(".replaceroom(")
             || c.contains(".buildstructure(") || c.contains(".hunt(") || c.contains(".attackentity(")
-            || c.contains(".farm(") || c.contains(".harvest(") || c.contains(".chop(")
-            || c.contains(".scoopliquid(") || c.contains(".fillbucket(") || c.contains(".flyto(")
-            || c.contains(".moveto(") || c.contains(".goto(") || c.contains(".carryplayer(")
-            || c.contains(".takefromplayer(") || c.contains(".suckitems(") || c.contains(".interact(")
-            || c.contains(".useitem(") || c.contains(".sortchests(") || c.contains(".transfercontainers(");
+            || c.contains(".farm(") || c.contains(".chop(") || c.contains(".fertilize(")
+            || c.contains(".scoopliquid(") || c.contains(".placeliquid(") || c.contains(".plugliquids(")
+            || c.contains(".flyto(") || c.contains(".carryplayer(") || c.contains(".takefromplayer(")
+            || c.contains(".suckitems(") || c.contains(".interactblock(") || c.contains(".useitem(")
+            || c.contains(".sortchests(") || c.contains(".transfercontainers(");
     }
 
     static boolean codeMentionsProgressAction(String code) {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();
-        return c.contains(".mine(") || c.contains(".minemany(") || c.contains(".mineblock(")
-            || c.contains(".craft(") || c.contains(".machinecraft(") || c.contains(".anvilcraft(")
+        return c.contains(".mine(") || c.contains(".minemany(") || c.contains(".minerect(")
+            || c.contains(".minebox(") || c.contains(".gatherdistant(") || c.contains(".breakblock(")
+            || c.contains(".craft(") || c.contains(".machinecraft(") || c.contains(".driveanvil(")
             || c.contains(".cook(") || c.contains(".smelt(") || c.contains(".withdrawchest(")
-            || c.contains(".depositchest(") || c.contains(".givetoplayer(") || c.contains(".delivertoplayer(")
+            || c.contains(".depositchest(") || c.contains(".givetoplayer(")
             || c.contains(".placeblock(") || c.contains(".placemany(") || c.contains(".placebox(")
             || c.contains(".replaceblock(") || c.contains(".replaceblocks(") || c.contains(".replacebox(")
-            || c.contains(".replaceroom(") || c.contains(".buildstructure(") || c.contains(".buildhouse(")
+            || c.contains(".replaceroom(") || c.contains(".buildstructure(")
             || c.contains(".hunt(") || c.contains(".attackentity(") || c.contains(".farm(")
-            || c.contains(".harvest(") || c.contains(".chop(")
-            || c.contains(".scoopliquid(") || c.contains(".fillbucket(")
-            || c.contains(".takefromplayer(") || c.contains(".suckitems(") || c.contains(".interact(")
+            || c.contains(".chop(") || c.contains(".fertilize(")
+            || c.contains(".scoopliquid(") || c.contains(".placeliquid(") || c.contains(".plugliquids(")
+            || c.contains(".takefromplayer(") || c.contains(".suckitems(")
             || c.contains(".interactblock(") || c.contains(".useitem(") || c.contains(".sortchests(")
-            || c.contains(".transfercontainers(") || c.contains(".driveanvil(") || c.contains(".anvildrive(");
+            || c.contains(".transfercontainers(");
     }
 
     static boolean hasConcreteProgress(JsonObject execRes, String code) {
@@ -229,9 +231,9 @@ final class AgentLoopHeuristics {
     static String queryFingerprint(String code) {
         if (code == null || code.isEmpty()) return "";
         String c = code.replaceAll("\\s+", " ");
-        String[] tools = new String[]{"kb.lookup", "docs.lookup", "lookup", "world.getrecipes", "getrecipes",
-            "world.finditeminchests", "finditeminchests", "world.finddistant", "finddistant",
-            "world.scanblocks", "scanblocks", "world.finditem", "finditem"};
+        String[] tools = new String[]{"kb.lookup", "world.getrecipes",
+            "world.finditeminchests", "world.finddistant",
+            "world.scanblocks", "world.finditem"};
         for (String t : tools) {
             int idx = c.toLowerCase().indexOf(t);
             if (idx < 0) continue;

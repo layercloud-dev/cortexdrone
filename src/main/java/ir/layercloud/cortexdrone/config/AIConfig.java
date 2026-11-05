@@ -12,41 +12,47 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.Synchronized;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class AIConfig {
-    public String apiUrl = envOrDefault("CORTEXDRONE_API_URL", "http://127.0.0.1:7002/v1/chat/completions");
-    public String model = envOrDefault("CORTEXDRONE_MODEL", "deepseek/deepseek-v4.1-flash");
-    public String apiKey = envOrDefault("CORTEXDRONE_API_KEY", "");
-    public int httpPort = 25580;
-    public List<SavedDroneInfo> savedDrones = new ArrayList<SavedDroneInfo>();
-    public Map<String, double[]> playerBases = new HashMap<String, double[]>();
-    public Map<String, SavedLocation> savedLocations = new LinkedHashMap<String, SavedLocation>();
+    private String apiUrl = envOrDefault("CORTEXDRONE_API_URL", "http://127.0.0.1:7002/v1/chat/completions");
+    private String model = envOrDefault("CORTEXDRONE_MODEL", "deepseek/deepseek-v4.1-flash");
+    private String apiKey = envOrDefault("CORTEXDRONE_API_KEY", "");
+    private int httpPort = 25580;
+    private List<SavedDroneInfo> savedDrones = new ArrayList<SavedDroneInfo>();
+    private Map<String, double[]> playerBases = new HashMap<String, double[]>();
+    private Map<String, SavedLocation> savedLocations = new LinkedHashMap<String, SavedLocation>();
 
+    @Data
     public static class SavedDroneInfo {
-        public String uuid;
-        public String name;
-        public String owner;
-        public String mode;
-        public boolean autoTorch;
-        public String ledEffect;
-        public Integer customLedColor;
-        public String guardFilter;
-        public int patrolRadius;
-        public int dimension;
-        public Double x;
-        public Double y;
-        public Double z;
+        private String uuid;
+        private String name;
+        private String owner;
+        private String mode;
+        private boolean autoTorch;
+        private String ledEffect;
+        private Integer customLedColor;
+        private String guardFilter;
+        private int patrolRadius;
+        private int dimension;
+        private Double x;
+        private Double y;
+        private Double z;
     }
 
+    @Data
     public static class SavedLocation {
-        public String name;
-        public String owner;
-        public double x;
-        public double y;
-        public double z;
-        public String tags;
-        public long updatedAt;
+        private String name;
+        private String owner;
+        private double x;
+        private double y;
+        private double z;
+        private String tags;
+        private long updatedAt;
     }
 
     private static String envOrDefault(String key, String fallback) {
@@ -60,8 +66,7 @@ public class AIConfig {
         return fallback;
     }
 
-    @Synchronized
-    public static AIConfig load(File configFile, Gson gson) {
+    public static synchronized AIConfig load(File configFile, Gson gson) {
         if (configFile == null || !configFile.exists()) {
             return new AIConfig();
         }
@@ -73,26 +78,26 @@ public class AIConfig {
             // File values are only accepted if the caller explicitly set them;
             // the class-field initializers already applied envOrDefault (env var wins over file).
             // A blank file value means "use env/default", so we re-apply env/default here.
-            if (loaded.apiUrl == null || loaded.apiUrl.trim().isEmpty()) {
-                loaded.apiUrl = envOrDefault("CORTEXDRONE_API_URL", "http://127.0.0.1:7002/v1/chat/completions");
+            if (loaded.getApiUrl() == null || loaded.getApiUrl().trim().isEmpty()) {
+                loaded.setApiUrl(envOrDefault("CORTEXDRONE_API_URL", "http://127.0.0.1:7002/v1/chat/completions"));
             }
-            if (loaded.model == null || loaded.model.trim().isEmpty()) {
-                loaded.model = envOrDefault("CORTEXDRONE_MODEL", "deepseek/deepseek-v4.1-flash");
+            if (loaded.getModel() == null || loaded.getModel().trim().isEmpty()) {
+                loaded.setModel(envOrDefault("CORTEXDRONE_MODEL", "deepseek/deepseek-v4.1-flash"));
             }
-            if (loaded.apiKey == null || loaded.apiKey.trim().isEmpty()) {
-                loaded.apiKey = envOrDefault("CORTEXDRONE_API_KEY", "");
+            if (loaded.getApiKey() == null || loaded.getApiKey().trim().isEmpty()) {
+                loaded.setApiKey(envOrDefault("CORTEXDRONE_API_KEY", ""));
             }
-            if (loaded.savedDrones == null) {
-                loaded.savedDrones = new ArrayList<SavedDroneInfo>();
+            if (loaded.getSavedDrones() == null) {
+                loaded.setSavedDrones(new ArrayList<SavedDroneInfo>());
             }
-            if (loaded.playerBases == null) {
-                loaded.playerBases = new HashMap<String, double[]>();
+            if (loaded.getPlayerBases() == null) {
+                loaded.setPlayerBases(new HashMap<String, double[]>());
             }
-            if (loaded.savedLocations == null) {
-                loaded.savedLocations = new LinkedHashMap<String, SavedLocation>();
+            if (loaded.getSavedLocations() == null) {
+                loaded.setSavedLocations(new LinkedHashMap<String, SavedLocation>());
             }
-            if (loaded.httpPort <= 0) {
-                loaded.httpPort = 25580;
+            if (loaded.getHttpPort() <= 0) {
+                loaded.setHttpPort(25580);
             }
             return loaded;
         } catch (Exception e) {
@@ -101,15 +106,14 @@ public class AIConfig {
         }
     }
 
-    @Synchronized
-    public void save(File configFile, Gson gson, Collection<DroneController> controllers) {
+    public synchronized void save(File configFile, Gson gson, Collection<DroneController> controllers) {
         if (configFile == null) return;
         try {
             Map<String, SavedDroneInfo> byUuid = new LinkedHashMap<String, SavedDroneInfo>();
             if (this.savedDrones != null) {
                 for (SavedDroneInfo old : this.savedDrones) {
-                    if (old != null && old.uuid != null && !"Server".equalsIgnoreCase(old.owner)) {
-                        byUuid.put(old.uuid, old);
+                    if (old != null && old.getUuid() != null && !"Server".equalsIgnoreCase(old.getOwner())) {
+                        byUuid.put(old.getUuid(), old);
                     }
                 }
             }
@@ -117,22 +121,22 @@ public class AIConfig {
                 for (DroneController c : controllers) {
                     if (c.drone == null || c.drone.field_70128_L || c.entityUuid == null || "Server".equalsIgnoreCase(c.ownerName)) continue;
                     SavedDroneInfo info = new SavedDroneInfo();
-                    info.uuid = c.entityUuid.toString();
-                    info.name = c.name;
-                    info.owner = c.ownerName;
-                    info.mode = (c.mode == Mode.MINE || c.mode == Mode.BUILD || c.mode == Mode.SCOOP || c.mode == Mode.SMELT || c.mode == Mode.CARRY || c.mode == Mode.DROP || c.mode == Mode.DEPOSIT)
+                    info.setUuid(c.entityUuid.toString());
+                    info.setName(c.name);
+                    info.setOwner(c.ownerName);
+                    info.setMode((c.mode == Mode.MINE || c.mode == Mode.BUILD || c.mode == Mode.SCOOP || c.mode == Mode.SMELT || c.mode == Mode.CARRY || c.mode == Mode.DROP || c.mode == Mode.DEPOSIT)
                         ? Mode.FOLLOW.name()
-                        : c.mode.name();
-                    info.autoTorch = c.autoTorch;
-                    info.ledEffect = c.ledEffect;
-                    info.customLedColor = c.customLedColor;
-                    info.guardFilter = c.guardFilter;
-                    info.patrolRadius = c.patrolRadius;
-                    info.dimension = c.drone.field_71093_bK;
-                    info.x = Math.round(c.drone.field_70165_t * 10.0) / 10.0;
-                    info.y = Math.round(c.drone.field_70163_u * 10.0) / 10.0;
-                    info.z = Math.round(c.drone.field_70161_v * 10.0) / 10.0;
-                    byUuid.put(info.uuid, info);
+                        : c.mode.name());
+                    info.setAutoTorch(c.autoTorch);
+                    info.setLedEffect(c.ledEffect);
+                    info.setCustomLedColor(c.customLedColor);
+                    info.setGuardFilter(c.guardFilter);
+                    info.setPatrolRadius(c.patrolRadius);
+                    info.setDimension(c.drone.field_71093_bK);
+                    info.setX(Math.round(c.drone.field_70165_t * 10.0) / 10.0);
+                    info.setY(Math.round(c.drone.field_70163_u * 10.0) / 10.0);
+                    info.setZ(Math.round(c.drone.field_70161_v * 10.0) / 10.0);
+                    byUuid.put(info.getUuid(), info);
                 }
             }
             this.savedDrones = new ArrayList<SavedDroneInfo>(byUuid.values());
@@ -150,8 +154,7 @@ public class AIConfig {
         return o + ":" + n;
     }
 
-    @Synchronized
-    public SavedLocation saveLocation(String owner, String name, double x, double y, double z, String tags) {
+    public synchronized SavedLocation saveLocation(String owner, String name, double x, double y, double z, String tags) {
         if (name == null || name.trim().isEmpty()) return null;
         if (this.savedLocations == null) {
             this.savedLocations = new LinkedHashMap<String, SavedLocation>();
@@ -159,13 +162,13 @@ public class AIConfig {
         String cleanName = name.trim();
         String cleanOwner = (owner != null && !owner.trim().isEmpty()) ? owner.trim() : "global";
         SavedLocation loc = new SavedLocation();
-        loc.name = cleanName;
-        loc.owner = cleanOwner;
-        loc.x = Math.round(x * 10.0) / 10.0;
-        loc.y = Math.round(y * 10.0) / 10.0;
-        loc.z = Math.round(z * 10.0) / 10.0;
-        loc.tags = tags != null ? tags.trim() : "";
-        loc.updatedAt = System.currentTimeMillis();
+        loc.setName(cleanName);
+        loc.setOwner(cleanOwner);
+        loc.setX(Math.round(x * 10.0) / 10.0);
+        loc.setY(Math.round(y * 10.0) / 10.0);
+        loc.setZ(Math.round(z * 10.0) / 10.0);
+        loc.setTags(tags != null ? tags.trim() : "");
+        loc.setUpdatedAt(System.currentTimeMillis());
         this.savedLocations.put(normLocationKey(cleanOwner, cleanName), loc);
         this.savedLocations.put(normLocationKey("global", cleanName), loc);
         String lower = cleanName.toLowerCase();
@@ -175,8 +178,7 @@ public class AIConfig {
         return loc;
     }
 
-    @Synchronized
-    public SavedLocation getLocation(String owner, String query) {
+    public synchronized SavedLocation getLocation(String owner, String query) {
         if (query == null || query.trim().isEmpty() || this.savedLocations == null) return null;
         String q = query.trim().toLowerCase();
         String qUnderscore = q.replace(' ', '_');
@@ -190,11 +192,11 @@ public class AIConfig {
         // Fuzzy match by name or tags (preferring owner's locations first)
         SavedLocation bestFallback = null;
         for (SavedLocation loc : this.savedLocations.values()) {
-            if (loc == null || loc.name == null) continue;
-            String ln = loc.name.toLowerCase();
-            String lt = loc.tags != null ? loc.tags.toLowerCase() : "";
+            if (loc == null || loc.getName() == null) continue;
+            String ln = loc.getName().toLowerCase();
+            String lt = loc.getTags() != null ? loc.getTags().toLowerCase() : "";
             if (ln.equals(q) || ln.equals(qUnderscore) || ln.contains(q) || q.contains(ln) || (!lt.isEmpty() && lt.contains(q))) {
-                if (owner != null && owner.equalsIgnoreCase(loc.owner)) {
+                if (owner != null && owner.equalsIgnoreCase(loc.getOwner())) {
                     return loc;
                 }
                 if (bestFallback == null) {
@@ -205,15 +207,14 @@ public class AIConfig {
         return bestFallback;
     }
 
-    @Synchronized
-    public List<SavedLocation> listLocations(String owner) {
+    public synchronized List<SavedLocation> listLocations(String owner) {
         List<SavedLocation> out = new ArrayList<SavedLocation>();
         if (this.savedLocations == null) return out;
         Map<String, SavedLocation> dedup = new LinkedHashMap<String, SavedLocation>();
         for (SavedLocation loc : this.savedLocations.values()) {
-            if (loc == null || loc.name == null) continue;
-            String key = loc.name.toLowerCase();
-            if (!dedup.containsKey(key) || (owner != null && owner.equalsIgnoreCase(loc.owner))) {
+            if (loc == null || loc.getName() == null) continue;
+            String key = loc.getName().toLowerCase();
+            if (!dedup.containsKey(key) || (owner != null && owner.equalsIgnoreCase(loc.getOwner()))) {
                 dedup.put(key, loc);
             }
         }
@@ -221,8 +222,7 @@ public class AIConfig {
         return out;
     }
 
-    @Synchronized
-    public boolean deleteLocation(String owner, String name) {
+    public synchronized boolean deleteLocation(String owner, String name) {
         if (name == null || this.savedLocations == null) return false;
         boolean removed = false;
         if (owner != null) {
@@ -232,8 +232,7 @@ public class AIConfig {
         return removed;
     }
 
-    @Synchronized
-    public void setPlayerBase(String playerName, double x, double y, double z) {
+    public synchronized void setPlayerBase(String playerName, double x, double y, double z) {
         if (playerName == null || playerName.trim().isEmpty()) return;
         if (this.playerBases == null) {
             this.playerBases = new HashMap<String, double[]>();
@@ -241,8 +240,7 @@ public class AIConfig {
         this.playerBases.put(playerName.trim().toLowerCase(), new double[]{x, y, z});
     }
 
-    @Synchronized
-    public double[] getPlayerBase(String playerName) {
+    public synchronized double[] getPlayerBase(String playerName) {
         if (playerName == null || this.playerBases == null) return null;
         double[] coords = this.playerBases.get(playerName.trim().toLowerCase());
         return (coords != null && coords.length >= 3) ? coords : null;

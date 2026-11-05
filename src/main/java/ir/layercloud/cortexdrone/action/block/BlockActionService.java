@@ -9,7 +9,7 @@ import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
+import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.lang.reflect.Method;
 import java.util.ArrayList;

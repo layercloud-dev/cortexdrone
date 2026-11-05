@@ -8,7 +8,7 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.codemode.rpc.MasterRpcHandler;
 import ir.layercloud.cortexdrone.codemode.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
+import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.Collections;

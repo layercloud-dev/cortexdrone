@@ -20,12 +20,17 @@ The entire `behavior` package was removed. Operational code now lives in the
 categorized `action` package behind the common `Action` interface and an
 `ActionRegistry` that resolves master operations to their owning category:
 
-- `action.movement.NavigationService` — route selection and breadcrumbs
+- `navigation.action.NavigationService` — route selection and breadcrumbs
 - `action.block.BlockActionService` — one-block break and one-block place
 - `action.interact.InteractionActionService` — block interaction and item use
 - `action.effect.EffectActionService` — LED, lighting aura, particles, sounds, notes, chat/status
 - `action.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
+
+Navigation is split into `navigation/action`, `navigation/service`,
+`navigation/raytrace` and the immutable `navigation/NavContext` request
+snapshot. Path planning, escape and transport services consume a `NavContext`
+instead of mixing mutable controller fields from different requests.
 
 The legacy one-shot executors (`AnvilService`, `MachineCraftExecutor`,
 `SmeltingService`, `ChestSorter`) and their batch queues (fluid scoop/place,

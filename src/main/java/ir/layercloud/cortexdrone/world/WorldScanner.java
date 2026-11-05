@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
+import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;

@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.action.movement;
+package ir.layercloud.cortexdrone.navigation.action;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -6,7 +6,8 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
+import ir.layercloud.cortexdrone.navigation.NavContext;
+import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -74,7 +75,8 @@ public class NavigationService implements Action {
                 ctrl.navViaSurface = true;
             }
         }
-        ctrl.goalX = gx; ctrl.goalY = gy; ctrl.goalZ = gz;
+        NavContext nav = NavContext.of(ctrl, gx, gy, gz, route);
+        nav.setGoal(gx, gy, gz);
         this.manager.setDroneMode(ctrl, Mode.GOTO, "Navigate " + route + String.format(" (%.1f,%.1f,%.1f)", gx, gy, gz));
         JsonObject res = ok();
         res.addProperty("route", route);

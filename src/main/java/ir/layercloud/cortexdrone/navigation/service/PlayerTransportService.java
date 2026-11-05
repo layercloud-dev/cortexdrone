@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.navigation;
+package ir.layercloud.cortexdrone.navigation.service;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.model.DroneController;

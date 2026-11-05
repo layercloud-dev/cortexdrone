@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.navigation;
+package ir.layercloud.cortexdrone.navigation.raytrace;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.world.ItemClassifier;

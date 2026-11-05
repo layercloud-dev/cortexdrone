@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.world;
 
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.navigation.VoxelRaycaster3D;
+import ir.layercloud.cortexdrone.navigation.raytrace.VoxelRaycaster3D;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;

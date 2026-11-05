@@ -10,7 +10,7 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.navigation.FlightPathfinder;
+import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;

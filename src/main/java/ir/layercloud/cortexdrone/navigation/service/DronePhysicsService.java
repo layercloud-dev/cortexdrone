@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.navigation;
+package ir.layercloud.cortexdrone.navigation.service;
 
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
@@ -15,7 +15,7 @@ import net.minecraft.world.World;
  * and tunnel obstruction locator.
  */
 @UtilityClass
-public final class DronePhysicsEngine {
+public final class DronePhysicsService {
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {
         int bx = MathHelper.func_76128_c(x);

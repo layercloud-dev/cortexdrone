@@ -1,9 +1,12 @@
-package ir.layercloud.cortexdrone.navigation;
+package ir.layercloud.cortexdrone.navigation.service;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.navigation.NavContext;
+import ir.layercloud.cortexdrone.navigation.raytrace.ChunkCacheContext;
+import ir.layercloud.cortexdrone.navigation.raytrace.VoxelRaycaster3D;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -110,6 +113,12 @@ public class FlightPathfinder {
             h = h ^ (h >>> 29);
         }
         return h;
+    }
+
+    public List<double[]> findFlightPath(NavContext nav) {
+        return findFlightPath(nav.world(), nav.controller(),
+            nav.startX(), nav.startY(), nav.startZ(),
+            nav.goalX(), nav.goalY(), nav.goalZ());
     }
 
     public List<double[]> findFlightPath(World world, DroneController ctrl, double sx, double sy, double sz, double gx, double gy, double gz) {
@@ -358,11 +367,10 @@ public class FlightPathfinder {
     }
 
     public void navigateToward(DroneController ctrl, double gx, double gy, double gz, float accel) {
-        Drone d = ctrl.drone;
-        World world = d.field_70170_p;
-        ctrl.goalX = gx;
-        ctrl.goalY = gy;
-        ctrl.goalZ = gz;
+        NavContext nav = NavContext.of(ctrl, gx, gy, gz, ctrl.navigationRoute);
+        nav.setGoal(gx, gy, gz);
+        Drone d = nav.drone();
+        World world = nav.world();
 
         int curBx = MathHelper.func_76128_c(d.field_70165_t);
         int curBy = MathHelper.func_76128_c(d.field_70163_u);
@@ -422,7 +430,7 @@ public class FlightPathfinder {
                 + (effGz - ctrl.pathGoalZ) * (effGz - ctrl.pathGoalZ)
         );
 
-        String route = ctrl.navigationRoute != null ? ctrl.navigationRoute : "auto";
+        String route = nav.route();
         if ("tunnel".equals(route) && ctrl.mode == Mode.GOTO
             && !isFlightLineClear(world, d.field_70165_t, d.field_70163_u, d.field_70161_v, effGx, effGy, effGz)) {
             int dug = this.caveEscapeService.digTowardTarget(
@@ -430,19 +438,14 @@ public class FlightPathfinder {
             if (dug > 0) return;
         }
 
-        boolean needsRepath = ctrl.pathWaypoints.isEmpty()
-            || (ctrl.pathIndex >= ctrl.pathWaypoints.size() && ctrl.repathCooldown <= 0)
+        boolean needsRepath = nav.path().isEmpty()
+            || (nav.pathIndex() >= nav.path().size() && ctrl.repathCooldown <= 0)
             || (distGoalMove > 0.85 && ctrl.repathCooldown <= 0)
             || (ctrl.stuckTicks >= 12 && ctrl.repathCooldown <= 0);
 
         if (needsRepath) {
-            List<double[]> wps = findFlightPath(world, ctrl, d.field_70165_t, d.field_70163_u, d.field_70161_v, effGx, effGy, effGz);
-            ctrl.pathWaypoints.clear();
-            ctrl.pathWaypoints.addAll(wps);
-            ctrl.pathIndex = 0;
-            ctrl.pathGoalX = effGx;
-            ctrl.pathGoalY = effGy;
-            ctrl.pathGoalZ = effGz;
+            List<double[]> wps = findFlightPath(nav.withGoal(effGx, effGy, effGz));
+            nav.setPath(wps, effGx, effGy, effGz);
             ctrl.repathCooldown = horizDist > 18.0 ? 8 : 12;
 
             // If trapped underground with a partial path, trigger automatic breadcrumb backtrack or Baritone dig-escape
@@ -452,27 +455,27 @@ public class FlightPathfinder {
             }
         }
 
-        while (ctrl.pathIndex < ctrl.pathWaypoints.size()) {
-            double[] wp = ctrl.pathWaypoints.get(ctrl.pathIndex);
+        while (nav.hasWaypoint()) {
+            double[] wp = nav.currentWaypoint();
             double distWp = d.func_70011_f(wp[0], wp[1], wp[2]);
-            boolean isLastWp = (ctrl.pathIndex == ctrl.pathWaypoints.size() - 1);
+            boolean isLastWp = (nav.pathIndex() == nav.path().size() - 1);
             double distWpToGoal = Math.sqrt(
                 (wp[0] - effGx) * (wp[0] - effGx)
                     + (wp[1] - effGy) * (wp[1] - effGy)
                     + (wp[2] - effGz) * (wp[2] - effGz)
             );
             if (distWp <= 0.75 && !isLastWp) {
-                ctrl.pathIndex++;
+                nav.advanceWaypoint();
             } else if (distWp <= 0.75 && isLastWp && (ctrl.lastPathPartial || distWpToGoal > 0.90) && ctrl.repathCooldown <= 0) {
-                ctrl.pathIndex++;
+                nav.advanceWaypoint();
                 break;
             } else {
                 break;
             }
         }
 
-        double[] activeWp = ctrl.pathIndex < ctrl.pathWaypoints.size()
-            ? ctrl.pathWaypoints.get(ctrl.pathIndex)
+        double[] activeWp = nav.hasWaypoint()
+            ? nav.currentWaypoint()
             : new double[]{effGx, effGy, effGz};
         int awx = MathHelper.func_76128_c(activeWp[0]);
         int away = MathHelper.func_76128_c(activeWp[1]);
@@ -499,8 +502,7 @@ public class FlightPathfinder {
                 ctrl.solidWaypointHits.put(Long.valueOf(solidKey), Integer.valueOf(hits));
             }
             // Clear the fatally stuck path so the next navigateToward replans.
-            ctrl.pathWaypoints.clear();
-            ctrl.pathIndex = 0;
+            nav.clearPath();
             ctrl.repathCooldown = 0;
 
             // One log per drone per 4s max, regardless of how many goals alternate.
@@ -540,35 +542,35 @@ public class FlightPathfinder {
     }
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {
-        return DronePhysicsEngine.describeNearestObstruction(world, x, y, z);
+        return DronePhysicsService.describeNearestObstruction(world, x, y, z);
     }
 
     public static void clearNearbyLeafObstruction(World world, DroneController ctrl) {
-        DronePhysicsEngine.clearNearbyLeafObstruction(world, ctrl);
+        DronePhysicsService.clearNearbyLeafObstruction(world, ctrl);
     }
 
     public static void runServerSidePhysicsStep(Drone d, double maxVelOverride) {
-        DronePhysicsEngine.runServerSidePhysicsStep(d, maxVelOverride);
+        DronePhysicsService.runServerSidePhysicsStep(d, maxVelOverride);
     }
 
     public static void runServerSidePhysicsStep(Drone d, double maxVelOverride, DroneController ctrl) {
-        DronePhysicsEngine.runServerSidePhysicsStep(d, maxVelOverride, ctrl);
+        DronePhysicsService.runServerSidePhysicsStep(d, maxVelOverride, ctrl);
     }
 
     public static boolean isPlayerLookingAtDrone(EntityPlayerMP player, Drone drone) {
-        return DronePhysicsEngine.isPlayerLookingAtDrone(player, drone);
+        return DronePhysicsService.isPlayerLookingAtDrone(player, drone);
     }
 
     public static double[] computeStableFollowAnchor(World world, EntityPlayerMP target, Drone d) {
-        return DronePhysicsEngine.computeStableFollowAnchor(world, target, d);
+        return DronePhysicsService.computeStableFollowAnchor(world, target, d);
     }
 
     public static double[] findMiningStandoff(World world, Drone d, int bx, int by, int bz) {
-        return DronePhysicsEngine.findMiningStandoff(world, d, bx, by, bz);
+        return DronePhysicsService.findMiningStandoff(world, d, bx, by, bz);
     }
 
     public static int[] findBlockingTunnelBlock(World world, Drone d, int targetX, int targetY, int targetZ) {
-        return DronePhysicsEngine.findBlockingTunnelBlock(world, d, targetX, targetY, targetZ);
+        return DronePhysicsService.findBlockingTunnelBlock(world, d, targetX, targetY, targetZ);
     }
 
     // ==================== Delegated Player Airlift ====================

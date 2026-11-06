@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.action.combat;
+package ir.layercloud.cortexdrone.service.combat;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;

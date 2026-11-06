@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.action.effect.impl;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.effect.EffectRequest;
 import ir.layercloud.cortexdrone.action.effect.EffectResult;
+import ir.layercloud.cortexdrone.context.action.effect.impl.EffectContext;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.world.World;
@@ -10,7 +11,7 @@ import net.minecraft.world.WorldServer;
 
 /** Single-use command: spawn a particle burst. */
 @RequiredArgsConstructor
-final class SpawnParticlesAction implements Action<EffectContext> {
+public final class SpawnParticlesAction implements Action<EffectContext> {
     private final EffectRequest request;
 
     @Override

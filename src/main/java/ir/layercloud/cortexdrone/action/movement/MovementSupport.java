@@ -1,9 +1,9 @@
 package ir.layercloud.cortexdrone.action.movement;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.context.action.movement.impl.MovementContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.action.movement.impl.MovementContext;
 import ir.layercloud.cortexdrone.navigation.NavContext;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import lombok.Value;

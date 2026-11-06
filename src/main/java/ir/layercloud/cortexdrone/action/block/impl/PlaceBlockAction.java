@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.context.action.block.impl.BlockContext;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
@@ -19,7 +20,7 @@ import net.minecraft.world.World;
 
 /** Single-use command: place exactly one explicit block. */
 @RequiredArgsConstructor
-final class PlaceBlockAction implements Action<BlockContext> {
+public final class PlaceBlockAction implements Action<BlockContext> {
     private final InventoryService inventoryService;
     private final DroneLogger logger;
     private final BlockRequest request;

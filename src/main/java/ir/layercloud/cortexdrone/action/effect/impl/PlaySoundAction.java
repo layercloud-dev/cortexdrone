@@ -3,12 +3,13 @@ package ir.layercloud.cortexdrone.action.effect.impl;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.effect.EffectRequest;
 import ir.layercloud.cortexdrone.action.effect.EffectResult;
+import ir.layercloud.cortexdrone.context.action.effect.impl.EffectContext;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 
 /** Single-use command: play a sound or note. */
 @RequiredArgsConstructor
-final class PlaySoundAction implements Action<EffectContext> {
+public final class PlaySoundAction implements Action<EffectContext> {
     private final EffectRequest request;
 
     @Override

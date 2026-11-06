@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
+import ir.layercloud.cortexdrone.context.action.block.impl.BlockContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
@@ -14,7 +15,7 @@ import net.minecraft.world.World;
 
 /** Single-use command: break exactly one explicit block. */
 @RequiredArgsConstructor
-final class BreakBlockAction implements Action<BlockContext> {
+public final class BreakBlockAction implements Action<BlockContext> {
     private final AIDroneManager manager;
     private final BlockRequest request;
 

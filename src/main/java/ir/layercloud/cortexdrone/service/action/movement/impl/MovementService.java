@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.action.movement.impl;
+package ir.layercloud.cortexdrone.service.action.movement.impl;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -6,10 +6,16 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.ActionArgs;
 import ir.layercloud.cortexdrone.action.ActionJson;
-import ir.layercloud.cortexdrone.action.ActionService;
 import ir.layercloud.cortexdrone.action.movement.MovementRequest;
 import ir.layercloud.cortexdrone.action.movement.MovementResult;
+import ir.layercloud.cortexdrone.action.movement.impl.BreadcrumbsAction;
+import ir.layercloud.cortexdrone.action.movement.impl.DigDownAction;
+import ir.layercloud.cortexdrone.action.movement.impl.DigUpAction;
+import ir.layercloud.cortexdrone.action.movement.impl.NavigateAction;
+import ir.layercloud.cortexdrone.action.movement.impl.TunnelAction;
+import ir.layercloud.cortexdrone.context.action.movement.impl.MovementContext;
 import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.service.action.ActionService;
 import java.util.List;
 import net.minecraft.entity.player.EntityPlayerMP;
 

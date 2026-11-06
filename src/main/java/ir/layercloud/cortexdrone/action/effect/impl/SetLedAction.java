@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.action.effect.impl;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.effect.EffectRequest;
 import ir.layercloud.cortexdrone.action.effect.EffectResult;
+import ir.layercloud.cortexdrone.context.action.effect.impl.EffectContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.LedEffectEngine;
 import li.cil.oc.common.entity.Drone;
@@ -10,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 
 /** Single-use command: change the drone LED color or effect. */
 @RequiredArgsConstructor
-final class SetLedAction implements Action<EffectContext> {
+public final class SetLedAction implements Action<EffectContext> {
     private final EffectRequest request;
 
     @Override

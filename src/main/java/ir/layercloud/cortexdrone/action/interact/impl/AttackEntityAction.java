@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
 import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.action.interact.InteractionSupport;
+import ir.layercloud.cortexdrone.context.action.interact.impl.InteractionContext;
 import ir.layercloud.cortexdrone.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
@@ -19,7 +20,7 @@ import net.minecraft.world.World;
 
 /** Single-use command: attack one entity with the equipped drone weapon. */
 @RequiredArgsConstructor
-final class AttackEntityAction implements Action<InteractionContext> {
+public final class AttackEntityAction implements Action<InteractionContext> {
     private final InteractionRequest request;
 
     @Override

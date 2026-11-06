@@ -19,22 +19,23 @@ Removed from the tool surface:
 The entire `behavior` package was removed. Operational code now lives in the
 categorized `action` package. The base is deliberately split in three parts:
 
-- `Action<C extends ActionContext>` — a command, created per request, executed
-  once, optionally ticked while active, then discarded;
-- `ActionContext` / `ActionContextBase` — mutable state for that one execution;
-- `ActionService<C>` — the long-lived manager that parses the request, creates the
-  action, executes it, serializes the result, and retains/reaps the
-  action/context pair.
+- `action.Action<C extends ActionContext>` — a command, created per request,
+  executed once, optionally ticked while active, then discarded;
+- `context.ActionContext` / `context.ActionContextBase` — mutable state for that
+  one execution;
+- `service.action.ActionService<C>` — the long-lived manager that parses the
+  request, creates the action, executes it, serializes the result, and
+  retains/reaps the action/context pair.
 
 `ActionRegistry` only routes operations to their owning service. Services never
 implement `Action` and contain no operation logic; they manage the action
 lifecycle. Each category owns one service and one context type:
 
-- `action.movement.impl.MovementService` + `MovementContext` — route selection and breadcrumbs
-- `action.block.impl.BlockService` + `BlockContext` — one-block break and one-block place
-- `action.interact.impl.InteractionService` + `InteractionContext` — block interaction, item use and attack
-- `action.effect.impl.EffectService` + `EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
-- `action.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
+- `service.action.movement.impl.MovementService` + `context.action.movement.impl.MovementContext` — route selection and breadcrumbs
+- `service.action.block.impl.BlockService` + `context.action.block.impl.BlockContext` — one-block break and one-block place
+- `service.action.interact.impl.InteractionService` + `context.action.interact.impl.InteractionContext` — block interaction, item use and attack
+- `service.action.effect.impl.EffectService` + `context.action.effect.impl.EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
+- `service.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
 
 All operation behavior lives in action classes under `action/<category>/impl/`.
@@ -45,9 +46,19 @@ complete placement. The long-running mining loop is a domain engine
 (`action.block.MiningEngine`), not action-dispatch logic in a service.
 
 Project convention: interfaces and abstract bases live at the package root;
-concrete implementations live under an `impl` subpackage. Action
-implementations therefore live in `action/<category>/impl/`, while request and
-result DTOs stay in `action/<category>/`.
+concrete implementations live under an `impl` subpackage. Defaults and concrete
+types are kept out of `action`:
+
+```text
+action/<category>/impl/              actions
+context/ActionContext*.java          context base types
+context/action/<category>/impl/      action contexts
+service/action/ActionService.java    action-service base type
+service/action/<category>/impl/      action services
+service/combat/                      non-dispatch domain services
+```
+
+Request and result DTOs stay in `action/<category>/`.
 
 An action is active while it runs and is released when the call returns unless
 it calls `context.retain()`. Retained action/context pairs are ticked by their

@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
 import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.action.interact.InteractionSupport;
+import ir.layercloud.cortexdrone.context.action.interact.impl.InteractionContext;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
@@ -16,7 +17,7 @@ import net.minecraft.world.World;
 
 /** Single-use command: activate exactly one block. */
 @RequiredArgsConstructor
-final class InteractBlockAction implements Action<InteractionContext> {
+public final class InteractBlockAction implements Action<InteractionContext> {
     private final InventoryService inventoryService;
     private final InteractionRequest request;
 

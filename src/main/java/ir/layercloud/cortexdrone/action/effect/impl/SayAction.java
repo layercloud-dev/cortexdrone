@@ -4,11 +4,12 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.effect.EffectRequest;
 import ir.layercloud.cortexdrone.action.effect.EffectResult;
+import ir.layercloud.cortexdrone.context.action.effect.impl.EffectContext;
 import lombok.RequiredArgsConstructor;
 
 /** Single-use command: say one chat message. */
 @RequiredArgsConstructor
-final class SayAction implements Action<EffectContext> {
+public final class SayAction implements Action<EffectContext> {
     private final AIDroneManager manager;
     private final EffectRequest request;
 

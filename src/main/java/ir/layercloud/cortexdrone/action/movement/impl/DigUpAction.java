@@ -5,11 +5,12 @@ import ir.layercloud.cortexdrone.action.movement.MovementAction;
 import ir.layercloud.cortexdrone.action.movement.MovementRequest;
 import ir.layercloud.cortexdrone.action.movement.MovementResult;
 import ir.layercloud.cortexdrone.action.movement.MovementSupport;
+import ir.layercloud.cortexdrone.context.action.movement.impl.MovementContext;
 import lombok.RequiredArgsConstructor;
 
 /** Single-use command: surface, then optionally continue to a final point. */
 @RequiredArgsConstructor
-final class DigUpAction extends MovementAction {
+public final class DigUpAction extends MovementAction {
     private final AIDroneManager manager;
     private final MovementRequest request;
 

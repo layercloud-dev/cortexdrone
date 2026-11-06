@@ -60,7 +60,6 @@ public class AIDroneManager {
     private AIConfig config = new AIConfig();
 
     private final DroneLogger logger = new DroneLogger();
-    private final FlightPathfinder pathfinder;
     private final BreadcrumbService breadcrumbService;
     private final FlightPilot flightPilot;
     private final NavigationManager navigationManager;
@@ -90,9 +89,9 @@ public class AIDroneManager {
     private final java.util.Set<UUID> despawnedUuids = java.util.Collections.synchronizedSet(new java.util.HashSet<UUID>());
     public AIDroneManager(CortexDroneMod mod) {
         this.mod = mod;
-        this.pathfinder = new FlightPathfinder(this.logger);
         this.breadcrumbService = new BreadcrumbService();
-        this.flightPilot = new FlightPilot(this.breadcrumbService, this.logger, this.pathfinder);
+        this.flightPilot = new FlightPilot(this.breadcrumbService, this.logger,
+            new FlightPathfinder(this.logger));
         this.worldScanner = new WorldScanner(this.logger, this.config);
         this.inventoryService = new InventoryService(this.logger);
         this.visualsManager = new VisualsManager(this, this.logger);

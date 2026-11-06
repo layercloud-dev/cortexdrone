@@ -14,7 +14,6 @@ import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
-import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,8 +76,7 @@ public final class NavigationManager {
         controller.goalY = target.getY();
         controller.goalZ = target.getZ();
 
-        Session session = new Session(target.getX(), target.getY(), target.getZ(),
-            controller.navigationGeneration);
+        Session session = new Session(target.getX(), target.getY(), target.getZ());
         this.sessions.put(controller, session);
         this.manager.setDroneMode(controller, Mode.GOTO,
             String.format("goto (%.1f,%.1f,%.1f)", target.getX(), target.getY(), target.getZ()));
@@ -191,7 +189,6 @@ public final class NavigationManager {
             session.phase = Phase.FLIGHT;
             session.partial = flight.isPartial();
             session.reason = session.partial ? "flight-partial" : "flight";
-            session.flightTicks = 0;
             return;
         }
         escalate(controller, session);
@@ -232,7 +229,6 @@ public final class NavigationManager {
     private void driveFlight(DroneController controller, Session session) {
         FlightPilot.Outcome flight = this.flightPilot.flyToward(controller,
             session.goalX, session.goalY, session.goalZ, 0.1f);
-        session.flightTicks++;
         session.partial = flight.isPartial();
 
         if (!flight.hasPath() || flight.isBlocked()
@@ -378,7 +374,6 @@ public final class NavigationManager {
         private final double goalX;
         private final double goalY;
         private final double goalZ;
-        private final int generation;
         private Phase phase = Phase.PLAN;
         private List<Breadcrumb> trail;
         private int trailIndex;
@@ -386,16 +381,14 @@ public final class NavigationManager {
         private boolean partial;
         private double bestDistance;
         private int ticks;
-        private int flightTicks;
         private int replanCooldown;
         private int digAttempts;
         private String reason = "planning";
 
-        private Session(double goalX, double goalY, double goalZ, int generation) {
+        private Session(double goalX, double goalY, double goalZ) {
             this.goalX = goalX;
             this.goalY = goalY;
             this.goalZ = goalZ;
-            this.generation = generation;
             this.bestDistance = Double.MAX_VALUE;
         }
     }

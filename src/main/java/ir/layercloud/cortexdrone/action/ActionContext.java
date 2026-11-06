@@ -4,12 +4,11 @@ import ir.layercloud.cortexdrone.model.DroneController;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
- * Lifecycle state for one action invocation.
+ * Mutable state for one action execution.
  *
- * <p>A context is live as soon as it is created. Short operations finish during
- * {@link Action#handle} and are discarded by the registry when the call
- * returns. Long-running operations call {@link #retain()} so the registry keeps
- * ticking them until {@link #complete()} or {@link #cancel()} is called.</p>
+ * <p>The service creates the context, the action mutates it, and the service
+ * either discards it after the call or retains it for ticking. Once an action
+ * completes or is cancelled the context is released and garbage collected.</p>
  */
 public interface ActionContext {
     DroneController controller();
@@ -20,21 +19,19 @@ public interface ActionContext {
 
     long startedTick();
 
-    /** True until the operation completes or is cancelled. */
     boolean isActive();
 
-    /** True when this context must survive the current RPC call. */
     boolean isRetained();
 
-    /** Keeps this context alive across ticks after the RPC call returns. */
+    /** Keeps the context alive across ticks after the call returns. */
     void retain();
 
-    /** Called once per server tick while this context is retained. */
+    /** Called once per server tick while retained. */
     void tick();
 
-    /** Mark the operation finished and release the context. */
+    /** Finish the action normally and release the context. */
     void complete();
 
-    /** Cancel/discard without completing normally. */
+    /** Cancel the action and release the context. */
     void cancel();
 }

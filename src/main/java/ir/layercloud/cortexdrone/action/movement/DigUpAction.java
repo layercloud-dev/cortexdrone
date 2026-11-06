@@ -1,24 +1,26 @@
 package ir.layercloud.cortexdrone.action.movement;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.action.Action;
+import lombok.RequiredArgsConstructor;
 
-/** Go up through the surface, optionally continuing to a final destination. */
-public class DigUpAction implements MovementAction {
+/** Single-use command: surface, then optionally continue to a final point. */
+@RequiredArgsConstructor
+final class DigUpAction implements Action<MovementContext> {
     private final AIDroneManager manager;
-
-    public DigUpAction(AIDroneManager manager) {
-        this.manager = manager;
-    }
+    private final MovementRequest request;
 
     @Override
-    public String operation() { return "digup"; }
-
-    @Override
-    public MovementResult execute(MovementRequest request) {
+    public void execute(MovementContext context) {
         MovementSupport.Target target = MovementSupport.resolveTarget(request);
-        if (target == null) target = MovementSupport.surfaceTarget(request.controller());
-        if (target == null) return MovementResult.failure("No active drone");
-        return MovementSupport.start(this.manager, request, target,
+        if (target == null) target = MovementSupport.surfaceTarget(request.getController());
+        if (target == null) {
+            context.result(MovementResult.failure("No active drone"));
+            return;
+        }
+        MovementResult result = MovementSupport.start(this.manager, request, target,
             MovementSupport.ROUTE_UP, "DigUp");
+        context.result(result);
+        context.begin(result);
     }
 }

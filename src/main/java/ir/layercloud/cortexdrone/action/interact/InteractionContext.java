@@ -2,17 +2,22 @@ package ir.layercloud.cortexdrone.action.interact;
 
 import ir.layercloud.cortexdrone.action.ActionContextBase;
 import ir.layercloud.cortexdrone.model.DroneController;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/**
- * Context for one interact/use primitive. The work happens inside the RPC
- * call, so the context is not retained.
- */
-public final class InteractionActionContext extends ActionContextBase {
+/** Mutable state for one interaction action. Interactions are synchronous. */
+@Getter
+@Accessors(fluent = true)
+public final class InteractionContext extends ActionContextBase {
+    @Setter
+    private InteractionResult result;
+
     private int[] blockTarget;
     private int entityTarget = -1;
 
-    public InteractionActionContext(DroneController controller, EntityPlayerMP player, String operation) {
+    public InteractionContext(DroneController controller, EntityPlayerMP player, String operation) {
         super(controller, player, operation);
     }
 
@@ -23,7 +28,4 @@ public final class InteractionActionContext extends ActionContextBase {
     public void targetEntity(int entityId) {
         this.entityTarget = entityId;
     }
-
-    public int[] blockTarget() { return this.blockTarget; }
-    public int entityTarget() { return this.entityTarget; }
 }

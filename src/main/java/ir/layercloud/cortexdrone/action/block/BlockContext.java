@@ -3,19 +3,26 @@ package ir.layercloud.cortexdrone.action.block;
 import ir.layercloud.cortexdrone.action.ActionContextBase;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
- * Lifecycle for one break/place primitive. A break is retained until the
- * controller stops mining that exact block; a place finishes inside the RPC
- * call and is discarded immediately.
+ * Mutable state for one block action. A break is retained until the controller
+ * stops mining that exact block; place completes inside the call.
  */
-public final class BlockActionContext extends ActionContextBase {
+@Getter
+@Accessors(fluent = true)
+public final class BlockContext extends ActionContextBase {
+    @Setter
+    private BlockResult result;
+
     private int[] target;
     private boolean breakOperation;
     private int ticks;
 
-    public BlockActionContext(DroneController controller, EntityPlayerMP player, String operation) {
+    public BlockContext(DroneController controller, EntityPlayerMP player, String operation) {
         super(controller, player, operation);
     }
 
@@ -27,10 +34,10 @@ public final class BlockActionContext extends ActionContextBase {
 
     @Override
     protected void onTick() {
-        DroneController ctrl = controller();
-        if (!this.breakOperation || ctrl == null || ctrl.drone == null
-            || ctrl.drone.isDead || ctrl.mode != Mode.MINE
-            || ctrl.currentMineTarget == null || !matches(ctrl.currentMineTarget)) {
+        DroneController controller = controller();
+        if (!this.breakOperation || controller == null || controller.drone == null
+            || controller.drone.isDead || controller.mode != Mode.MINE
+            || controller.currentMineTarget == null || !matches(controller.currentMineTarget)) {
             complete();
             return;
         }
@@ -43,10 +50,4 @@ public final class BlockActionContext extends ActionContextBase {
             && current[1] == this.target[1]
             && current[2] == this.target[2];
     }
-
-    public int[] target() {
-        return this.target != null ? new int[]{this.target[0], this.target[1], this.target[2]} : null;
-    }
-
-    public int ticks() { return this.ticks; }
 }

@@ -3,131 +3,62 @@ package ir.layercloud.cortexdrone.action;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.model.DroneController;
 import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
- * Resolves a master operation to its categorized {@link Action} and owns the
- * live action contexts.
+ * Resolves master operations to their category service.
  *
- * <p>Every invocation gets a fresh context. One-shot contexts are discarded as
- * soon as their RPC call returns. Retained contexts are ticked on the server
- * thread and removed when they complete, the drone disappears or a newer
- * invocation of the same operation replaces them.</p>
+ * <p>The registry knows only services. Contexts, ticking and cancellation live
+ * in the service that owns the action category.</p>
  */
 public final class ActionRegistry {
-    private final Map<String, Binding<?>> byOperation = new LinkedHashMap<String, Binding<?>>();
-    private final Map<DroneController, Map<String, ActionContext>> active =
-        new IdentityHashMap<DroneController, Map<String, ActionContext>>();
+    private final Map<String, ActionService<?>> byOperation =
+        new LinkedHashMap<String, ActionService<?>>();
+    private final List<ActionService<?>> services = new ArrayList<ActionService<?>>();
 
-    public <C extends ActionContext> void register(Action<C> action) {
-        if (action == null) return;
-        String[] operations = action.operations();
-        if (operations == null) return;
-        for (String operation : operations) {
-            if (operation == null || operation.isEmpty()) continue;
-            Binding<C> binding = new Binding<C>(action);
-            Binding<?> previous = this.byOperation.put(operation, binding);
-            if (previous != null && previous.action != action) {
+    public void register(ActionService<?> service) {
+        if (service == null) return;
+        for (String operation : service.operations()) {
+            ActionService<?> previous = this.byOperation.put(operation, service);
+            if (previous != null && previous != service) {
                 throw new IllegalStateException("Duplicate action operation '" + operation
-                    + "' in " + previous.action.category() + " and " + action.category());
+                    + "' in " + previous.category() + " and " + service.category());
             }
         }
+        this.services.add(service);
     }
 
-    public JsonObject handle(DroneController ctrl, EntityPlayerMP player,
+    public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {
-        Binding<?> binding = operation != null ? this.byOperation.get(operation) : null;
-        if (binding == null) return error("No action registered for: " + operation);
-        return binding.invoke(this, ctrl, player, operation, args);
+        ActionService<?> service = operation != null ? this.byOperation.get(operation) : null;
+        if (service == null) return ActionJson.error("No action registered for: " + operation);
+        return service.handle(controller, player, operation, args);
     }
 
-    /** Ticks retained contexts and discards the finished ones. */
-    public void tick(DroneController ctrl) {
-        Map<String, ActionContext> contexts = this.active.get(ctrl);
-        if (contexts == null) return;
-        for (ActionContext context : new ArrayList<ActionContext>(contexts.values())) {
-            if (!context.isRetained()) {
-                context.complete();
-                continue;
-            }
-            try {
-                context.tick();
-            } catch (Throwable ignored) {
-                context.cancel();
-            }
+    public void tick(DroneController controller) {
+        for (ActionService<?> service : this.services) {
+            service.tick(controller);
         }
-        Iterator<Map.Entry<String, ActionContext>> it = contexts.entrySet().iterator();
-        while (it.hasNext()) {
-            ActionContext context = it.next().getValue();
-            if (!context.isActive() || !context.isRetained()) {
-                context.cancel();
-                it.remove();
-            }
+    }
+
+    public void cancelAll(DroneController controller) {
+        for (ActionService<?> service : this.services) {
+            service.cancelAll(controller);
         }
-        if (contexts.isEmpty()) this.active.remove(ctrl);
     }
 
-    /** Cancels every live context owned by one controller. */
-    public void cancelAll(DroneController ctrl) {
-        Map<String, ActionContext> contexts = this.active.remove(ctrl);
-        if (contexts == null) return;
-        for (ActionContext context : contexts.values()) context.cancel();
+    public ActionService<?> find(String operation) {
+        return operation != null ? this.byOperation.get(operation) : null;
     }
 
-    public Action<?> find(String operation) {
-        Binding<?> binding = operation != null ? this.byOperation.get(operation) : null;
-        return binding != null ? binding.action : null;
-    }
-
-    /** Number of retained contexts for diagnostics and tests. */
-    public int activeContextCount(DroneController ctrl) {
-        Map<String, ActionContext> contexts = this.active.get(ctrl);
-        return contexts != null ? contexts.size() : 0;
-    }
-
-    private static JsonObject error(String message) {
-        JsonObject result = new JsonObject();
-        result.addProperty("ok", false);
-        result.addProperty("error", message);
-        return result;
-    }
-
-    private static final class Binding<C extends ActionContext> {
-        private final Action<C> action;
-
-        Binding(Action<C> action) {
-            this.action = action;
+    public int activeContextCount(DroneController controller) {
+        int count = 0;
+        for (ActionService<?> service : this.services) {
+            count += service.activeContextCount(controller);
         }
-
-        JsonObject invoke(ActionRegistry registry, DroneController ctrl, EntityPlayerMP player,
-                          String operation, JsonObject args) {
-            Map<String, ActionContext> contexts = registry.active.get(ctrl);
-            if (contexts == null) {
-                contexts = new LinkedHashMap<String, ActionContext>();
-                registry.active.put(ctrl, contexts);
-            }
-            ActionContext previous = contexts.remove(operation);
-            if (previous != null) previous.cancel();
-
-            C context = this.action.createContext(ctrl, player, operation);
-            JsonObject result;
-            try {
-                result = this.action.handle(context, operation, args);
-            } catch (Throwable t) {
-                context.cancel();
-                throw t;
-            }
-            if (context.isRetained()) {
-                contexts.put(operation, context);
-            } else {
-                context.complete();
-            }
-            if (contexts.isEmpty()) registry.active.remove(ctrl);
-            return result;
-        }
+        return count;
     }
 }

@@ -10,11 +10,11 @@ import ir.layercloud.cortexdrone.command.DroneCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.harness.TaskCoordinator;
-import ir.layercloud.cortexdrone.action.block.BlockActionService;
+import ir.layercloud.cortexdrone.action.block.BlockService;
 import ir.layercloud.cortexdrone.action.combat.CombatService;
-import ir.layercloud.cortexdrone.action.effect.EffectActionService;
-import ir.layercloud.cortexdrone.action.interact.InteractionActionService;
-import ir.layercloud.cortexdrone.action.movement.MovementRpcAdapter;
+import ir.layercloud.cortexdrone.action.effect.EffectService;
+import ir.layercloud.cortexdrone.action.interact.InteractionService;
+import ir.layercloud.cortexdrone.action.movement.MovementService;
 import ir.layercloud.cortexdrone.service.TickService;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
@@ -59,9 +59,9 @@ public class AIDroneManager {
     private final FlightPathfinder pathfinder;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
-    private final BlockActionService blockActionService;
-    private final EffectActionService effectService;
-    private final InteractionActionService actionService;
+    private final BlockService blockService;
+    private final EffectService effectService;
+    private final InteractionService interactionService;
     private final CombatService combatService;
     private final ActionRegistry actionRegistry;
     private final DocLookupService docLookupService;
@@ -85,14 +85,14 @@ public class AIDroneManager {
         this.pathfinder = new FlightPathfinder(this, this.logger);
         this.worldScanner = new WorldScanner(this.logger, this.config);
         this.inventoryService = new InventoryService(this.logger);
-        this.effectService = new EffectActionService(this, this.logger);
-        this.actionService = new InteractionActionService(this.inventoryService);
-        this.blockActionService = new BlockActionService(this, this.logger, this.pathfinder, this.inventoryService);
+        this.effectService = new EffectService(this, this.logger);
+        this.interactionService = new InteractionService(this.inventoryService);
+        this.blockService = new BlockService(this, this.logger, this.pathfinder, this.inventoryService);
         this.combatService = new CombatService(this, this.logger, this.pathfinder);
         this.actionRegistry = new ActionRegistry();
-        this.actionRegistry.register(new MovementRpcAdapter(this));
-        this.actionRegistry.register(this.blockActionService);
-        this.actionRegistry.register(this.actionService);
+        this.actionRegistry.register(new MovementService(this));
+        this.actionRegistry.register(this.blockService);
+        this.actionRegistry.register(this.interactionService);
         this.actionRegistry.register(this.effectService);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));
@@ -110,7 +110,7 @@ public class AIDroneManager {
             this.logger,
             this.pathfinder,
             this.inventoryService,
-            this.blockActionService,
+            this.blockService,
             this.effectService,
             this.combatService
         );

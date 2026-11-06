@@ -1,25 +1,26 @@
 package ir.layercloud.cortexdrone.action.movement;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.action.Action;
+import lombok.RequiredArgsConstructor;
 
-/** Carve a tunnel to an explicit destination. */
-public class TunnelAction implements MovementAction {
+/** Single-use command: carve a tunnel to an explicit point. */
+@RequiredArgsConstructor
+final class TunnelAction implements Action<MovementContext> {
     private final AIDroneManager manager;
-
-    public TunnelAction(AIDroneManager manager) {
-        this.manager = manager;
-    }
+    private final MovementRequest request;
 
     @Override
-    public String operation() { return "tunnel"; }
-
-    @Override
-    public MovementResult execute(MovementRequest request) {
+    public void execute(MovementContext context) {
         MovementSupport.Target target = MovementSupport.resolveTarget(request);
         if (target == null) {
-            return MovementResult.failure("tunnel requires x/y/z (or standoffOf:{x,y,z})");
+            context.result(MovementResult.failure(
+                "tunnel requires x/y/z (or standoffOf:{x,y,z})"));
+            return;
         }
-        return MovementSupport.start(this.manager, request, target,
+        MovementResult result = MovementSupport.start(this.manager, request, target,
             MovementSupport.ROUTE_TUNNEL, "Tunnel");
+        context.result(result);
+        context.begin(result);
     }
 }

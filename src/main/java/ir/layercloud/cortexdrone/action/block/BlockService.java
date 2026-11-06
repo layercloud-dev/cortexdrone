@@ -2,7 +2,9 @@ package ir.layercloud.cortexdrone.action.block;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.Action;
-
+import ir.layercloud.cortexdrone.action.ActionArgs;
+import ir.layercloud.cortexdrone.action.ActionJson;
+import ir.layercloud.cortexdrone.action.ActionService;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
@@ -29,23 +31,24 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
 /**
- * Master break primitive: one explicit block at a time, plus the transient dig
- * path used by the navigator's tunnel/self-rescue. There is no filter/count
- * search, no farming, no neighbour propagation and no AI instruction queue.
+ * Long-lived block service. It owns the physical block capabilities and the
+ * action lifecycle; individual break/place operations are single-use
+ * {@link Action} objects created per request.
  */
-public class BlockActionService implements Action<BlockActionContext> {
+public final class BlockService extends ActionService<BlockContext> {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final InventoryService inventoryService;
     private Method blockGetDropsMethod = null;
 
-    public BlockActionService(
+    public BlockService(
         AIDroneManager manager,
         DroneLogger logger,
         FlightPathfinder pathfinder,
         InventoryService inventoryService
     ) {
+        super("block", "break_block", "place_block");
         this.manager = manager;
         this.logger = logger;
         this.pathfinder = pathfinder;
@@ -61,46 +64,56 @@ public class BlockActionService implements Action<BlockActionContext> {
 
 
     @Override
-    public String category() { return "block"; }
-
-    @Override
-    public String[] operations() { return new String[]{"break_block", "place_block"}; }
-
-    @Override
-    public BlockActionContext createContext(DroneController ctrl, EntityPlayerMP player,
-                                            String operation) {
-        return new BlockActionContext(ctrl, player, operation);
+    protected BlockContext createContext(DroneController controller, EntityPlayerMP player,
+                                         String operation) {
+        return new BlockContext(controller, player, operation);
     }
 
     @Override
-    public JsonObject handle(BlockActionContext context, String operation, JsonObject args) {
-        DroneController ctrl = context.controller();
-        EntityPlayerMP player = context.player();
-        JsonObject res = new JsonObject();
-        if (args == null) args = new JsonObject();
+    protected Action<BlockContext> createAction(BlockContext context, String operation,
+                                                JsonObject args) {
         if ("break_block".equals(operation)) {
-            if (!args.has("x") || !args.has("y") || !args.has("z")) { res.addProperty("ok", false); res.addProperty("error", "break_block requires x/y/z"); return res; }
-            int x = args.get("x").getAsInt();
-            int y = args.get("y").getAsInt();
-            int z = args.get("z").getAsInt();
-            boolean started = startSingleBlockTask(ctrl, player, x, y, z);
-            if (started) context.trackBreak(x, y, z);
-            res.addProperty("ok", started); res.addProperty("started", started);
-            if (!started) res.addProperty("error", "Could not start single-block break");
-            return res;
+            if (!ActionArgs.has(args, "x") || !ActionArgs.has(args, "y") || !ActionArgs.has(args, "z")) {
+                return ignored -> context.result(BlockResult.failure("break_block requires x/y/z"));
+            }
+            return new BreakBlockAction(this, BlockRequest.builder()
+                .x(args.get("x").getAsInt())
+                .y(args.get("y").getAsInt())
+                .z(args.get("z").getAsInt())
+                .build());
         }
         if ("place_block".equals(operation)) {
-            if (!args.has("x") || !args.has("y") || !args.has("z")) { res.addProperty("ok", false); res.addProperty("error", "place_block requires x/y/z"); return res; }
-            String filter = args.has("block") ? args.get("block").getAsString()
-                : (args.has("with") ? args.get("with").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "any"));
-            int meta = args.has("meta") ? args.get("meta").getAsInt() : -1;
-            boolean placed = placeBlock(ctrl, player, args.get("x").getAsInt(), args.get("y").getAsInt(), args.get("z").getAsInt(), filter, meta);
-            res.addProperty("ok", placed); res.addProperty("placed", placed);
-            if (!placed) res.addProperty("error", "Cannot place: no matching block in drone/chest/player inventory or target invalid");
-            return res;
+            if (!ActionArgs.has(args, "x") || !ActionArgs.has(args, "y") || !ActionArgs.has(args, "z")) {
+                return ignored -> context.result(BlockResult.failure("place_block requires x/y/z"));
+            }
+            String filter = ActionArgs.string(args, "block",
+                ActionArgs.string(args, "with", ActionArgs.string(args, "item", "any")));
+            return new PlaceBlockAction(this, BlockRequest.builder()
+                .x(args.get("x").getAsInt())
+                .y(args.get("y").getAsInt())
+                .z(args.get("z").getAsInt())
+                .filter(filter)
+                .meta(ActionArgs.integer(args, "meta", -1))
+                .build());
         }
-        res.addProperty("ok", false); res.addProperty("error", "Unsupported block action: " + operation); return res;
+        throw new IllegalArgumentException("Unsupported block action: " + operation);
+    }
+
+    @Override
+    protected JsonObject serialize(BlockContext context) {
+        BlockResult result = context.result();
+        if (result == null) return ActionJson.error("Block action produced no result");
+        if (!result.isOk()) return ActionJson.error(result.getError());
+
+        JsonObject response = ActionJson.ok();
+        response.add("target", ActionJson.point(result.getX(), result.getY(), result.getZ()));
+        if ("break_block".equals(context.operation())) {
+            response.addProperty("started", result.isStarted());
+        } else {
+            response.addProperty("placed", result.isPlaced());
+            if (result.getBlock() != null) response.addProperty("block", result.getBlock());
+        }
+        return response;
     }
 
     private static boolean hasPassableHeadroom(World world, double[] st) {

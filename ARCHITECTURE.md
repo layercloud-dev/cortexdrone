@@ -17,33 +17,42 @@ Removed from the tool surface:
 - the legacy tool-call fallback in the agent loop
 
 The entire `behavior` package was removed. Operational code now lives in the
-categorized `action` package behind the generic `Action<C extends ActionContext>`
-interface and an `ActionRegistry` that resolves master operations to their
-owning category. Each category owns a context type that lives for one operation:
+categorized `action` package. The base is deliberately split in three parts:
 
-- `action.movement.MovementRpcAdapter` + `MovementActionContext` — route selection and breadcrumbs
-- `action.block.BlockActionService` + `BlockActionContext` — one-block break and one-block place
-- `action.interact.InteractionActionService` + `InteractionActionContext` — block interaction and item use
-- `action.effect.EffectActionService` + `EffectActionContext` — LED, lighting aura, particles, sounds, notes, chat/status
+- `Action<C extends ActionContext>` — a single-use command, created per request,
+  executed once and discarded;
+- `ActionContext` / `ActionContextBase` — mutable state for that one execution,
+  optionally retained for ticking;
+- `ActionService<C>` — the long-lived manager that parses the request, creates the
+  action, executes it, serializes the result, and retains/reaps contexts.
+
+`ActionRegistry` only routes operations to their owning service. Services never
+implement `Action`; they manage actions. Each category owns one service and one
+context type:
+
+- `action.movement.MovementService` + `MovementContext` — route selection and breadcrumbs
+- `action.block.BlockService` + `BlockContext` — one-block break and one-block place
+- `action.interact.InteractionService` + `InteractionContext` — block interaction, item use and attack
+- `action.effect.EffectService` + `EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
 - `action.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
 
-A context is active while its operation runs and is discarded when the call
-returns unless the action calls `retain()`. Retained contexts are ticked by
-`ActionRegistry` and removed when they complete: a movement context lives until
+A context is active while its action runs and is discarded when the call
+returns unless the action calls `retain()`. Retained contexts are ticked by their
+owning service and removed when they complete: a movement context lives until
 the navigator arrives, changes mode or is replaced by a newer navigation
 generation; a block-break context lives until that exact block is no longer the
 active mining target. `AIDroneManager.clearActionState` cancels both controller
 state and all live contexts.
 
-Navigation services are split into `navigation/service`,
-`navigation/raytrace` and the immutable `navigation/NavContext` request
-snapshot. Movement actions stay in `action/movement` and call those services:
-`NavigateAction`, `TunnelAction`, `DigUpAction`, `DigDownAction` and
-`BreadcrumbAction`. They are typed `MovementAction` executors returning
-`MovementResult`; `MovementRpcAdapter` is the only JSON boundary. Path planning,
-escape and transport services consume a `NavContext` instead of mixing mutable
-controller fields from different requests.
+Request and result DTOs are immutable Lombok `@Value @Builder` objects, contexts
+use Lombok accessors, and actions/services use constructor injection from
+`@RequiredArgsConstructor`. Navigation services are split into
+`navigation/service`, `navigation/raytrace` and the immutable
+`navigation/NavContext` request snapshot. Movement actions stay in
+`action/movement`: `NavigateAction`, `TunnelAction`, `DigUpAction`,
+`DigDownAction` and `BreadcrumbsAction`. `MovementService` is the only movement
+JSON boundary.
 
 The legacy one-shot executors (`AnvilService`, `MachineCraftExecutor`,
 `SmeltingService`, `ChestSorter`) and their batch queues (fluid scoop/place,

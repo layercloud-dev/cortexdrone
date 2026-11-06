@@ -1,27 +1,29 @@
 package ir.layercloud.cortexdrone.action.movement;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.action.Action;
+import lombok.RequiredArgsConstructor;
 
-/** Dig straight down by depth, or to an explicit destination. */
-public class DigDownAction implements MovementAction {
+/** Single-use command: dig straight down by depth or to an explicit point. */
+@RequiredArgsConstructor
+final class DigDownAction implements Action<MovementContext> {
     private final AIDroneManager manager;
-
-    public DigDownAction(AIDroneManager manager) {
-        this.manager = manager;
-    }
+    private final MovementRequest request;
 
     @Override
-    public String operation() { return "digdown"; }
-
-    @Override
-    public MovementResult execute(MovementRequest request) {
+    public void execute(MovementContext context) {
         MovementSupport.Target target = MovementSupport.resolveTarget(request);
         if (target == null) {
-            int depth = Math.max(1, Math.min(64, request.depth()));
-            target = MovementSupport.depthTarget(request.controller(), depth);
+            int depth = Math.max(1, Math.min(64, request.getDepth()));
+            target = MovementSupport.depthTarget(request.getController(), depth);
         }
-        if (target == null) return MovementResult.failure("No active drone");
-        return MovementSupport.start(this.manager, request, target,
+        if (target == null) {
+            context.result(MovementResult.failure("No active drone"));
+            return;
+        }
+        MovementResult result = MovementSupport.start(this.manager, request, target,
             MovementSupport.ROUTE_DOWN, "DigDown");
+        context.result(result);
+        context.begin(result);
     }
 }

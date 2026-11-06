@@ -1,21 +1,30 @@
 package ir.layercloud.cortexdrone.action;
 
 import ir.layercloud.cortexdrone.model.DroneController;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
- * Base lifecycle implementation for category contexts.
+ * Lombok-backed lifecycle base for action contexts.
  *
- * <p>A fresh context is active but not retained. Actions that start background
- * work call {@link #retain()}; one-shot actions simply return and the registry
- * discards the context.</p>
+ * <p>Controller, player, operation and start tick are immutable. Only the
+ * active/retained lifecycle flags and any category-specific state change while
+ * the action runs.</p>
  */
+@Getter
+@Accessors(fluent = true)
 public abstract class ActionContextBase implements ActionContext {
     private final DroneController controller;
     private final EntityPlayerMP player;
     private final String operation;
     private final long startedTick;
+
+    @Getter(AccessLevel.NONE)
     private boolean active = true;
+
+    @Getter(AccessLevel.NONE)
     private boolean retained;
 
     protected ActionContextBase(DroneController controller, EntityPlayerMP player, String operation) {
@@ -26,22 +35,14 @@ public abstract class ActionContextBase implements ActionContext {
     }
 
     @Override
-    public final DroneController controller() { return this.controller; }
+    public final boolean isActive() {
+        return this.active;
+    }
 
     @Override
-    public final EntityPlayerMP player() { return this.player; }
-
-    @Override
-    public final String operation() { return this.operation; }
-
-    @Override
-    public final long startedTick() { return this.startedTick; }
-
-    @Override
-    public final boolean isActive() { return this.active; }
-
-    @Override
-    public final boolean isRetained() { return this.active && this.retained; }
+    public final boolean isRetained() {
+        return this.active && this.retained;
+    }
 
     @Override
     public final void retain() {
@@ -50,7 +51,7 @@ public abstract class ActionContextBase implements ActionContext {
 
     @Override
     public final void tick() {
-        if (this.active) this.onTick();
+        if (this.active) onTick();
     }
 
     @Override
@@ -58,7 +59,7 @@ public abstract class ActionContextBase implements ActionContext {
         if (!this.active) return;
         this.active = false;
         this.retained = false;
-        this.onComplete();
+        onComplete();
     }
 
     @Override
@@ -66,18 +67,18 @@ public abstract class ActionContextBase implements ActionContext {
         if (!this.active) return;
         this.active = false;
         this.retained = false;
-        this.onCancel();
+        onCancel();
     }
 
     /** Called once per tick while retained. */
     protected void onTick() {
     }
 
-    /** Called once when the operation finishes normally. */
+    /** Called once when the action finishes normally. */
     protected void onComplete() {
     }
 
-    /** Called once when the operation is cancelled or replaced. */
+    /** Called once when the action is cancelled or replaced. */
     protected void onCancel() {
     }
 }

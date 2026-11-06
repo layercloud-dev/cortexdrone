@@ -5,54 +5,49 @@ import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.NavContext;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
+import lombok.Value;
+import lombok.experimental.UtilityClass;
 import net.minecraft.util.MathHelper;
 
-/**
- * Pure calculation/start helpers for movement executors. No JSON here.
- */
-final class MovementSupport {
-    static final String ROUTE_AUTO = "auto";
-    static final String ROUTE_DIRECT = "direct";
-    static final String ROUTE_TUNNEL = "tunnel";
-    static final String ROUTE_UP = "up";
-    static final String ROUTE_DOWN = "down";
+/** Pure target/route calculations shared by movement actions. */
+@UtilityClass
+public final class MovementSupport {
+    public static final String ROUTE_AUTO = "auto";
+    public static final String ROUTE_DIRECT = "direct";
+    public static final String ROUTE_TUNNEL = "tunnel";
+    public static final String ROUTE_UP = "up";
+    public static final String ROUTE_DOWN = "down";
 
-    private MovementSupport() {
+    @Value
+    public static class Target {
+        double x;
+        double y;
+        double z;
     }
 
-    static final class Target {
-        final double x;
-        final double y;
-        final double z;
-
-        Target(double x, double y, double z) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
+    public static Target resolveTarget(MovementRequest request) {
+        DroneController controller = request != null ? request.getController() : null;
+        if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
+            return null;
         }
-    }
-
-    static Target resolveTarget(MovementRequest request) {
-        DroneController ctrl = request != null ? request.controller() : null;
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) return null;
-        if (request.hasStandoff()) {
-            double[] st = FlightPathfinder.findMiningStandoff(ctrl.drone.worldObj, ctrl.drone,
-                request.standoffX(), request.standoffY(), request.standoffZ());
-            if (st == null) {
-                int[] open = FlightPathfinder.findNearestPassableVoxel(ctrl.drone.worldObj,
-                    request.standoffX(), request.standoffY() + 1, request.standoffZ(), 3);
+        if (request.isStandoff()) {
+            double[] standoff = FlightPathfinder.findMiningStandoff(controller.drone.worldObj,
+                controller.drone, request.getStandoffX(), request.getStandoffY(), request.getStandoffZ());
+            if (standoff == null) {
+                int[] open = FlightPathfinder.findNearestPassableVoxel(controller.drone.worldObj,
+                    request.getStandoffX(), request.getStandoffY() + 1, request.getStandoffZ(), 3);
                 if (open == null) return null;
-                st = new double[]{open[0] + 0.5, open[1] + 0.35, open[2] + 0.5};
+                standoff = new double[]{open[0] + 0.5, open[1] + 0.35, open[2] + 0.5};
             }
-            return new Target(st[0], st[1], st[2]);
+            return new Target(standoff[0], standoff[1], standoff[2]);
         }
-        if (request.hasCoordinates()) {
-            return new Target(request.x(), request.y(), request.z());
+        if (request.isCoordinates()) {
+            return new Target(request.getX(), request.getY(), request.getZ());
         }
         return null;
     }
 
-    static String route(String requested, String fallback) {
+    public static String route(String requested, String fallback) {
         if (requested == null) return fallback;
         String route = requested.trim().toLowerCase();
         if (!ROUTE_AUTO.equals(route) && !ROUTE_DIRECT.equals(route)
@@ -63,58 +58,63 @@ final class MovementSupport {
         return route;
     }
 
-    static Target surfaceTarget(DroneController ctrl) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) return null;
-        int cx = MathHelper.floor_double(ctrl.drone.posX);
-        int cz = MathHelper.floor_double(ctrl.drone.posZ);
-        int top = ctrl.drone.worldObj.getHeightValue(cx, cz);
-        return new Target(cx + 0.5, Math.min(250, top + 2.5), cz + 0.5);
+    public static Target surfaceTarget(DroneController controller) {
+        if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
+            return null;
+        }
+        int x = MathHelper.floor_double(controller.drone.posX);
+        int z = MathHelper.floor_double(controller.drone.posZ);
+        int top = controller.drone.worldObj.getHeightValue(x, z);
+        return new Target(x + 0.5, Math.min(250, top + 2.5), z + 0.5);
     }
 
-    static Target depthTarget(DroneController ctrl, int depth) {
-        if (ctrl == null || ctrl.drone == null) return null;
-        int x = MathHelper.floor_double(ctrl.drone.posX);
-        int y = Math.max(1, MathHelper.floor_double(ctrl.drone.posY) - Math.max(1, depth));
-        int z = MathHelper.floor_double(ctrl.drone.posZ);
+    public static Target depthTarget(DroneController controller, int depth) {
+        if (controller == null || controller.drone == null) return null;
+        int x = MathHelper.floor_double(controller.drone.posX);
+        int y = Math.max(1, MathHelper.floor_double(controller.drone.posY) - Math.max(1, depth));
+        int z = MathHelper.floor_double(controller.drone.posZ);
         return new Target(x + 0.5, y, z + 0.5);
     }
 
-    static MovementResult start(AIDroneManager manager, MovementRequest request, Target target,
-                                String route, String label) {
-        DroneController ctrl = request != null ? request.controller() : null;
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) {
+    public static MovementResult start(AIDroneManager manager, MovementRequest request,
+                                       Target target, String route, String label) {
+        DroneController controller = request != null ? request.getController() : null;
+        if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
             return MovementResult.failure("No active drone");
         }
-        double gx = target.x;
-        double gy = target.y;
-        double gz = target.z;
-        ctrl.navigationGeneration++;
-        ctrl.navigationRoute = route;
-        ctrl.navViaSurface = false;
-        ctrl.navFinalX = Double.NaN;
-        ctrl.navFinalY = Double.NaN;
-        ctrl.navFinalZ = Double.NaN;
+
+        double goalX = target.getX();
+        double goalY = target.getY();
+        double goalZ = target.getZ();
+        controller.navigationGeneration++;
+        controller.navigationRoute = route;
+        controller.navViaSurface = false;
+        controller.navFinalX = Double.NaN;
+        controller.navFinalY = Double.NaN;
+        controller.navFinalZ = Double.NaN;
+
         if (ROUTE_UP.equals(route)) {
-            int cx = MathHelper.floor_double(ctrl.drone.posX);
-            int cy = MathHelper.floor_double(ctrl.drone.posY);
-            int cz = MathHelper.floor_double(ctrl.drone.posZ);
-            boolean sky = ctrl.drone.worldObj.canBlockSeeTheSky(cx, cy, cz)
-                || cy >= ctrl.drone.worldObj.getHeightValue(cx, cz) - 1;
+            int x = MathHelper.floor_double(controller.drone.posX);
+            int y = MathHelper.floor_double(controller.drone.posY);
+            int z = MathHelper.floor_double(controller.drone.posZ);
+            boolean sky = controller.drone.worldObj.canBlockSeeTheSky(x, y, z)
+                || y >= controller.drone.worldObj.getHeightValue(x, z) - 1;
             if (!sky) {
-                ctrl.navFinalX = gx;
-                ctrl.navFinalY = gy;
-                ctrl.navFinalZ = gz;
-                int top = ctrl.drone.worldObj.getHeightValue(cx, cz);
-                gx = cx + 0.5;
-                gy = Math.min(250, top + 2.5);
-                gz = cz + 0.5;
-                ctrl.navViaSurface = true;
+                controller.navFinalX = goalX;
+                controller.navFinalY = goalY;
+                controller.navFinalZ = goalZ;
+                int top = controller.drone.worldObj.getHeightValue(x, z);
+                goalX = x + 0.5;
+                goalY = Math.min(250, top + 2.5);
+                goalZ = z + 0.5;
+                controller.navViaSurface = true;
             }
         }
-        NavContext nav = NavContext.of(ctrl, gx, gy, gz, route);
-        nav.setGoal(gx, gy, gz);
-        manager.setDroneMode(ctrl, Mode.GOTO,
-            label + " " + route + String.format(" (%.1f,%.1f,%.1f)", gx, gy, gz));
-        return MovementResult.started(route, gx, gy, gz, ctrl.navViaSurface);
+
+        NavContext navigation = NavContext.of(controller, goalX, goalY, goalZ, route);
+        navigation.setGoal(goalX, goalY, goalZ);
+        manager.setDroneMode(controller, Mode.GOTO,
+            label + " " + route + String.format(" (%.1f,%.1f,%.1f)", goalX, goalY, goalZ));
+        return MovementResult.started(route, goalX, goalY, goalZ, controller.navViaSurface);
     }
 }

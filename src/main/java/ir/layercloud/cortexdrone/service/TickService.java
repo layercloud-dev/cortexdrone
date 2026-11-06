@@ -7,9 +7,9 @@ import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
-import ir.layercloud.cortexdrone.action.block.BlockActionService;
+import ir.layercloud.cortexdrone.action.block.BlockService;
 import ir.layercloud.cortexdrone.action.combat.CombatService;
-import ir.layercloud.cortexdrone.action.effect.EffectActionService;
+import ir.layercloud.cortexdrone.action.effect.EffectService;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +31,8 @@ public class TickService {
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final InventoryService inventoryService;
-    private final BlockActionService blockActionService;
-    private final EffectActionService effectService;
+    private final BlockService blockService;
+    private final EffectService effectService;
     private final CombatService combatService;
 
     public void tickController(DroneController ctrl) {
@@ -266,7 +266,7 @@ public class TickService {
                 this.combatService.tickHuntBehavior(ctrl, owner);
                 break;
             case MINE:
-                this.blockActionService.tick(ctrl, owner);
+                this.blockService.tick(ctrl, owner);
                 break;
             case CARRY:
                 this.pathfinder.tickCarryBehavior(ctrl, owner);

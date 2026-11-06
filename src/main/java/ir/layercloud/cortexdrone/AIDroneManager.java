@@ -91,7 +91,7 @@ public class AIDroneManager {
         this.visualsManager = new VisualsManager(this, this.logger);
         this.interactionManager = new InteractionManager(this.inventoryService);
         this.inventoryManager = new InventoryManager(this, this.inventoryService);
-        this.buildingManager = new BuildingManager(this, this.logger);
+        this.buildingManager = new BuildingManager(this.logger);
         this.navigationManager = new NavigationManager(this, this.logger,
                 this.pathfinder, this.breadcrumbService);
         this.actionRegistry = new ActionRegistry();
@@ -175,7 +175,9 @@ public class AIDroneManager {
                 latch.countDown();
             }
         });
-        latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+        if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+            return null;
+        }
         if (errRef.get() != null) {
             throw errRef.get();
         }
@@ -189,7 +191,6 @@ public class AIDroneManager {
         if (ctrl == null) return;
         this.actionRegistry.cancelAll(ctrl);
         this.navigationManager.clear(ctrl);
-        ctrl.clearActionState();
     }
 
     public void onPlayerChat(ServerChatEvent event) {
@@ -486,11 +487,10 @@ public class AIDroneManager {
         this.visualsManager.clearLighting(ctrl);
         this.navigationManager.clear(ctrl);
         this.breadcrumbService.clear(ctrl);
-        ctrl.despawned = true;
         UUID duid = d.getUniqueID();
         if (duid != null) {
             this.despawnedUuids.add(duid);
-            if (this.config != null && this.config.getSavedDrones() != null) {
+            if (this.config.getSavedDrones() != null) {
                 this.config.getSavedDrones().removeIf(s -> s != null && duid.toString().equals(s.getUuid()));
             }
         }
@@ -577,6 +577,7 @@ public class AIDroneManager {
     /**
      * World reads, chunk access and drone mutation all belong on the server thread.
      */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private static boolean isServerThread() {
         return Thread.currentThread().getName().contains("Server thread");
     }

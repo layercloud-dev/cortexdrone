@@ -63,7 +63,7 @@ public class TickManager {
         boolean longRangeFlight = distFinalGoal > 14.0;
         if (!machineRunningOk || (postTargetDist > 0.30 && movedSq < 0.0004) || longRangeFlight) {
             double maxSpeed = distFinalGoal > 24.0 ? 1.15 : (longRangeFlight ? 0.85 : 0.42);
-            FlightPathfinder.runServerSidePhysicsStep(d, maxSpeed, ctrl);
+            FlightPathfinder.runServerSidePhysicsStep(d, maxSpeed);
         }
     }
 

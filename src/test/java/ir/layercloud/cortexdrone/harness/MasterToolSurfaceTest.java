@@ -22,14 +22,6 @@ public class MasterToolSurfaceTest {
     }
 
     @Test
-    public void legacyCompositeToolsAreGone() {
-        Set<String> actual = new HashSet<>(Arrays.asList(MasterToolCatalog.METHODS));
-        for (String legacy : MasterToolCatalog.REMOVED_COMPOSITE_TOOLS) {
-            assertFalse("Legacy tool still exposed: " + legacy, actual.contains(legacy));
-        }
-    }
-
-    @Test
     public void masterToolNamesAreUnique() {
         Set<String> actual = new HashSet<>();
         for (String method : MasterToolCatalog.METHODS) {

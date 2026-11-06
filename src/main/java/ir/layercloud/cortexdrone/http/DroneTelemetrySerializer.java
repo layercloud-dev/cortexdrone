@@ -101,7 +101,7 @@ public class DroneTelemetrySerializer {
 
         MinecraftServer srv = MinecraftServer.getServer();
         JsonArray playersArr = new JsonArray();
-        if (srv != null && srv.getConfigurationManager() != null && srv.getConfigurationManager().playerEntityList != null) {
+        if (srv != null && srv.getConfigurationManager() != null) {
             List<?> pList = new ArrayList<Object>((java.util.Collection<?>) srv.getConfigurationManager().playerEntityList);
             for (Object o : pList) {
                 if (o instanceof EntityPlayerMP) {

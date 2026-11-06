@@ -28,9 +28,11 @@ public class SkillLibraryTest {
         } finally {
             File[] files = dir.listFiles();
             if (files != null) {
-                for (File file : files) file.delete();
+                for (File file : files) {
+                    if (!file.delete()) file.deleteOnExit();
+                }
             }
-            dir.delete();
+            if (!dir.delete()) dir.deleteOnExit();
         }
     }
 }

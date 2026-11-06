@@ -44,6 +44,10 @@ public final class XManager extends ActionManager<XContext, XRequest, XResult> {
         this.manager = manager;
     }
 
+    public AIDroneManager manager() {
+        return this.manager;
+    }
+
     @Override
     protected XContext createContext(DroneController c, EntityPlayerMP p, String op) {
         return new XContext(c, p, op);

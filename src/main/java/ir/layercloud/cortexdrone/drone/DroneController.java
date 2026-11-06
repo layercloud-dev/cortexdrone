@@ -17,8 +17,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class DroneController {
     public final int id;
     public Drone drone;
-    public UUID entityUuid;
-    public String name;
+    public final UUID entityUuid;
+    public final String name;
     public String ownerName;
 
     // Goal of the last/active navigation session. Used for telemetry and physics.
@@ -44,8 +44,7 @@ public class DroneController {
     // Per-waypoint hit counters: an A/B/A/B alternation of two blocked goals
     // defeats a single last-key throttle, so hits are counted per waypoint.
     public final Map<Long, Integer> solidWaypointHits = new HashMap<>();
-    public int solidEscalations = 0;
-    public String lastPathLogKey = "";
+    public final int solidEscalations = 0;    public String lastPathLogKey = "";
     public int lastPathLogTick = -10000;
 
     // Single-block break/place and illumination state.
@@ -81,7 +80,6 @@ public class DroneController {
     public double lastX;
     public double lastY;
     public double lastZ;
-    public volatile boolean despawned = false;
 
     public DroneController(int id, Drone drone, String name, String ownerName) {
         this.id = id;
@@ -143,8 +141,5 @@ public class DroneController {
         while (this.thoughtHistory.size() > 12) {
             this.thoughtHistory.pollFirst();
         }
-    }
-
-    public void clearActionState() {
     }
 }

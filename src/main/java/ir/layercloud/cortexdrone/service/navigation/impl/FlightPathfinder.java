@@ -361,10 +361,6 @@ public class FlightPathfinder {
         DronePhysicsService.runServerSidePhysicsStep(d, maxVelOverride);
     }
 
-    public static void runServerSidePhysicsStep(Drone d, double maxVelOverride, DroneController ctrl) {
-        DronePhysicsService.runServerSidePhysicsStep(d, maxVelOverride, ctrl);
-    }
-
     public static double[] findBlockStandoff(World world, Drone d, int bx, int by, int bz) {
         return DronePhysicsService.findBlockStandoff(world, d, bx, by, bz);
     }

@@ -76,7 +76,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
     /**
      * Typed execution used by internal entry points that already built the action.
      */
-    protected final void run(DroneController controller, EntityPlayerMP player,
+    protected final void run(DroneController controller,
                              String operation, C context, Action<C> action) {
         cancelExisting(controller, operation);
         try {

@@ -37,7 +37,7 @@ public final class NavigationContext extends ActionContextBase {
         this.label = label;
     }
 
-    public int countTick() {
-        return ++this.ticks;
+    public void countTick() {
+        this.ticks++;
     }
 }

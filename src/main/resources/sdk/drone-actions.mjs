@@ -1,3 +1,4 @@
+//noinspection JSUnresolvedReference,JSUnusedGlobalSymbols
 // ---------------------------------------------------------------------------
 // Master tool surface. There are no monolithic "mine/harvest/build/farm" tools.
 // Every physical behavior is composed by the AI from:
@@ -50,6 +51,7 @@ const drone = {
     for (let attempt = 0; attempt < 4; attempt++) {
       const r = await rpc('break_block', target);
       if (r && r.needsMovement && r.standoff) {
+        //noinspection JSCheckFunctionSignatures
         const mv = await drone.goto(r.standoff, { maxWaitMs });
         if (!mv || mv.ok === false) return mv || r;
         continue;
@@ -57,6 +59,7 @@ const drone = {
       if (r && r.ok === false && /standoff/i.test(String(r.error || ''))) {
         // Fully buried target with no exposed standoff: carve toward it, then
         // retry the single-block break once the navigator has arrived.
+        //noinspection JSCheckFunctionSignatures
         const mv = await drone.goto({ x: target.x, y: target.y, z: target.z, maxWaitMs });
         if (!mv || mv.ok === false) return { ...r, movement: mv };
         continue;
@@ -67,6 +70,7 @@ const drone = {
   },
 
   // Place exactly one explicit block from drone/chest/player inventory.
+  //noinspection JSUnusedGlobalSymbols
   placeBlock: async (x, y, z, block = 'any', meta = -1, opts = {}) => {
     let target;
     if (_isObj(x)) target = { ...x };
@@ -76,6 +80,7 @@ const drone = {
     for (let attempt = 0; attempt < 3; attempt++) {
       const r = await rpc('place_block', target);
       if (r && r.needsMovement && r.standoff) {
+        //noinspection JSCheckFunctionSignatures
         const mv = await drone.goto(r.standoff);
         if (!mv || mv.ok === false) return mv || r;
         continue;
@@ -85,6 +90,7 @@ const drone = {
     return { ok: false, error: 'Could not reach placement target' };
   },
 
+  //noinspection JSUnusedGlobalSymbols
   interactBlock: async (x, y, z, side, opts = {}) => {
     let target;
     if (_isObj(x)) target = { ...x };
@@ -94,6 +100,7 @@ const drone = {
     for (let attempt = 0; attempt < 3; attempt++) {
       const r = await rpc('interact_block', target);
       if (r && r.needsMovement && r.standoff) {
+        //noinspection JSCheckFunctionSignatures
         const mv = await drone.goto(r.standoff);
         if (!mv || mv.ok === false) return mv || r;
         continue;
@@ -106,6 +113,7 @@ const drone = {
   // Uses an item (hoe, bucket, food, tool...). Accepts an object, a slot, or
   // an item filter plus optional target block coordinates. With entityId/attack
   // it performs exactly one melee attack and moves into reach if needed.
+  //noinspection JSUnusedGlobalSymbols
   useItem: async (a = 0, b, c, d2, e) => {
     let target;
     if (_isObj(a)) target = { ...a };
@@ -127,6 +135,7 @@ const drone = {
     for (let attempt = 0; attempt < 3; attempt++) {
       const r = await rpc('use_item', target);
       if (r && r.needsMovement && r.standoff) {
+        //noinspection JSCheckFunctionSignatures
         const mv = await drone.goto(r.standoff);
         if (!mv || mv.ok === false) return mv || r;
         continue;
@@ -147,6 +156,7 @@ const drone = {
     for (let attempt = 0; attempt < 3; attempt++) {
       const r = await rpc('pick_entity', target);
       if (r && r.needsMovement && r.standoff) {
+        //noinspection JSCheckFunctionSignatures
         const mv = await drone.goto(r.standoff);
         if (!mv || mv.ok === false) return mv || r;
         continue;

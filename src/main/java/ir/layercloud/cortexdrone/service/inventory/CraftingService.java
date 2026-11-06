@@ -23,7 +23,6 @@ import net.minecraftforge.oredict.ShapelessOreRecipe;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -131,9 +130,9 @@ public class CraftingService {
         java.util.List<IRecipe> ranked;
         long expiresAtMs;
 
-        RecipeCacheEntry(java.util.List<IRecipe> ranked, long ttlMs) {
+        RecipeCacheEntry(java.util.List<IRecipe> ranked) {
             this.ranked = ranked;
-            this.expiresAtMs = System.currentTimeMillis() + ttlMs;
+            this.expiresAtMs = System.currentTimeMillis() + RECIPE_CACHE_TTL_MS;
         }
     }
 
@@ -150,7 +149,7 @@ public class CraftingService {
         java.util.List<IRecipe> ranked = findRankedMatchingRecipes(filter);
         // Cap total ranked list — LLM rarely inspects beyond 25 and craftItem only needs the first few.
         java.util.List<IRecipe> capped = ranked.size() > 25 ? ranked.subList(0, 25) : ranked;
-        recipeRankCache.put(key, new RecipeCacheEntry(capped, RECIPE_CACHE_TTL_MS));
+        recipeRankCache.put(key, new RecipeCacheEntry(capped));
         if (recipeRankCache.size() > 64) {
             // bound growth under pathological filter churn; ConcurrentHashMap purge is approximate
             java.util.Iterator<String> it = recipeRankCache.keySet().iterator();

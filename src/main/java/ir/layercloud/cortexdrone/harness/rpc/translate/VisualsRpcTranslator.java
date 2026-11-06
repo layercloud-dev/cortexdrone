@@ -38,22 +38,22 @@ public final class VisualsRpcTranslator {
         try {
             if (args.get("color").isJsonPrimitive()) {
                 if (args.get("color").getAsJsonPrimitive().isNumber()) {
-                    return Integer.valueOf(args.get("color").getAsInt() & 0xFFFFFF);
+                    return args.get("color").getAsInt() & 0xFFFFFF;
                 }
                 String value = args.get("color").getAsString().trim();
                 if (value.startsWith("#")) value = value.substring(1);
                 if (value.startsWith("0x") || value.startsWith("0X")) value = value.substring(2);
                 String named = namedColor(value);
                 if (named != null) value = named;
-                return Integer.valueOf((int) Long.parseLong(value, 16) & 0xFFFFFF);
+                return (int) Long.parseLong(value, 16) & 0xFFFFFF;
             }
             if (args.get("color").isJsonArray()) {
                 JsonArray array = args.getAsJsonArray("color");
                 if (array.size() >= 3) {
-                    int red = clamp(array.get(0).getAsInt(), 0, 255);
-                    int green = clamp(array.get(1).getAsInt(), 0, 255);
-                    int blue = clamp(array.get(2).getAsInt(), 0, 255);
-                    return Integer.valueOf((red << 16) | (green << 8) | blue);
+                    int red = clamp(array.get(0).getAsInt());
+                    int green = clamp(array.get(1).getAsInt());
+                    int blue = clamp(array.get(2).getAsInt());
+                    return (red << 16) | (green << 8) | blue;
                 }
             }
         } catch (Throwable ignored) {
@@ -61,8 +61,8 @@ public final class VisualsRpcTranslator {
         return null;
     }
 
-    private static int clamp(int value, int min, int max) {
-        return Math.max(min, Math.min(max, value));
+    private static int clamp(int value) {
+        return Math.max(0, Math.min(255, value));
     }
 
     private static String namedColor(String raw) {
@@ -96,7 +96,7 @@ public final class VisualsRpcTranslator {
         return null;
     }
 
-    public JsonObject status(DroneController controller, EntityPlayerMP player, JsonObject args) {
+    public JsonObject status(DroneController controller, JsonObject args) {
         if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
             return RpcJson.error("No active drone or world");
         }
@@ -143,7 +143,7 @@ public final class VisualsRpcTranslator {
         return response;
     }
 
-    public JsonObject skills(DroneController controller, EntityPlayerMP player,
+    public JsonObject skills(DroneController controller,
                              String operation, JsonObject args) {
         if (controller == null) return RpcJson.error("No active drone");
         JsonObject response = RpcJson.ok();
@@ -178,16 +178,16 @@ public final class VisualsRpcTranslator {
                 && RpcArgs.has(args, "g")
                 && RpcArgs.has(args, "b");
 
-        Integer red = rgb ? Integer.valueOf(RpcArgs.clampedInt(args, "r", 0, 0, 255)) : null;
-        Integer green = rgb ? Integer.valueOf(RpcArgs.clampedInt(args, "g", 0, 0, 255)) : null;
-        Integer blue = rgb ? Integer.valueOf(RpcArgs.clampedInt(args, "b", 0, 0, 255)) : null;
+        Integer red = rgb ? RpcArgs.clampedInt(args, "r", 0, 0, 255) : null;
+        Integer green = rgb ? RpcArgs.clampedInt(args, "g", 0, 0, 255) : null;
+        Integer blue = rgb ? RpcArgs.clampedInt(args, "b", 0, 0, 255) : null;
 
         Float hue = RpcArgs.has(args, "h")
-                ? Float.valueOf(RpcArgs.decimalFloat(args, "h", 0f)) : null;
+                ? RpcArgs.decimalFloat(args, "h", 0f) : null;
         Float saturation = RpcArgs.has(args, "s")
-                ? Float.valueOf(RpcArgs.decimalFloat(args, "s", 1f)) : null;
+                ? RpcArgs.decimalFloat(args, "s", 1f) : null;
         Float brightness = RpcArgs.has(args, "v")
-                ? Float.valueOf(RpcArgs.decimalFloat(args, "v", 1f)) : null;
+                ? RpcArgs.decimalFloat(args, "v", 1f) : null;
 
         String colorText = null;
         Integer colorValue = null;
@@ -195,7 +195,7 @@ public final class VisualsRpcTranslator {
             if (args.get("color").getAsJsonPrimitive().isString()) {
                 colorText = args.get("color").getAsString();
             } else {
-                colorValue = Integer.valueOf(args.get("color").getAsInt());
+                colorValue = args.get("color").getAsInt();
             }
         }
 
@@ -224,10 +224,10 @@ public final class VisualsRpcTranslator {
                 .message(RpcArgs.string(args, "message", ""))
                 .text(RpcArgs.string(args, "text", ""))
                 .lightEnabled(RpcArgs.has(args, "enabled")
-                        ? Boolean.valueOf(args.get("enabled").getAsBoolean()) : null)
+                        ? args.get("enabled").getAsBoolean() : null)
                 .lightToggle(RpcArgs.has(args, "toggle") && args.get("toggle").getAsBoolean())
-                .lightRadius(RpcArgs.has(args, "radius") ? Integer.valueOf(args.get("radius").getAsInt()) : null)
-                .lightLevel(RpcArgs.has(args, "level") ? Integer.valueOf(args.get("level").getAsInt()) : null)
+                .lightRadius(RpcArgs.has(args, "radius") ? args.get("radius").getAsInt() : null)
+                .lightLevel(RpcArgs.has(args, "level") ? args.get("level").getAsInt() : null)
                 .lightColor(parseLightColor(args))
                 .build();
     }

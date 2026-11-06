@@ -36,14 +36,6 @@ public final class ItemClassifier {
         return RegistryIntrospector.getOreDictNames(block, meta);
     }
 
-    public static boolean hasOreDictPrefix(ItemStack stack, String... prefixes) {
-        return RegistryIntrospector.hasOreDictPrefix(stack, prefixes);
-    }
-
-    public static boolean hasOreDictPrefix(Block block, int meta, String... prefixes) {
-        return RegistryIntrospector.hasOreDictPrefix(block, meta, prefixes);
-    }
-
     public static boolean isLiquidBlock(Block b) {
         return RegistryIntrospector.isFluidBlock(b);
     }
@@ -105,10 +97,6 @@ public final class ItemClassifier {
 
     public static boolean isOreBlock(Block b, int meta) {
         return RegistryIntrospector.isOreBlock(b, meta);
-    }
-
-    public static boolean isOreBlock(Block b) {
-        return RegistryIntrospector.isOreBlock(b, 0);
     }
 
     public static boolean isLogBlock(Block b) {
@@ -361,10 +349,6 @@ public final class ItemClassifier {
             return true;
         }
         return LexicalItemMatcher.scoreSingleMatch(disp, id, normMeta, f) > 0;
-    }
-
-    public static int getItemCategoryOrder(ItemStack st) {
-        return RegistryIntrospector.getItemCategoryOrder(st);
     }
 
     public static boolean isFurnaceTile(World world, TileEntity te) {

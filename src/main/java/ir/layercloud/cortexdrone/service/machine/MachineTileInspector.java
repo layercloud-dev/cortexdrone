@@ -34,6 +34,7 @@ public final class MachineTileInspector {
             "gascent", "pyrooven", "purex", "exposure"
     };
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isMachineTile(World world, TileEntity te) {
         if (te == null) return false;
         if (!(te instanceof IInventory)) return false;
@@ -68,9 +69,8 @@ public final class MachineTileInspector {
         }
         String invName = "";
         try {
-            if (te instanceof IInventory) {
-                invName = ((IInventory) te).getInventoryName() != null ? ((IInventory) te).getInventoryName().toLowerCase() : "";
-            }
+            invName = ((IInventory) te).getInventoryName() != null
+                    ? ((IInventory) te).getInventoryName().toLowerCase() : "";
         } catch (Throwable ignored) {
         }
         for (String kw : MACHINE_KEYWORDS) {
@@ -138,9 +138,7 @@ public final class MachineTileInspector {
         // Fully dynamic fallback: token-substring match so any new machine
         // kind (e.g. custom-machines variants) still resolves without a
         // hardcoded entry, mirroring recipeFileToMachine's contains() logic.
-        String dynamic = recipeFileToMachine(noSuffix);
-        if (dynamic != null && !dynamic.isEmpty() && !dynamic.equals(noSuffix)) return dynamic;
-        return dynamic != null ? dynamic : noSuffix;
+        return recipeFileToMachine(noSuffix);
     }
 
     private static String mapAlias(String m) {
@@ -229,35 +227,98 @@ public final class MachineTileInspector {
             case "crucible_smelting":
                 return "crucible";
         }
-        if (m.equals("electrolyser") || m.equals("electrolyzer") || m.equals("electrolyse")
-                || m.equals("electrolyser_fluid") || m.equals("electrolyser_metal")) return "electrolyser";
-        if (m.equals("pedestal") || m.equals("machine_pedestal")) return "pedestal";
-        if (m.equals("plasma") || m.equals("plasma_forge") || m.equals("plasmaforge")) return "plasma_forge";
-        if (m.equals("fusion")) return "fusion";
-        if (m.equals("breeder")) return "breeder";
-        if (m.equals("cyclotron")) return "cyclotron";
-        if (m.equals("cracking") || m.equals("cracker") || m.equals("catalytic_cracker")) return "cracking";
-        if (m.equals("alkylation") || m.equals("alkyl")) return "alkylation";
-        if (m.equals("fractions") || m.equals("fraction") || m.equals("fractions_tower")) return "fractions";
-        if (m.equals("refinery") || m.equals("vacuum_refinery") || m.equals("vacrefinery") || m.equals("distill")
-                || m.equals("vacuum_distill") || m.equals("vacuumdistill")) return "refinery";
-        if (m.equals("cryodistillator") || m.equals("cryo") || m.equals("cryodistill")) return "cryodistillator";
-        if (m.equals("hydrotreating") || m.equals("hydrotreat") || m.equals("hydrotreater")) return "hydrotreating";
-        if (m.equals("liquefactor") || m.equals("liquefact") || m.equals("liquefier")) return "liquefactor";
-        if (m.equals("irradiation")) return "irradiation";
-        if (m.equals("solidifier") || m.equals("solidif")) return "solidifier";
-        if (m.equals("supercomputer") || m.equals("computer")) return "supercomputer";
-        if (m.equals("space") || m.equals("space_assembler") || m.equals("spaceassembler")) return "space_assembler";
-        if (m.equals("reforming") || m.equals("reformer") || m.equals("catalytic_reformer")) return "reforming";
-        if (m.equals("atmosphere")) return "atmosphere";
-        if (m.equals("combination")) return "combination";
-        if (m.equals("fuelpool")) return "fuelpool";
-        if (m.equals("purex")) return "purex";
-        if (m.equals("particle") || m.equals("particle_accelerator")) return "particle_accelerator";
-        if (m.equals("exposure") || m.equals("exposure_chamber")) return "exposure_chamber";
-        if (m.equals("vacuum") || m.equals("vacuum_circuit") || m.equals("vacuumcircuit")) return "soldering_station";
-        if (m.equals("gascent") || m.equals("gas_centrifuge")) return "centrifuge";
-        return null;
+        switch (m) {
+            case "electrolyse":
+            case "electrolyser_fluid":
+            case "electrolyser_metal":
+                return "electrolyser";
+            default:
+                break;
+        }
+        switch (m) {
+            case "pedestal":
+            case "machine_pedestal":
+                return "pedestal";
+            case "plasma":
+            case "plasma_forge":
+            case "plasmaforge":
+                return "plasma_forge";
+            case "fusion":
+                return "fusion";
+            case "breeder":
+                return "breeder";
+            case "cyclotron":
+                return "cyclotron";
+            case "cracking":
+            case "cracker":
+            case "catalytic_cracker":
+                return "cracking";
+            case "alkylation":
+            case "alkyl":
+                return "alkylation";
+            case "fractions":
+            case "fraction":
+            case "fractions_tower":
+                return "fractions";
+            case "refinery":
+            case "vacuum_refinery":
+            case "vacrefinery":
+            case "distill":
+            case "vacuum_distill":
+            case "vacuumdistill":
+                return "refinery";
+            case "cryodistillator":
+            case "cryo":
+            case "cryodistill":
+                return "cryodistillator";
+            case "hydrotreating":
+            case "hydrotreat":
+            case "hydrotreater":
+                return "hydrotreating";
+            case "liquefactor":
+            case "liquefact":
+            case "liquefier":
+                return "liquefactor";
+            case "irradiation":
+                return "irradiation";
+            case "solidifier":
+            case "solidif":
+                return "solidifier";
+            case "supercomputer":
+            case "computer":
+                return "supercomputer";
+            case "space":
+            case "space_assembler":
+            case "spaceassembler":
+                return "space_assembler";
+            case "reforming":
+            case "reformer":
+            case "catalytic_reformer":
+                return "reforming";
+            case "atmosphere":
+                return "atmosphere";
+            case "combination":
+                return "combination";
+            case "fuelpool":
+                return "fuelpool";
+            case "purex":
+                return "purex";
+            case "particle":
+            case "particle_accelerator":
+                return "particle_accelerator";
+            case "exposure":
+            case "exposure_chamber":
+                return "exposure_chamber";
+            case "vacuum":
+            case "vacuum_circuit":
+            case "vacuumcircuit":
+                return "soldering_station";
+            case "gascent":
+            case "gas_centrifuge":
+                return "centrifuge";
+            default:
+                return null;
+        }
     }
 
     public static String recipeFileToMachine(String fileName) {
@@ -387,16 +448,13 @@ public final class MachineTileInspector {
                 }
             }
         }
-        double fx = x;
-        double fy = y;
-        double fz = z;
         out.sort((a, b) -> {
-            double da = (a.xCoord + 0.5 - fx) * (a.xCoord + 0.5 - fx)
-                    + (a.yCoord + 0.5 - fy) * (a.yCoord + 0.5 - fy)
-                    + (a.zCoord + 0.5 - fz) * (a.zCoord + 0.5 - fz);
-            double db = (b.xCoord + 0.5 - fx) * (b.xCoord + 0.5 - fx)
-                    + (b.yCoord + 0.5 - fy) * (b.yCoord + 0.5 - fy)
-                    + (b.zCoord + 0.5 - fz) * (b.zCoord + 0.5 - fz);
+            double da = (a.xCoord + 0.5 - x) * (a.xCoord + 0.5 - x)
+                    + (a.yCoord + 0.5 - y) * (a.yCoord + 0.5 - y)
+                    + (a.zCoord + 0.5 - z) * (a.zCoord + 0.5 - z);
+            double db = (b.xCoord + 0.5 - x) * (b.xCoord + 0.5 - x)
+                    + (b.yCoord + 0.5 - y) * (b.yCoord + 0.5 - y)
+                    + (b.zCoord + 0.5 - z) * (b.zCoord + 0.5 - z);
             return Double.compare(da, db);
         });
         return out;
@@ -472,9 +530,5 @@ public final class MachineTileInspector {
             c = c.getSuperclass();
         }
         return out;
-    }
-
-    static Set<String> allMachineTypes() {
-        return new HashSet<>(Arrays.asList(MACHINE_KEYWORDS));
     }
 }

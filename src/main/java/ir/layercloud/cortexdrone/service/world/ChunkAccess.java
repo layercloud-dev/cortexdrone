@@ -24,6 +24,7 @@ public final class ChunkAccess {
         }
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isBlockLoaded(World world, int x, int z) {
         return isLoaded(world, x >> 4, z >> 4);
     }

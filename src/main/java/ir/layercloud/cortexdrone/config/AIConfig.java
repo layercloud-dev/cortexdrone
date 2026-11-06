@@ -10,10 +10,13 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Getter
 @Setter
 public class AIConfig {
+    private static final Logger LOG = Logger.getLogger("CortexDrone");
     private String apiUrl = envOrDefault("CORTEXDRONE_API_URL", "http://127.0.0.1:7002/v1/chat/completions");
     private String model = envOrDefault("CORTEXDRONE_MODEL", "deepseek/deepseek-v4.1-flash");
     private String apiKey = envOrDefault("CORTEXDRONE_API_KEY", "");
@@ -74,7 +77,7 @@ public class AIConfig {
             }
             return loaded;
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.log(Level.WARNING, "Failed to load AI config", e);
             return new AIConfig();
         }
     }
@@ -113,7 +116,7 @@ public class AIConfig {
                 gson.toJson(this, writer);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.log(Level.WARNING, "Failed to save AI config", e);
         }
     }
 }

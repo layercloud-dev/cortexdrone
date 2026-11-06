@@ -33,7 +33,7 @@ public final class InteractionRpcTranslator {
                 entityId = RpcArgs.integer(args, "entityId",
                         RpcArgs.integer(args, "attack", -1));
             } catch (RuntimeException ignored) {
-                entityId = -1;
+                // Malformed entity id: keep the -1 default.
             }
         }
         return InteractionRequest.builder()
@@ -44,7 +44,7 @@ public final class InteractionRpcTranslator {
                 .side(RpcArgs.integer(args, "side", 1))
                 .item(RpcArgs.string(args, "item", null))
                 .slot(RpcArgs.has(args, "slot")
-                        ? Integer.valueOf(args.get("slot").getAsInt()) : null)
+                        ? args.get("slot").getAsInt() : null)
                 .entityId(entityId)
                 .entityRequested(entityRequested)
                 .build();

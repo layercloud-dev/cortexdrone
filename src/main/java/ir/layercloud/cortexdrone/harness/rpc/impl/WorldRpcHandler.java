@@ -8,6 +8,7 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.translate.RpcJson;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.StructureArchitect;
@@ -117,10 +118,7 @@ public class WorldRpcHandler implements RpcHandler {
                             String bName = air ? "Air" : (b != null ? ItemClassifier.getBlockDisplayName(b, meta) : "Air");
                             counts.put(bName, (counts.getOrDefault(bName, 0)) + 1);
                             if (blocksArr.size() < 2500) {
-                                JsonObject bo = new JsonObject();
-                                bo.addProperty("x", x);
-                                bo.addProperty("y", y);
-                                bo.addProperty("z", z);
+                                JsonObject bo = RpcJson.point(x, y, z);
                                 bo.addProperty("name", bName);
                                 String reg = (!air && b != null) ? Block.blockRegistry.getNameForObject(b) : "minecraft:air";
                                 bo.addProperty("registryName", reg != null ? reg : "minecraft:air");
@@ -199,7 +197,7 @@ public class WorldRpcHandler implements RpcHandler {
                         }
                     }
                 }
-                matched.sort((a, b) -> Integer.compare(a[4], b[4]));
+                matched.sort(Comparator.comparingInt(a -> a[4]));
                 JsonArray arr = new JsonArray();
                 int limit = Math.min(400, matched.size());
                 for (int i = 0; i < limit; i++) {
@@ -237,12 +235,11 @@ public class WorldRpcHandler implements RpcHandler {
                 String target = args.has("target") ? args.get("target").getAsString() : "jungle";
                 int maxR = args.has("maxRadius") ? Math.min(1500, Math.max(64, args.get("maxRadius").getAsInt())) : 1200;
                 double sx = player != null ? player.posX : d.posX;
-                double sy = player != null ? player.posY : d.posY;
                 double sz = player != null ? player.posZ : d.posZ;
                 if (!ChunkAccess.isBlockLoaded(world, sx, sz)) {
                     return chunkNotLoaded("find_distant");
                 }
-                List<int[]> found = this.worldScanner.findDistantResourceOrBiome(world, ctrl, sx, sy, sz, target, maxR);
+                List<int[]> found = this.worldScanner.findDistantResourceOrBiome(world, ctrl, sx, sz, target, maxR);
                 res.addProperty("found", !found.isEmpty());
                 res.addProperty("count", found.size());
                 JsonArray blocksArr = new JsonArray();

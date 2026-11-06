@@ -336,7 +336,7 @@ The `drone` object:
 Success:
 
 ```json
-{ "ok": true, ... }
+{ "ok": true }
 ```
 
 Failure:

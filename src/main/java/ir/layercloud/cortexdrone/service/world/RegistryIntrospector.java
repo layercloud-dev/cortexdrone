@@ -3,9 +3,7 @@ package ir.layercloud.cortexdrone.service.world;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.EnumCreatureType;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.ISidedInventory;
@@ -39,13 +37,10 @@ public final class RegistryIntrospector {
     private static final Map<Class<?>, Boolean> STORAGE_TILE_CLASS_CACHE = new ConcurrentHashMap<>();
 
     private static volatile Set<String> cachedUndergroundTokens = Collections.emptySet();
-    private static volatile Set<String> cachedCropTokens = Collections.emptySet();
     private static volatile int lastOreDictCount = -1;
 
     private static Method blockIsWoodMethod = null;
     private static Method blockIsLeavesMethod = null;
-    private static Method blockGetHarvestToolMethod = null;
-    private static Method entityIsCreatureTypeMethod = null;
 
     static {
         try {
@@ -54,14 +49,6 @@ public final class RegistryIntrospector {
         }
         try {
             blockIsLeavesMethod = Block.class.getMethod("isLeaves", IBlockAccess.class, int.class, int.class, int.class);
-        } catch (Throwable ignored) {
-        }
-        try {
-            blockGetHarvestToolMethod = Block.class.getMethod("getHarvestTool", int.class);
-        } catch (Throwable ignored) {
-        }
-        try {
-            entityIsCreatureTypeMethod = Entity.class.getMethod("isCreatureType", EnumCreatureType.class, boolean.class);
         } catch (Throwable ignored) {
         }
     }
@@ -91,12 +78,10 @@ public final class RegistryIntrospector {
         if (stack == null || stack.getItem() == null) return names;
         try {
             int[] ids = OreDictionary.getOreIDs(stack);
-            if (ids != null) {
-                for (int id : ids) {
-                    String name = OreDictionary.getOreName(id);
-                    if (name != null && !name.isEmpty() && !"Unknown".equalsIgnoreCase(name)) {
-                        names.add(name);
-                    }
+            for (int id : ids) {
+                String name = OreDictionary.getOreName(id);
+                if (name != null && !name.isEmpty() && !"Unknown".equalsIgnoreCase(name)) {
+                    names.add(name);
                 }
             }
         } catch (Throwable ignored) {
@@ -211,7 +196,7 @@ public final class RegistryIntrospector {
             List<String> tokens = LexicalItemMatcher.tokenize((reg != null ? reg : "") + " " + (unloc != null ? unloc : ""));
             result = tokens.contains("log") || tokens.contains("bark") || tokens.contains("wood") || tokens.contains("stem") || tokens.contains("trunk");
         }
-        LOG_BLOCK_CACHE.put(key, Boolean.valueOf(result));
+        LOG_BLOCK_CACHE.put(key, result);
         return result;
     }
 
@@ -235,13 +220,13 @@ public final class RegistryIntrospector {
         if (!result && hasOreDictPrefix(b, 0, "treeLeaves", "leaves")) {
             result = true;
         }
-        LEAF_BLOCK_CACHE.put(key, Boolean.valueOf(result));
+        LEAF_BLOCK_CACHE.put(key, result);
         return result;
     }
 
     public static boolean isCropOrPlantBlock(Block b) {
         if (b == null || b == Blocks.air) return false;
-        if (b instanceof BlockCrops || b instanceof BlockReed || b instanceof IPlantable) return true;
+        if (b instanceof IPlantable) return true;
         return hasOreDictPrefix(b, 0, "crop", "reed", "seed", "listAllveggie", "listAllgrain");
     }
 
@@ -278,14 +263,14 @@ public final class RegistryIntrospector {
             String unloc = b.getUnlocalizedName();
             String disp = ItemClassifier.getBlockDisplayName(b, meta);
             List<String> tokens = LexicalItemMatcher.tokenize(
-                    (reg != null ? reg : "") + " " + (unloc != null ? unloc : "") + " " + (disp != null ? disp : "")
+                    (reg != null ? reg : "") + " " + (unloc != null ? unloc : "") + " " + disp
             );
             if (tokens.contains("ore") || tokens.contains("cluster") || tokens.contains("resource")) {
                 res = true;
             }
         }
 
-        ORE_BLOCK_CACHE.put(key, Boolean.valueOf(res));
+        ORE_BLOCK_CACHE.put(key, res);
         return res;
     }
 
@@ -296,7 +281,7 @@ public final class RegistryIntrospector {
     public static Set<String> getUndergroundResourceTokens() {
         try {
             String[] oreNames = OreDictionary.getOreNames();
-            int len = oreNames != null ? oreNames.length : 0;
+            int len = oreNames.length;
             if (len != lastOreDictCount || cachedUndergroundTokens.isEmpty()) {
                 Set<String> tokens = new HashSet<>();
                 tokens.add("ore");
@@ -311,20 +296,18 @@ public final class RegistryIntrospector {
                 tokens.add("lava");
                 tokens.add("oil");
                 String[] prefixes = new String[]{"ore", "denseore", "poorore", "cluster", "gem", "crystal", "ingot", "dust", "nugget", "billet", "raw"};
-                if (oreNames != null) {
-                    for (String name : oreNames) {
-                        if (name == null) continue;
-                        for (String p : prefixes) {
-                            if (name.startsWith(p) && name.length() > p.length() && Character.isUpperCase(name.charAt(p.length()))) {
-                                String stem = name.substring(p.length());
-                                List<String> words = LexicalItemMatcher.tokenize(stem);
-                                for (String w : words) {
-                                    if (w.length() >= 3 && !w.equals("wood") && !w.equals("glass") && !w.equals("brick") && !w.equals("stone")) {
-                                        tokens.add(w);
-                                    }
+                for (String name : oreNames) {
+                    if (name == null) continue;
+                    for (String p : prefixes) {
+                        if (name.startsWith(p) && name.length() > p.length() && Character.isUpperCase(name.charAt(p.length()))) {
+                            String stem = name.substring(p.length());
+                            List<String> words = LexicalItemMatcher.tokenize(stem);
+                            for (String w : words) {
+                                if (w.length() >= 3 && !w.equals("wood") && !w.equals("glass") && !w.equals("brick") && !w.equals("stone")) {
+                                    tokens.add(w);
                                 }
-                                break;
                             }
+                            break;
                         }
                     }
                 }
@@ -347,53 +330,6 @@ public final class RegistryIntrospector {
             }
         }
         return false;
-    }
-
-    /**
-     * Dynamically builds and caches the set of all crop/plant/seed tokens registered in
-     * Forge's OreDictionary and Block registry (IPlantable / BlockCrops / BlockReed).
-     */
-    public static Set<String> getCropAndPlantTokens() {
-        if (!cachedCropTokens.isEmpty()) return cachedCropTokens;
-        Set<String> tokens = new HashSet<>();
-        tokens.add("crop");
-        tokens.add("crops");
-        tokens.add("farm");
-        tokens.add("reed");
-        tokens.add("reeds");
-        tokens.add("cane");
-        tokens.add("canes");
-        tokens.add("sugarcane");
-        try {
-            for (Object bObj : Block.blockRegistry) {
-                if (!(bObj instanceof Block)) continue;
-                Block b = (Block) bObj;
-                if (b instanceof BlockCrops || b instanceof BlockReed) {
-                    String reg = Block.blockRegistry.getNameForObject(b);
-                    String disp = ItemClassifier.getBlockDisplayName(b, 0);
-                    for (String w : LexicalItemMatcher.tokenize((reg != null ? reg : "") + " " + (disp != null ? disp : ""))) {
-                        if (w.length() >= 3 && !w.equals("minecraft") && !w.equals("block")) {
-                            tokens.add(w);
-                        }
-                    }
-                }
-            }
-            String[] oreNames = OreDictionary.getOreNames();
-            if (oreNames != null) {
-                for (String name : oreNames) {
-                    if (name != null && (name.startsWith("crop") || name.startsWith("seed") || name.startsWith("reed"))) {
-                        for (String w : LexicalItemMatcher.tokenize(name)) {
-                            if (w.length() >= 3 && !w.equals("crop") && !w.equals("seed")) {
-                                tokens.add(w);
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        cachedCropTokens = tokens;
-        return cachedCropTokens;
     }
 
     // ==================== Dynamic Storage Container vs. Processing Machine Detection ====================
@@ -467,15 +403,11 @@ public final class RegistryIntrospector {
         }
 
         boolean result = explicitContainer || totalSlots >= 9;
-        STORAGE_TILE_CLASS_CACHE.put(cls, Boolean.valueOf(result));
+        STORAGE_TILE_CLASS_CACHE.put(cls, result);
         return result;
     }
 
     // ==================== Delegated Entity & Biome Classification ====================
-
-    public static boolean isCreatureOfType(EntityLivingBase el, EnumCreatureType type) {
-        return EntityAndBiomeClassifier.isCreatureOfType(el, type);
-    }
 
     public static boolean isHostileEntity(EntityLivingBase el) {
         return EntityAndBiomeClassifier.isHostileEntity(el);
@@ -493,40 +425,7 @@ public final class RegistryIntrospector {
         return EntityAndBiomeClassifier.matchesBiome(biome, query);
     }
 
-    public static Set<String> getRegisteredBiomeTokens() {
-        return EntityAndBiomeClassifier.getRegisteredBiomeTokens();
-    }
-
     public static boolean hasBiomeAffinity(String query) {
         return EntityAndBiomeClassifier.hasBiomeAffinity(query);
-    }
-
-    // ==================== Dynamic Item Category Classification ====================
-
-    public static int getItemCategoryOrder(ItemStack st) {
-        if (st == null || st.getItem() == null) return 9;
-        Item item = st.getItem();
-        if (item instanceof ItemFood || item instanceof IPlantable || hasOreDictPrefix(st, "crop", "seed", "listAllfood", "listAllmeat")) {
-            return 3; // Food, Crops & Seeds
-        }
-        if (hasOreDictPrefix(st, "ore", "raw", "cluster", "gem", "crystal", "dust", "crushed", "coal", "lignite")) {
-            return 0; // Ores, Gems & Raw Materials
-        }
-        if (hasOreDictPrefix(st, "ingot", "plate", "wire", "nugget", "billet", "block", "gear", "rod")) {
-            return 1; // Ingots, Plates, Wires & Metal Blocks
-        }
-        if (item instanceof ItemTool || item instanceof ItemSword || item instanceof ItemArmor
-                || item instanceof ItemBow || item instanceof ItemHoe || item instanceof ItemShears
-                || !item.isDamageable() && st.getMaxStackSize() == 1) {
-            return 2; // Tools, Weapons, Armor & Non-Stackable Equipment
-        }
-        if (item instanceof ItemBlock) {
-            Block b = Block.getBlockFromItem(item);
-            if (isOreBlock(b, st.getItemDamage())) {
-                return 0;
-            }
-            return 4; // Building Blocks
-        }
-        return 5; // Misc Materials & Components
     }
 }

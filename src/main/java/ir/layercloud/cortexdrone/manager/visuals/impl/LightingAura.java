@@ -15,7 +15,6 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -68,7 +67,7 @@ public class LightingAura {
             ctrl.lightCooldown = 0;
             ctrl.lightAnchor = Long.MIN_VALUE;
             if (config.getColor() != null && (config.getColor() & 0xFFFFFF) != 0xFFFFFF) {
-                ctrl.customLedColor = Integer.valueOf(config.getColor() & 0xFFFFFF);
+                ctrl.customLedColor = config.getColor() & 0xFFFFFF;
                 ctrl.ledEffect = "NONE";
                 ctrl.drone.lightColor_$eq(config.getColor() & 0xFFFFFF);
             }
@@ -170,9 +169,9 @@ public class LightingAura {
                     long key = pack(x, y, z);
                     Integer original = previous.remove(key);
                     int before = original != null
-                            ? original.intValue()
+                            ? original
                             : world.getSavedLightValue(EnumSkyBlock.Block, x, y, z);
-                    ctrl.lightCells.put(key, Integer.valueOf(before));
+                    ctrl.lightCells.put(key, before);
                     int want = Math.max(1, level - (int) Math.sqrt(d2));
                     if (before < want) {
                         world.setLightValue(EnumSkyBlock.Block, x, y, z, want);
@@ -183,8 +182,7 @@ public class LightingAura {
         }
 
         // Anything left in `previous` fell out of the aura: put the world back.
-        for (Iterator<Map.Entry<Long, Integer>> it = previous.entrySet().iterator(); it.hasNext(); ) {
-            Map.Entry<Long, Integer> e = it.next();
+        for (Map.Entry<Long, Integer> e : previous.entrySet()) {
             long key = e.getKey();
             int x = unpackX(key);
             int y = unpackY(key);
@@ -234,12 +232,12 @@ public class LightingAura {
     private static void addChunkMask(Map<Long, Integer> chunkMasks, int x, int y, int z) {
         long key = chunkKey(x, z);
         int bit = 1 << (y >> 4);
-        chunkMasks.compute(Long.valueOf(key), (k, old) -> Integer.valueOf((old == null ? 0 : old) | bit));
+        chunkMasks.compute(key, (k, old) -> (old == null ? 0 : old) | bit);
     }
 
 
     private static int clamp(int v, int lo, int hi) {
-        return v < lo ? lo : (v > hi ? hi : v);
+        return Math.max(lo, Math.min(hi, v));
     }
 
     private static long pack(int x, int y, int z) {
@@ -247,7 +245,7 @@ public class LightingAura {
     }
 
     private static int unpackX(long k) {
-        int x = (int) (k >> 38);
+        int x = (int) ((k >> 38) & 0x3FFFFFF);
         if (x >= 0x2000000) x -= 0x4000000;
         return x;
     }

@@ -59,7 +59,7 @@ public class WorldScanner {
         return PlayerTargetScanner.findPlayerSupportBlock(world, player);
     }
 
-    public List<int[]> findDistantResourceOrBiome(World world, DroneController ctrl, double startX, double startY, double startZ, String target, int maxRadius) {
+    public List<int[]> findDistantResourceOrBiome(World world, DroneController ctrl, double startX, double startZ, String target, int maxRadius) {
         List<int[]> found = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
         String f = target.toLowerCase();

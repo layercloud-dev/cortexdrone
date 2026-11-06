@@ -64,8 +64,7 @@ final class MachineRecipeReflection {
                             if (ordList.isEmpty()) continue;
                             String handlerName = handler.getClass().getSimpleName();
                             String machine = MachineTileInspector.normalizeMachineAlias(handlerName);
-                            if (machine == null || machine.isEmpty()) machine = handlerName;
-                            int addedBefore = out.size();
+                            if (machine.isEmpty()) machine = handlerName;
                             for (Object genRecipe : ordList) {
                                 MachineRecipeService.NormalizedRecipe r = normalizeGeneric(genRecipe, machine);
                                 if (r != null) out.add(r);
@@ -73,7 +72,6 @@ final class MachineRecipeReflection {
                             // Guard: if the first recipe normalized to nothing, the
                             // subclass uses a custom shape (e.g. Mixer/Pedestal/Cyclotron
                             // which do not extend GenericRecipe); JSON files cover those.
-                            if (out.size() == addedBefore) continue;
                         } catch (Throwable ignored) {
                         }
                     }
@@ -113,7 +111,6 @@ final class MachineRecipeReflection {
         try {
             MachineRecipeService.NormalizedRecipe r = new MachineRecipeService.NormalizedRecipe();
             r.machine = "anvil";
-            r.file = "reflection";
             r.tierLower = recipe.getClass().getField("tierLower").getInt(recipe);
             r.tierUpper = recipe.getClass().getField("tierUpper").getInt(recipe);
             Object ov = recipe.getClass().getField("overlay").get(recipe);
@@ -153,10 +150,8 @@ final class MachineRecipeReflection {
             boolean hot = cls.contains("Hot");
             MachineRecipeService.NormalizedRecipe r = new MachineRecipeService.NormalizedRecipe();
             r.machine = "anvil";
-            r.file = "reflection";
             java.lang.reflect.Field tierF = recipe.getClass().getField("tier");
-            int tier = tierF.getInt(recipe);
-            r.tierLower = tier;
+            r.tierLower = tierF.getInt(recipe);
             r.tierUpper = -1;
             if (hot) {
                 r.overlay = "SMITHING_HOT";
@@ -209,7 +204,6 @@ final class MachineRecipeReflection {
         try {
             MachineRecipeService.NormalizedRecipe r = new MachineRecipeService.NormalizedRecipe();
             r.machine = machine;
-            r.file = "reflection";
             java.lang.reflect.Field nameF = genRecipe.getClass().getDeclaredField("name");
             nameF.setAccessible(true);
             r.name = (String) nameF.get(genRecipe);
@@ -362,7 +356,7 @@ final class MachineRecipeReflection {
             Object type = fs.getClass().getField("type").get(fs);
             int fill = fs.getClass().getField("fill").getInt(fs);
             JsonObject o = new JsonObject();
-            String typeName = "";
+            String typeName;
             try {
                 typeName = (String) type.getClass().getMethod("getName").invoke(type);
             } catch (Throwable ignored) {

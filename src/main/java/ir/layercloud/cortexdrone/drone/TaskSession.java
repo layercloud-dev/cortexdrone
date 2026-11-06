@@ -17,7 +17,6 @@ public final class TaskSession {
     private String prompt = "";
     private String summary = "";
     private long startedAtMs;
-    private long lastUpdateMs;
     private final List<String> notes = new ArrayList<>();
     private static final int MAX_NOTES = 8;
 
@@ -27,7 +26,6 @@ public final class TaskSession {
         this.prompt = prompt != null ? prompt.trim() : "";
         this.summary = this.prompt;
         this.startedAtMs = System.currentTimeMillis();
-        this.lastUpdateMs = this.startedAtMs;
         this.notes.clear();
     }
 
@@ -43,17 +41,14 @@ public final class TaskSession {
         while (this.notes.size() > MAX_NOTES) {
             this.notes.remove(0);
         }
-        this.lastUpdateMs = System.currentTimeMillis();
     }
 
     public synchronized void complete() {
         this.active = false;
-        this.lastUpdateMs = System.currentTimeMillis();
     }
 
     public synchronized void cancel() {
         this.active = false;
-        this.lastUpdateMs = System.currentTimeMillis();
         this.notes.clear();
     }
 

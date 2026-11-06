@@ -12,9 +12,12 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @RequiredArgsConstructor
 public class CodeModeRuntime {
+    private static final Logger LOG = Logger.getLogger("CortexDrone");
     private static final String HARNESS_TEMPLATE = loadSdkBundle();
 
     private final DroneLogger logger;
@@ -47,17 +50,13 @@ public class CodeModeRuntime {
             }
             return sb.toString();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.log(Level.WARNING, "Failed to load SDK resource " + resourcePath, e);
             return "";
         }
     }
 
     public JsonObject executeJavaScript(DroneController ctrl, EntityPlayerMP player, String jsCode) {
         return executeJavaScript(ctrl, player, jsCode, 0, true);
-    }
-
-    public JsonObject executeJavaScript(DroneController ctrl, EntityPlayerMP player, String jsCode, int loopId) {
-        return executeJavaScript(ctrl, player, jsCode, loopId, true);
     }
 
     public JsonObject executeJavaScript(DroneController ctrl, EntityPlayerMP player, String jsCode, int loopId, boolean isFinalTurn) {
@@ -154,6 +153,7 @@ public class CodeModeRuntime {
 
             long elapsed = System.currentTimeMillis() - t0;
             String rawOut = sb.toString().trim();
+            String rawSnippet = rawOut.substring(0, Math.min(400, rawOut.length()));
             if (superseded) {
                 out.addProperty("ok", true);
                 out.addProperty("superseded", true);
@@ -163,7 +163,7 @@ public class CodeModeRuntime {
                 out.addProperty("timeout", true);
                 out.addProperty("error", "JS Code Mode timed out after " + elapsed + "ms (loopId=" + loopId + ")");
                 out.addProperty("rawOutput", rawOut);
-                this.logger.log("CODEMODE", ctrl, "JS Code Mode TIMEOUT (" + elapsed + "ms)", "loopId=" + loopId + " raw=" + rawOut.substring(0, Math.min(400, rawOut.length())));
+                this.logger.log("CODEMODE", ctrl, "JS Code Mode TIMEOUT (" + elapsed + "ms)", "loopId=" + loopId + " raw=" + rawSnippet);
             } else {
                 int fb = rawOut.indexOf('{');
                 int lb = rawOut.lastIndexOf('}');
@@ -183,7 +183,7 @@ public class CodeModeRuntime {
                         out.addProperty("ok", false);
                         out.addProperty("error", "JS output parse failed: " + parseEx);
                         out.addProperty("rawOutput", rawOut);
-                        this.logger.log("CODEMODE", ctrl, "JS Code Mode OUTPUT PARSE ERROR (" + elapsed + "ms)", parseEx + " raw=" + rawOut.substring(0, Math.min(400, rawOut.length())));
+                        this.logger.log("CODEMODE", ctrl, "JS Code Mode OUTPUT PARSE ERROR (" + elapsed + "ms)", parseEx + " raw=" + rawSnippet);
                     }
                 } else {
                     out.addProperty("ok", false);
@@ -205,7 +205,9 @@ public class CodeModeRuntime {
         } finally {
             ctrl.activeScriptCount.decrementAndGet();
             try {
-                if (scriptFile.exists()) scriptFile.delete();
+                if (scriptFile.exists() && !scriptFile.delete()) {
+                    LOG.warning("Could not delete temporary script " + scriptFile.getAbsolutePath());
+                }
             } catch (Throwable ignored) {
             }
         }

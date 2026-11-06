@@ -1,6 +1,5 @@
 package ir.layercloud.cortexdrone.harness.agent;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
@@ -8,6 +7,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import net.minecraft.entity.player.EntityPlayerMP;
 
+import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -75,9 +75,9 @@ final class AgentHeartbeat {
         this.logger.log("HEARTBEAT", this.ctrl, "Context compacted for loop " + this.loopId, "turn=" + this.lastTurn);
     }
 
-    void markEmptyResponse(String detail) {
+    void markEmptyResponse() {
         this.emptyResponses++;
-        this.lastReason = detail == null ? "empty response" : detail;
+        this.lastReason = "backend failure";
         this.logger.log("HEARTBEAT", this.ctrl, "Empty/failed response in loop " + this.loopId,
                 "count=" + this.emptyResponses + " detail=" + LoopTracer.snippet(this.lastReason, 200));
     }
@@ -85,8 +85,8 @@ final class AgentHeartbeat {
     /**
      * @return true when the loop should retry instead of reporting a backend failure.
      */
-    boolean retryAfterBackendFailure(JsonArray messages, int turn) {
-        markEmptyResponse("backend failure");
+    boolean retryAfterBackendFailure(int turn) {
+        markEmptyResponse();
         if (this.emptyResponses > 3) return false;
         this.logger.log("HEARTBEAT", this.ctrl, "Retrying loop " + this.loopId + " after backend failure",
                 "attempt=" + this.emptyResponses + " turn=" + turn);
@@ -167,6 +167,12 @@ final class AgentHeartbeat {
         this.logger.log("HEARTBEAT", this.ctrl, "Scheduling resurrection of loop " + this.loopId,
                 "active=" + active + " hadProgress=" + this.hadProgress + " deliveryPending=" + deliveryPending
                         + " emptyResponses=" + this.emptyResponses);
+        Thread t = getThread(expectedGeneration, resumePrompt);
+        t.start();
+    }
+
+    @Nonnull
+    private Thread getThread(int expectedGeneration, String resumePrompt) {
         Thread t = new Thread(() -> {
             try {
                 Thread.sleep(RESURRECT_DELAY_MS);
@@ -184,7 +190,7 @@ final class AgentHeartbeat {
             }
         }, "CortexDrone-Heartbeat-" + this.ctrl.id);
         t.setDaemon(true);
-        t.start();
+        return t;
     }
 
     private String buildResumePrompt() {
@@ -264,12 +270,12 @@ final class AgentHeartbeat {
 
     private boolean takeContinuationBudgetForDrone() {
         long now = System.currentTimeMillis();
-        long[] state = CONTINUATIONS.get(Integer.valueOf(this.ctrl.id));
-        if (state == null || now - state[1] > CONTINUATION_WINDOW_MS) {
-            state = new long[]{0L, now};
-            CONTINUATIONS.put(Integer.valueOf(this.ctrl.id), state);
-        }
-        synchronized (state) {
+        synchronized (CONTINUATIONS) {
+            long[] state = CONTINUATIONS.get(this.ctrl.id);
+            if (state == null || now - state[1] > CONTINUATION_WINDOW_MS) {
+                state = new long[]{0L, now};
+                CONTINUATIONS.put(this.ctrl.id, state);
+            }
             if (state[0] >= MAX_CONTINUATIONS) return false;
             state[0]++;
             return true;
@@ -277,6 +283,6 @@ final class AgentHeartbeat {
     }
 
     private static void resetContinuations(int ctrlId) {
-        CONTINUATIONS.remove(Integer.valueOf(ctrlId));
+        CONTINUATIONS.remove(ctrlId);
     }
 }

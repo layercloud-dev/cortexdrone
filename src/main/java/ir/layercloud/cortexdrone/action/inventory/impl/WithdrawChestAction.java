@@ -31,7 +31,7 @@ public final class WithdrawChestAction implements Action<InventoryContext> {
         EntityPlayerMP player = context.player();
         String filter = request.getFilter() != null ? request.getFilter() : "any";
         int count = request.getCount() > 0 ? request.getCount() : 64;
-        int moved = 0;
+        int moved;
 
         if (request.isHasSource()) {
             TileEntity tile = world.getTileEntity(

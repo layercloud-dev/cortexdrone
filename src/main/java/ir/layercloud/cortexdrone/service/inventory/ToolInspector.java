@@ -19,7 +19,7 @@ public final class ToolInspector {
     public static int getBestFortuneLevel(IInventory inv) {
         if (inv == null) return 0;
         int best = 0;
-        int fortuneId = Enchantment.fortune != null ? Enchantment.fortune.effectId : 35;
+        int fortuneId = Enchantment.fortune.effectId;
         for (int i = 0; i < inv.getSizeInventory(); i++) {
             ItemStack st = inv.getStackInSlot(i);
             if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
@@ -57,7 +57,7 @@ public final class ToolInspector {
     public static int getFireAspectSeconds(IInventory inv) {
         if (inv == null) return 0;
         int best = 0;
-        int fireId = Enchantment.fireAspect != null ? Enchantment.fireAspect.effectId : 20;
+        int fireId = Enchantment.fireAspect.effectId;
         for (int i = 0; i < inv.getSizeInventory(); i++) {
             ItemStack st = inv.getStackInSlot(i);
             if (st != null && st.stackSize > 0) {

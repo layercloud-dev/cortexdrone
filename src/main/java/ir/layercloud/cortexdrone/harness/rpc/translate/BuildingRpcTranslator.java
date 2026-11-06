@@ -47,11 +47,10 @@ public final class BuildingRpcTranslator {
         response.add("target", RpcJson.point(result.getX(), result.getY(), result.getZ()));
         if ("break_block".equals(operation)) {
             response.addProperty("broken", result.isBroken());
-            if (result.getBlock() != null) response.addProperty("block", result.getBlock());
         } else {
             response.addProperty("placed", result.isPlaced());
-            if (result.getBlock() != null) response.addProperty("block", result.getBlock());
         }
+        if (result.getBlock() != null) response.addProperty("block", result.getBlock());
         return response;
     }
 }

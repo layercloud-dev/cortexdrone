@@ -88,7 +88,7 @@ public class ChunkCacheContext {
         else if (ItemClassifier.isLiquidBlock(b)) pass = true;
         else if (b.getBlocksMovement(this.world, x, y, z)) pass = true;
         else pass = b.getCollisionBoundingBoxFromPool(this.world, x, y, z) == null;
-        if (this.passableCache.size() < 32768) this.passableCache.put(key, Boolean.valueOf(pass));
+        if (this.passableCache.size() < 32768) this.passableCache.put(key, pass);
         return pass;
     }
 }

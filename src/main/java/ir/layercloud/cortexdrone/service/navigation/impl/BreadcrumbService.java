@@ -117,7 +117,7 @@ public final class BreadcrumbService {
             }
             List<Breadcrumb> waypoints = waypointsTo(history, index);
             if (waypoints.isEmpty()) continue;
-            double trailCost = pathLength(world, currentX, currentY, currentZ, waypoints);
+            double trailCost = pathLength(currentX, currentY, currentZ, waypoints);
             double pointToTarget = distance(point.getX() + 0.5, point.getY() + 0.65,
                     point.getZ() + 0.5, targetX, targetY, targetZ);
             double progress = currentToTarget - pointToTarget;
@@ -166,7 +166,7 @@ public final class BreadcrumbService {
         return waypoints;
     }
 
-    private static double pathLength(World world, double sx, double sy, double sz,
+    private static double pathLength(double sx, double sy, double sz,
                                      List<Breadcrumb> waypoints) {
         double length = 0.0;
         double px = sx;

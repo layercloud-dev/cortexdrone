@@ -41,13 +41,13 @@ public final class ActionRpcTranslator {
         return RpcJson.error("No action registered for: " + operation);
     }
 
-    public JsonObject status(DroneController controller, EntityPlayerMP player, JsonObject args) {
-        return this.visuals.status(controller, player, args);
+    public JsonObject status(DroneController controller, JsonObject args) {
+        return this.visuals.status(controller, args);
     }
 
-    public JsonObject skills(DroneController controller, EntityPlayerMP player,
+    public JsonObject skills(DroneController controller,
                              String operation, JsonObject args) {
-        return this.visuals.skills(controller, player, operation, args);
+        return this.visuals.skills(controller, operation, args);
     }
 
 

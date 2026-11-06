@@ -6,6 +6,7 @@ import net.minecraft.command.ICommand;
 /**
  * Base for project commands. Concrete commands live under {@code command.impl}.
  */
+@SuppressWarnings("unused")
 public abstract class BaseCommand extends CommandBase {
     @Override
     public int compareTo(Object other) {

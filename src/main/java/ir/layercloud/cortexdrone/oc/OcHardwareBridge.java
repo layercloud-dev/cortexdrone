@@ -7,8 +7,6 @@ import scala.Enumeration;
 import scala.collection.mutable.Stack;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 /**
@@ -121,15 +119,20 @@ public class OcHardwareBridge {
                         (proxy, method, args) -> {
                             String name = method.getName();
                             switch (name) {
+                                case "equals":
+                                    return proxy == args[0];
+                                case "hashCode":
+                                    return System.identityHashCode(proxy);
+                                case "toString":
+                                    return "CortexDroneComponentProxy";
                                 case "changeBuffer":
-                                    return Double.valueOf(0.0);
+                                    return 0.0;
                                 case "tryChangeBuffer":
-                                    return Boolean.TRUE;
-                                case "address":
-                                    return "00000000-0000-0000-0000-000000000000";
                                 case "canBeSeenFrom":
                                 case "canConnect":
-                                    return Boolean.TRUE;
+                                    return true;
+                                case "address":
+                                    return "00000000-0000-0000-0000-000000000000";
                             }
                             return null;
                         }

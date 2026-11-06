@@ -1,6 +1,5 @@
 package ir.layercloud.cortexdrone.manager.building.impl;
 
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
@@ -33,13 +32,11 @@ import java.util.List;
  * dig planner and no progress state — the model decides which blocks to touch.
  */
 public final class BuildingManager extends ActionManager<BlockContext, BlockRequest, BlockResult> {
-    private final AIDroneManager manager;
     private final DroneLogger logger;
     private Method blockGetDropsMethod = null;
 
-    public BuildingManager(AIDroneManager manager, DroneLogger logger) {
+    public BuildingManager(DroneLogger logger) {
         super("block", "break_block", "place_block");
-        this.manager = manager;
         this.logger = logger;
         try {
             this.blockGetDropsMethod = Block.class.getMethod(
@@ -97,16 +94,14 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         if (!world.setBlockToAir(x, y, z)) return null;
 
         IInventory inv = drone.mainInventory();
-        if (drops != null) {
-            for (ItemStack drop : drops) {
-                if (drop == null || drop.stackSize <= 0) continue;
-                ItemStack copy = drop.copy();
-                InventoryService.insertIntoInventory(inv, copy);
-                if (copy.stackSize > 0) {
-                    EntityItem leftover = new EntityItem(world, drone.posX, drone.posY, drone.posZ, copy);
-                    leftover.delayBeforeCanPickup = 0;
-                    world.spawnEntityInWorld(leftover);
-                }
+        for (ItemStack drop : drops) {
+            if (drop == null || drop.stackSize <= 0) continue;
+            ItemStack copy = drop.copy();
+            InventoryService.insertIntoInventory(inv, copy);
+            if (copy.stackSize > 0) {
+                EntityItem leftover = new EntityItem(world, drone.posX, drone.posY, drone.posZ, copy);
+                leftover.delayBeforeCanPickup = 0;
+                world.spawnEntityInWorld(leftover);
             }
         }
         this.logger.log("MINE", controller,

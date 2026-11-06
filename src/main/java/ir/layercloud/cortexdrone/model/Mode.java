@@ -4,7 +4,6 @@ public enum Mode {
     FOLLOW,
     STAY,
     GOTO,
-    HUNT,
     MINE,
     DEPOSIT,
     DROP

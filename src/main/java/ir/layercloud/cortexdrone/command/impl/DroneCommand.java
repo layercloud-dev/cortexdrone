@@ -2,15 +2,13 @@ package ir.layercloud.cortexdrone.command.impl;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.command.BaseCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DebugEntry;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +28,7 @@ public class DroneCommand extends BaseCommand {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/" + this.cmdName + " <spawn|link|despawn|list|status|setbase|take|give|torch|drop|chest|debug|config|js|mine|farm|cook|smelt|sort|scoop|plug|replace...>";
+        return "/" + this.cmdName + " <spawn|link|despawn|list|status|setbase|debug|config|js|help>";
     }
 
     @Override
@@ -49,7 +47,7 @@ public class DroneCommand extends BaseCommand {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
                 "spawn", "link", "despawn", "list", "status", "setbase",
-                "take", "give", "torch", "drop", "chest", "scan", "js", "debug", "config", "help");
+                "debug", "config", "js", "help");
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
@@ -58,24 +56,6 @@ public class DroneCommand extends BaseCommand {
             }
             if (sub.equals("config")) {
                 return getListOfStringsMatchingLastWord(args, "url", "model", "key");
-            }
-            if (sub.equals("scoop")) {
-                Set<String> fluidNames = net.minecraftforge.fluids.FluidRegistry.getRegisteredFluids().keySet();
-                return getListOfStringsMatchingLastWord(args, fluidNames.toArray(new String[0]));
-            }
-            if (sub.equals("replace")) {
-                return getListOfStringsMatchingLastWord(args, "floor", "walls", "ceiling", "north_wall", "south_wall", "west_wall", "east_wall", "all");
-            }
-            if (sub.equals("mine")) {
-                Set<String> oreTokens = ir.layercloud.cortexdrone.world.RegistryIntrospector.getUndergroundResourceTokens();
-                return getListOfStringsMatchingLastWord(args, oreTokens.toArray(new String[0]));
-            }
-            if (sub.equals("farm")) {
-                Set<String> cropTokens = ir.layercloud.cortexdrone.world.RegistryIntrospector.getCropAndPlantTokens();
-                return getListOfStringsMatchingLastWord(args, cropTokens.toArray(new String[0]));
-            }
-            if (sub.equals("cook") || sub.equals("smelt")) {
-                return getListOfStringsMatchingLastWord(args, "meat", "ores", "food", "all");
             }
         }
         return null;
@@ -96,9 +76,8 @@ public class DroneCommand extends BaseCommand {
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v1.4.0 (Master-Tool Harness) Commands ===");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone setbase | take | give | drop | chest | torch | js <code>");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone setbase | js <code>");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear] | config");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone mine|farm|cook|smelt|sort|scoop|plug|replace ..." + EnumChatFormatting.GRAY + " (composed by the AI)");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
             return;
         }
@@ -214,7 +193,7 @@ public class DroneCommand extends BaseCommand {
         }
 
         DroneController ctrl = this.manager.getPlayerDrone(player.getCommandSenderName());
-        if (sub.equals("despawn") || sub.equals("remove")) {
+        if (sub.equals("despawn")) {
             if (args.length >= 2) {
                 String nameArg = args[1];
                 for (DroneController c : this.manager.getControllersById().values()) {
@@ -242,7 +221,7 @@ public class DroneCommand extends BaseCommand {
             }
         }
 
-        if (sub.equals("status") || sub.equals("info") || sub.equals("inv") || sub.equals("inventory")) {
+        if (sub.equals("status")) {
             this.manager.sendDroneStatus(player, ctrl);
             return;
         }
@@ -265,14 +244,7 @@ public class DroneCommand extends BaseCommand {
             return;
         }
 
-        // All composite physical commands are natural-language tasks now. The
-        // agent composes them from the master primitives; no pre-made tool path.
-        if (isMasterComposedCommand(sub)) {
-            this.manager.handleNaturalInstruction(player, ctrl, joinArgs(args, 0));
-            return;
-        }
-
-        if (sub.equals("js") || sub.equals("eval") || sub.equals("code")) {
+        if (sub.equals("js")) {
             final String code = args.length >= 2 ? joinArgs(args, 1) : "return await drone.state();";
             final DroneController fCtrl = ctrl;
             final EntityPlayerMP fPlayer = player;
@@ -291,81 +263,8 @@ public class DroneCommand extends BaseCommand {
             return;
         }
 
-        if (sub.equals("take")) {
-            String filter = args.length >= 2 ? joinArgs(args, 1) : "held";
-            int taken = this.manager.getInventoryService().takeFromPlayerInventory(ctrl, player, ItemClassifier.resolveHeldFilter(player, filter), 512);
-            this.manager.droneSay(player, ctrl, "Took " + taken + " item(s) matching '" + ItemClassifier.resolveHeldFilter(player, filter) + "' from your inventory.");
-            return;
-        }
-
-        if (sub.equals("give")) {
-            String filter = args.length >= 2 ? joinArgs(args, 1) : "all";
-            int given = this.manager.getInventoryService().giveToPlayerInventory(ctrl, player, filter, 512);
-            this.manager.droneSay(player, ctrl, "Gave " + given + " item(s) matching '" + filter + "' to your inventory.");
-            return;
-        }
-
-        if (sub.equals("torch") || sub.equals("light")) {
-            JsonObject lightArgs = new JsonObject();
-            if (args.length >= 2) {
-                lightArgs.addProperty("color", joinArgs(args, 1));
-            } else {
-                lightArgs.addProperty("toggle", true);
-            }
-            JsonObject r = this.manager.getActionRpcTranslator().configureLight(ctrl, lightArgs);
-            this.manager.saveConfig();
-            boolean on = r.has("active") && r.get("active").getAsBoolean();
-            this.manager.droneSay(player, ctrl, "Torch-free light aura " + (on ? "ENABLED" : "DISABLED")
-                + (on ? " (radius " + ctrl.lightRadius + ", level " + ctrl.lightIntensity
-                    + ", color " + String.format("#%06X", ctrl.lightColor & 0xFFFFFF) + ")" : "."));
-            return;
-        }
-
-        if (sub.equals("drop")) {
-            this.manager.setDroneMode(ctrl, Mode.DROP, "Command /drone drop");
-            this.manager.droneSay(player, ctrl, "Flying to you to deliver all inventory items!");
-            return;
-        }
-
-        if (sub.equals("chest") || sub.equals("deposit") || sub.equals("store")) {
-            this.manager.setDroneMode(ctrl, Mode.DEPOSIT, "Command /drone chest");
-            this.manager.droneSay(player, ctrl, "Flying to nearest chest within 24 blocks to deposit items...");
-            return;
-        }
-
-        if (sub.equals("scan")) {
-            double refX = player != null ? player.posX : ctrl.drone.posX;
-            double refY = player != null ? player.posY : ctrl.drone.posY;
-            double refZ = player != null ? player.posZ : ctrl.drone.posZ;
-            java.util.Map<String, int[]> scan = this.manager.getWorldScanner().scanNearbyResources(ctrl.drone.worldObj, refX, refY, refZ, 24);
-            if (scan.isEmpty()) {
-                this.manager.droneSay(player, ctrl, "Scanned 24m radius: no ores, logs, or chests detected.");
-            } else {
-                StringBuilder sb = new StringBuilder("Scan (24m): ");
-                int shown = 0;
-                for (java.util.Map.Entry<String, int[]> e : scan.entrySet()) {
-                    if (shown > 0) sb.append(", ");
-                    int[] v = e.getValue();
-                    sb.append(e.getKey()).append(" x").append(v[0]).append(" @(").append(v[1]).append(",").append(v[2]).append(",").append(v[3]).append(")");
-                    if (++shown >= 5) break;
-                }
-                this.manager.droneSay(player, ctrl, sb.toString());
-            }
-            return;
-        }
-
         String fullPrompt = joinArgs(args, 0);
         this.manager.handleNaturalInstruction(player, fullPrompt);
-    }
-
-    private static boolean isMasterComposedCommand(String sub) {
-        return sub.equals("mine") || sub.equals("dig") || sub.equals("harvest")
-            || sub.equals("farm") || sub.equals("replant")
-            || sub.equals("hunt") || sub.equals("kill")
-            || sub.equals("cook") || sub.equals("smelt")
-            || sub.equals("sort") || sub.equals("plug")
-            || sub.equals("scoop") || sub.equals("bucket")
-            || sub.equals("replace");
     }
 
     private static double parseCoord(double base, String raw) {

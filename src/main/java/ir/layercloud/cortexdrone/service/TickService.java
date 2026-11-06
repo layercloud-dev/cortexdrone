@@ -3,7 +3,6 @@ package ir.layercloud.cortexdrone.service;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.service.building.impl.BuildingService;
-import ir.layercloud.cortexdrone.service.combat.CombatService;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
@@ -33,7 +32,6 @@ public class TickService {
     private final InventoryService inventoryService;
     private final BuildingService buildingService;
     private final EffectService effectService;
-    private final CombatService combatService;
 
     public void tickController(DroneController ctrl) {
         Drone d = ctrl.drone;
@@ -258,9 +256,6 @@ public class TickService {
                 }
                 break;
             }
-            case HUNT:
-                this.combatService.tickHuntBehavior(ctrl, owner);
-                break;
             case MINE:
                 this.buildingService.tick(ctrl, owner);
                 break;

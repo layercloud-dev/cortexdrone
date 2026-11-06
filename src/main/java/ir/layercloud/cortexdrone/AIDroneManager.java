@@ -5,7 +5,6 @@ import ir.layercloud.cortexdrone.action.ActionRegistry;
 import ir.layercloud.cortexdrone.codemode.rpc.translate.ActionRpcTranslator;
 import ir.layercloud.cortexdrone.service.building.impl.BuildingService;
 import ir.layercloud.cortexdrone.service.inventory.impl.InventoryActionService;
-import ir.layercloud.cortexdrone.service.combat.CombatService;
 import ir.layercloud.cortexdrone.codemode.CodeModeRuntime;
 import ir.layercloud.cortexdrone.codemode.LlmAgentService;
 import ir.layercloud.cortexdrone.codemode.RpcDispatcher;
@@ -66,7 +65,6 @@ public class AIDroneManager {
     private final EffectService effectService;
     private final InteractionService interactionService;
     private final InventoryActionService inventoryActionService;
-    private final CombatService combatService;
     private final ActionRegistry actionRegistry;
     private final ActionRpcTranslator actionRpcTranslator;
     private final DocLookupService docLookupService;
@@ -95,7 +93,6 @@ public class AIDroneManager {
         this.inventoryActionService = new InventoryActionService(this, this.inventoryService);
         this.buildingService = new BuildingService(this, this.logger, this.pathfinder, this.inventoryService);
         this.movementService = new MovementService(this);
-        this.combatService = new CombatService(this, this.logger, this.pathfinder);
         this.actionRegistry = new ActionRegistry();
         this.actionRegistry.register(this.movementService);
         this.actionRegistry.register(this.buildingService);
@@ -120,8 +117,7 @@ public class AIDroneManager {
             this.pathfinder,
             this.inventoryService,
             this.buildingService,
-            this.effectService,
-            this.combatService
+            this.effectService
         );
         this.tickProfiler = new TickProfiler(this.logger);
         this.httpServer = new DroneHttpServer(this, this.logger);
@@ -137,7 +133,6 @@ public class AIDroneManager {
         this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION + " (Master-Tool Code Mode Harness) initialized", "worldDir=" + worldDir.getAbsolutePath());
 
         event.registerServerCommand(new DroneCommand("drone", this));
-        event.registerServerCommand(new DroneCommand("ai", this));
 
         this.httpServer.start();
     }
@@ -248,10 +243,7 @@ public class AIDroneManager {
 
         String lower = msg.toLowerCase();
         String prompt = null;
-        if (lower.startsWith("@drone ") || lower.startsWith("drone,") || lower.startsWith("drone:")) {
-            int idx = msg.indexOf(' ');
-            prompt = idx > 0 ? msg.substring(idx + 1).trim() : "status";
-        } else if (lower.startsWith("@ai ") || lower.startsWith("ai,") || lower.startsWith("ai:")) {
+        if (lower.startsWith("@drone ")) {
             int idx = msg.indexOf(' ');
             prompt = idx > 0 ? msg.substring(idx + 1).trim() : "status";
         } else {

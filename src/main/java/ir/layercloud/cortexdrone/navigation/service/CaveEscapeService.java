@@ -169,7 +169,7 @@ public class CaveEscapeService {
             ctrl.goalZ = last[2];
             this.manager.setDroneMode(ctrl, Mode.GOTO, "Retracing " + waypoints.size() + " breadcrumb(s) to exit cave");
         }
-        // GUARD/PATROL/HUNT callers must not steal the mode mid-fight; they keep
+        // Non-GOTO callers must not steal the mode mid-task; they keep
         // ctrl.goal* untouched and just get the retrace waypoints.
         return waypoints.size();
     }

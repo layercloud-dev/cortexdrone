@@ -136,7 +136,6 @@ public final class EffectRpcTranslator {
         response.addProperty("selfRescue", controller.escapeResume != null);
         response.addProperty("minedCount", controller.minedCount);
         response.addProperty("builtCount", controller.builtCount);
-        response.addProperty("huntedCount", controller.huntedCount);
         response.addProperty("scoopedCount", controller.scoopedCount);
 
         JsonArray inventory = new JsonArray();

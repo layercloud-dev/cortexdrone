@@ -11,8 +11,9 @@ service model and composing them from primitives where possible.
 | --- | --- | --- |
 | `follow` | `/drone follow` + `FollowAction` | `navigate`/`goto` style movement primitives |
 | `stay` | `/drone stay|stop|hover` + `StayAction` | `cancel` (stop) or a future hold skill |
-| `guard` | `/drone guard` + `CombatService` guard loop | inspect entities + attack primitives, composed by AI |
-| `patrol` | `/drone patrol` + `CombatService` patrol loop | inspect entities + movement/attack composition |
+| `hunt` | `/drone hunt` + `CombatService` hunt loop | inspect entities + `useItem({attack:id})`, composed by AI |
+| `guard` | `/drone guard` + removed combat loop | inspect entities + attack primitives, composed by AI |
+| `patrol` | `/drone patrol` + removed combat loop | inspect entities + movement/attack composition |
 | `goto` | `/drone goto` + `GotoAction` | `navigate` with `route:auto|direct|tunnel|up|down` |
 | `come` | `/drone come` + `ComeAction` | `navigate`/`moveTo` to a point in front of the player |
 | `carry` | `/drone carry` + `PlayerTransportService` | `pick_entity` -> `moveTo` -> `unpick_entity` skill |

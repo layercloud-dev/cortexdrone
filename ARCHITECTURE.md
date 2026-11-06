@@ -36,7 +36,6 @@ lifecycle. Each category owns one service and one context type:
 - `service.interact.impl.InteractionService` + `context.interact.impl.InteractionContext` — block interaction, item use and attack
 - `service.effect.impl.EffectService` + `context.effect.impl.EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
 - `service.inventory.impl.InventoryActionService` + `context.inventory.impl.InventoryContext` — transfer and craft actions
-- `service.combat.CombatService` — internal hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
 
 All operation behavior lives in action classes under `action/<category>/impl/`.

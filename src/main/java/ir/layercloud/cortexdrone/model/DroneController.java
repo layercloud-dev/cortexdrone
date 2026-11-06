@@ -127,13 +127,6 @@ public class DroneController {
     public int[] targetDepositChestPos = null;
     public String dropFilter = "all";
 
-    // Hunting, guard & patrol state
-    public String huntFilter = "sheep|cow|pig";
-    public int huntTargetCount = 10;
-    public int huntedCount = 0;
-    public int targetAttackEntityId = -1;
-    public final Map<Integer, Long> unreachableEntities = new HashMap<Integer, Long>();
-
     // Active Code Mode loop generation ID & running script counter
     public final AtomicInteger activeLoopId = new AtomicInteger(0);
     public final AtomicInteger activeScriptCount = new AtomicInteger(0);
@@ -330,8 +323,6 @@ public class DroneController {
         this.currentMineStandoff = null;
         this.mineExactQueueOnly = false;
         this.targetDepositChestPos = null;
-        this.targetAttackEntityId = -1;
-        this.unreachableEntities.clear();
         this.mineUntilFull = false;
         this.mineTargetCount = 0;
         this.mineMatchedCount = 0;

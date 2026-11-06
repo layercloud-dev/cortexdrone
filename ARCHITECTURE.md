@@ -34,7 +34,7 @@ lifecycle. Each category owns one service and one context type:
 - `service.movement.impl.MovementService` + `context.movement.impl.MovementContext` — route selection and breadcrumbs
 - `service.building.impl.BuildingService` + `context.block.impl.BlockContext` — one-block break, one-block place and the mining loop
 - `service.interact.impl.InteractionService` + `context.interact.impl.InteractionContext` — block interaction, item use and attack
-- `service.effect.impl.EffectService` + `context.effect.impl.EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
+- `service.visuals.impl.VisualsService` + `context.visuals.impl.VisualsContext` — LED, lighting aura, particles, sounds, notes, chat/status
 - `service.inventory.impl.InventoryActionService` + `context.inventory.impl.InventoryContext` — transfer and craft actions
 - `service.TickService` — the single-task 20-Hz pipeline
 
@@ -55,7 +55,7 @@ inventory/chest/furnace/machine inspection stays in
 JSON is confined to the transport layer. `codemode/rpc/translate/` contains
 `ActionRpcTranslator` and one translator per category
 (`MovementRpcTranslator`, `BuildingRpcTranslator`, `InteractionRpcTranslator`,
-`EffectRpcTranslator`, `InventoryRpcTranslator`). A translator parses JSON into
+`VisualsRpcTranslator`, `InventoryRpcTranslator`). A translator parses JSON into
 a typed request, calls the service, and serializes the typed result. RPC/HTTP
 handlers use these translators; action classes, contexts, services and
 `ActionRegistry` never import Gson.
@@ -124,7 +124,7 @@ commands and there is no AI-facing instruction queue.
 | `drone.unpickEntity({entityId?})` | Dismount the current rider or explicit entity |
 | `drone.transfer({op,...})` | move / give / take / drop / withdraw / deposit / suck |
 | `drone.craft(filter,count)` | Vanilla crafting primitive |
-| `drone.effect(kind,args)` | LED / particles / sound / note / status / chat |
+| `drone.visuals(kind,args)` | LED / particles / sound / note / status / chat |
 | `drone.skills(op,args)` | Optional reusable-skill memory |
 | `drone.cancel()` | Cancel the current session |
 

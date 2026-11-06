@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.service.effect;
+package ir.layercloud.cortexdrone.service.visuals;
 
 import lombok.Builder;
 import lombok.Value;

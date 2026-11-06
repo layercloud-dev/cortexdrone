@@ -1,9 +1,9 @@
-package ir.layercloud.cortexdrone.action.effect.impl;
+package ir.layercloud.cortexdrone.action.visuals.impl;
 
 import ir.layercloud.cortexdrone.action.Action;
-import ir.layercloud.cortexdrone.action.effect.EffectRequest;
-import ir.layercloud.cortexdrone.action.effect.EffectResult;
-import ir.layercloud.cortexdrone.context.effect.impl.EffectContext;
+import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
+import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
+import ir.layercloud.cortexdrone.context.visuals.impl.VisualsContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.LedEffectEngine;
 import li.cil.oc.common.entity.Drone;
@@ -11,11 +11,11 @@ import lombok.RequiredArgsConstructor;
 
 /** Single-use command: change the drone LED color or effect. */
 @RequiredArgsConstructor
-public final class SetLedAction implements Action<EffectContext> {
-    private final EffectRequest request;
+public final class SetLedAction implements Action<VisualsContext> {
+    private final VisualsRequest request;
 
     @Override
-    public void execute(EffectContext context) {
+    public void execute(VisualsContext context) {
         DroneController controller = context.controller();
         Drone drone = controller.drone;
         String effect = request.getEffect();
@@ -30,7 +30,7 @@ public final class SetLedAction implements Action<EffectContext> {
                 controller.ledEffect = normalized;
                 drone.lightColor_$eq(controller.resolveEffectiveLedColor(drone.lightColor()));
             }
-            context.result(EffectResult.success(
+            context.result(VisualsResult.success(
                 "effect", controller.ledEffect,
                 "color", color(drone)));
             return;
@@ -44,7 +44,7 @@ public final class SetLedAction implements Action<EffectContext> {
             controller.customLedColor = packed;
             controller.ledEffect = "NONE";
             drone.lightColor_$eq(packed);
-            context.result(EffectResult.success("color", color(drone)));
+            context.result(VisualsResult.success("color", color(drone)));
             return;
         }
 
@@ -55,7 +55,7 @@ public final class SetLedAction implements Action<EffectContext> {
             controller.customLedColor = packed;
             controller.ledEffect = "NONE";
             drone.lightColor_$eq(packed);
-            context.result(EffectResult.success("color", color(drone)));
+            context.result(VisualsResult.success("color", color(drone)));
             return;
         }
 
@@ -65,7 +65,7 @@ public final class SetLedAction implements Action<EffectContext> {
             if (LedEffectEngine.isEffectName(upper)) {
                 controller.ledEffect = upper;
                 drone.lightColor_$eq(controller.resolveEffectiveLedColor(drone.lightColor()));
-                context.result(EffectResult.success(
+                context.result(VisualsResult.success(
                     "effect", controller.ledEffect,
                     "color", color(drone)));
                 return;
@@ -73,7 +73,7 @@ public final class SetLedAction implements Action<EffectContext> {
             if ("DEFAULT".equals(upper) || "AUTO".equals(upper) || "RESET".equals(upper)) {
                 controller.ledEffect = "NONE";
                 controller.customLedColor = null;
-                context.result(EffectResult.success("effect", "NONE"));
+                context.result(VisualsResult.success("effect", "NONE"));
                 return;
             }
             Integer parsed = DroneController.parseNamedOrHexColor(raw);
@@ -81,7 +81,7 @@ public final class SetLedAction implements Action<EffectContext> {
             controller.customLedColor = packed;
             controller.ledEffect = "NONE";
             drone.lightColor_$eq(packed);
-            context.result(EffectResult.success("color", color(drone)));
+            context.result(VisualsResult.success("color", color(drone)));
             return;
         }
 
@@ -90,11 +90,11 @@ public final class SetLedAction implements Action<EffectContext> {
             controller.customLedColor = packed;
             controller.ledEffect = "NONE";
             drone.lightColor_$eq(packed);
-            context.result(EffectResult.success("color", color(drone)));
+            context.result(VisualsResult.success("color", color(drone)));
             return;
         }
 
-        context.result(EffectResult.success());
+        context.result(VisualsResult.success());
     }
 
     private static int clamp(int value) {

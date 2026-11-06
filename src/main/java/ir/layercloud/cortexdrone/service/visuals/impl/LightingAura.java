@@ -1,9 +1,9 @@
-package ir.layercloud.cortexdrone.service.effect.impl;
+package ir.layercloud.cortexdrone.service.visuals.impl;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.effect.LightConfig;
-import ir.layercloud.cortexdrone.service.effect.LightResult;
+import ir.layercloud.cortexdrone.service.visuals.LightConfig;
+import ir.layercloud.cortexdrone.service.visuals.LightResult;
 import ir.layercloud.cortexdrone.world.ChunkAccess;
 import java.util.HashMap;
 import java.util.Iterator;

@@ -20,7 +20,7 @@ import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.TickService;
-import ir.layercloud.cortexdrone.service.effect.impl.EffectService;
+import ir.layercloud.cortexdrone.service.visuals.impl.VisualsService;
 import ir.layercloud.cortexdrone.service.interact.impl.InteractionService;
 import ir.layercloud.cortexdrone.service.movement.impl.MovementService;
 import ir.layercloud.cortexdrone.world.DocLookupService;
@@ -62,7 +62,7 @@ public class AIDroneManager {
     private final InventoryService inventoryService;
     private final BuildingService buildingService;
     private final MovementService movementService;
-    private final EffectService effectService;
+    private final VisualsService visualsService;
     private final InteractionService interactionService;
     private final InventoryActionService inventoryActionService;
     private final ActionRegistry actionRegistry;
@@ -88,7 +88,7 @@ public class AIDroneManager {
         this.pathfinder = new FlightPathfinder(this, this.logger);
         this.worldScanner = new WorldScanner(this.logger, this.config);
         this.inventoryService = new InventoryService(this.logger);
-        this.effectService = new EffectService(this, this.logger);
+        this.visualsService = new VisualsService(this, this.logger);
         this.interactionService = new InteractionService(this.inventoryService);
         this.inventoryActionService = new InventoryActionService(this, this.inventoryService);
         this.buildingService = new BuildingService(this, this.logger, this.pathfinder, this.inventoryService);
@@ -98,7 +98,7 @@ public class AIDroneManager {
         this.actionRegistry.register(this.buildingService);
         this.actionRegistry.register(this.interactionService);
         this.actionRegistry.register(this.inventoryActionService);
-        this.actionRegistry.register(this.effectService);
+        this.actionRegistry.register(this.visualsService);
         this.actionRpcTranslator = new ActionRpcTranslator(this);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));
@@ -117,7 +117,7 @@ public class AIDroneManager {
             this.pathfinder,
             this.inventoryService,
             this.buildingService,
-            this.effectService
+            this.visualsService
         );
         this.tickProfiler = new TickProfiler(this.logger);
         this.httpServer = new DroneHttpServer(this, this.logger);
@@ -141,7 +141,7 @@ public class AIDroneManager {
         this.logger.log("SYSTEM", null, "Server stopping; saving AI drone config and stopping HTTP server", "");
         for (DroneController ctrl : this.controllersById.values()) {
             if (ctrl != null && !ctrl.lightCells.isEmpty()) {
-                this.effectService.clearLighting(ctrl);
+                this.visualsService.clearLighting(ctrl);
             }
         }
         saveConfig();
@@ -532,7 +532,7 @@ public class AIDroneManager {
         double dz = dropTargetPlayer != null ? dropTargetPlayer.posZ : d.posZ;
 
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
-        this.effectService.clearLighting(ctrl);
+        this.visualsService.clearLighting(ctrl);
         ctrl.despawned = true;
         UUID duid = d.getUniqueID();
         if (duid != null) {

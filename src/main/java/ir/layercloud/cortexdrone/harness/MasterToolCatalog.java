@@ -10,7 +10,7 @@ public final class MasterToolCatalog {
         "state", "inspect", "navigate", "tunnel", "digup", "digdown",
         "break_block", "place_block", "interact_block", "use_item",
         "pick_entity", "unpick_entity",
-        "transfer", "craft", "effect", "skills", "cancel"
+        "transfer", "craft", "visuals", "skills", "cancel"
     };
 
     public static final String[] REMOVED_COMPOSITE_TOOLS = new String[]{

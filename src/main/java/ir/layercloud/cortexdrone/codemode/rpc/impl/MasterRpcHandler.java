@@ -63,7 +63,7 @@ public class MasterRpcHandler implements RpcHandler {
         }
         if ("transfer".equals(m)) return transfer(ctrl, player, args);
         if ("craft".equals(m)) return craft(ctrl, player, args);
-        if ("effect".equals(m)) return effect(ctrl, player, args);
+        if ("visuals".equals(m)) return visuals(ctrl, player, args);
         if ("skills".equals(m)) return skills(ctrl, player, args);
         if ("cancel".equals(m)) return cancel(ctrl, args);
         return error("Unknown master tool: " + m);
@@ -210,17 +210,17 @@ public class MasterRpcHandler implements RpcHandler {
         return this.manager.getActionRpcTranslator().handle(ctrl, player, "craft", args);
     }
 
-    private JsonObject effect(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
+    private JsonObject visuals(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         String kind = str(args, "kind", "led").trim().toLowerCase();
         String method;
         if (kind.equals("led") || kind.equals("color")) method = "set_led";
-        else if (kind.equals("ledeffect") || kind.equals("effect")) method = "led_effect";
+        else if (kind.equals("ledeffect")) method = "led_effect";
         else if (kind.equals("particles")) method = "spawn_particles";
         else if (kind.equals("sound")) method = "play_sound";
         else if (kind.equals("note")) method = "play_note";
         else if (kind.equals("status")) method = "set_status_text";
         else if (kind.equals("say")) method = "say";
-        else return error("Unknown effect kind: " + kind);
+        else return error("Unknown visuals kind: " + kind);
         return this.manager.getActionRpcTranslator().handle(ctrl, player, method, args);
     }
 

@@ -1,12 +1,12 @@
-package ir.layercloud.cortexdrone.action.effect;
+package ir.layercloud.cortexdrone.action.visuals;
 
 import lombok.Builder;
 import lombok.Value;
 
-/** Immutable request data for one effect action. */
+/** Immutable request data for one visuals action. */
 @Value
 @Builder
-public class EffectRequest {
+public class VisualsRequest {
     String effect;
     Integer red;
     Integer green;

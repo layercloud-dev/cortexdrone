@@ -1,9 +1,9 @@
-package ir.layercloud.cortexdrone.action.effect.impl;
+package ir.layercloud.cortexdrone.action.visuals.impl;
 
 import ir.layercloud.cortexdrone.action.Action;
-import ir.layercloud.cortexdrone.action.effect.EffectRequest;
-import ir.layercloud.cortexdrone.action.effect.EffectResult;
-import ir.layercloud.cortexdrone.context.effect.impl.EffectContext;
+import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
+import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
+import ir.layercloud.cortexdrone.context.visuals.impl.VisualsContext;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.world.World;
@@ -11,11 +11,11 @@ import net.minecraft.world.WorldServer;
 
 /** Single-use command: spawn a particle burst. */
 @RequiredArgsConstructor
-public final class SpawnParticlesAction implements Action<EffectContext> {
-    private final EffectRequest request;
+public final class SpawnParticlesAction implements Action<VisualsContext> {
+    private final VisualsRequest request;
 
     @Override
-    public void execute(EffectContext context) {
+    public void execute(VisualsContext context) {
         Drone drone = context.controller().drone;
         World world = drone.worldObj;
         double x = request.isCoordinates() ? request.getX() : drone.posX;
@@ -27,7 +27,7 @@ public final class SpawnParticlesAction implements Action<EffectContext> {
                 request.getCount(), request.getSpread(), request.getSpread(),
                 request.getSpread(), request.getSpeed());
         }
-        context.result(EffectResult.success(
+        context.result(VisualsResult.success(
             "spawned", request.getCount(),
             "type", request.getType()));
     }

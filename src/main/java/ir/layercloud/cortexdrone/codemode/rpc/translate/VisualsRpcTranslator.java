@@ -3,14 +3,14 @@ package ir.layercloud.cortexdrone.codemode.rpc.translate;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.action.effect.EffectRequest;
-import ir.layercloud.cortexdrone.action.effect.EffectResult;
+import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
+import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
 import ir.layercloud.cortexdrone.codemode.SkillLibrary;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.effect.LightConfig;
-import ir.layercloud.cortexdrone.service.effect.LightResult;
-import ir.layercloud.cortexdrone.service.effect.impl.EffectService;
+import ir.layercloud.cortexdrone.service.visuals.LightConfig;
+import ir.layercloud.cortexdrone.service.visuals.LightResult;
+import ir.layercloud.cortexdrone.service.visuals.impl.VisualsService;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
@@ -19,15 +19,15 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 
-/** JSON translation boundary for effect actions and effect/telemetry queries. */
+/** JSON translation boundary for visuals actions and visuals/telemetry queries. */
 @RequiredArgsConstructor
-public final class EffectRpcTranslator {
+public final class VisualsRpcTranslator {
     private final AIDroneManager manager;
-    private final EffectService service;
+    private final VisualsService service;
 
     public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {
-        EffectResult result = this.service.handle(
+        VisualsResult result = this.service.handle(
             controller, player, operation, parse(args));
         return serialize(result);
     }
@@ -183,10 +183,10 @@ public final class EffectRpcTranslator {
             response.add("skills", this.manager.getSkillLibrary().toJsonArray(found));
             return response;
         }
-        return RpcJson.error("Unhandled effects RPC method: " + operation);
+        return RpcJson.error("Unhandled visuals RPC method: " + operation);
     }
 
-    private static EffectRequest parse(JsonObject args) {
+    private static VisualsRequest parse(JsonObject args) {
         boolean coordinates = RpcArgs.has(args, "x")
             && RpcArgs.has(args, "y")
             && RpcArgs.has(args, "z");
@@ -215,7 +215,7 @@ public final class EffectRpcTranslator {
             }
         }
 
-        return EffectRequest.builder()
+        return VisualsRequest.builder()
             .effect(RpcArgs.string(args, "effect", null))
             .red(red)
             .green(green)
@@ -242,8 +242,8 @@ public final class EffectRpcTranslator {
             .build();
     }
 
-    private static JsonObject serialize(EffectResult result) {
-        if (result == null) return RpcJson.error("Effect action produced no result");
+    private static JsonObject serialize(VisualsResult result) {
+        if (result == null) return RpcJson.error("Visuals action produced no result");
         JsonObject response = result.isOk()
             ? RpcJson.ok()
             : RpcJson.error(result.getError());

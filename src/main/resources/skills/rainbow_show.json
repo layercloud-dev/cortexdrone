@@ -2,5 +2,5 @@
   "name": "rainbow_show",
   "description": "Generate a rainbow LED loop in Code Mode instead of using a pre-made dance tool",
   "tags": "rainbow led color light fun music show",
-  "code": "for (let i = 0; i < 40; i++) {\n  await drone.effect('led', { color: hsvToRgb((i * 18) % 360, 1, 1) });\n  await sleep(100);\n}\nreturn { ok: true, colors: 40 };"
+  "code": "for (let i = 0; i < 40; i++) {\n  await drone.visuals('led', { color: hsvToRgb((i * 18) % 360, 1, 1) });\n  await sleep(100);\n}\nreturn { ok: true, colors: 40 };"
 }

@@ -8,7 +8,7 @@ import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
-import ir.layercloud.cortexdrone.service.effect.impl.EffectService;
+import ir.layercloud.cortexdrone.service.visuals.impl.VisualsService;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ public class TickService {
     private final FlightPathfinder pathfinder;
     private final InventoryService inventoryService;
     private final BuildingService buildingService;
-    private final EffectService effectService;
+    private final VisualsService visualsService;
 
     public void tickController(DroneController ctrl) {
         Drone d = ctrl.drone;
@@ -111,7 +111,7 @@ public class TickService {
         }
 
         if (ctrl.autoTorch || !ctrl.lightCells.isEmpty()) {
-            this.effectService.tickLighting(ctrl);
+            this.visualsService.tickLighting(ctrl);
         }
 
         EntityPlayerMP owner = CortexDroneMod.findPlayer(ctrl.ownerName);

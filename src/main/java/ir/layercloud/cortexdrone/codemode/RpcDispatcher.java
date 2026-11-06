@@ -24,7 +24,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
  * Main-thread synchronous RPC router that dispatches Code Mode SDK calls
- * to modular domain handlers (World, Navigation, Inventory, Action, Effects).
+ * to modular domain handlers (World, Navigation, Inventory, Action, Visuals).
  *
  * Large cube scans are special: they must stay on the server (main) thread for
  * 1.7.10 world safety (chunk/world objects are not thread-safe off-thread), but

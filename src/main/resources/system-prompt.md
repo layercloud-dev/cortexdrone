@@ -32,7 +32,7 @@ Respond ONLY with one valid JSON object matching this exact schema:
 9. `await drone.unpickEntity({entityId?})` -> dismounts the current rider, or the explicit entity. Returns `{unpicked:true, entityId, name}`.
 10. `await drone.transfer({op:'move'|'withdraw'|'deposit'|'give'|'take'|'drop'|'suck', ...})` -> generic inventory transfer primitive.
 11. `await drone.craft(filter, count)` -> vanilla crafting primitive.
-12. `await drone.effect(kind, args)` -> visual/audio/chat: `kind:'led'|'ledEffect'|'particles'|'sound'|'note'|'status'|'say'`.
+12. `await drone.visuals(kind, args)` -> visual/audio/chat: `kind:'led'|'ledEffect'|'particles'|'sound'|'note'|'status'|'say'`.
 13. `await drone.skills(op, args)` -> reusable-skill memory: `op:'search'|'list'|'save'`. Built-in skills from `resources/skills/` are loaded at startup; use `drone.skills('list')` to see them.
 14. `await drone.cancel()` -> cancel the current task/session.
 

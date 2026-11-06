@@ -1,17 +1,16 @@
 package ir.layercloud.cortexdrone.action;
 
-import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.context.ActionContextBase;
-import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.ActionService;
-import net.minecraft.entity.player.EntityPlayerMP;
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import ir.layercloud.cortexdrone.context.ActionContextBase;
+import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.service.ActionService;
+import net.minecraft.entity.player.EntityPlayerMP;
+import org.junit.Test;
 
 public class ActionRegistryTest {
     private static final class TestContext extends ActionContextBase {
@@ -28,12 +27,12 @@ public class ActionRegistryTest {
             this.result = result;
         }
 
-        void countTick() {
-            this.ticks++;
-        }
-
         String result() {
             return this.result;
+        }
+
+        void countTick() {
+            this.ticks++;
         }
 
         @Override
@@ -47,7 +46,7 @@ public class ActionRegistryTest {
         }
     }
 
-    private static final class TestService extends ActionService<TestContext> {
+    private static final class TestService extends ActionService<TestContext, String, String> {
         private final boolean retain;
         private TestContext lastContext;
         private int executions;
@@ -66,12 +65,12 @@ public class ActionRegistryTest {
 
         @Override
         protected Action<TestContext> createAction(TestContext context, String operation,
-                                                   JsonObject args) {
+                                                   String request) {
             return new Action<TestContext>() {
                 @Override
                 public void execute(TestContext context) {
                     TestService.this.executions++;
-                    context.result("executed:" + operation);
+                    context.result("executed:" + operation + ":" + request);
                     if (TestService.this.retain) context.retain();
                 }
 
@@ -83,10 +82,8 @@ public class ActionRegistryTest {
         }
 
         @Override
-        protected JsonObject serialize(TestContext context) {
-            JsonObject result = ActionJson.ok();
-            result.addProperty("result", context.result());
-            return result;
+        protected String result(TestContext context) {
+            return context.result();
         }
     }
 
@@ -96,9 +93,9 @@ public class ActionRegistryTest {
         TestService service = new TestService("one_shot", false);
         registry.register(service);
 
-        JsonObject result = registry.handle(null, null, "one_shot", new JsonObject());
+        String result = service.handle(null, null, "one_shot", "request");
 
-        assertEquals("executed:one_shot", result.get("result").getAsString());
+        assertEquals("executed:one_shot:request", result);
         assertEquals(1, service.executions);
         assertFalse(service.lastContext.isActive());
         assertTrue(service.lastContext.completed);
@@ -111,7 +108,7 @@ public class ActionRegistryTest {
         TestService service = new TestService("long_running", true);
         registry.register(service);
 
-        registry.handle(null, null, "long_running", new JsonObject());
+        service.handle(null, null, "long_running", "request");
         TestContext context = service.lastContext;
         assertEquals(1, registry.activeContextCount(null));
         assertTrue(context.isRetained());
@@ -133,9 +130,9 @@ public class ActionRegistryTest {
         TestService service = new TestService("restartable", true);
         registry.register(service);
 
-        registry.handle(null, null, "restartable", new JsonObject());
+        service.handle(null, null, "restartable", "first");
         TestContext first = service.lastContext;
-        registry.handle(null, null, "restartable", new JsonObject());
+        service.handle(null, null, "restartable", "second");
         TestContext second = service.lastContext;
 
         assertNotSame(first, second);
@@ -151,7 +148,7 @@ public class ActionRegistryTest {
         TestService service = new TestService("cancellable", true);
         registry.register(service);
 
-        registry.handle(null, null, "cancellable", new JsonObject());
+        service.handle(null, null, "cancellable", "request");
         TestContext context = service.lastContext;
         registry.cancelAll(null);
 
@@ -173,14 +170,14 @@ public class ActionRegistryTest {
     }
 
     @Test
-    public void serviceDoesNotExecuteUnknownOperation() {
-        ActionRegistry registry = new ActionRegistry();
+    public void unknownOperationIsRejectedBeforeExecution() {
         TestService service = new TestService("known", false);
-        registry.register(service);
-
-        JsonObject result = registry.handle(null, null, "unknown", new JsonObject());
-
-        assertFalse(result.get("ok").getAsBoolean());
+        try {
+            service.handle(null, null, "unknown", "request");
+            fail("unknown operation must be rejected");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("unknown"));
+        }
         assertEquals(0, service.executions);
     }
 }

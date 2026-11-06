@@ -1,9 +1,6 @@
 package ir.layercloud.cortexdrone.service;
 
-import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.Action;
-import ir.layercloud.cortexdrone.action.ActionArgs;
-import ir.layercloud.cortexdrone.action.ActionJson;
 import ir.layercloud.cortexdrone.context.ActionContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import java.util.ArrayList;
@@ -16,19 +13,12 @@ import net.minecraft.entity.player.EntityPlayerMP;
 /**
  * Long-lived manager for one action category.
  *
- * <p>The service owns the request boundary and the action lifecycle:</p>
- * <ol>
- *   <li>create a fresh context,</li>
- *   <li>create a single-use {@link Action} from the request,</li>
- *   <li>execute it against the context,</li>
- *   <li>serialize the result,</li>
- *   <li>retain the action/context pair for ticking or release it.</li>
- * </ol>
- *
- * <p>Services never implement {@link Action} and contain no operation logic.
- * They manage actions; action classes do the work.</p>
+ * <p>The service owns the action lifecycle but no JSON. A transport translator
+ * parses RPC/HTTP input into {@code R} and serializes the returned {@code T}.
+ * The service only creates a context, creates one action, executes it, returns
+ * the typed result and retains/reaps the action/context pair.</p>
  */
-public abstract class ActionService<C extends ActionContext> {
+public abstract class ActionService<C extends ActionContext, R, T> {
     private final String category;
     private final String[] operations;
     private final Map<DroneController, Map<String, Execution<C>>> active =
@@ -50,22 +40,23 @@ public abstract class ActionService<C extends ActionContext> {
     protected abstract C createContext(DroneController controller, EntityPlayerMP player,
                                        String operation);
 
-    protected abstract Action<C> createAction(C context, String operation, JsonObject args);
+    protected abstract Action<C> createAction(C context, String operation, R request);
 
-    protected abstract JsonObject serialize(C context);
+    protected abstract T result(C context);
 
-    public final JsonObject handle(DroneController controller, EntityPlayerMP player,
-                                   String operation, JsonObject args) {
+    public final T handle(DroneController controller, EntityPlayerMP player,
+                          String operation, R request) {
         if (!supports(operation)) {
-            return ActionJson.error("Unsupported " + this.category + " action: " + operation);
+            throw new IllegalArgumentException("Unsupported " + this.category
+                + " action: " + operation);
         }
 
         C context = createContext(controller, player, operation);
         Action<C> action = null;
         try {
-            action = createAction(context, operation, ActionArgs.safe(args));
+            action = createAction(context, operation, request);
             action.execute(context);
-            JsonObject result = serialize(context);
+            T result = result(context);
             if (context.isRetained()) {
                 retain(controller, operation, new Execution<C>(action, context));
             } else {
@@ -79,7 +70,7 @@ public abstract class ActionService<C extends ActionContext> {
         }
     }
 
-    /** Executes a typed action without a JSON response (command/internal entry points). */
+    /** Typed execution used by internal entry points that already built the action. */
     protected final void run(DroneController controller, EntityPlayerMP player,
                              String operation, C context, Action<C> action) {
         try {

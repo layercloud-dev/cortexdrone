@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone;
 
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ir.layercloud.cortexdrone.action.ActionRegistry;
+import ir.layercloud.cortexdrone.codemode.rpc.translate.ActionRpcTranslator;
 import ir.layercloud.cortexdrone.service.building.impl.BuildingService;
 import ir.layercloud.cortexdrone.service.inventory.impl.InventoryActionService;
 import ir.layercloud.cortexdrone.service.combat.CombatService;
@@ -67,6 +68,7 @@ public class AIDroneManager {
     private final InventoryActionService inventoryActionService;
     private final CombatService combatService;
     private final ActionRegistry actionRegistry;
+    private final ActionRpcTranslator actionRpcTranslator;
     private final DocLookupService docLookupService;
     private SkillLibrary skillLibrary;
     private final CodeModeRuntime codeModeRuntime;
@@ -100,6 +102,7 @@ public class AIDroneManager {
         this.actionRegistry.register(this.interactionService);
         this.actionRegistry.register(this.inventoryActionService);
         this.actionRegistry.register(this.effectService);
+        this.actionRpcTranslator = new ActionRpcTranslator(this);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));
         this.codeModeRuntime = new CodeModeRuntime(this.logger, this.config);

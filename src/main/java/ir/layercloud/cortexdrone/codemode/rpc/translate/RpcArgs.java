@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.action;
+package ir.layercloud.cortexdrone.codemode.rpc.translate;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -9,7 +9,7 @@ import lombok.experimental.UtilityClass;
  * Actions never see {@link JsonObject}.
  */
 @UtilityClass
-public final class ActionArgs {
+public final class RpcArgs {
     public static JsonObject safe(JsonObject args) {
         return args != null ? args : new JsonObject();
     }

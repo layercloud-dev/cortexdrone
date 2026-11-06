@@ -499,7 +499,7 @@ public class InventoryService {
         return this.craftingService.getRecipesForFilter(filter);
     }
 
-    public JsonObject craftItem(World world, DroneController ctrl, EntityPlayerMP owner, String targetFilter, int wantedCount) {
+    public CraftResult craftItem(World world, DroneController ctrl, EntityPlayerMP owner, String targetFilter, int wantedCount) {
         return this.craftingService.craftItem(world, ctrl, owner, targetFilter, wantedCount);
     }
 }

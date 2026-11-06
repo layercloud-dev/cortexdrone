@@ -23,9 +23,9 @@ categorized `action` package. The base is deliberately split in three parts:
   executed once, optionally ticked while active, then discarded;
 - `context.ActionContext` / `context.ActionContextBase` — mutable state for that
   one execution;
-- `service.ActionService<C>` — the long-lived manager that parses the
-  request, creates the action, executes it, serializes the result, and
-  retains/reaps the action/context pair.
+- `service.ActionService<C, R, T>` — the long-lived typed manager that creates
+  the action, executes it, returns `T`, and retains/reaps the action/context
+  pair. It contains no JSON.
 
 `ActionRegistry` only routes operations to their owning service. Services never
 implement `Action` and contain no operation logic; they manage the action
@@ -52,6 +52,14 @@ Inventory mutations (`transfer` and `craft`) are actions under
 `action/inventory/impl/`, managed by `InventoryActionService`. Read-only
 inventory/chest/furnace/machine inspection stays in
 `codemode/rpc/impl/InventoryRpcHandler`.
+
+JSON is confined to the transport layer. `codemode/rpc/translate/` contains
+`ActionRpcTranslator` and one translator per category
+(`MovementRpcTranslator`, `BuildingRpcTranslator`, `InteractionRpcTranslator`,
+`EffectRpcTranslator`, `InventoryRpcTranslator`). A translator parses JSON into
+a typed request, calls the service, and serializes the typed result. RPC/HTTP
+handlers use these translators; action classes, contexts, services and
+`ActionRegistry` never import Gson.
 
 Project convention: interfaces and abstract bases live at the package root;
 concrete implementations live under an `impl` subpackage. Defaults and concrete

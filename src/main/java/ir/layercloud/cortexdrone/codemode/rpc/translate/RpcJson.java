@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.action;
+package ir.layercloud.cortexdrone.codemode.rpc.translate;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -7,7 +7,7 @@ import lombok.experimental.UtilityClass;
 
 /** Shared JSON response helpers for service boundaries. */
 @UtilityClass
-public final class ActionJson {
+public final class RpcJson {
     public static JsonObject ok() {
         JsonObject result = new JsonObject();
         result.addProperty("ok", true);

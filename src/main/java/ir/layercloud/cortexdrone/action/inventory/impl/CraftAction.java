@@ -1,10 +1,10 @@
 package ir.layercloud.cortexdrone.action.inventory.impl;
 
-import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
 import ir.layercloud.cortexdrone.context.inventory.impl.InventoryContext;
+import ir.layercloud.cortexdrone.inventory.CraftResult;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import li.cil.oc.common.entity.Drone;
@@ -24,8 +24,14 @@ public final class CraftAction implements Action<InventoryContext> {
         World world = drone.worldObj;
         String filter = request.getFilter() != null ? request.getFilter() : "planks";
         int count = request.getCount() > 0 ? request.getCount() : 1;
-        JsonObject result = this.inventoryService.craftItem(
+        CraftResult result = this.inventoryService.craftItem(
             world, controller, context.player(), filter, count);
-        context.result(InventoryResult.fromJson(result));
+        if (!result.isOk()) {
+            context.result(InventoryResult.failure(result.getError(),
+                "crafted", 0, "item", result.getItem()));
+        } else {
+            context.result(InventoryResult.success(
+                "crafted", result.getCrafted(), "item", result.getItem()));
+        }
     }
 }

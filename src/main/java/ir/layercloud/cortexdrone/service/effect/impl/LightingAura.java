@@ -1,8 +1,9 @@
-package ir.layercloud.cortexdrone.action.effect;
+package ir.layercloud.cortexdrone.service.effect.impl;
 
-import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.service.effect.LightConfig;
+import ir.layercloud.cortexdrone.service.effect.LightResult;
 import ir.layercloud.cortexdrone.world.ChunkAccess;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -40,56 +41,48 @@ public class LightingAura {
     private final DroneLogger logger;
 
     /** Handles {@code torch} / {@code light} RPC: toggle, or set colour/radius/level. */
-    public JsonObject configure(DroneController ctrl, JsonObject args) {
-        JsonObject res = new JsonObject();
-        res.addProperty("ok", true);
+    public LightResult configure(DroneController ctrl, LightConfig config) {
         if (ctrl == null || ctrl.drone == null) {
-            res.addProperty("ok", false);
-            res.addProperty("error", "No active drone");
-            return res;
-        }
-        if (args == null) {
-            args = new JsonObject();
+            return LightResult.failure("No active drone");
         }
         boolean wasActive = ctrl.autoTorch;
-        if (args.has("enabled") && !args.get("enabled").isJsonNull()) {
-            ctrl.autoTorch = args.get("enabled").getAsBoolean();
-        } else if (args.has("toggle") && args.get("toggle").getAsBoolean()) {
+        if (config.getEnabled() != null) {
+            ctrl.autoTorch = config.getEnabled().booleanValue();
+        } else if (config.isToggle()) {
             ctrl.autoTorch = !ctrl.autoTorch;
         }
-        if (args.has("radius") && !args.get("radius").isJsonNull()) {
-            ctrl.lightRadius = clamp(args.get("radius").getAsInt(), MIN_RADIUS, MAX_RADIUS);
+        if (config.getRadius() != null) {
+            ctrl.lightRadius = clamp(config.getRadius().intValue(), MIN_RADIUS, MAX_RADIUS);
         }
-        if (args.has("level") && !args.get("level").isJsonNull()) {
-            ctrl.lightIntensity = clamp(args.get("level").getAsInt(), MIN_LEVEL, MAX_LEVEL);
+        if (config.getLevel() != null) {
+            ctrl.lightIntensity = clamp(config.getLevel().intValue(), MIN_LEVEL, MAX_LEVEL);
         }
-        Integer color = parseColor(args);
-        if (color != null) {
-            ctrl.lightColor = color.intValue();
+        if (config.getColor() != null) {
+            ctrl.lightColor = config.getColor().intValue();
         }
 
         if (ctrl.autoTorch) {
-            // Force an immediate refresh when toggled on or recoloured.
             ctrl.lightCooldown = 0;
             ctrl.lightAnchor = Long.MIN_VALUE;
-            if (color != null && (color.intValue() & 0xFFFFFF) != 0xFFFFFF) {
-                // Visibly tint the drone itself; 1.7.10 block light has no RGB channel.
-                ctrl.customLedColor = Integer.valueOf(color.intValue() & 0xFFFFFF);
+            if (config.getColor() != null && (config.getColor().intValue() & 0xFFFFFF) != 0xFFFFFF) {
+                ctrl.customLedColor = Integer.valueOf(config.getColor().intValue() & 0xFFFFFF);
                 ctrl.ledEffect = "NONE";
-                ctrl.drone.lightColor_$eq(color.intValue() & 0xFFFFFF);
+                ctrl.drone.lightColor_$eq(config.getColor().intValue() & 0xFFFFFF);
             }
             applyAura(ctrl);
         } else if (wasActive) {
             clearAura(ctrl);
         }
 
-        res.addProperty("active", ctrl.autoTorch);
-        res.addProperty("radius", ctrl.lightRadius);
-        res.addProperty("level", ctrl.lightIntensity);
-        res.addProperty("color", String.format("0x%06X", ctrl.lightColor & 0xFFFFFF));
-        res.addProperty("cells", ctrl.lightCells.size());
-        res.addProperty("torchFree", true);
-        return res;
+        return LightResult.builder()
+            .ok(true)
+            .active(ctrl.autoTorch)
+            .radius(ctrl.lightRadius)
+            .level(ctrl.lightIntensity)
+            .color(ctrl.lightColor)
+            .cells(ctrl.lightCells.size())
+            .torchFree(true)
+            .build();
     }
 
     /** Called every server tick by the coordinator for each active controller. */
@@ -238,47 +231,6 @@ public class LightingAura {
         chunkMasks.put(Long.valueOf(key), Integer.valueOf((old == null ? 0 : old.intValue()) | bit));
     }
 
-    private static Integer parseColor(JsonObject args) {
-        if (!args.has("color") || args.get("color").isJsonNull()) return null;
-        try {
-            if (args.get("color").isJsonPrimitive()) {
-                if (args.get("color").getAsJsonPrimitive().isNumber()) {
-                    return Integer.valueOf(args.get("color").getAsInt() & 0xFFFFFF);
-                }
-                String s = args.get("color").getAsString().trim();
-                if (s.startsWith("#")) s = s.substring(1);
-                if (s.startsWith("0x") || s.startsWith("0X")) s = s.substring(2);
-                String named = namedColor(s);
-                if (named != null) s = named;
-                return Integer.valueOf((int) Long.parseLong(s, 16) & 0xFFFFFF);
-            }
-            if (args.get("color").isJsonArray()) {
-                com.google.gson.JsonArray a = args.getAsJsonArray("color");
-                if (a.size() >= 3) {
-                    int r = clamp(a.get(0).getAsInt(), 0, 255);
-                    int g = clamp(a.get(1).getAsInt(), 0, 255);
-                    int b = clamp(a.get(2).getAsInt(), 0, 255);
-                    return Integer.valueOf((r << 16) | (g << 8) | b);
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        return null;
-    }
-
-    private static String namedColor(String raw) {
-        String n = raw == null ? "" : raw.toLowerCase().replace("-", "").replace("_", "").replace(" ", "");
-        if (n.equals("white") || n.equals("normal") || n.equals("default") || n.equals("warm")) return "FFFFFF";
-        if (n.equals("red")) return "FF3B30";
-        if (n.equals("orange")) return "FF9500";
-        if (n.equals("yellow")) return "FFD60A";
-        if (n.equals("green")) return "34C759";
-        if (n.equals("cyan") || n.equals("aqua")) return "32ADE6";
-        if (n.equals("blue")) return "0A84FF";
-        if (n.equals("purple") || n.equals("violet")) return "AF52DE";
-        if (n.equals("pink")) return "FF2D55";
-        return null;
-    }
 
     private static int clamp(int v, int lo, int hi) {
         return v < lo ? lo : (v > hi ? hi : v);
@@ -322,4 +274,5 @@ public class LightingAura {
         int z = MathHelper.floor_double(d.posZ) >> 1;
         return pack(x, y, z);
     }
+
 }

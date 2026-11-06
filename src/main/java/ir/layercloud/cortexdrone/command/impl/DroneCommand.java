@@ -312,7 +312,7 @@ public class DroneCommand extends BaseCommand {
             } else {
                 lightArgs.addProperty("toggle", true);
             }
-            JsonObject r = this.manager.getEffectService().configureLight(ctrl, lightArgs);
+            JsonObject r = this.manager.getActionRpcTranslator().configureLight(ctrl, lightArgs);
             this.manager.saveConfig();
             boolean on = r.has("active") && r.get("active").getAsBoolean();
             this.manager.droneSay(player, ctrl, "Torch-free light aura " + (on ? "ENABLED" : "DISABLED")

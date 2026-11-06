@@ -219,17 +219,13 @@ public class CraftingService {
         return res;
     }
 
-    public JsonObject craftItem(World world, DroneController ctrl, EntityPlayerMP owner, String targetFilter, int wantedCount) {
+    public CraftResult craftItem(World world, DroneController ctrl, EntityPlayerMP owner, String targetFilter, int wantedCount) {
         return craftItemInternal(world, ctrl, owner, targetFilter, wantedCount, 0);
     }
 
-    private JsonObject craftItemInternal(World world, DroneController ctrl, EntityPlayerMP owner, String targetFilter, int wantedCount, int depth) {
-        JsonObject res = new JsonObject();
-        res.addProperty("ok", true);
+    private CraftResult craftItemInternal(World world, DroneController ctrl, EntityPlayerMP owner, String targetFilter, int wantedCount, int depth) {
         if (ctrl == null || ctrl.drone == null || targetFilter == null || targetFilter.trim().isEmpty()) {
-            res.addProperty("ok", false);
-            res.addProperty("error", "Invalid craft arguments");
-            return res;
+            return CraftResult.failure("Invalid craft arguments");
         }
         String f = targetFilter.trim();
         int targetTotal = Math.max(1, Math.min(256, wantedCount));
@@ -237,10 +233,7 @@ public class CraftingService {
 
         List<IRecipe> matchingRecipes = findRankedMatchingRecipesCached(f);
         if (matchingRecipes.isEmpty()) {
-            res.addProperty("ok", false);
-            res.addProperty("crafted", 0);
-            res.addProperty("error", "No crafting recipe found matching '" + f + "'");
-            return res;
+            return CraftResult.failure("No crafting recipe found matching '" + f + "'");
         }
 
         int totalCrafted = 0;
@@ -353,8 +346,6 @@ public class CraftingService {
         if (totalCrafted > 0) {
             this.logger.log("INV", ctrl, "Crafted " + totalCrafted + "x " + craftedName, "filter=" + f);
         }
-        res.addProperty("crafted", totalCrafted);
-        res.addProperty("item", craftedName);
-        return res;
+        return CraftResult.success(totalCrafted, craftedName);
     }
 }

@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.harness.MasterToolCatalog;
+import ir.layercloud.cortexdrone.harness.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.harness.rpc.translate.BreadcrumbRpcTranslator;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
@@ -32,17 +32,24 @@ public class MasterRpcHandler implements RpcHandler {
     private final WorldRpcHandler worldReader;
     private final InventoryRpcHandler inventoryReader;
     private final BreadcrumbRpcTranslator breadcrumbReader;
+    private final ToolRegistry tools;
 
     public MasterRpcHandler(AIDroneManager manager) {
         this.manager = manager;
         this.worldReader = new WorldRpcHandler(manager, manager.getWorldScanner());
         this.inventoryReader = new InventoryRpcHandler(manager.getInventoryService());
         this.breadcrumbReader = new BreadcrumbRpcTranslator(manager.getBreadcrumbService());
+        this.tools = ToolRegistry.master();
     }
 
     @Override
     public String[] getSupportedMethods() {
-        return MasterToolCatalog.METHODS;
+        return this.tools.names();
+    }
+
+    /** The tools this handler exposes, with their descriptions. */
+    public ToolRegistry toolRegistry() {
+        return this.tools;
     }
 
     @Override

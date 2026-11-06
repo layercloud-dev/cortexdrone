@@ -183,7 +183,7 @@ It only records code between 15 and 1400 chars.
 
 When changing the prompt/SDK/skills:
 
-1. Keep the master tool list in sync with `MasterToolCatalog` and
+1. Keep the master tool list in sync with `ToolRegistry.master()` and
    `MasterRpcHandler`.
 2. Keep SDK methods in sync with RPC translators.
 3. Never reintroduce removed composite tools.

@@ -109,7 +109,7 @@ src/main/java/ir/layercloud/cortexdrone/
     CodeModeRuntime.java     Node.js runner and SDK bundle loader
     SkillLibrary.java        bundled + saved skills, BM25 retrieval
     RpcDispatcher.java       main-thread RPC + time-sliced large scans
-    MasterToolCatalog.java   canonical tool names
+    ToolRegistry.java         master tool registry (names + descriptions)
     rpc/                     RpcHandler + handlers + translators
 
   drone/                    DroneController, TaskSession

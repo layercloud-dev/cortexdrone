@@ -28,8 +28,9 @@ service.
 6. Register the manager in `AIDroneManager` and `ActionRegistry`.
 7. Add `harness/rpc/translate/XRpcTranslator.java`.
 8. Route operation names in `ActionRpcTranslator`.
-9. If it is a generic master primitive, add it to `MasterToolCatalog`, the
-   `MasterRpcHandler`, the SDK, the system prompt, and the tool-surface test.
+9. If it is a generic master primitive, register it in `ToolRegistry.master()`,
+   route it in `MasterRpcHandler`, and update the SDK, system prompt, and
+   tool-surface test.
 10. Add tests for lifecycle/routing if the behavior is non-trivial.
 11. Update docs.
 
@@ -94,7 +95,8 @@ public final class XAction implements Action<XContext> {
 A master tool is justified only if it is a **generic primitive**, not a
 composite task.
 
-1. Add the operation name to `MasterToolCatalog.METHODS`.
+1. Register the operation name in `ToolRegistry.master()` with a short
+   description.
 2. Update `MasterToolSurfaceTest` expected list.
 3. Route it in `MasterRpcHandler.handle`.
 4. Add/extend a translator; never parse JSON in the manager.

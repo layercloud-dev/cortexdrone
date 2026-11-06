@@ -2,7 +2,7 @@
 
 ## 1. The master tool surface
 
-Canonical list: `harness/MasterToolCatalog.METHODS`.
+Canonical list: `harness/ToolRegistry.master()`.
 
 ```text
 state
@@ -22,8 +22,11 @@ skills
 cancel
 ```
 
-Removed composite tools are listed in `MasterToolCatalog.REMOVED_COMPOSITE_TOOLS`
-and `docs/removed-tasks.md`. They are not callable through any alias.
+The registry is the single source of truth: `MasterRpcHandler` returns
+`ToolRegistry.master().names()` as its supported methods, and each entry also
+carries a short description for introspection. Removed composite tools are
+documented in `docs/removed-tasks.md` and the surface test rejects them. They are
+not callable through any alias.
 
 ## 2. `drone.state()`
 

@@ -153,7 +153,7 @@ not a substitute for the subsystem chapters.
 | `task/TaskIntentClassifier` | Deterministic intent classifier |
 | `SkillLibrary` | Bundled/saved skills, BM25 search, self-corrected skills |
 | `RpcDispatcher` | Main-thread RPC, timeouts, time-sliced large scans, poll_scan |
-| `MasterToolCatalog` | Canonical tool names + removed tools |
+| `ToolRegistry` | Ordered master tool registry: names + descriptions |
 | `rpc/RpcHandler` | RPC handler interface |
 | `rpc/impl/MasterRpcHandler` | Master tool router, state/inspect/cancel/standoff |
 | `rpc/impl/WorldRpcHandler` | World/room/vein/entity/location/doc/build queries |

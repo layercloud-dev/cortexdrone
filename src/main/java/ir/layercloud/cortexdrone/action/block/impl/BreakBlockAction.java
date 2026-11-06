@@ -6,18 +6,18 @@ import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.context.block.impl.BlockContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.service.building.impl.BuildingService;
+import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import lombok.RequiredArgsConstructor;
 
 /** Single-use command: break exactly one explicit block. */
 @RequiredArgsConstructor
 public final class BreakBlockAction implements Action<BlockContext> {
-    private final BuildingService buildingService;
+    private final BuildingManager buildingManager;
     private final BlockRequest request;
 
     @Override
     public void execute(BlockContext context) {
-        boolean started = this.buildingService.startBreak(
+        boolean started = this.buildingManager.startBreak(
             context.controller(), this.request.getX(), this.request.getY(), this.request.getZ());
         context.result(BlockResult.breakStarted(started,
             this.request.getX(), this.request.getY(), this.request.getZ()));

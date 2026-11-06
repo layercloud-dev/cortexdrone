@@ -8,7 +8,8 @@ import static org.junit.Assert.fail;
 
 import ir.layercloud.cortexdrone.context.ActionContextBase;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.ActionService;
+import ir.layercloud.cortexdrone.manager.ActionManager;
+import ir.layercloud.cortexdrone.manager.ActionRegistry;
 import net.minecraft.entity.player.EntityPlayerMP;
 import org.junit.Test;
 
@@ -46,7 +47,7 @@ public class ActionRegistryTest {
         }
     }
 
-    private static final class TestService extends ActionService<TestContext, String, String> {
+    private static final class TestService extends ActionManager<TestContext, String, String> {
         private final boolean retain;
         private TestContext lastContext;
         private int executions;

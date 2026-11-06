@@ -3,7 +3,6 @@ package ir.layercloud.cortexdrone.navigation.service;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.NavContext;
 import ir.layercloud.cortexdrone.navigation.raytrace.ChunkCacheContext;
 import ir.layercloud.cortexdrone.navigation.raytrace.VoxelRaycaster3D;
@@ -46,14 +45,10 @@ public class FlightPathfinder {
         }
     }
 
-    private final AIDroneManager manager;
     private final DroneLogger logger;
-    private final CaveEscapeService caveEscapeService;
 
-    public FlightPathfinder(AIDroneManager manager, DroneLogger logger) {
-        this.manager = manager;
+    public FlightPathfinder(DroneLogger logger) {
         this.logger = logger;
-        this.caveEscapeService = new CaveEscapeService(manager, logger);
     }
 
     public static long packBlockPos(int x, int y, int z) {
@@ -130,7 +125,7 @@ public class FlightPathfinder {
             return result;
         }
 
-        // Path-cache reuse: if navigateToward re-planned against a goal bucket we already solved
+        // Path-cache reuse: if the pilot re-planned against a goal bucket we already solved
         // within the last 60 ticks and the runner is still near the previous start cell, skip A*.
         if (ctrl != null && ctrl.cachedPathSignature != Long.MIN_VALUE && ctrl.pathWaypoints.size() > 1) {
             long sig = pathSignature(sx, sy, sz, gx, gy, gz);
@@ -357,187 +352,6 @@ public class FlightPathfinder {
             ctrl.cachedPathCreatedTick = ctrl.tickClock;
         }
         return result;
-    }
-
-    // ==================== Delegated Breadcrumb Backtracking & Cave Escape ====================
-    public int escapeCaveOrDigOut(DroneController ctrl, EntityPlayerMP owner) {
-        return this.caveEscapeService.escapeCaveOrDigOut(ctrl, owner);
-    }
-
-    public void navigateToward(DroneController ctrl, double gx, double gy, double gz, float accel) {
-        NavContext nav = NavContext.of(ctrl, gx, gy, gz, ctrl.navigationRoute);
-        nav.setGoal(gx, gy, gz);
-        Drone d = nav.drone();
-        World world = nav.world();
-
-        int curBx = MathHelper.floor_double(d.posX);
-        int curBy = MathHelper.floor_double(d.posY);
-        int curBz = MathHelper.floor_double(d.posZ);
-        int topCur = world.getHeightValue(curBx, curBz);
-        boolean droneInOpenSky = world.canBlockSeeTheSky(curBx, curBy, curBz) || d.posY >= topCur - 1;
-        int topGoal = world.getHeightValue(MathHelper.floor_double(gx), MathHelper.floor_double(gz));
-        boolean goalOnSurface = gy >= topGoal - 3;
-
-        double effGx = gx;
-        double effGy = gy;
-        double effGz = gz;
-        double horizDist = Math.hypot(gx - d.posX, gz - d.posZ);
-
-        if (!droneInOpenSky && goalOnSurface && (gy - d.posY > 6.0 || horizDist > 20.0)) {
-            // Drone is underground trying to reach a surface goal: target surface exit above current position or last surface anchor first
-            boolean anchorUsable = false;
-            if (ctrl.lastSurfaceAnchor != null && Math.hypot(ctrl.lastSurfaceAnchor[0] - d.posX, ctrl.lastSurfaceAnchor[2] - d.posZ) <= 24.0) {
-                int ax = MathHelper.floor_double(ctrl.lastSurfaceAnchor[0]);
-                int ay = ctrl.lastSurfaceAnchor[1];
-                int az = MathHelper.floor_double(ctrl.lastSurfaceAnchor[2]);
-                // A stale breadcrumb can sit inside rock now; never fly at a solid anchor.
-                if (ItemClassifier.isPassableVoxel(world, ax, ay, az) && ItemClassifier.isPassableVoxel(world, ax, ay + 1, az)) {
-                    effGx = ctrl.lastSurfaceAnchor[0] + 0.5;
-                    effGy = ctrl.lastSurfaceAnchor[1] + 1.0;
-                    effGz = ctrl.lastSurfaceAnchor[2] + 0.5;
-                    anchorUsable = true;
-                }
-            }
-            if (!anchorUsable) {
-                int[] openAbove = findNearestPassableVoxel(world, curBx, Math.min(250, topCur + 2), curBz, 4);
-                if (openAbove != null) {
-                    effGx = openAbove[0] + 0.5;
-                    effGy = openAbove[1] + 0.35;
-                    effGz = openAbove[2] + 0.5;
-                } else {
-                    effGx = curBx + 0.5;
-                    effGy = Math.min(250, topCur + 2.5);
-                    effGz = curBz + 0.5;
-                }
-            }
-        } else if (horizDist > (droneInOpenSky ? 18.0 : 32.0)) {
-            double stepDist = droneInOpenSky ? 16.0 : 24.0;
-            effGx = d.posX + (gx - d.posX) / horizDist * stepDist;
-            effGz = d.posZ + (gz - d.posZ) / horizDist * stepDist;
-            if (droneInOpenSky) {
-                int topSub = world.getHeightValue(MathHelper.floor_double(effGx), MathHelper.floor_double(effGz));
-                effGy = Math.max(gy, Math.max(topSub, topCur) + 4.5);
-            } else {
-                effGy = d.posY + (gy - d.posY) * (stepDist / horizDist);
-            }
-        }
-
-        double distGoalMove = Double.isNaN(ctrl.pathGoalX) ? 999.0 : Math.sqrt(
-            (effGx - ctrl.pathGoalX) * (effGx - ctrl.pathGoalX)
-                + (effGy - ctrl.pathGoalY) * (effGy - ctrl.pathGoalY)
-                + (effGz - ctrl.pathGoalZ) * (effGz - ctrl.pathGoalZ)
-        );
-
-        String route = nav.route();
-        if (("tunnel".equals(route) || "down".equals(route)) && ctrl.mode == Mode.GOTO
-            && !isFlightLineClear(world, d.posX, d.posY, d.posZ, effGx, effGy, effGz)) {
-            int dug = this.caveEscapeService.digTowardTarget(
-                ctrl, MathHelper.floor_double(effGx), MathHelper.floor_double(effGy), MathHelper.floor_double(effGz));
-            if (dug > 0) return;
-        }
-
-        boolean needsRepath = nav.path().isEmpty()
-            || (nav.pathIndex() >= nav.path().size() && ctrl.repathCooldown <= 0)
-            || (distGoalMove > 0.85 && ctrl.repathCooldown <= 0)
-            || (ctrl.stuckTicks >= 12 && ctrl.repathCooldown <= 0);
-
-        if (needsRepath) {
-            List<double[]> wps = findFlightPath(nav.withGoal(effGx, effGy, effGz));
-            nav.setPath(wps, effGx, effGy, effGz);
-            ctrl.repathCooldown = horizDist > 18.0 ? 8 : 12;
-
-            // If trapped underground with a partial path, trigger automatic breadcrumb backtrack or Baritone dig-escape
-            if (!"direct".equals(route) && !"tunnel".equals(route) && !"down".equals(route)
-                && !droneInOpenSky && ctrl.lastPathPartial
-                && (ctrl.stuckTicks >= 6 || (goalOnSurface && gy - d.posY > 6.0))) {
-                escapeCaveOrDigOut(ctrl, null);
-            }
-        }
-
-        while (nav.hasWaypoint()) {
-            double[] wp = nav.currentWaypoint();
-            double distWp = d.getDistance(wp[0], wp[1], wp[2]);
-            boolean isLastWp = (nav.pathIndex() == nav.path().size() - 1);
-            double distWpToGoal = Math.sqrt(
-                (wp[0] - effGx) * (wp[0] - effGx)
-                    + (wp[1] - effGy) * (wp[1] - effGy)
-                    + (wp[2] - effGz) * (wp[2] - effGz)
-            );
-            if (distWp <= 0.75 && !isLastWp) {
-                nav.advanceWaypoint();
-            } else if (distWp <= 0.75 && isLastWp && (ctrl.lastPathPartial || distWpToGoal > 0.90) && ctrl.repathCooldown <= 0) {
-                nav.advanceWaypoint();
-                break;
-            } else {
-                break;
-            }
-        }
-
-        double[] activeWp = nav.hasWaypoint()
-            ? nav.currentWaypoint()
-            : new double[]{effGx, effGy, effGz};
-        int awx = MathHelper.floor_double(activeWp[0]);
-        int away = MathHelper.floor_double(activeWp[1]);
-        int awz = MathHelper.floor_double(activeWp[2]);
-        // A waypoint that is inside collision territory must be recovered from, not
-        // hovered at. The previous throttle compared one `lastSolidKey`: when two
-        // different blocked goals alternated every tick (A/B/A/B) it saw "new key"
-        // each time, so it logged every tick and NEVER escalated — 15.6k STUCK lines
-        // and a permanently hovering drone. Count hits per blocked waypoint instead.
-        if (!ItemClassifier.isPassableVoxel(world, awx, away, awz) || !ItemClassifier.isPassableVoxel(world, awx, away + 1, awz)) {
-            FlightPathfinder.setDroneFlightTarget(d, d.posX, d.posY, d.posZ, 0.05f);
-            d.motionX *= 0.3;
-            d.motionY *= 0.3;
-            d.motionZ *= 0.3;
-            if (ctrl.stuckTicks < 6) {
-                ctrl.stuckTicks = 6;
-            }
-            long solidKey = packBlockPos(awx, away, awz);
-            Integer prevHits = ctrl.solidWaypointHits.get(Long.valueOf(solidKey));
-            int hits = (prevHits == null ? 0 : prevHits.intValue()) + 1;
-            ctrl.solidWaypointHits.put(Long.valueOf(solidKey), Integer.valueOf(hits));
-            if (ctrl.solidWaypointHits.size() > 64) {
-                ctrl.solidWaypointHits.clear();
-                ctrl.solidWaypointHits.put(Long.valueOf(solidKey), Integer.valueOf(hits));
-            }
-            // Clear the fatally stuck path so the next navigateToward replans.
-            nav.clearPath();
-            ctrl.repathCooldown = 0;
-
-            // One log per drone per 4s max, regardless of how many goals alternate.
-            boolean logNow = ctrl.tickClock - ctrl.solidLogTick >= 80;
-            if (logNow) {
-                Block blockedAtWp = world.getBlock(awx, away, awz);
-                this.logger.log("STUCK", ctrl, "Blocked waypoint; recovering",
-                    String.format("wp=(%.2f,%.2f,%.2f) hits=%d block=%s mode=%s",
-                        activeWp[0], activeWp[1], activeWp[2], hits,
-                        ItemClassifier.getBlockDisplayName(blockedAtWp, world.getBlockMetadata(awx, away, awz)),
-                        ctrl.mode.name()));
-                ctrl.lastSolidKey = ctrl.id + "|solid:" + solidKey;
-                ctrl.lastSolidLogTick = ctrl.tickClock;
-                ctrl.solidLogTick = ctrl.tickClock;
-            }
-            // Escalate on the second hit of the SAME waypoint (or sooner if the
-            // generic stuck timer is high). Dig the blocking voxel out instead of
-            // hovering: this is the difference between "stuck" and "self-rescue".
-            if (hits >= 2 || ctrl.stuckTicks >= 12) {
-                int queued = this.caveEscapeService.digOutBlockedWaypoint(ctrl, awx, away, awz);
-                if (queued > 0) {
-                    ctrl.solidEscalations++;
-                    this.logger.log("ESCAPE", ctrl, "Digging out blocked waypoint",
-                        String.format("wp=(%.2f,%.2f,%.2f) queued=%d hits=%d escalation=%d",
-                            activeWp[0], activeWp[1], activeWp[2], queued, hits, ctrl.solidEscalations));
-                }
-            }
-        } else {
-            // Making progress at THIS waypoint: forget only its own hit count.
-            // Clearing the whole map here defeated escalation whenever a replan
-            // produced a passable intermediate waypoint between two blocked
-            // attempts at the same solid waypoint: the counter went 1 -> clear -> 1
-            // forever, so the drone hovered instead of digging out.
-            ctrl.solidWaypointHits.remove(Long.valueOf(packBlockPos(awx, away, awz)));
-            setDroneFlightTarget(d, activeWp[0], activeWp[1], activeWp[2], accel);
-        }
     }
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {

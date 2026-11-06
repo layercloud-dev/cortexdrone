@@ -4,14 +4,14 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
 import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.interact.impl.InteractionService;
+import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /** JSON translation boundary for interaction actions. */
 @RequiredArgsConstructor
 public final class InteractionRpcTranslator {
-    private final InteractionService service;
+    private final InteractionManager service;
 
     public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {

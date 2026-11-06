@@ -13,28 +13,23 @@ Respond ONLY with one valid JSON object matching this exact schema:
 ### Master tools (these are the only tools; the only SDK global is `drone`)
 1. `await drone.state()` -> live status: `{ok, x, y, z, mode, distanceToGoal, arrived, activeTask, taskSummary, activeBreakTarget, freeSlots, totalItems, inventory, ...}`
 2. `await drone.inspect(op, args)` -> one read-only query. There are no `world.*`, `player.*`, or `kb.*` aliases; use this namespace directly.
-3. `await drone.moveTo(x, y, z, opts)` or `await drone.moveTo({x,y,z,route,maxWaitMs})`
-   - Navigation is a separate primitive. It resolves ONLY after the drone arrives (or the route gives up).
-   - `route`:
-     - `'auto'` (default): fly when possible, self-rescue dig when blocked.
-     - `'tunnel'`: carve a corridor through blocking blocks toward the destination.
-     - `'up'`: if underground, route out through the surface first, then continue to the final target.
-     - `'down'`: dig straight down toward the destination.
-     - `'direct'`: fly only; do not dig.
-   - `standoffOf:{x,y,z}` (or `nearBlock:{x,y,z}`) asks the navigator to choose a safe reachable position beside that block. Use this before breaking/placing/interacting.
-   - Returns `arrived:true` when in position.
-   Dedicated aliases for the split actions: `await drone.tunnel(x,y,z,opts)`, `await drone.digUp({x?,y?,z?,maxWaitMs})`, `await drone.digDown({depth,maxWaitMs})`.
-4. `await drone.breakBlock(x, y, z, opts)` -> breaks exactly ONE explicit block. No filter, no count, no neighbour propagation, no queue. If out of reach it returns `{needsMovement:true, standoff}`, then the SDK moves there and calls the break again. Resolves after the block is gone/action ends, returns `broken`.
-5. `await drone.placeBlock(x, y, z, block, meta, opts)` -> places exactly ONE explicit block from drone/chest/player inventory, and nothing else. No blueprint, no queue, no hidden substitution. If out of reach it uses the same move-then-place flow.
-6. `await drone.interactBlock(x, y, z, side)` -> exactly ONE action: right-click/activate the target block (door, lever, furnace, machine, chest...). It does NOT also use the held item. Moves into reach first if needed.
-7. `await drone.useItem(itemOrSlot, x?, y?, z?, side?)` or `await drone.useItem({item:'hoe', x, y, z, side})` -> exactly ONE item-use action, optionally on a target block. It does NOT activate the block first. Moves into reach first if needed. `await drone.useItem({entityId: id, item:'sword'})` (or `{attack:id}`) performs exactly ONE melee attack with the selected/held item; get the id from `inspect('entities')`. Moves into reach first.
-8. `await drone.pickEntity(id)` -> mounts exactly one entity (including a player) onto the drone. If out of reach it moves to the returned standoff and retries. Returns `{picked:true, entityId, name}`.
-9. `await drone.unpickEntity({entityId?})` -> dismounts the current rider, or the explicit entity. Returns `{unpicked:true, entityId, name}`.
-10. `await drone.transfer({op:'move'|'withdraw'|'deposit'|'give'|'take'|'drop'|'suck', ...})` -> generic inventory transfer primitive.
-11. `await drone.craft(filter, count)` -> vanilla crafting primitive.
-12. `await drone.visuals(kind, args)` -> visual/audio/chat: `kind:'led'|'ledEffect'|'particles'|'sound'|'note'|'status'|'say'`.
-13. `await drone.skills(op, args)` -> reusable-skill memory: `op:'search'|'list'|'save'`. Built-in skills from `resources/skills/` are loaded at startup; use `drone.skills('list')` to see them.
-14. `await drone.cancel()` -> cancel the current task/session.
+3. `await drone.goto(x, y, z, opts)` or `await drone.goto({x,y,z,standoffOf,maxWaitMs})`
+   - Goal-driven navigation. It resolves ONLY after arrival or failure.
+   - You never choose a route. The navigation manager checks the recorded trail, then a no-dig flight path, then tunnels or digs up/down when the target is blocked.
+   - `standoffOf:{x,y,z}` (or `nearBlock:{x,y,z}`) asks for a safe reachable position beside that block. Use this before breaking/placing/interacting.
+   - Returns `arrived:true` and `navigationError` when it cannot reach the goal.
+4. `await drone.stop()` -> cancel navigation and hover in place.
+5. `await drone.breakBlock(x, y, z, opts)` -> breaks exactly ONE explicit block. No filter, no count, no neighbour propagation, no queue. If out of reach it returns `{needsMovement:true, standoff}`, then the SDK moves there and calls the break again. Resolves after the block is gone/action ends, returns `broken`.
+6. `await drone.placeBlock(x, y, z, block, meta, opts)` -> places exactly ONE explicit block from drone/chest/player inventory, and nothing else. No blueprint, no queue, no hidden substitution. If out of reach it uses the same move-then-place flow.
+7. `await drone.interactBlock(x, y, z, side)` -> exactly ONE action: right-click/activate the target block (door, lever, furnace, machine, chest...). It does NOT also use the held item. Moves into reach first if needed.
+8. `await drone.useItem(itemOrSlot, x?, y?, z?, side?)` or `await drone.useItem({item:'hoe', x, y, z, side})` -> exactly ONE item-use action, optionally on a target block. It does NOT activate the block first. Moves into reach first if needed. `await drone.useItem({entityId: id, item:'sword'})` (or `{attack:id}`) performs exactly ONE melee attack with the selected/held item; get the id from `inspect('entities')`. Moves into reach first.
+9. `await drone.pickEntity(id)` -> mounts exactly one entity (including a player) onto the drone. If out of reach it moves to the returned standoff and retries. Returns `{picked:true, entityId, name}`.
+10. `await drone.unpickEntity({entityId?})` -> dismounts the current rider, or the explicit entity. Returns `{unpicked:true, entityId, name}`.
+11. `await drone.transfer({op:'move'|'withdraw'|'deposit'|'give'|'take'|'drop'|'suck', ...})` -> generic inventory transfer primitive.
+12. `await drone.craft(filter, count)` -> vanilla crafting primitive.
+13. `await drone.visuals(kind, args)` -> visual/audio/chat: `kind:'led'|'ledEffect'|'particles'|'sound'|'note'|'status'|'say'`.
+14. `await drone.skills(op, args)` -> reusable-skill memory: `op:'search'|'list'|'save'`. Built-in skills from `resources/skills/` are loaded at startup; use `drone.skills('list')` to see them.
+15. `await drone.cancel()` -> cancel the current task/session.
 
 ### Inspection ops for `drone.inspect(op, args)`
 - `block {x,y,z}` -> block id/name/meta/hardness/passable/liquid/light
@@ -54,7 +49,7 @@ Respond ONLY with one valid JSON object matching this exact schema:
 There are no alias globals: use `drone.inspect` directly, and `drone.skills('search'|'list'|'save', ...)` for reusable-skill memory. `sleep`, `log`, and `hsvToRgb` are the only utility globals.
 
 ### Composition rules
-- Never look for `drone.mine`, `drone.hunt`, `drone.farm`, `drone.mineRect`, `drone.buildStructure`, `drone.sortChests`, `drone.carry`, etc. They no longer exist. If you need N blocks/items, write a loop of `inspect -> moveTo -> breakBlock` (or `placeBlock`) yourself.
+- Never look for `drone.mine`, `drone.hunt`, `drone.farm`, `drone.mineRect`, `drone.buildStructure`, `drone.sortChests`, `drone.carry`, etc. They no longer exist. If you need N blocks/items, write a loop of `inspect -> goto -> breakBlock` (or `placeBlock`) yourself.
 - Entity transport is a composed skill, not a premade task:
   ```js
   const entities = await drone.inspect('entities', { radius: 8, filter: 'player' });
@@ -62,7 +57,7 @@ There are no alias globals: use `drone.inspect` directly, and `drone.skills('sea
   if (!target) return { error: 'no player nearby' };
   const picked = await drone.pickEntity(target.id);
   if (!picked.picked) return picked;
-  const moved = await drone.moveTo(dest.x, dest.y, dest.z, { route: 'auto' });
+  const moved = await drone.goto(dest.x, dest.y, dest.z);
   if (!moved.arrived) return moved;
   return await drone.unpickEntity();
   ```
@@ -73,15 +68,15 @@ There are no alias globals: use `drone.inspect` directly, and `drone.skills('sea
   if (!found.count) return { found: 0, next: 'scan wider or choose another target' };
   const out = [];
   for (const b of found.blocks.slice(0, 8)) {
-    const r = await drone.breakBlock(b.x, b.y, b.z, { route: 'auto' });
+    const r = await drone.breakBlock(b.x, b.y, b.z);
     out.push({ x: b.x, y: b.y, z: b.z, broken: !!r.broken, error: r.error });
   }
   return { attempted: out.length, results: out };
   ```
-- Explicit move-then-cut example (for a deep target) — the navigator decides tunnel/up/alternative and the break happens only after arrival:
+- Explicit move-then-cut example (for a deep target) — the navigation manager picks trail/flight/dig and the break happens only after arrival:
   ```js
   const target = { x: 120, y: 32, z: -45 };
-  const mv = await drone.moveTo({ standoffOf: target, route: 'tunnel' });
+  const mv = await drone.goto({ standoffOf: target });
   if (!mv.arrived) return { blocker: 'could not reach standoff', mv };
   return await drone.breakBlock(target);
   ```

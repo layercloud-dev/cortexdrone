@@ -52,7 +52,7 @@ public final class NavContext {
         return of(controller, controller != null ? controller.goalX : Double.NaN,
             controller != null ? controller.goalY : Double.NaN,
             controller != null ? controller.goalZ : Double.NaN,
-            controller != null ? controller.navigationRoute : "auto");
+            "auto");
     }
 
     public static NavContext of(DroneController controller, double gx, double gy, double gz, String route) {

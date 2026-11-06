@@ -97,7 +97,7 @@ public class LlmAgentService {
             canSeeSky = world.canBlockSeeTheSky(MathHelper.floor_double(ctrl.drone.posX), MathHelper.floor_double(ctrl.drone.posY), MathHelper.floor_double(ctrl.drone.posZ));
         } catch (Throwable ignored) {}
         ctx.addProperty("droneCanSeeSky", canSeeSky);
-        ctx.addProperty("breadcrumbCount", ctrl.navigationHistory.size());
+        ctx.addProperty("breadcrumbCount", this.manager.getBreadcrumbService().count(ctrl));
         ctx.addProperty("droneInventory", InventoryService.formatInventorySummary(ctrl.drone.mainInventory()));
         ctx.addProperty("playerInventory", player != null ? InventoryService.formatInventorySummary(player.inventory) : "Offline");
 
@@ -114,7 +114,7 @@ public class LlmAgentService {
         if (!ctrl.lastThought.isEmpty()) ctx.addProperty("lastThought", ctrl.lastThought);
         JsonObject taskState = new JsonObject();
         taskState.addProperty("mode", ctrl.mode.name());
-        taskState.addProperty("navigationRoute", ctrl.navigationRoute);
+        taskState.addProperty("navigationActive", this.manager.getNavigationManager().isActive(ctrl));
         taskState.addProperty("activeBreakTarget", ctrl.currentMineTarget != null
             ? (ctrl.currentMineTarget[0] + "," + ctrl.currentMineTarget[1] + "," + ctrl.currentMineTarget[2]) : "");
         ctx.add("task", taskState);

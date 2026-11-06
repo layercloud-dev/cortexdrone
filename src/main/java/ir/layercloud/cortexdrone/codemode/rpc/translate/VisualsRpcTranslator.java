@@ -8,9 +8,9 @@ import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
 import ir.layercloud.cortexdrone.codemode.SkillLibrary;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.visuals.LightConfig;
-import ir.layercloud.cortexdrone.service.visuals.LightResult;
-import ir.layercloud.cortexdrone.service.visuals.impl.VisualsService;
+import ir.layercloud.cortexdrone.manager.visuals.LightConfig;
+import ir.layercloud.cortexdrone.manager.visuals.LightResult;
+import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
@@ -23,7 +23,7 @@ import net.minecraft.item.ItemStack;
 @RequiredArgsConstructor
 public final class VisualsRpcTranslator {
     private final AIDroneManager manager;
-    private final VisualsService service;
+    private final VisualsManager service;
 
     public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {

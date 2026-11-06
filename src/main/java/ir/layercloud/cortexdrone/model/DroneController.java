@@ -22,16 +22,9 @@ public class DroneController {
     public double goalX;
     public double goalY;
     public double goalZ;
-    // Master navigation route selected by the AI: auto | direct | tunnel | up | down.
-    // "up" routes via the surface first and then continues to the final goal.
-    public String navigationRoute = "auto";
-    // Incremented for every accepted movement request. Action contexts use it
-    // to tell whether their navigation generation is still the live one.
+    // Incremented for every accepted navigation request.
     public int navigationGeneration = 0;
-    public boolean navViaSurface = false;
-    public double navFinalX = Double.NaN;
-    public double navFinalY = Double.NaN;
-    public double navFinalZ = Double.NaN;
+    public String navigationError = "";
     // Single task / single session state. The harness never queues instructions.
     public final TaskSession task = new TaskSession();
 
@@ -92,8 +85,6 @@ public class DroneController {
     }
     public String lastPathLogKey = "";
     public int lastPathLogTick = -10000;
-    public final Deque<int[]> navigationHistory = new ConcurrentLinkedDeque<int[]>();
-    public int[] lastSurfaceAnchor = null;
 
     // Single-block break/place and illumination state.
     // autoTorch == "illumination aura active". No torch item is consumed and no
@@ -141,7 +132,6 @@ public class DroneController {
     // Tick-rate pacing counters (kept on the controller: each drone ticks independently)
     public int tickClock = 0;          // ever-incrementing per-drone tick counter
     public int followAnchorCooldown = 0;
-    public int breadcrumbCooldown = 0;
     // Velocity/predictive-braking load state
     public double velX = 0.0;
     public double velY = 0.0;
@@ -234,43 +224,6 @@ public class DroneController {
         this.thoughtHistory.addLast("T" + turn + ": " + clean);
         while (this.thoughtHistory.size() > 12) {
             this.thoughtHistory.pollFirst();
-        }
-    }
-
-    public void recordBreadcrumb(int x, int y, int z, boolean skyVisible) {
-        if (skyVisible) {
-            this.lastSurfaceAnchor = new int[]{x, y, z, 1};
-        }
-        int[] last = this.navigationHistory.peekLast();
-        if (last != null) {
-            int dx = x - last[0];
-            int dy = y - last[1];
-            int dz = z - last[2];
-            if (dx * dx + dy * dy + dz * dz < 4) {
-                return;
-            }
-        }
-        // Loop pruning: if revisiting a recent voxel within 1 block, unwind the dead-end loop
-        List<int[]> snapshot = new ArrayList<int[]>(this.navigationHistory);
-        int matchIdx = -1;
-        int searchStart = Math.max(0, snapshot.size() - 28);
-        for (int i = searchStart; i < snapshot.size() - 1; i++) {
-            int[] pt = snapshot.get(i);
-            if (Math.abs(pt[0] - x) <= 1 && Math.abs(pt[1] - y) <= 1 && Math.abs(pt[2] - z) <= 1) {
-                matchIdx = i;
-                break;
-            }
-        }
-        if (matchIdx >= 0) {
-            int toPop = snapshot.size() - 1 - matchIdx;
-            for (int p = 0; p < toPop; p++) {
-                this.navigationHistory.pollLast();
-            }
-            return;
-        }
-        this.navigationHistory.addLast(new int[]{x, y, z, skyVisible ? 1 : 0});
-        while (this.navigationHistory.size() > 256) {
-            this.navigationHistory.pollFirst();
         }
     }
 

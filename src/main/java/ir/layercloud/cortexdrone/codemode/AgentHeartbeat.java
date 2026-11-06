@@ -118,7 +118,7 @@ final class AgentHeartbeat {
             + "Original task: " + LoopTracer.snippet(this.userPrompt, 320) + "\n"
             + "Current drone: " + statusSummary() + "\n"
             + "Do NOT answer done again until the goal is actually finished. Continue with the next "
-            + "PHYSICAL JavaScript step (inspect / moveTo / breakBlock / transfer) and then verify the "
+            + "PHYSICAL JavaScript step (inspect / goto / breakBlock / transfer) and then verify the "
             + "result. Only when the requested items/actions are truly complete, reply done:true with "
             + "the delivered amount. If genuinely blocked, reply done:true and name the exact blocker.";
     }

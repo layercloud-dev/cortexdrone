@@ -1,15 +1,16 @@
 // ---------------------------------------------------------------------------
 // Master tool surface. There are no monolithic "mine/harvest/build/farm" tools.
 // Every physical behavior is composed by the AI from:
-//   inspect -> moveTo (navigator chooses fly/tunnel/up route) -> break/place/
+//   inspect -> goto (navigation manager chooses trail/flight/dig) -> break/place/
 //   interact/use -> repeat.
 // Every primitive waits until its own physical action finishes.
 // ---------------------------------------------------------------------------
 const _awaitMovement = async (r, args = {}) => {
   if (!r || r.ok === false) return r;
-  const maxWaitMs = Number((args && args.maxWaitMs) || 60000);
-  const st = await _waitUntil((s) => s.mode !== 'GOTO' || s.arrived === true, maxWaitMs);
-  return { ...r, ...st, arrived: st.mode !== 'GOTO' || st.arrived === true };
+  const maxWaitMs = Number((args && args.maxWaitMs) || 120000);
+  const st = await _waitUntil((s) => s.navigationActive === false, maxWaitMs);
+  const failed = !!st.navigationError;
+  return { ...r, ...st, arrived: st.navigationActive === false && !failed };
 };
 
 const drone = {
@@ -28,57 +29,35 @@ const drone = {
     return r;
   },
 
-  // route: 'auto' (fly, dig self-rescue when blocked), 'tunnel' (carve a
-  // corridor), 'up' (route through the surface first), 'direct' (fly only),
-  // 'down' (dig straight down). Resolves only after arrival or route failure.
-  moveTo: async (x, y, z, opts = {}) => {
+  // Goal-driven navigation. The manager chooses breadcrumbs, a no-dig flight
+  // path, or an internal dig route. It resolves after arrival/failure.
+  goto: async (x, y, z, opts = {}) => {
     let args;
     if (_isObj(x)) args = { ...x };
     else if (Array.isArray(x)) args = { x: x[0], y: x[1], z: x[2] };
     else args = { x, y, z };
     if (opts && _isObj(opts)) Object.assign(args, opts);
-    if (!args.route) args.route = 'auto';
-    return _awaitMovement(await rpc('navigate', args), args);
+    return _awaitMovement(await rpc('goto', args), args);
   },
 
-  // Dedicated movement actions. They map to the split movement action classes.
-  tunnel: async (x, y, z, opts = {}) => {
-    let args;
-    if (_isObj(x)) args = { ...x };
-    else if (Array.isArray(x)) args = { x: x[0], y: x[1], z: x[2] };
-    else args = { x, y, z };
-    if (opts && _isObj(opts)) Object.assign(args, opts);
-    return _awaitMovement(await rpc('tunnel', args), args);
-  },
-
-  digUp: async (opts = {}) => {
-    const args = _isObj(opts) ? { ...opts } : {};
-    return _awaitMovement(await rpc('digup', args), args);
-  },
-
-  digDown: async (opts = {}) => {
-    const args = _isObj(opts) ? { ...opts } : {};
-    if (typeof opts === 'number') args.depth = opts;
-    return _awaitMovement(await rpc('digdown', args), args);
-  },
+  stop: async () => rpc('stop', {}),
 
   // Break exactly one explicit block. If out of reach the primitive returns
   // the navigator's standoff; the SDK moves there, then calls the break again.
   breakBlock: async (x, y, z, opts = {}) => {
     const target = _isObj(x) ? { ...x } : (Array.isArray(x) ? { x: x[0], y: x[1], z: x[2] } : { x, y, z });
-    const route = (opts && opts.route) || 'auto';
     const maxWaitMs = Number((opts && opts.maxWaitMs) || 120000);
     for (let attempt = 0; attempt < 4; attempt++) {
       const r = await rpc('break_block', target);
       if (r && r.needsMovement && r.standoff) {
-        const mv = await drone.moveTo(r.standoff, { route, maxWaitMs });
+        const mv = await drone.goto(r.standoff, { maxWaitMs });
         if (!mv || mv.ok === false) return mv || r;
         continue;
       }
       if (r && r.ok === false && /standoff/i.test(String(r.error || ''))) {
         // Fully buried target with no exposed standoff: carve toward it, then
         // retry the single-block break once the navigator has arrived.
-        const mv = await drone.moveTo({ x: target.x, y: target.y, z: target.z, route: 'tunnel', maxWaitMs });
+        const mv = await drone.goto({ x: target.x, y: target.y, z: target.z, maxWaitMs });
         if (!mv || mv.ok === false) return { ...r, movement: mv };
         continue;
       }
@@ -101,7 +80,7 @@ const drone = {
     for (let attempt = 0; attempt < 3; attempt++) {
       const r = await rpc('place_block', target);
       if (r && r.needsMovement && r.standoff) {
-        const mv = await drone.moveTo(r.standoff, { route: target.route || 'auto' });
+        const mv = await drone.goto(r.standoff);
         if (!mv || mv.ok === false) return mv || r;
         continue;
       }
@@ -119,7 +98,7 @@ const drone = {
     for (let attempt = 0; attempt < 3; attempt++) {
       const r = await rpc('interact_block', target);
       if (r && r.needsMovement && r.standoff) {
-        const mv = await drone.moveTo(r.standoff, { route: target.route || 'auto' });
+        const mv = await drone.goto(r.standoff);
         if (!mv || mv.ok === false) return mv || r;
         continue;
       }
@@ -152,7 +131,7 @@ const drone = {
     for (let attempt = 0; attempt < 3; attempt++) {
       const r = await rpc('use_item', target);
       if (r && r.needsMovement && r.standoff) {
-        const mv = await drone.moveTo(r.standoff, { route: target.route || 'auto' });
+        const mv = await drone.goto(r.standoff);
         if (!mv || mv.ok === false) return mv || r;
         continue;
       }
@@ -163,7 +142,7 @@ const drone = {
 
   // Mount one entity (including a player) onto the drone. Moves into reach
   // first when the entity is out of range. Compose transport as:
-  // pickEntity -> moveTo -> unpickEntity.
+  // pickEntity -> goto -> unpickEntity.
   pickEntity: async (entityId, opts = {}) => {
     const target = _isObj(entityId)
       ? { ...entityId }
@@ -172,7 +151,7 @@ const drone = {
     for (let attempt = 0; attempt < 3; attempt++) {
       const r = await rpc('pick_entity', target);
       if (r && r.needsMovement && r.standoff) {
-        const mv = await drone.moveTo(r.standoff, { route: target.route || 'auto' });
+        const mv = await drone.goto(r.standoff);
         if (!mv || mv.ok === false) return mv || r;
         continue;
       }

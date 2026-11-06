@@ -2,5 +2,5 @@
   "name": "mine_and_deliver",
   "description": "Inspect matching blocks, move to each one, break it with the single-block primitive, then deliver to the player",
   "tags": "mine ore break block deliver player iron stone",
-  "code": "const f = await drone.inspect('blocks', { filter: 'iron_ore', radius: 24 });\nfor (const b of (f.blocks || []).slice(0, 8)) {\n  await drone.breakBlock(b.x, b.y, b.z, { route: 'auto' });\n}\nconst p = await drone.inspect('player', {});\nawait drone.moveTo(p.blockX, p.blockY + 2, p.blockZ);\nreturn await drone.transfer('give', { filter: 'all', count: 512 });"
+  "code": "const f = await drone.inspect('blocks', { filter: 'iron_ore', radius: 24 });\nfor (const b of (f.blocks || []).slice(0, 8)) {\n  await drone.breakBlock(b.x, b.y, b.z);\n}\nconst p = await drone.inspect('player', {});\nawait drone.goto(p.blockX, p.blockY + 2, p.blockZ);\nreturn await drone.transfer('give', { filter: 'all', count: 512 });"
 }

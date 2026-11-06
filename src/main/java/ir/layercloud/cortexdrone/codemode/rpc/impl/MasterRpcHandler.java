@@ -5,9 +5,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.codemode.rpc.RpcHandler;
+import ir.layercloud.cortexdrone.codemode.rpc.translate.BreadcrumbRpcTranslator;
 import ir.layercloud.cortexdrone.harness.MasterToolCatalog;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import net.minecraft.block.Block;
@@ -31,11 +33,13 @@ public class MasterRpcHandler implements RpcHandler {
     private final AIDroneManager manager;
     private final WorldRpcHandler worldReader;
     private final InventoryRpcHandler inventoryReader;
+    private final BreadcrumbRpcTranslator breadcrumbReader;
 
     public MasterRpcHandler(AIDroneManager manager) {
         this.manager = manager;
         this.worldReader = new WorldRpcHandler(manager, manager.getWorldScanner());
         this.inventoryReader = new InventoryRpcHandler(manager.getInventoryService());
+        this.breadcrumbReader = new BreadcrumbRpcTranslator(manager.getBreadcrumbService());
     }
 
     @Override
@@ -51,7 +55,7 @@ public class MasterRpcHandler implements RpcHandler {
         }
         if ("state".equals(m)) return state(ctrl, player, args);
         if ("inspect".equals(m)) return inspect(ctrl, player, args);
-        if ("navigate".equals(m) || "tunnel".equals(m) || "digup".equals(m) || "digdown".equals(m)) {
+        if ("goto".equals(m) || "stop".equals(m)) {
             return this.manager.getActionRpcTranslator().handle(ctrl, player, m, args);
         }
         if ("break_block".equals(m)) return breakBlock(ctrl, player, args);
@@ -76,8 +80,6 @@ public class MasterRpcHandler implements RpcHandler {
         res.addProperty("taskPrompt", ctrl.task.getPrompt());
         res.addProperty("taskSummary", summary);
         res.addProperty("taskAgeMs", ctrl.task.getAgeMs());
-        res.addProperty("navigationRoute", ctrl.navigationRoute != null ? ctrl.navigationRoute : "auto");
-        res.addProperty("navViaSurface", ctrl.navViaSurface);
         JsonArray notes = new JsonArray();
         for (String note : ctrl.task.getNotes()) notes.add(new JsonPrimitive(note));
         res.add("taskNotes", notes);
@@ -86,7 +88,13 @@ public class MasterRpcHandler implements RpcHandler {
                 + (ctrl.drone.posY - ctrl.goalY) * (ctrl.drone.posY - ctrl.goalY)
                 + (ctrl.drone.posZ - ctrl.goalZ) * (ctrl.drone.posZ - ctrl.goalZ));
         res.addProperty("distanceToGoal", Math.round(distGoal * 100.0) / 100.0);
-        res.addProperty("arrived", ctrl.mode != Mode.GOTO || (distGoal >= 0.0 && distGoal <= 1.0));
+        NavigationManager.Status navigation = this.manager.getNavigationManager().status(ctrl);
+        res.addProperty("navigationActive", navigation.isActive());
+        res.addProperty("navigationPhase", navigation.getPhase());
+        res.addProperty("navigationReason", navigation.getReason());
+        res.addProperty("navigationError", ctrl.navigationError != null ? ctrl.navigationError : "");
+        res.addProperty("arrived", !navigation.isActive()
+            && (ctrl.mode != Mode.GOTO || (distGoal >= 0.0 && distGoal <= 1.0)));
         if (ctrl.currentMineTarget != null) {
             JsonObject target = new JsonObject();
             target.addProperty("x", ctrl.currentMineTarget[0]);
@@ -128,7 +136,7 @@ public class MasterRpcHandler implements RpcHandler {
         else if (op.equals("machinerecipe")) { method = "get_machine_recipe"; handler = this.inventoryReader; }
         else if (op.equals("machines") || op.equals("scanmachines")) { method = "scan_machines"; handler = this.inventoryReader; }
         else if (op.equals("machineingredients")) { method = "machine_ingredients"; handler = this.inventoryReader; }
-        else if (op.equals("breadcrumbs")) return this.manager.getActionRpcTranslator().handle(ctrl, player, "get_breadcrumbs", args);
+        else if (op.equals("breadcrumbs")) return this.breadcrumbReader.read(ctrl, args);
         else if (op.equals("doc") || op.equals("lookup") || op.equals("lookupdoc")) { method = "lookup_doc"; handler = this.worldReader; }
         else return error("Unknown inspect op: " + op);
         return handler.handle(ctrl, player, method, args);
@@ -239,7 +247,7 @@ public class MasterRpcHandler implements RpcHandler {
         int cancelled = ctrl.cancelOtherLoops(callerLoopId);
         this.manager.clearActionState(ctrl);
         ctrl.task.cancel();
-        this.manager.getMovementService().stop(ctrl, "Master cancel");
+        this.manager.getNavigationManager().stop(ctrl, null, "Master cancel");
         JsonObject res = ok();
         res.addProperty("cancelled", true);
         res.addProperty("cancelledLoops", cancelled);

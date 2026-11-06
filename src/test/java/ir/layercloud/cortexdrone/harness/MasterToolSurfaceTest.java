@@ -14,7 +14,7 @@ public class MasterToolSurfaceTest {
     public void onlyMasterPrimitivesAreRegistered() {
         Set<String> actual = new HashSet<String>(Arrays.asList(MasterToolCatalog.METHODS));
         Set<String> expected = new HashSet<String>(Arrays.asList(
-            "state", "inspect", "navigate", "tunnel", "digup", "digdown",
+            "state", "inspect", "goto", "stop",
             "break_block", "place_block", "interact_block", "use_item",
             "pick_entity", "unpick_entity",
             "transfer", "craft", "visuals", "skills", "cancel"

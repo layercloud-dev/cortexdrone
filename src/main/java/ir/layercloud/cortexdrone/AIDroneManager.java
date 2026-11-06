@@ -1,10 +1,10 @@
 package ir.layercloud.cortexdrone;
 
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import ir.layercloud.cortexdrone.action.ActionRegistry;
+import ir.layercloud.cortexdrone.manager.ActionRegistry;
 import ir.layercloud.cortexdrone.codemode.rpc.translate.ActionRpcTranslator;
-import ir.layercloud.cortexdrone.service.building.impl.BuildingService;
-import ir.layercloud.cortexdrone.service.inventory.impl.InventoryActionService;
+import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
+import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
 import ir.layercloud.cortexdrone.codemode.CodeModeRuntime;
 import ir.layercloud.cortexdrone.codemode.LlmAgentService;
 import ir.layercloud.cortexdrone.codemode.RpcDispatcher;
@@ -19,10 +19,13 @@ import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
-import ir.layercloud.cortexdrone.service.TickService;
-import ir.layercloud.cortexdrone.service.visuals.impl.VisualsService;
-import ir.layercloud.cortexdrone.service.interact.impl.InteractionService;
-import ir.layercloud.cortexdrone.service.movement.impl.MovementService;
+import ir.layercloud.cortexdrone.manager.TickManager;
+import ir.layercloud.cortexdrone.manager.navigation.impl.FlightPilot;
+import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
+import ir.layercloud.cortexdrone.navigation.service.DigPathService;
+import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
+import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
+import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
 import ir.layercloud.cortexdrone.world.DocLookupService;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import ir.layercloud.cortexdrone.world.WorldScanner;
@@ -58,13 +61,15 @@ public class AIDroneManager {
 
     private final DroneLogger logger = new DroneLogger();
     private final FlightPathfinder pathfinder;
+    private final BreadcrumbService breadcrumbService;
+    private final FlightPilot flightPilot;
+    private final NavigationManager navigationManager;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
-    private final BuildingService buildingService;
-    private final MovementService movementService;
-    private final VisualsService visualsService;
-    private final InteractionService interactionService;
-    private final InventoryActionService inventoryActionService;
+    private final BuildingManager buildingManager;
+    private final VisualsManager visualsManager;
+    private final InteractionManager interactionManager;
+    private final InventoryManager inventoryManager;
     private final ActionRegistry actionRegistry;
     private final ActionRpcTranslator actionRpcTranslator;
     private final DocLookupService docLookupService;
@@ -72,7 +77,7 @@ public class AIDroneManager {
     private final CodeModeRuntime codeModeRuntime;
     private final RpcDispatcher rpcDispatcher;
     private final LlmAgentService agentService;
-    private final TickService tickService;
+    private final TickManager tickManager;
     private final TickProfiler tickProfiler;
     private final DroneHttpServer httpServer;
     private final TaskCoordinator taskCoordinator;
@@ -85,20 +90,22 @@ public class AIDroneManager {
     private final java.util.Set<UUID> despawnedUuids = java.util.Collections.synchronizedSet(new java.util.HashSet<UUID>());
     public AIDroneManager(CortexDroneMod mod) {
         this.mod = mod;
-        this.pathfinder = new FlightPathfinder(this, this.logger);
+        this.pathfinder = new FlightPathfinder(this.logger);
+        this.breadcrumbService = new BreadcrumbService();
+        this.flightPilot = new FlightPilot(this.breadcrumbService, this.logger, this.pathfinder);
         this.worldScanner = new WorldScanner(this.logger, this.config);
         this.inventoryService = new InventoryService(this.logger);
-        this.visualsService = new VisualsService(this, this.logger);
-        this.interactionService = new InteractionService(this.inventoryService);
-        this.inventoryActionService = new InventoryActionService(this, this.inventoryService);
-        this.buildingService = new BuildingService(this, this.logger, this.pathfinder, this.inventoryService);
-        this.movementService = new MovementService(this);
+        this.visualsManager = new VisualsManager(this, this.logger);
+        this.interactionManager = new InteractionManager(this.inventoryService);
+        this.inventoryManager = new InventoryManager(this, this.inventoryService);
+        this.buildingManager = new BuildingManager(this, this.logger, this.flightPilot, this.inventoryService);
+        this.navigationManager = new NavigationManager(this, this.logger, this.flightPilot,
+            new DigPathService(), this.breadcrumbService, this.buildingManager);
         this.actionRegistry = new ActionRegistry();
-        this.actionRegistry.register(this.movementService);
-        this.actionRegistry.register(this.buildingService);
-        this.actionRegistry.register(this.interactionService);
-        this.actionRegistry.register(this.inventoryActionService);
-        this.actionRegistry.register(this.visualsService);
+        this.actionRegistry.register(this.buildingManager);
+        this.actionRegistry.register(this.interactionManager);
+        this.actionRegistry.register(this.inventoryManager);
+        this.actionRegistry.register(this.visualsManager);
         this.actionRpcTranslator = new ActionRpcTranslator(this);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));
@@ -111,13 +118,15 @@ public class AIDroneManager {
             this.codeModeRuntime,
             this.rpcDispatcher
         );
-        this.tickService = new TickService(
+        this.tickManager = new TickManager(
             this,
             this.logger,
-            this.pathfinder,
             this.inventoryService,
-            this.buildingService,
-            this.visualsService
+            this.buildingManager,
+            this.visualsManager,
+            this.navigationManager,
+            this.flightPilot,
+            this.breadcrumbService
         );
         this.tickProfiler = new TickProfiler(this.logger);
         this.httpServer = new DroneHttpServer(this, this.logger);
@@ -141,7 +150,7 @@ public class AIDroneManager {
         this.logger.log("SYSTEM", null, "Server stopping; saving AI drone config and stopping HTTP server", "");
         for (DroneController ctrl : this.controllersById.values()) {
             if (ctrl != null && !ctrl.lightCells.isEmpty()) {
-                this.visualsService.clearLighting(ctrl);
+                this.visualsManager.clearLighting(ctrl);
             }
         }
         saveConfig();
@@ -193,6 +202,7 @@ public class AIDroneManager {
     public void clearActionState(DroneController ctrl) {
         if (ctrl == null) return;
         this.actionRegistry.cancelAll(ctrl);
+        this.navigationManager.clear(ctrl);
         ctrl.clearActionState();
     }
 
@@ -209,12 +219,6 @@ public class AIDroneManager {
         ctrl.pathWaypoints.clear();
         ctrl.pathIndex = 0;
         ctrl.pathGoalX = Double.NaN;
-        if (newMode != Mode.GOTO) {
-            ctrl.navViaSurface = false;
-            ctrl.navFinalX = Double.NaN;
-            ctrl.navFinalY = Double.NaN;
-            ctrl.navFinalZ = Double.NaN;
-        }
         if (newMode != Mode.FOLLOW) {
             ctrl.hasAnchor = false;
         }
@@ -287,7 +291,7 @@ public class AIDroneManager {
                 continue;
             }
             try {
-                this.tickService.tickController(ctrl);
+                this.tickManager.tickController(ctrl);
             } catch (Throwable t) {
                 if (this.tickCounter % 40 == 0) {
                     this.logger.log("ERROR", ctrl, "Exception in tickController: " + t.toString(),
@@ -532,7 +536,9 @@ public class AIDroneManager {
         double dz = dropTargetPlayer != null ? dropTargetPlayer.posZ : d.posZ;
 
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
-        this.visualsService.clearLighting(ctrl);
+        this.visualsManager.clearLighting(ctrl);
+        this.navigationManager.clear(ctrl);
+        this.breadcrumbService.clear(ctrl);
         ctrl.despawned = true;
         UUID duid = d.getUniqueID();
         if (duid != null) {

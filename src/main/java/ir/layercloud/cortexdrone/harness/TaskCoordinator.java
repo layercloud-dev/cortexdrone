@@ -88,7 +88,7 @@ public final class TaskCoordinator {
         ctrl.cancelOtherLoops(0);
         this.manager.clearActionState(ctrl);
         ctrl.task.cancel();
-        this.manager.getMovementService().stop(ctrl, reason);
+        this.manager.getNavigationManager().stop(ctrl, null, reason);
     }
 
     private static String shortTask(DroneController ctrl) {

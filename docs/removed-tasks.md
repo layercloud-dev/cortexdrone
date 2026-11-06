@@ -9,14 +9,14 @@ service model and composing them from primitives where possible.
 
 | Task | Previous entry point | Current replacement |
 | --- | --- | --- |
-| `follow` | `/drone follow` + `FollowAction` | `navigate`/`goto` style movement primitives |
+| `follow` | `/drone follow` + `FollowAction` | `goto` with a player position |
 | `stay` | `/drone stay|stop|hover` + `StayAction` | `cancel` (stop) or a future hold skill |
 | `hunt` | `/drone hunt` + `CombatService` hunt loop | inspect entities + `useItem({attack:id})`, composed by AI |
 | `guard` | `/drone guard` + removed combat loop | inspect entities + attack primitives, composed by AI |
 | `patrol` | `/drone patrol` + removed combat loop | inspect entities + movement/attack composition |
-| `goto` | `/drone goto` + `GotoAction` | `navigate` with `route:auto|direct|tunnel|up|down` |
-| `come` | `/drone come` + `ComeAction` | `navigate`/`moveTo` to a point in front of the player |
-| `carry` | `/drone carry` + `PlayerTransportService` | `pick_entity` -> `moveTo` -> `unpick_entity` skill |
+| `goto` | `/drone goto` + `GotoAction` | `drone.goto(x,y,z)`; the navigation manager chooses the route |
+| `come` | `/drone come` + `ComeAction` | `goto` to a point in front of the player |
+| `carry` | `/drone carry` + `PlayerTransportService` | `pick_entity` -> `goto` -> `unpick_entity` skill |
 
 The code for these premade task implementations has been deleted. The help text,
 tab completion and command handlers for them are also removed.
@@ -28,7 +28,7 @@ composed from interaction primitives:
 
 1. `inspect('entities')` to find the target entity,
 2. `pickEntity(entityId)` to mount it on the drone,
-3. `moveTo(destination)` to fly there,
+3. `goto(destination)` to travel there,
 4. `unpickEntity()` to dismount.
 
 See `src/main/resources/skills/transport_entity.json` for the JavaScript skill.
@@ -36,8 +36,8 @@ See `src/main/resources/skills/transport_entity.json` for the JavaScript skill.
 ## Mining
 
 `MiningEngine` was removed. Block break/place behavior and the mining loop now
-live in `service/building/impl/BuildingService`. Mining itself is a skill composed by
-the AI from `inspect -> moveTo -> breakBlock`; see
+live in `manager/building/impl/BuildingManager`. Mining itself is a skill composed by
+the AI from `inspect -> goto -> breakBlock`; see
 `src/main/resources/skills/mine_blocks.json`.
 
 ## Future re-implementation rules

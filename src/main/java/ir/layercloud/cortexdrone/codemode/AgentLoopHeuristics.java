@@ -102,14 +102,14 @@ final class AgentLoopHeuristics {
     static boolean codeCallsStop(String code) {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();
-        return c.contains("drone.cancel(")
+        return c.contains("drone.cancel(") || c.contains("drone.stop(")
             || c.contains("rpc('cancel'") || c.contains("rpc(\"cancel\"");
     }
 
     static boolean codeMentionsPhysicalAction(String code) {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();
-        return c.contains(".moveto(") || c.contains(".breakblock(") || c.contains(".placeblock(")
+        return c.contains(".goto(") || c.contains(".stop(") || c.contains(".breakblock(") || c.contains(".placeblock(")
             || c.contains(".interactblock(") || c.contains(".useitem(")
             || c.contains(".transfer(") || c.contains(".craft(");
     }
@@ -130,8 +130,8 @@ final class AgentLoopHeuristics {
                 if (v.isJsonPrimitive() && v.getAsJsonPrimitive().isBoolean() && v.getAsBoolean()) return true;
             }
         }
-        // Movement alone (moveTo/navigate) is still meaningful progress for the
-        // new split move-then-act contract, so treat a completed move as progress.
+        // Movement alone (goto) is still meaningful progress for the
+        // move-then-act contract, so treat a completed move as progress.
         if (res.has("arrived") && res.get("arrived").isJsonPrimitive() && res.get("arrived").getAsBoolean()) return true;
         return codeMentionsProgressAction(code);
     }

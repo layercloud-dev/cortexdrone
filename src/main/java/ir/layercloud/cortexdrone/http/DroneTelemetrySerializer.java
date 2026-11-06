@@ -181,7 +181,7 @@ public class DroneTelemetrySerializer {
             dj.addProperty("taskActive", ctrl.task.isActive());
             dj.addProperty("taskSummary", ctrl.task.getSummary());
             dj.addProperty("taskAgeMs", ctrl.task.getAgeMs());
-            dj.addProperty("navigationRoute", ctrl.navigationRoute);
+            dj.addProperty("navigationActive", this.manager.getNavigationManager().isActive(ctrl));
             dj.addProperty("pathWaypointCount", ctrl.pathWaypoints.size());
 
             JsonArray invArr = new JsonArray();

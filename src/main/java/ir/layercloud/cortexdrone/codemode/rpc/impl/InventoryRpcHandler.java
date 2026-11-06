@@ -25,7 +25,7 @@ import net.minecraft.world.World;
 /**
  * Read-only inventory RPCs: player, chest, furnace, crafting and machine
  * inspection. Mutating transfer/craft operations are actions in
- * action/inventory and are handled by InventoryActionService.
+ * action/inventory and are handled by InventoryManager.
  */
 @RequiredArgsConstructor
 public class InventoryRpcHandler implements RpcHandler {

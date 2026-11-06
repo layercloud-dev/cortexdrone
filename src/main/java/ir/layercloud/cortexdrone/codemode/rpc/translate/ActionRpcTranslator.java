@@ -6,28 +6,30 @@ import ir.layercloud.cortexdrone.model.DroneController;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
- * Single JSON boundary for all action categories. Action services and actions
- * only see typed requests/results; this router is the only place that knows
- * both JSON and action operations.
+ * Single JSON boundary for all action categories. Managers and actions only
+ * see typed requests/results; this router is the only place that knows both
+ * JSON and action operations.
  */
 public final class ActionRpcTranslator {
-    private final MovementRpcTranslator movement;
+    private final NavigationRpcTranslator navigation;
     private final BuildingRpcTranslator building;
     private final InteractionRpcTranslator interaction;
     private final VisualsRpcTranslator visuals;
     private final InventoryRpcTranslator inventory;
 
     public ActionRpcTranslator(AIDroneManager manager) {
-        this.movement = new MovementRpcTranslator(manager.getMovementService());
-        this.building = new BuildingRpcTranslator(manager.getBuildingService());
-        this.interaction = new InteractionRpcTranslator(manager.getInteractionService());
-        this.visuals = new VisualsRpcTranslator(manager, manager.getVisualsService());
-        this.inventory = new InventoryRpcTranslator(manager.getInventoryActionService());
+        this.navigation = new NavigationRpcTranslator(manager.getNavigationManager());
+        this.building = new BuildingRpcTranslator(manager.getBuildingManager());
+        this.interaction = new InteractionRpcTranslator(manager.getInteractionManager());
+        this.visuals = new VisualsRpcTranslator(manager, manager.getVisualsManager());
+        this.inventory = new InventoryRpcTranslator(manager.getInventoryManager());
     }
 
     public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {
-        if (isMovement(operation)) return this.movement.handle(controller, player, operation, args);
+        if ("goto".equals(operation) || "stop".equals(operation)) {
+            return this.navigation.handle(controller, player, operation, args);
+        }
         if ("break_block".equals(operation) || "place_block".equals(operation)) {
             return this.building.handle(controller, player, operation, args);
         }
@@ -50,12 +52,6 @@ public final class ActionRpcTranslator {
 
     public JsonObject configureLight(DroneController controller, JsonObject args) {
         return this.visuals.configureLight(controller, args);
-    }
-
-    private static boolean isMovement(String operation) {
-        return "navigate".equals(operation) || "tunnel".equals(operation)
-            || "digup".equals(operation) || "digdown".equals(operation)
-            || "get_breadcrumbs".equals(operation);
     }
 
     private static boolean isInteraction(String operation) {

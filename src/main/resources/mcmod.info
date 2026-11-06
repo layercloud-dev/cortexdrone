@@ -2,7 +2,7 @@
   {
     "modid": "cortexdrone",
     "name": "CortexDrone",
-    "description": "Autonomous OpenComputers AI Drone Controller powered by a Master-Tool Code Mode JavaScript Harness (/drone, /ai, @drone).",
+    "description": "Autonomous OpenComputers AI Drone Controller powered by a Master-Tool Code Mode JavaScript Harness (/drone, @drone).",
     "version": "1.4.0",
     "mcversion": "1.7.10",
     "authorList": ["LayerCloud"],

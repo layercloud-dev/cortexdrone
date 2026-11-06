@@ -4,14 +4,14 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.inventory.impl.InventoryActionService;
+import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /** JSON translation boundary for inventory actions. */
 @RequiredArgsConstructor
 public final class InventoryRpcTranslator {
-    private final InventoryActionService service;
+    private final InventoryManager service;
 
     public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {

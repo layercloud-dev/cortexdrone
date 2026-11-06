@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.action;
 
+import ir.layercloud.cortexdrone.DroneController;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
@@ -7,7 +9,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import ir.layercloud.cortexdrone.context.ActionContextBase;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.ActionManager;
 import ir.layercloud.cortexdrone.manager.ActionRegistry;
 import net.minecraft.entity.player.EntityPlayerMP;

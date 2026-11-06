@@ -170,11 +170,14 @@ not a substitute for the subsystem chapters.
 | `rpc/translate/RpcArgs` | Safe JSON field helpers |
 | `rpc/translate/RpcJson` | ok/error/merge helpers |
 
-## `drone/`, `command/`, `config/`, `http/`, `oc/`
+## Root, `command/`, `config/`, `http/`, `oc/`
 
 | Class | Responsibility |
 | --- | --- |
-| `drone/DroneController` | Identity + entity link only |
+| `CortexDroneMod` | Forge entrypoint, tick events, chat, worker pools |
+| `AIDroneManager` | Root manager: controller registry, spawn/link/despawn, config |
+| `DroneController` | Identity + entity link only |
+| `TickProfiler` | Server tick timing diagnostics |
 | `command/BaseCommand` | Command base/compareTo |
 | `command/impl/DroneCommand` | `/drone` management + natural-language fallback |
 | `config/AIConfig` | Env/file defaults, saved drones, persistence |

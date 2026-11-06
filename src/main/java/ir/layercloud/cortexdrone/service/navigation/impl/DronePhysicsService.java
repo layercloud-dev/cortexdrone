@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
-import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.DroneController;
+
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.experimental.UtilityClass;

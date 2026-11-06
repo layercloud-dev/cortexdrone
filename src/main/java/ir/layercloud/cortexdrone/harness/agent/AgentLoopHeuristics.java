@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.harness.agent;
 
+import ir.layercloud.cortexdrone.DroneController;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -77,7 +79,7 @@ final class AgentLoopHeuristics {
 
     @SuppressWarnings("BusyWait")
     static void executePreCodeModeStop(
-            ir.layercloud.cortexdrone.drone.DroneController ctrl,
+            ir.layercloud.cortexdrone.DroneController ctrl,
             net.minecraft.entity.player.EntityPlayerMP player,
             int myLoopId,
             int turn,

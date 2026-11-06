@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.drone;
+package ir.layercloud.cortexdrone;
 
 import li.cil.oc.common.entity.Drone;
 

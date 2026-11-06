@@ -58,6 +58,7 @@ operation; results travel back as JSON.
 src/main/java/ir/layercloud/cortexdrone/
   CortexDroneMod.java       Forge mod entrypoint, tick events, chat, pools
   AIDroneManager.java       root manager, lifecycle, spawn/link/despawn/config
+  DroneController.java      per-drone identity + entity link
   TickProfiler.java         server tick timing diagnostics
 
   action/                   atomic one-shot commands
@@ -113,7 +114,6 @@ src/main/java/ir/layercloud/cortexdrone/
     ToolRegistry.java         master tool registry (names + descriptions)
     rpc/                     RpcHandler + handlers + translators
 
-  drone/                    DroneController (identity + entity link only)
   command/                  /drone command
   config/                   AIConfig + DroneLogger + ChatRecord/DebugEntry
   http/                     DroneHttpServer + DroneTelemetrySerializer

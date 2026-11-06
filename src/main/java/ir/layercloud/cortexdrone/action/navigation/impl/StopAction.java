@@ -1,9 +1,10 @@
 package ir.layercloud.cortexdrone.action.navigation.impl;
 
+import ir.layercloud.cortexdrone.DroneController;
+
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
 import lombok.RequiredArgsConstructor;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;

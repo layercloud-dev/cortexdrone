@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.manager;
 
-import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.DroneController;
+
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

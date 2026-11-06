@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
+import ir.layercloud.cortexdrone.DroneController;
+
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.action.Action;
@@ -9,7 +11,6 @@ import ir.layercloud.cortexdrone.action.navigation.impl.NavigateAction;
 import ir.layercloud.cortexdrone.action.navigation.impl.StopAction;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationResult;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationState;

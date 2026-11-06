@@ -4,7 +4,6 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ir.layercloud.cortexdrone.command.impl.DroneCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.harness.CodeModeRuntime;
 import ir.layercloud.cortexdrone.harness.RpcDispatcher;
 import ir.layercloud.cortexdrone.harness.SkillLibrary;

@@ -22,9 +22,9 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-`drone/`, `config/`, `oc/`, `http/`, `command/` are support packages used by the
+`config/`, `oc/`, `http/`, `command/` are support packages used by the
 layers; they are not a fifth execution layer. There is no `model/` package:
-the controller lives in `drone/`, the LED effects live with the visuals
+the controller lives in the root package, the LED effects live with the visuals
 manager (`manager/visuals/impl/LedEffects`), and log/chat records live with
 `config/DroneLogger`.
 

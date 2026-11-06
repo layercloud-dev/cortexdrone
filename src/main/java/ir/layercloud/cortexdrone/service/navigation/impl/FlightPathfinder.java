@@ -1,7 +1,8 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
+import ir.layercloud.cortexdrone.DroneController;
+
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;

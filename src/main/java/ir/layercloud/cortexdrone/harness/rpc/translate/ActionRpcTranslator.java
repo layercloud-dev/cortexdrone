@@ -1,8 +1,9 @@
 package ir.layercloud.cortexdrone.harness.rpc.translate;
 
+import ir.layercloud.cortexdrone.DroneController;
+
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**

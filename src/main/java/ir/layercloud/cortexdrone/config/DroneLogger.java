@@ -1,9 +1,10 @@
 package ir.layercloud.cortexdrone.config;
 
+import ir.layercloud.cortexdrone.DroneController;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.entity.player.EntityPlayerMP;

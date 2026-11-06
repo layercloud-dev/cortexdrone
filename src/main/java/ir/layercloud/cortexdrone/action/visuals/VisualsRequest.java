@@ -9,14 +9,9 @@ import lombok.Value;
 @Value
 @Builder
 public class VisualsRequest {
-    String effect;
     Integer red;
     Integer green;
     Integer blue;
-    Float hue;
-    Float saturation;
-    Float brightness;
-    String colorText;
     Integer colorValue;
 
     String type;

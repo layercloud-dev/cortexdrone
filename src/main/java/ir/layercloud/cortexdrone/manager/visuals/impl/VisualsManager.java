@@ -17,9 +17,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Long-lived visuals manager. Every visual effect is an action; animated LED
- * effects and the illumination aura are retained actions, so nothing runs on
- * the drone unless a tool started it. JSON stays in VisualsRpcTranslator.
+ * Long-lived visuals manager. Every visual primitive is an action. The light
+ * aura is the only retained visual; LED colour is a one-shot primitive and
+ * animations are composed by skills. JSON stays in VisualsRpcTranslator.
  */
 public final class VisualsManager extends ActionManager<VisualsContext, VisualsRequest, VisualsResult> {
     private final AIDroneManager manager;
@@ -27,13 +27,13 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
     private final Map<DroneController, VisualsState> states = new ConcurrentHashMap<>();
 
     public VisualsManager(AIDroneManager manager, DroneLogger logger) {
-        super("visuals", "set_led", "led_effect", "set_light", "spawn_particles",
+        super("visuals", "set_led", "set_light", "spawn_particles",
                 "play_sound", "play_note", "say", "set_status_text");
         this.manager = manager;
         this.lightingAura = new LightingAura(logger);
     }
 
-    /** Per-drone aura/LED state, created on first use. */
+    /** Per-drone aura state, created on first use. */
     public VisualsState state(DroneController controller) {
         if (controller == null) return null;
         return this.states.computeIfAbsent(controller, ignored -> new VisualsState());
@@ -54,8 +54,8 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
     @Override
     protected Action<VisualsContext> createAction(VisualsContext context, String operation,
                                                   VisualsRequest request) {
-        if ("set_led".equals(operation) || "led_effect".equals(operation)) {
-            return new SetLedAction(this, request);
+        if ("set_led".equals(operation)) {
+            return new SetLedAction(request);
         }
         if ("set_light".equals(operation)) {
             return new SetLightAction(this, this.lightingAura, request);
@@ -75,8 +75,8 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
     }
 
     /**
-     * Restarts the retained visuals a reconnected drone had before the restart.
-     * Nothing runs unless the saved state actually asked for it.
+     * Restarts the retained light aura a reconnected drone had before the
+     * restart. LED colour is restored directly on the drone by the caller.
      */
     public void restore(DroneController controller) {
         if (controller == null) return;
@@ -86,11 +86,6 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
             VisualsRequest request = VisualsRequest.builder().lightEnabled(Boolean.TRUE).build();
             run(controller, "set_light", context,
                     new SetLightAction(this, this.lightingAura, request));
-        }
-        if (LedEffects.isAnimated(state.ledEffect)) {
-            VisualsContext context = createContext(controller, null, "set_led");
-            VisualsRequest request = VisualsRequest.builder().effect(state.ledEffect).build();
-            run(controller, "set_led", context, new SetLedAction(this, request));
         }
     }
 

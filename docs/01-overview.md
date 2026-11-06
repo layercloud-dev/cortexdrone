@@ -93,7 +93,7 @@ string is `required-after:OpenComputers;after:layercloudsmp`.
 - Inventory/chest/furnace/machine inspection, item search, crafting, fluid
   scooping and machine recipe introspection.
 - Torch-free illumination aura that restores original light values.
-- LED effects and procedural color animation.
+- Static LED color primitive; LED animations are skills, not Java effects.
 - Persistent AI config, saved drones and skills.
 - HTTP telemetry (`/state`, `/debug`), RPC (`/rpc`) and direct action (`/action`).
 - Tick profiler with configurable warning threshold/cooldown.

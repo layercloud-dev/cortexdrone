@@ -324,9 +324,6 @@ public class MasterRpcHandler implements RpcHandler {
             case "color":
                 method = "set_led";
                 break;
-            case "ledeffect":
-                method = "led_effect";
-                break;
             case "light":
             case "aura":
                 method = "set_light";

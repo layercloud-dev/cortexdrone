@@ -187,7 +187,7 @@ const drone = {
     return await rpc('craft', _isObj(filter) ? filter : { filter, count });
   },
 
-  // Visual/audio/chat primitive. kind: led | ledEffect | particles | sound | note | status | say
+  // Visual/audio/chat primitive. kind: led | light | particles | sound | note | status | say
   visuals: async (kind = 'led', args = {}) => {
     if (_isObj(kind)) return await rpc('visuals', kind);
     return await rpc('visuals', { ...( _isObj(args) ? args : {} ), kind: String(kind) });

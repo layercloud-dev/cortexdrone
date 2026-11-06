@@ -284,8 +284,7 @@ public class AIDroneManager {
                     String owner = d.ownerName() != null && !d.ownerName().isEmpty() ? d.ownerName() : "Server";
                     String name = d.getCommandSenderName() != null ? d.getCommandSenderName() : "AI-Drone";
                     boolean restoredLightAura = false;
-                    String restoredLedEffect = "NONE";
-                    Integer restoredCustomLed = null;
+                    Integer restoredLedColor = null;
 
                     if (this.config.getSavedDrones() != null) {
                         AIConfig.SavedDroneInfo matchedSaved = null;
@@ -309,8 +308,7 @@ public class AIDroneManager {
                             if (matchedSaved.getOwner() != null && !matchedSaved.getOwner().isEmpty())
                                 owner = matchedSaved.getOwner();
                             restoredLightAura = matchedSaved.isLightAura();
-                            if (matchedSaved.getLedEffect() != null) restoredLedEffect = matchedSaved.getLedEffect();
-                            restoredCustomLed = matchedSaved.getCustomLedColor();
+                            restoredLedColor = matchedSaved.getLedColor();
                         }
                     }
 
@@ -331,8 +329,9 @@ public class AIDroneManager {
                     DroneController ctrl = registerDroneController(d, name, owner);
                     VisualsState visuals = this.visualsManager.state(ctrl);
                     visuals.lightAura = restoredLightAura;
-                    visuals.ledEffect = restoredLedEffect;
-                    visuals.customLedColor = restoredCustomLed;
+                    if (restoredLedColor != null) {
+                        d.lightColor_$eq(restoredLedColor & 0xFFFFFF);
+                    }
                     this.visualsManager.restore(ctrl);
                     this.logger.log("LINK", ctrl, "Auto-reconnected world drone",
                             String.format("owner=%s pos=(%.1f,%.1f,%.1f)", owner, d.posX, d.posY, d.posZ));

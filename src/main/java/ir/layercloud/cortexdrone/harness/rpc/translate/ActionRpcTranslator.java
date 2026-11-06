@@ -58,7 +58,7 @@ public final class ActionRpcTranslator {
     }
 
     private static boolean isVisuals(String operation) {
-        return "set_led".equals(operation) || "led_effect".equals(operation)
+        return "set_led".equals(operation)
                 || "set_light".equals(operation)
                 || "spawn_particles".equals(operation) || "play_sound".equals(operation)
                 || "play_note".equals(operation) || "say".equals(operation)

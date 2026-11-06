@@ -32,8 +32,7 @@ public class AIConfig {
         private String name;
         private String owner;
         private boolean lightAura;
-        private String ledEffect;
-        private Integer customLedColor;
+        private Integer ledColor;
         private int dimension;
         private Double x;
         private Double y;
@@ -107,8 +106,7 @@ public class AIConfig {
                     info.setOwner(c.ownerName);
                     VisualsState visuals = visualsOf != null ? visualsOf.apply(c) : null;
                     info.setLightAura(visuals != null && visuals.lightAura);
-                    info.setLedEffect(visuals != null ? visuals.ledEffect : "NONE");
-                    info.setCustomLedColor(visuals != null ? visuals.customLedColor : null);
+                    info.setLedColor(c.drone.lightColor() & 0xFFFFFF);
                     info.setDimension(c.drone.dimension);
                     info.setX(Math.round(c.drone.posX * 10.0) / 10.0);
                     info.setY(Math.round(c.drone.posY * 10.0) / 10.0);

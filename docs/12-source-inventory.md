@@ -46,7 +46,7 @@ not a substitute for the subsystem chapters.
 | `visuals/VisualsResult` | Visuals result DTO |
 | `visuals/impl/PlaySoundAction` | Sound/note |
 | `visuals/impl/SayAction` | Chat through root manager |
-| `visuals/impl/SetLedAction` | LED color, or retained animated effect |
+| `visuals/impl/SetLedAction` | One static LED color |
 | `visuals/impl/SetLightAction` | Illumination aura on/off/config (retained while on) |
 | `visuals/impl/SetStatusTextAction` | Drone status text |
 | `visuals/impl/SpawnParticlesAction` | Particle burst |
@@ -80,7 +80,6 @@ not a substitute for the subsystem chapters.
 | `visuals/LightConfig` | Light aura configuration DTO |
 | `visuals/LightResult` | Light aura result DTO |
 | `visuals/impl/LightingAura` | Torch-free light application/restore, chunk sync |
-| `visuals/impl/LedEffects` | Color parsing, HSV→RGB, procedural LED steps |
 | `visuals/impl/VisualsManager` | Visuals action dispatch + lighting aura ownership |
 
 ## `service/inventory/`

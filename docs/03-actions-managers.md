@@ -146,19 +146,20 @@ pull; sub-crafting stays inside the inventory).
 
 ### VisualsManager (`manager/visuals/impl`)
 
-Operations: `set_led`, `led_effect`, `spawn_particles`, `play_sound`,
+Operations: `set_led`, `set_light`, `spawn_particles`, `play_sound`,
 `play_note`, `say`, `set_status_text`.
 
-- `SetLedAction` sets a fixed color (one-shot) or an animated effect (retained;
-  the action advances the animation itself).
+- `SetLedAction` sets one static colour (one-shot). There are no named or
+  animated Java effects: a skill or inline Code Mode loop animates by calling
+  this primitive repeatedly.
 - `SetLightAction` toggles/configures the illumination aura and, while it is on,
   retains itself and re-applies the light.
 - `SpawnParticlesAction` spawns a particle burst.
 - `PlaySoundAction` plays sound/note.
 - `SayAction` sends chat through the root manager.
 - `SetStatusTextAction` updates drone status text.
-- `LightingAura` and `LedEffects` are manager components; there is no background
-  lighting/LED loop in `TickManager`.
+- `LightingAura` is the only manager-owned visual component; there is no
+  background lighting/LED loop in `TickManager`.
 
 ## 6. Action inventory
 

@@ -171,14 +171,16 @@ Kinds:
 
 | kind | Operation |
 | --- | --- |
-| `led` / `color` | `set_led` (fixed color or clear) |
-| `ledEffect` | `led_effect` (RAINBOW/DISCO/POLICE/PULSE/BREATHE/STROBE/FIRE/OCEAN/HEARTBEAT/MATRIX) |
+| `led` / `color` | `set_led` (one static color) |
 | `light` / `aura` | `set_light` (enable/disable, radius, level, color) |
 | `particles` | `spawn_particles` |
 | `sound` | `play_sound` |
 | `note` | `play_note` |
 | `status` | `set_status_text` |
 | `say` | chat via `SayAction` |
+
+Animated LED effects are not a Java feature: compose them in a skill
+(`rainbow_show` is the bundled example) by looping `drone.visuals('led')`.
 
 ### `drone.skills(op,args)`
 

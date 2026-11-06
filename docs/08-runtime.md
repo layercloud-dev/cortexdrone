@@ -239,14 +239,10 @@ cleanly.
   blocks;
 - 1.7.10 light is scalar; RGB is presentation color (drone glow/particles).
 
-`LedEffects` (manager component, driven by the retained `SetLedAction`):
-
-- parses named/hex colors;
-- HSV→RGB;
-- procedural effects: RAINBOW, DISCO, POLICE, PULSE/BREATHE, STROBE, FIRE, OCEAN,
-  HEARTBEAT, MATRIX;
-- `resolveEffectiveLedColor` uses tick + custom color + fallback;
-- the retained action advances `ledEffectTick` and emits disco note particles.
+`SetLedAction` is a one-shot primitive that sets the drone LED to one colour.
+There is no Java effect engine, no named effect list and no disco/fun loop:
+animated effects are composed by skills or inline Code Mode, for example the
+bundled `rainbow_show` skill loops `drone.visuals('led')` with `hsvToRgb`.
 
 ## 12. State ownership
 

@@ -24,9 +24,9 @@
 
 `config/`, `oc/`, `http/`, `command/` are support packages used by the
 layers; they are not a fifth execution layer. There is no `model/` package:
-the controller lives in the root package, the LED effects live with the visuals
-manager (`manager/visuals/impl/LedEffects`), and log/chat records live with
-`config/DroneLogger`.
+the controller lives in the root package, the light aura lives with the visuals
+manager, LED animation is composed by skills (no Java effect engine), and
+log/chat records live with `config/DroneLogger`.
 
 ## 2. Hard rules
 
@@ -156,7 +156,7 @@ session in `NavigationManager`; the session is separate from the action context.
 | `BuildingRpcTranslator` | `break_block`, `place_block` |
 | `InteractionRpcTranslator` | `interact_block`, `use_item`, `pick_entity`, `unpick_entity` |
 | `InventoryRpcTranslator` | `transfer`, `craft` |
-| `VisualsRpcTranslator` | `set_led`, `led_effect`, particles/sound/note/say/status, `state` status, skills |
+| `VisualsRpcTranslator` | `set_led`, `set_light`, particles/sound/note/say/status, `state` status, skills |
 | `BreadcrumbRpcTranslator` | `inspect('breadcrumbs')` |
 | `RpcArgs` / `RpcJson` | safe JSON helpers |
 

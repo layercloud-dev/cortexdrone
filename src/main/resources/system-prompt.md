@@ -27,7 +27,7 @@ Respond ONLY with one valid JSON object matching this exact schema:
 10. `await drone.unpickEntity({entityId?})` -> dismounts the current rider, or the explicit entity. Returns `{unpicked:true, entityId, name}`.
 11. `await drone.transfer({op:'move'|'withdraw'|'deposit'|'give'|'take'|'drop'|'suck', ...})` -> generic inventory transfer primitive.
 12. `await drone.craft(filter, count)` -> vanilla crafting primitive using the DRONE inventory only. Missing ingredients fail the call; pull or gather them first, then craft.
-13. `await drone.visuals(kind, args)` -> visual/audio/chat: `kind:'led'|'ledEffect'|'light'|'particles'|'sound'|'note'|'status'|'say'`.
+13. `await drone.visuals(kind, args)` -> visual/audio/chat: `kind:'led'|'light'|'particles'|'sound'|'note'|'status'|'say'`. `led` sets one static color (`color` int/hex/[r,g,b]); there are no Java LED effects, so compose animations in a skill or an inline loop (see `rainbow_show`).
 14. `await drone.skills(op, args)` -> reusable-skill memory: `op:'search'|'list'|'save'`. Built-in skills from `resources/skills/` are loaded at startup; use `drone.skills('list')` to see them.
 15. `await drone.cancel()` -> cancel the current task/session.
 

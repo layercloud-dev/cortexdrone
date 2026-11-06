@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Per-drone visual state owned by {@code VisualsManager}: illumination aura plus
- * the current LED effect/colour. The controller no longer carries these fields.
+ * Per-drone visual state owned by {@code VisualsManager}: the illumination aura.
+ * LED colour lives on the drone itself; animations are composed by skills.
  */
 public final class VisualsState {
     public boolean lightAura = false;
@@ -17,8 +17,4 @@ public final class VisualsState {
 
     /** Packed world position -> original block-light level, for exact restore. */
     public final Map<Long, Integer> lightCells = new HashMap<>();
-
-    public Integer customLedColor = null;
-    public String ledEffect = "NONE";
-    public int ledEffectTick = 0;
 }

@@ -68,11 +68,6 @@ public class LightingAura {
         if (state.lightAura) {
             state.lightCooldown = 0;
             state.lightAnchor = Long.MIN_VALUE;
-            if (config.getColor() != null && (config.getColor() & 0xFFFFFF) != 0xFFFFFF) {
-                state.customLedColor = config.getColor() & 0xFFFFFF;
-                state.ledEffect = "NONE";
-                ctrl.drone.lightColor_$eq(config.getColor() & 0xFFFFFF);
-            }
             applyAura(ctrl, state);
         } else if (wasActive) {
             clearAura(ctrl, state);

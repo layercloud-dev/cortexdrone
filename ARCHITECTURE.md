@@ -84,8 +84,8 @@ src/main/java/ir/layercloud/cortexdrone/
     interact/impl/          InteractionManager
     inventory/impl/         InventoryManager
     navigation/             NavigationRequest/Result/Target + NavigationManager
-    visuals/                LightConfig/LightResult + LightingAura + LedEffects
-                            + VisualsManager (light/LED are retained actions)
+    visuals/                LightConfig/LightResult + LightingAura + VisualsManager
+                            (aura retained; LED color is one-shot)
 
   service/                  read-only data/recon/planning
     inventory/              InventoryService, CraftingService, FluidOpsService,
@@ -168,7 +168,7 @@ Current managers:
 | `BuildingManager` | `break_block`, `place_block` | One immediate break or place |
 | `InteractionManager` | `interact_block`, `use_item`, `pick_entity`, `unpick_entity` | One interaction/attack/use |
 | `InventoryManager` | `transfer`, `craft` | transfer ops: move/give/take/withdraw/deposit/drop/suck |
-| `VisualsManager` | `set_led`, `led_effect`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` | Owns lighting aura |
+| `VisualsManager` | `set_led`, `set_light`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` | Owns lighting aura |
 
 Action classes are solo: they never call another action. Block work is one
 immediate break or one place; there is no mining queue, target selection, dig

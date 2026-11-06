@@ -37,7 +37,7 @@ public final class VisualsRpcTranslator {
         return serialize(result);
     }
 
-    private static Integer parseLightColor(JsonObject args) {
+    private static Integer parseColor(JsonObject args) {
         if (!RpcArgs.has(args, "color")) return null;
         try {
             if (args.get("color").isJsonPrimitive()) {
@@ -188,32 +188,12 @@ public final class VisualsRpcTranslator {
         Integer green = rgb ? RpcArgs.clampedInt(args, "g", 0, 0, 255) : null;
         Integer blue = rgb ? RpcArgs.clampedInt(args, "b", 0, 0, 255) : null;
 
-        Float hue = RpcArgs.has(args, "h")
-                ? RpcArgs.decimalFloat(args, "h", 0f) : null;
-        Float saturation = RpcArgs.has(args, "s")
-                ? RpcArgs.decimalFloat(args, "s", 1f) : null;
-        Float brightness = RpcArgs.has(args, "v")
-                ? RpcArgs.decimalFloat(args, "v", 1f) : null;
-
-        String colorText = null;
-        Integer colorValue = null;
-        if (RpcArgs.has(args, "color")) {
-            if (args.get("color").getAsJsonPrimitive().isString()) {
-                colorText = args.get("color").getAsString();
-            } else {
-                colorValue = args.get("color").getAsInt();
-            }
-        }
+        Integer colorValue = parseColor(args);
 
         return VisualsRequest.builder()
-                .effect(RpcArgs.string(args, "effect", null))
                 .red(red)
                 .green(green)
                 .blue(blue)
-                .hue(hue)
-                .saturation(saturation)
-                .brightness(brightness)
-                .colorText(colorText)
                 .colorValue(colorValue)
                 .type(RpcArgs.string(args, "type", "heart"))
                 .count(RpcArgs.clampedInt(args, "count", 12, 1, 80))
@@ -234,7 +214,7 @@ public final class VisualsRpcTranslator {
                 .lightToggle(RpcArgs.has(args, "toggle") && args.get("toggle").getAsBoolean())
                 .lightRadius(RpcArgs.has(args, "radius") ? args.get("radius").getAsInt() : null)
                 .lightLevel(RpcArgs.has(args, "level") ? args.get("level").getAsInt() : null)
-                .lightColor(parseLightColor(args))
+                .lightColor(parseColor(args))
                 .build();
     }
 

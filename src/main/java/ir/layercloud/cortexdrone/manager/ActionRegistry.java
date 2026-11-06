@@ -1,46 +1,45 @@
 package ir.layercloud.cortexdrone.manager;
 
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.manager.ActionManager;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Resolves master operations to their category service.
+ * Resolves master operations to their category manager.
  *
- * <p>The registry knows only services. JSON translation lives in the RPC/HTTP
- * transport layer; contexts, ticking and cancellation live in the service that
+ * <p>The registry knows only managers. JSON translation lives in the RPC/HTTP
+ * transport layer; contexts, ticking and cancellation live in the manager that
  * owns the action category.</p>
  */
 public final class ActionRegistry {
     private final Map<String, ActionManager<?, ?, ?>> byOperation =
         new LinkedHashMap<String, ActionManager<?, ?, ?>>();
-    private final List<ActionManager<?, ?, ?>> services =
+    private final List<ActionManager<?, ?, ?>> managers =
         new ArrayList<ActionManager<?, ?, ?>>();
 
-    public void register(ActionManager<?, ?, ?> service) {
-        if (service == null) return;
-        for (String operation : service.operations()) {
-            ActionManager<?, ?, ?> previous = this.byOperation.put(operation, service);
-            if (previous != null && previous != service) {
+    public void register(ActionManager<?, ?, ?> manager) {
+        if (manager == null) return;
+        for (String operation : manager.operations()) {
+            ActionManager<?, ?, ?> previous = this.byOperation.put(operation, manager);
+            if (previous != null && previous != manager) {
                 throw new IllegalStateException("Duplicate action operation '" + operation
-                    + "' in " + previous.category() + " and " + service.category());
+                    + "' in " + previous.category() + " and " + manager.category());
             }
         }
-        this.services.add(service);
+        this.managers.add(manager);
     }
 
     public void tick(DroneController controller) {
-        for (ActionManager<?, ?, ?> service : this.services) {
-            service.tick(controller);
+        for (ActionManager<?, ?, ?> manager : this.managers) {
+            manager.tick(controller);
         }
     }
 
     public void cancelAll(DroneController controller) {
-        for (ActionManager<?, ?, ?> service : this.services) {
-            service.cancelAll(controller);
+        for (ActionManager<?, ?, ?> manager : this.managers) {
+            manager.cancelAll(controller);
         }
     }
 
@@ -50,8 +49,8 @@ public final class ActionRegistry {
 
     public int activeContextCount(DroneController controller) {
         int count = 0;
-        for (ActionManager<?, ?, ?> service : this.services) {
-            count += service.activeContextCount(controller);
+        for (ActionManager<?, ?, ?> manager : this.managers) {
+            count += manager.activeContextCount(controller);
         }
         return count;
     }

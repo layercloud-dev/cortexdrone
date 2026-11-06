@@ -34,7 +34,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
 /**
- * Long-lived building service. It owns block break/place behavior, the mining
+ * Long-lived building manager. It owns block break/place behavior, the mining
  * loop and block-drop calculations used by block actions and navigation
  * self-rescue. It is not an action dispatcher.
  */

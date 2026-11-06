@@ -1,201 +1,296 @@
 # CortexDrone Architecture
 
-## Layers
+CortexDrone is an autonomous OpenComputers drone controller for Minecraft 1.7.10.
+The drone is driven by an LLM that writes JavaScript, executed by Node.js, which
+calls a small master-tool RPC surface on the Minecraft server. The design goal is
+a clean split between **data**, **decisions**, **atomic actions**, and
+**transport**.
 
-CortexDrone is split into four execution layers plus transport:
+This file is the master map. The detailed chapters live in `docs/`:
+
+- [docs/README.md](docs/README.md) — documentation index and reading order
+- [docs/01-overview.md](docs/01-overview.md) — what the project is and how it runs
+- [docs/02-layers.md](docs/02-layers.md) — layer rules and package map
+- [docs/03-actions-managers.md](docs/03-actions-managers.md) — actions, contexts, managers
+- [docs/04-navigation.md](docs/04-navigation.md) — goal navigation and movement engine
+- [docs/05-services.md](docs/05-services.md) — inventory, machine, world, navigation services
+- [docs/06-harness.md](docs/06-harness.md) — LLM loop, Code Mode runtime, task/session, RPC dispatcher
+- [docs/07-tools-rpc.md](docs/07-tools-rpc.md) — master tools, inspect ops, RPC/HTTP, SDK
+- [docs/08-runtime.md](docs/08-runtime.md) — lifecycle, tick pipeline, modes, spawn, config, logging
+- [docs/09-resources.md](docs/09-resources.md) — prompts, SDK resources, skills
+- [docs/10-build-deploy.md](docs/10-build-deploy.md) — Gradle, validation, tests, deploy, operations
+- [docs/11-extending.md](docs/11-extending.md) — how to add actions, services, tools, skills
+- [docs/12-source-inventory.md](docs/12-source-inventory.md) — class-by-class source inventory
+- [docs/removed-tasks.md](docs/removed-tasks.md) — deliberately removed premade tasks
+
+## 1. System at a glance
 
 ```text
-action/              one-shot commands; no decisions, no JSON
-context/             mutable state for one action execution
-manager/             long-lived decision and orchestration layer
-service/inventory/   inventory data, containers and crafting support
-service/machine/     machine recipes, machine tiles and furnaces
-service/navigation/  breadcrumbs and navigation plans
-service/world/       world/item/entity recon and documentation
-harness/             Code Mode agent and single-session task logic
-harness/rpc/         JSON/HTTP transport; parsers and serializers only
+Minecraft chat / command / HTTP
+		|
+		v
+TaskCoordinator  (one session, no queue)
+		|
+		v
+LlmAgentService  (LLM loop, prompt, heartbeat)
+		|
+		v
+LlmResponseParser -> CodeModeRuntime (Node.js JavaScript)
+		|
+		v
+SDK `drone.*` -> POST /rpc -> RpcDispatcher
+		|
+		v
+MasterRpcHandler -> RPC translators -> managers -> actions
+		|
+		v
+Minecraft world / OpenComputers Drone / inventory / navigation
 ```
 
-The rule is simple:
+The LLM never calls Java directly and never receives raw Java objects. It calls
+the JavaScript SDK; the SDK calls JSON RPC; translators parse JSON into typed
+request DTOs; managers execute actions; action classes perform one physical
+operation; results travel back as JSON.
 
-- a **service** answers questions and never changes the world, mode, inventory or
-  navigation state;
-- a **manager** owns goals, chooses what to execute and drives actions until the
-  goal completes or fails;
-- an **action** does exactly one physical thing and is discarded afterwards;
-- a **translator** is the only place that sees JSON.
+## 2. Package map
 
-`AIDroneManager` is the root manager. `TickManager` is the 20-Hz runtime
-pipeline. Neither contains task-specific behavior.
+```text
+src/main/java/ir/layercloud/cortexdrone/
+  CortexDroneMod.java       Forge mod entrypoint, tick events, chat, pools
+  AIDroneManager.java       root manager, lifecycle, spawn/link/despawn/config
+  TickProfiler.java         server tick timing diagnostics
 
-## Managers
+  action/                   atomic one-shot commands
+    Action.java             action interface
+    block/                  break/place actions + request/result
+    interact/               block use, item use, attack, pick/unpick
+    inventory/              transfer/craft actions
+    navigation/             flight/dig/hold/stop actions
+    visuals/                LED/particles/sound/chat actions
 
-| Manager | Responsibility |
-| --- | --- |
-| `manager.navigation.impl.NavigationManager` | The only automatic goal loop: `goto` / `stop` |
-| `manager.building.impl.BuildingManager` | One-block break/place and the mining loop |
-| `manager.interact.impl.InteractionManager` | Block interaction, item use, entity pick/unpick |
-| `manager.inventory.impl.InventoryManager` | Transfer and craft operations |
-| `manager.visuals.impl.VisualsManager` | LED, lighting aura, particles, sounds, notes, chat/status |
-| `manager.TickManager` | Per-tick runtime pipeline |
-| `manager.ActionRegistry` | Operation-to-manager lookup |
+  context/                  mutable state for one action execution
+    ActionContext.java
+    ActionContextBase.java
+    impl/                   BlockContext, InteractionContext,
+                            InventoryContext, NavigationContext,
+                            VisualsContext
 
-`manager.ActionManager<C,R,T>` is the common lifecycle base for managers that
-execute one retained/one-shot action per request. It creates the context, creates
-one action, executes it, returns the typed result and reaps retained executions.
-It contains no JSON.
+  manager/                  long-lived decision/orchestration layer
+    ActionManager.java      action lifecycle base
+    ActionRegistry.java     operation -> manager lookup
+    TickManager.java        20-Hz runtime pipeline
+    building/impl/          BuildingManager
+    interact/impl/          InteractionManager
+    inventory/impl/         InventoryManager
+    navigation/             NavigationRequest/Result/Target + NavigationManager
+    visuals/                LightConfig/LightResult + LightingAura + VisualsManager
 
-## Services
+  service/                  read-only data/recon/planning
+    inventory/              InventoryService, CraftingService, FluidOpsService,
+                            ContainerSearchService, PlayerInventoryOps,
+                            ToolInspector, CraftResult
+    machine/                MachineRecipeService + parser/ranker/reflection,
+                            MachineTileInspector, FurnaceScanner
+    navigation/             NavContext, Breadcrumb, TrailPlan,
+                            BreadcrumbService, FlightPathfinder,
+                            DigPathService, DronePhysicsService
+    world/                  WorldScanner, ItemClassifier, RegistryIntrospector,
+                            LexicalItemMatcher, RoomScanner, VeinScanner,
+                            StructureArchitect, PlayerTargetScanner,
+                            EntityAndBiomeClassifier, DocLookupService,
+                            ChunkAccess, raytrace/*
+  harness/                  Code Mode agent + transport
+    LlmAgentService.java     LLM loop and prompt assembly
+    CodeModeRuntime.java     Node.js runner and SDK bundle loader
+    LlmResponseParser.java   tolerant JSON/code parser
+    PromptCompactor.java     bounded context + continuation digest
+    AgentHeartbeat.java      watchdog/resurrection
+    AgentLoopHeuristics.java anti-loop/anti-requery checks
+    LoopTracer.java          loop observability
+    TaskCoordinator.java     one-session intent handling
+    TaskIntent.java          QUESTION/BY_THE_WAY/MODIFY/CANCEL/NEW_TASK
+    TaskIntentClassifier.java deterministic classifier
+    TaskSession.java         session state, notes, age
+    SkillLibrary.java        bundled + saved skills, BM25 retrieval
+    RpcDispatcher.java       main-thread RPC + time-sliced large scans
+    MasterToolCatalog.java   canonical tool names
+    rpc/                     RpcHandler + handlers + translators
 
-| Service | Responsibility |
-| --- | --- |
-| `service.navigation.impl.BreadcrumbService` | Records the traversal trail, surface anchor and trail backtrack candidates |
-| `service.navigation.impl.FlightPathfinder` | No-dig flight A* and geometry queries |
-| `service.navigation.impl.DigPathService` | Weighted dig A*; returns a route, never executes it |
-| `service.navigation.impl.DronePhysicsService` | Flight physics, standoffs and obstruction checks |
-| `service.world.raytrace.VoxelRaycaster3D` | 3D DDA line-of-sight/raycast |
-| `service.world.raytrace.ChunkCacheContext` | Cached chunk/block reads for A* |
-| `service.inventory.InventoryService` | Inventory snapshots, container lookup, item moves and crafting support |
-| `service.machine.MachineRecipeService` | Machine recipe introspection and ranking |
-| `service.machine.MachineTileInspector` | Machine tile discovery/description |
-| `service.machine.FurnaceScanner` | Furnace discovery |
-| `service.world.WorldScanner` | World/resource/room/entity recon |
-| `service.world.*` | Item classification, structure, target and documentation readers |
+  command/                  /drone command
+  config/                   AIConfig + DroneLogger
+  http/                     DroneHttpServer + DroneTelemetrySerializer
+  model/                    DroneController, Mode, LED engine, DTOs
+  oc/                       OpenComputers reflection bridge
+```
 
-Services may cache results, but they do not choose routes, set modes, switch
-tools or start actions.
+There is no `codemode` package and no top-level `inventory`, `world`, or
+`navigation` package. Their content is under `harness`, `service/inventory`,
+`service/world`, and `service/navigation`.
 
-## Navigation
+## 3. The four execution layers
 
-The `harness` package owns the Code Mode agent loop, prompt/context assembly,
-single-session task state, skill library, RPC dispatcher and the JSON transport
-under `harness/rpc`. There is no separate `codemode` package.
+- **Action** — one physical command. Created for one execution, may be ticked
+  while retained, then discarded. No JSON, no routing, no goal decisions.
+- **Context** — mutable state for one action execution. Tracks lifecycle:
+  active/retained, target, result, progress.
+- **Manager** — long-lived owner of a category. Parses typed requests, creates
+  contexts/actions, retains/tick/cancels them, and decides category-level
+  behavior. Navigation is the only manager with a goal loop.
+- **Service** — read-only query/recon/planning. Records data, computes paths,
+  ranks recipes, scans the world, reads inventories. Some services expose
+  low-level storage primitives (inventory moves, deposits, crafting) that an
+  action or manager explicitly invokes; a service never chooses a goal, sets a
+  mode, or starts an action.
 
-The harness has exactly two movement calls:
+`AIDroneManager` is the root manager. `TickManager` is the per-tick runtime. The
+`harness` is the agent/transport layer. JSON is confined to `harness/rpc`.
 
-- `drone.goto(x,y,z,{standoffOf,maxWaitMs})`
-- `drone.stop()`
+## 4. Actions and managers
 
-Everything else is internal. `NavigationManager` resolves the target, creates a
-session and keeps it alive until arrival, explicit stop or proven failure. The
-SDK waits on `navigationActive`, not on `mode`.
+`ActionManager<C, R, T>` owns one category:
+
+1. receives a typed request;
+2. creates a context;
+3. creates exactly one action;
+4. executes it once;
+5. returns a typed result;
+6. retains the action/context for ticking if the context requested retention;
+7. completes, reaps or cancels it later.
+
+`ActionRegistry` maps operation names to managers and ticks/cancels all managers
+for a controller. It contains no behavior.
+
+Current managers:
+
+| Manager | Operations | Notes |
+| --- | --- | --- |
+| `NavigationManager` | `goto`, `stop` | Goal loop; chooses flight/trail/dig |
+| `BuildingManager` | `break_block`, `place_block` | Mining loop + dig routes |
+| `InteractionManager` | `interact_block`, `use_item`, `pick_entity`, `unpick_entity` | One interaction/attack/use |
+| `InventoryManager` | `transfer`, `craft` | transfer ops: move/give/take/withdraw/deposit/drop/suck |
+| `VisualsManager` | `set_led`, `led_effect`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` | Owns lighting aura |
+
+Action classes are solo: they never call another action. Cross-category work is
+coordinated by managers. `BuildingManager.startDigRoute` is called by
+`NavigationManager` through `DigRouteAction` for tunnel/dig legs.
+
+## 5. Navigation summary
+
+The harness exposes only `drone.goto(...)` and `drone.stop()`.
+
+`NavigationManager` creates a session and keeps it alive until arrival, explicit
+stop, or proven failure. It never contains flight/waypoint code; it delegates to
+actions:
+
+- `NavigateAction` — no-dig 3D A* flight, long-range stepping, surface anchor,
+  blocked-waypoint detection.
+- `DigRouteAction` — hands a dig route to `BuildingManager`.
+- `HoldAction` — hold current position.
+- `StopAction` — clear navigation and hover.
 
 Decision order:
 
-1. **Trail check** — `BreadcrumbService.planBacktrack` compares the nearest
-   reconnect point, the first open-sky point and the point closest to the goal
-   inside at most half of the recorded trail. A trail is used only when it makes
-   real progress or exits a cave toward a surface goal.
-2. **No-dig flight** — `FlightPathfinder` computes a safe 3D A* path. The manager
-   follows it while it is complete or making progress.
-3. **Dig escalation** — when the flight path is partial, blocked or exhausted,
-   the manager chooses `tunnel`, `dig-up` or `dig-down`, asks `DigPathService`
-   for the route and hands the blocking blocks to `BuildingManager`. The
-   navigation session survives the dig and replans when control returns to
-   `GOTO`.
+1. **Trail suggestion** — `BreadcrumbService` (service, not action) records the
+   last 256 passable positions, prunes loops, keeps the surface anchor, and
+   suggests a backtrack endpoint (reconnect/surface/goalward) inside at most half
+   the trail. The manager uses that endpoint as a normal flight target.
+2. **Flight** — `FlightPathfinder` computes a safe no-dig A*/Theta* route. The
+   manager follows while it is complete or progressing.
+3. **Dig escalation** — if flight is blocked, partial, or exhausted, the manager
+   chooses `TUNNEL`, `DIG_UP`, or `DIG_DOWN`, asks `DigPathService` for a weighted
+   dig route, and sends the blocking blocks to `BuildingManager`. The session
+   survives the `MINE` sub-state and replans when control returns to `GOTO`.
 
-The trail is owned by `BreadcrumbService`, not by actions or the controller.
-Sampling, dedupe and loop pruning happen in the service; `inspect('breadcrumbs')`
-reads the same service through `BreadcrumbRpcTranslator`.
+Follow, drop/deposit, and mining standoffs reuse `NavigationManager.flyToward` /
+`hold`, so all motion still goes through action executors.
 
-Every movement leg is an action executor under
-`action/navigation/impl/`: `NavigateAction` (no-dig flight), `DigRouteAction`
-(hands a dig route to `BuildingManager`), `HoldAction` and `StopAction`.
-`NavigationManager` only chooses the next leg and retains its context; managers
-contain no flight or waypoint code. Breadcrumbs are not an action: when
-`BreadcrumbService` suggests a useful backtrack endpoint, the manager simply
-sets that endpoint as the next flight target. The same executors are used by
-follow/drop/deposit and mining standoffs through
-`NavigationManager.flyToward` / `hold`.
+## 6. Harness summary
 
-## Actions
+`TaskCoordinator` implements one task/session:
+
+- deterministic intent classification (`QUESTION`, `BY_THE_WAY`, `MODIFY`,
+  `CANCEL`, `NEW_TASK`);
+- no instruction queue;
+- a new/modified task cancels the old loop and action state;
+- a side note is attached to the current task;
+- a question is answered from live state.
+
+`LlmAgentService` runs up to 100 turns / 8 minutes, with HTTP retries, prompt
+compaction, self-correction, anti-requery/anti-loiter checks, heartbeat
+continuations, and premature-`done` rejection.
+
+`CodeModeRuntime` writes a temporary `.mjs` script, prepends
+`sdk/core-rpc.mjs` + `sdk/drone-actions.mjs`, runs Node.js, and returns parsed
+JSON. The SDK's `drone` object is the only tool global.
+
+`RpcDispatcher` marshals every RPC onto the server thread with per-method
+timeouts. Large `inspect('blocks')` scans are time-sliced across ticks as a
+single job (`poll_scan`) instead of blocking a tick.
+
+## 7. Master tool surface
 
 ```text
-action/<category>/impl/      one-shot actions
-context/impl/                action contexts
+state
+inspect
+goto
+stop
+break_block
+place_block
+interact_block
+use_item
+pick_entity
+unpick_entity
+transfer
+craft
+visuals
+skills
+cancel
 ```
 
-An action is active while it runs and is released when the call returns unless
-it calls `context.retain()`. Retained action/context pairs are ticked by their
-owning manager and removed when they complete. `ActionRegistry` only routes
-operations; it does not own behavior.
+Removed composite tools (`mine`, `hunt`, `farm`, `buildStructure`, etc.) are not
+coming back as hidden paths. See `docs/removed-tasks.md`.
 
-Block break/place behavior and the mining loop live in `BuildingManager`. Mining
-itself is composed by the AI as `inspect -> goto -> breakBlock`; see
-`src/main/resources/skills/mine_blocks.json`.
+## 8. Runtime lifecycle
 
-Inventory mutations (`transfer` and `craft`) are actions under
-`action/inventory/impl/`, managed by `InventoryManager`. Read-only inventory,
-chest, furnace and machine inspection stays in
-`harness/rpc/impl/InventoryRpcHandler`.
+1. `CortexDroneMod.preInit` registers events and creates `AIDroneManager`.
+2. `serverStarting` loads `world/layercloud-ai.json`, creates the skill library,
+   reconnects world drones, registers `/drone`, and starts HTTP on
+   `127.0.0.1:25580`.
+3. START tick: ensure OC machine state, start tick profiler.
+4. END tick: drain main-thread queue, drain scan jobs, tick every controller,
+   reconnect unlinked world drones every 40 ticks, snapshot HTTP state every 100
+   ticks.
+5. `serverStopping` restores light auras, saves config, stops HTTP.
 
-## Transport
+Per-controller tick: breadcrumbs, stuck detection, item pickup, lighting aura,
+navigation, mode behavior, retained actions, LED animation, physics.
 
-`harness/rpc/translate/ActionRpcTranslator` routes operations to one translator
-per category. Translators parse JSON into typed requests and serialize typed
-results. Action classes, contexts, managers, services and `ActionRegistry` never
-import Gson.
+## 9. Persistence and configuration
 
-Project convention: interfaces and abstract bases live at the package root;
-concrete implementations live under an `impl` subpackage. Request and result
-DTOs are immutable Lombok `@Value @Builder` objects, contexts use Lombok
-accessors, and managers/services use constructor injection.
+`world/layercloud-ai.json` stores:
 
-## Master tool contract
+- API URL, model, API key, HTTP port;
+- saved drones (UUID/name/owner/mode/light/position);
+- player bases;
+- named saved locations.
 
-| Tool | Purpose |
-| --- | --- |
-| `drone.state()` | Live mode/position/task/navigation/inventory status |
-| `drone.inspect(op,args)` | One read-only query namespace |
-| `drone.goto(x,y,z,{standoffOf})` | Goal-driven navigation; manager chooses trail/flight/dig |
-| `drone.stop()` | Cancel navigation and hover |
-| `drone.breakBlock(x,y,z)` | Break exactly one explicit block |
-| `drone.placeBlock(x,y,z,block,meta)` | Place exactly one explicit block |
-| `drone.interactBlock(x,y,z,side)` | Activate exactly one block |
-| `drone.useItem(item,x,y,z,side)` | Use one item or make one melee attack |
-| `drone.pickEntity(id)` | Mount one entity |
-| `drone.unpickEntity({entityId?})` | Dismount the rider or explicit entity |
-| `drone.transfer({op,...})` | move / give / take / drop / withdraw / deposit / suck |
-| `drone.craft(filter,count)` | Vanilla crafting primitive |
-| `drone.visuals(kind,args)` | LED / particles / sound / note / status / chat |
-| `drone.skills(op,args)` | Optional reusable-skill memory |
-| `drone.cancel()` | Cancel the current session |
+Environment variables override defaults:
+`CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`, `CORTEXDRONE_API_KEY`.
 
-There are no duplicate SDK aliases and no `tunnel`/`digUp`/`digDown` tools.
-`drone` is the only tool global. `sleep`, `log`, and `hsvToRgb` are utilities.
+Skills persist in `world/layercloud-drone-skills-v2.json`; bundled skills come
+from `resources/skills/`.
 
-## Move then act
+## 10. Build path
 
-Mining is not a command. The AI:
+- Forge 1.7.10 + RetroFuturaGradle 2.0.6, Gradle 9.2, Java 25 daemon, Java 8
+  compile target.
+- OpenComputers `1.12.70-GTNH` is the compile-only host API.
+- `./gradlew build` runs compile, tests, `validate`, reobfuscation and `deploy`.
+- `validate` enforces a 696-line Java file limit, package/directory consistency,
+  and `node --check` for every `.mjs`.
+- `deploy` copies the reobfuscated jar to `/root/forge-smp/mods` and removes old
+  CortexDrone jars.
+- Tests cover action lifecycle/registry, master tool surface, skill library,
+  task intent and task session.
 
-1. inspects the world to choose coordinates,
-2. calls `goto` and waits for arrival,
-3. calls `breakBlock` for the one chosen block,
-4. repeats.
-
-`breakBlock` / `placeBlock` / `interactBlock` / `useItem` return
-`{needsMovement:true, standoff}` when the target is out of reach. The SDK flies
-to that standoff and retries, so the physical action only runs after arrival.
-
-## Single task, single session
-
-`DroneController` owns one `TaskSession`. `TaskCoordinator` classifies every
-incoming message before starting a model loop:
-
-| Intent | Behavior while a task is active |
-| --- | --- |
-| `QUESTION` | Reply from live state; task continues |
-| `BY_THE_WAY` | Attach a note to the running task; task continues |
-| `MODIFY` | Cancel the running loop, start one replacement session |
-| `CANCEL` | Cancel the loop, clear action state, stop navigation |
-| `NEW_TASK` | Treated as a replacement (one session at a time) |
-
-No instruction is queued for later. A modification replaces the session instead
-of stacking behind it. The classifier lives in
-`harness/TaskIntentClassifier.java` and is covered by JUnit tests.
-
-## Removed premade tasks
-
-`follow`, `stay`, `guard`, `patrol`, `goto` as a task, `come` and `carry` were
-removed. See `docs/removed-tasks.md` for the current composed replacements and
-the rules for re-implementing them.
+Detailed build/operations instructions: [docs/10-build-deploy.md](docs/10-build-deploy.md).

@@ -1,11 +1,11 @@
-package ir.layercloud.cortexdrone.navigation.service;
+package ir.layercloud.cortexdrone.service.navigation.impl;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.navigation.NavContext;
-import ir.layercloud.cortexdrone.navigation.raytrace.ChunkCacheContext;
-import ir.layercloud.cortexdrone.navigation.raytrace.VoxelRaycaster3D;
+import ir.layercloud.cortexdrone.service.navigation.NavContext;
+import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
+import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.Collections;

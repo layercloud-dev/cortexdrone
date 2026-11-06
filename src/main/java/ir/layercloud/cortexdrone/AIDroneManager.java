@@ -17,7 +17,7 @@ import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.manager.TickManager;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;

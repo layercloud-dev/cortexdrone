@@ -5,7 +5,7 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.navigation.impl.NavigationContext;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import lombok.RequiredArgsConstructor;
 
 /** Executes the stop request: clears the path and holds position. */

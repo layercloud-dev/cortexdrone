@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.navigation.raytrace;
+package ir.layercloud.cortexdrone.service.world.raytrace;
 
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;

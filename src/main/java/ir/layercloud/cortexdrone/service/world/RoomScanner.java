@@ -3,7 +3,7 @@ package ir.layercloud.cortexdrone.service.world;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;

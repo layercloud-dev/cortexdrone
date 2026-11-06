@@ -1,7 +1,7 @@
-package ir.layercloud.cortexdrone.navigation;
+package ir.layercloud.cortexdrone.service.navigation;
 
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.navigation.raytrace.ChunkCacheContext;
+import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import java.util.ArrayList;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;

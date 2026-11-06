@@ -49,7 +49,7 @@ public final class TrailAction implements Action<NavigationContext> {
             context.complete();
             return;
         }
-        ir.layercloud.cortexdrone.navigation.service.FlightPathfinder.setDroneFlightTarget(
+        ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder.setDroneFlightTarget(
             ctrl.drone, x, y, z, 0.1f);
         ctrl.drone.lightColor_$eq(0xFFCC00);
         ctrl.drone.statusText_$eq("Trail\n"

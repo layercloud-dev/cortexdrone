@@ -10,7 +10,7 @@ import ir.layercloud.cortexdrone.harness.MasterToolCatalog;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
-import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;

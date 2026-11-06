@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.navigation.service;
+package ir.layercloud.cortexdrone.service.navigation.impl;
 
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;

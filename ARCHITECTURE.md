@@ -50,8 +50,11 @@ It contains no JSON.
 | Service | Responsibility |
 | --- | --- |
 | `service.navigation.impl.BreadcrumbService` | Records the traversal trail, surface anchor and trail backtrack candidates |
-| `navigation.service.FlightPathfinder` | No-dig flight A* and geometry queries |
-| `navigation.service.DigPathService` | Weighted dig A*; returns a route, never executes it |
+| `service.navigation.impl.FlightPathfinder` | No-dig flight A* and geometry queries |
+| `service.navigation.impl.DigPathService` | Weighted dig A*; returns a route, never executes it |
+| `service.navigation.impl.DronePhysicsService` | Flight physics, standoffs and obstruction checks |
+| `service.world.raytrace.VoxelRaycaster3D` | 3D DDA line-of-sight/raycast |
+| `service.world.raytrace.ChunkCacheContext` | Cached chunk/block reads for A* |
 | `service.inventory.InventoryService` | Inventory snapshots, container lookup, item moves and crafting support |
 | `service.machine.MachineRecipeService` | Machine recipe introspection and ranking |
 | `service.machine.MachineTileInspector` | Machine tile discovery/description |

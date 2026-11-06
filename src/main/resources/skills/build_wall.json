@@ -1,6 +1,6 @@
 {
   "name": "build_wall",
-  "description": "Inspect a line of target coordinates and place blocks one at a time with the placement primitive",
+  "description": "Place one block at a time along a line using blocks already in the drone inventory; reports how many are missing",
   "tags": "build wall place cobblestone shelter home",
-  "code": "const p = await drone.inspect('player', {});\nlet placed = 0;\nfor (let dx = 0; dx < 5; dx++) {\n  const r = await drone.placeBlock(p.blockX + dx, p.blockY, p.blockZ + 2, 'cobblestone');\n  if (r.placed) placed++;\n}\nreturn { placed };"
+  "code": "const p = await drone.inspect('player', {});\nlet placed = 0;\nlet missing = 0;\nfor (let dx = 0; dx < 5; dx++) {\n  const r = await drone.placeBlock(p.blockX + dx, p.blockY, p.blockZ + 2, 'cobblestone');\n  if (r && r.placed) placed++; else missing++;\n}\nreturn { placed, missing, hint: missing ? 'Gather cobblestone into the drone inventory first (break_block or transfer take); place_block never pulls from chests.' : '' };"
 }

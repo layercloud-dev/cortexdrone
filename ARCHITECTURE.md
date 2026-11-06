@@ -83,35 +83,30 @@ src/main/java/ir/layercloud/cortexdrone/
     interact/impl/          InteractionManager
     inventory/impl/         InventoryManager
     navigation/             NavigationRequest/Result/Target + NavigationManager
-    visuals/                LightConfig/LightResult + LightingAura + VisualsManager
+    visuals/                LightConfig/LightResult + LightingAura + LedEffects
+                            + VisualsManager (light/LED are retained actions)
 
   service/                  read-only data/recon/planning
     inventory/              InventoryService, CraftingService, FluidOpsService,
                             ContainerSearchService, PlayerInventoryOps,
                             ToolInspector, CraftResult
-    machine/                MachineRecipeService + parser/ranker/reflection,
+    machine/                MachineRecipeService + MachineRecipeHook
+                            (hbm-json / hbm-live), parser/ranker,
                             MachineTileInspector, FurnaceScanner
-    navigation/             NavContext, Breadcrumb, TrailPlan,
-                            BreadcrumbService, FlightPathfinder,
-                            DronePhysicsService
-    visuals/                LedEffectEngine (HSV/LED effects)
+    navigation/             Breadcrumb, TrailPlan, BreadcrumbService,
+                            FlightPathfinder, DronePhysicsService
     world/                  WorldScanner, ItemClassifier, RegistryIntrospector,
                             LexicalItemMatcher, RoomScanner, VeinScanner,
                             StructureArchitect, BuildTask, PlayerTargetScanner,
                             EntityAndBiomeClassifier, DocLookupService,
                             ChunkAccess, raytrace/*
   harness/                  Code Mode agent + transport
-    LlmAgentService.java     LLM loop and prompt assembly
-    DroneContextBuilder.java initial world-state JSON for the system prompt
+    agent/                  LlmAgentService (LLM loop/prompt)
+                            DroneContextBuilder (initial world state)
+                            LlmResponseParser, PromptCompactor
+                            AgentHeartbeat, AgentLoopHeuristics, LoopTracer
+    task/                   TaskCoordinator, TaskIntentClassifier, TaskIntent
     CodeModeRuntime.java     Node.js runner and SDK bundle loader
-    LlmResponseParser.java   tolerant JSON/code parser
-    PromptCompactor.java     bounded context + continuation digest
-    AgentHeartbeat.java      watchdog/resurrection
-    AgentLoopHeuristics.java anti-loop/anti-requery checks
-    LoopTracer.java          loop observability
-    TaskCoordinator.java     one-session intent handling
-    TaskIntent.java          QUESTION/BY_THE_WAY/MODIFY/CANCEL/NEW_TASK
-    TaskIntentClassifier.java deterministic classifier
     SkillLibrary.java        bundled + saved skills, BM25 retrieval
     RpcDispatcher.java       main-thread RPC + time-sliced large scans
     MasterToolCatalog.java   canonical tool names
@@ -189,7 +184,6 @@ actions:
 
 - `NavigateAction` — 3D A* flight, long-range stepping, surface anchor,
   blocked-waypoint detection.
-- `HoldAction` — hold current position.
 - `StopAction` — clear navigation and hover.
 
 Decision order:
@@ -273,9 +267,7 @@ navigation session, every retained action, idle hold, LED animation, physics.
 `world/layercloud-ai.json` stores:
 
 - API URL, model, API key, HTTP port;
-- saved drones (UUID/name/owner/light/position);
-- player bases;
-- named saved locations.
+- saved drones (UUID/name/owner/light/position).
 
 Environment variables override defaults:
 `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`, `CORTEXDRONE_API_KEY`.

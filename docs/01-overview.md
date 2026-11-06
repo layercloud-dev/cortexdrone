@@ -94,7 +94,7 @@ string is `required-after:OpenComputers;after:layercloudsmp`.
   scooping and machine recipe introspection.
 - Torch-free illumination aura that restores original light values.
 - LED effects and procedural color animation.
-- Persistent AI config, saved drones, player bases, named locations and skills.
+- Persistent AI config, saved drones and skills.
 - HTTP telemetry (`/state`, `/debug`), RPC (`/rpc`) and direct action (`/action`).
 - Tick profiler with configurable warning threshold/cooldown.
 

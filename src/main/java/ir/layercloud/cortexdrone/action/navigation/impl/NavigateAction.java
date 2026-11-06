@@ -5,11 +5,11 @@ import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
-import ir.layercloud.cortexdrone.service.navigation.NavContext;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
@@ -20,14 +20,10 @@ import java.util.List;
  * reports {@code blocked} when the flight path is blocked or partial so the
  * navigation manager can choose the next action.
  */
+@RequiredArgsConstructor
 public final class NavigateAction implements Action<NavigationContext> {
     private final FlightPathfinder pathfinder;
     private final BreadcrumbService breadcrumbService;
-
-    public NavigateAction(FlightPathfinder pathfinder, BreadcrumbService breadcrumbService) {
-        this.pathfinder = pathfinder;
-        this.breadcrumbService = breadcrumbService;
-    }
 
     @Override
     public void execute(NavigationContext context) {
@@ -102,47 +98,50 @@ public final class NavigateAction implements Action<NavigationContext> {
             }
         }
 
-        NavContext nav = NavContext.of(ctrl, effGx, effGy, effGz, "auto");
-        nav.setGoal(effGx, effGy, effGz);
         double distGoalMove = Double.isNaN(ctrl.pathGoalX) ? 999.0 : Math.sqrt(
                 (effGx - ctrl.pathGoalX) * (effGx - ctrl.pathGoalX)
                         + (effGy - ctrl.pathGoalY) * (effGy - ctrl.pathGoalY)
                         + (effGz - ctrl.pathGoalZ) * (effGz - ctrl.pathGoalZ));
 
-        boolean needsRepath = nav.path().isEmpty()
-                || (nav.pathIndex() >= nav.path().size() && ctrl.repathCooldown <= 0)
+        boolean needsRepath = ctrl.pathWaypoints.isEmpty()
+                || (ctrl.pathIndex >= ctrl.pathWaypoints.size() && ctrl.repathCooldown <= 0)
                 || (distGoalMove > 0.85 && ctrl.repathCooldown <= 0)
                 || (ctrl.stuckTicks >= 12 && ctrl.repathCooldown <= 0);
         if (needsRepath) {
             List<double[]> waypoints = this.pathfinder.findFlightPath(
                     world, ctrl, drone.posX, drone.posY, drone.posZ, effGx, effGy, effGz);
-            nav.setPath(waypoints, effGx, effGy, effGz);
+            ctrl.pathWaypoints.clear();
+            ctrl.pathWaypoints.addAll(waypoints);
+            ctrl.pathIndex = 0;
+            ctrl.pathGoalX = effGx;
+            ctrl.pathGoalY = effGy;
+            ctrl.pathGoalZ = effGz;
             ctrl.repathCooldown = horizDist > 18.0 ? 8 : 12;
         }
 
-        while (nav.hasWaypoint()) {
-            double[] waypoint = nav.currentWaypoint();
+        while (ctrl.pathIndex < ctrl.pathWaypoints.size()) {
+            double[] waypoint = ctrl.pathWaypoints.get(ctrl.pathIndex);
             double distWp = drone.getDistance(waypoint[0], waypoint[1], waypoint[2]);
-            boolean last = nav.pathIndex() == nav.path().size() - 1;
+            boolean last = ctrl.pathIndex == ctrl.pathWaypoints.size() - 1;
             double distWpToGoal = Math.sqrt(
                     (waypoint[0] - effGx) * (waypoint[0] - effGx)
                             + (waypoint[1] - effGy) * (waypoint[1] - effGy)
                             + (waypoint[2] - effGz) * (waypoint[2] - effGz));
             if (distWp <= 0.75 && !last) {
-                nav.advanceWaypoint();
+                ctrl.pathIndex++;
             } else if (distWp <= 0.75 && last
                     && (ctrl.lastPathPartial || distWpToGoal > 0.90) && ctrl.repathCooldown <= 0) {
-                nav.advanceWaypoint();
+                ctrl.pathIndex++;
                 break;
             } else {
                 break;
             }
         }
 
-        boolean exhausted = !nav.hasWaypoint();
+        boolean exhausted = ctrl.pathIndex >= ctrl.pathWaypoints.size();
         double[] activeWp = exhausted
                 ? new double[]{effGx, effGy, effGz}
-                : nav.currentWaypoint();
+                : ctrl.pathWaypoints.get(ctrl.pathIndex);
         int awx = MathHelper.floor_double(activeWp[0]);
         int away = MathHelper.floor_double(activeWp[1]);
         int awz = MathHelper.floor_double(activeWp[2]);
@@ -153,7 +152,11 @@ public final class NavigateAction implements Action<NavigationContext> {
             drone.motionY *= 0.3;
             drone.motionZ *= 0.3;
             ctrl.stuckTicks = Math.max(ctrl.stuckTicks, 6);
-            nav.clearPath();
+            ctrl.pathWaypoints.clear();
+            ctrl.pathIndex = 0;
+            ctrl.pathGoalX = Double.NaN;
+            ctrl.pathGoalY = Double.NaN;
+            ctrl.pathGoalZ = Double.NaN;
             ctrl.repathCooldown = 0;
             context.result(NavigateResult.blocked(ctrl.lastPathPartial));
             context.complete();

@@ -29,7 +29,7 @@ public class DroneCommand extends BaseCommand {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/" + this.cmdName + " <spawn|link|despawn|list|status|setbase|debug|config|js|help>";
+        return "/" + this.cmdName + " <spawn|link|despawn|list|status|debug|config|js|help>";
     }
 
     @Override
@@ -47,7 +47,7 @@ public class DroneCommand extends BaseCommand {
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                    "spawn", "link", "despawn", "list", "status", "setbase",
+                    "spawn", "link", "despawn", "list", "status",
                     "debug", "config", "js", "help");
         }
         if (args.length == 2) {
@@ -77,7 +77,6 @@ public class DroneCommand extends BaseCommand {
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v1.4.0 (Master-Tool Harness) Commands ===");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone setbase | js <code>");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear] | config");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
             return;
@@ -225,24 +224,6 @@ public class DroneCommand extends BaseCommand {
 
         if (sub.equals("status")) {
             this.manager.sendDroneStatus(player, ctrl);
-            return;
-        }
-
-        if (sub.equals("setbase")) {
-            double bx = player.posX;
-            double by = player.posY;
-            double bz = player.posZ;
-            if (args.length >= 4) {
-                try {
-                    bx = parseCoord(bx, args[1]);
-                    by = parseCoord(by, args[2]);
-                    bz = parseCoord(bz, args[3]);
-                } catch (NumberFormatException ignored) {
-                }
-            }
-            config.setPlayerBase(player.getCommandSenderName(), bx, by, bz);
-            this.manager.saveConfig();
-            this.manager.droneSay(player, ctrl, String.format("Saved your base location at (%.1f, %.1f, %.1f)!", bx, by, bz));
             return;
         }
 

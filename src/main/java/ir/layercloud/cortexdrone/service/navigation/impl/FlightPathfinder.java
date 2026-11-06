@@ -2,7 +2,6 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.service.navigation.NavContext;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
@@ -10,7 +9,6 @@ import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
@@ -109,12 +107,6 @@ public class FlightPathfinder {
             h = h ^ (h >>> 29);
         }
         return h;
-    }
-
-    public List<double[]> findFlightPath(NavContext nav) {
-        return findFlightPath(nav.world(), nav.controller(),
-                nav.startX(), nav.startY(), nav.startZ(),
-                nav.goalX(), nav.goalY(), nav.goalZ());
     }
 
     public List<double[]> findFlightPath(World world, DroneController ctrl, double sx, double sy, double sz, double gx, double gy, double gz) {
@@ -371,14 +363,6 @@ public class FlightPathfinder {
 
     public static void runServerSidePhysicsStep(Drone d, double maxVelOverride, DroneController ctrl) {
         DronePhysicsService.runServerSidePhysicsStep(d, maxVelOverride, ctrl);
-    }
-
-    public static boolean isPlayerLookingAtDrone(EntityPlayerMP player, Drone drone) {
-        return DronePhysicsService.isPlayerLookingAtDrone(player, drone);
-    }
-
-    public static double[] computeStableFollowAnchor(World world, EntityPlayerMP target, Drone d) {
-        return DronePhysicsService.computeStableFollowAnchor(world, target, d);
     }
 
     public static double[] findBlockStandoff(World world, Drone d, int bx, int by, int bz) {

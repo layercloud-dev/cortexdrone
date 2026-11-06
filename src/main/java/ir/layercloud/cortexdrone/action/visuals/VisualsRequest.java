@@ -35,4 +35,10 @@ public class VisualsRequest {
 
     String message;
     String text;
+
+    Boolean lightEnabled;
+    boolean lightToggle;
+    Integer lightRadius;
+    Integer lightLevel;
+    Integer lightColor;
 }

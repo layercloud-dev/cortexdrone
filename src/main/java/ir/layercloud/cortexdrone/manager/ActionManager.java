@@ -48,6 +48,12 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
                     + " action: " + operation);
         }
 
+        // A new call for an operation always replaces the previous execution,
+        // even when the new one is one-shot. Otherwise a retained action (LED
+        // animation, light aura, delivery flight) could keep running after a
+        // newer command already replaced its effect.
+        cancelExisting(controller, operation);
+
         C context = createContext(controller, player, operation);
         Action<C> action = null;
         try {
@@ -72,6 +78,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
      */
     protected final void run(DroneController controller, EntityPlayerMP player,
                              String operation, C context, Action<C> action) {
+        cancelExisting(controller, operation);
         try {
             action.execute(context);
             if (context.isRetained()) {
@@ -134,6 +141,16 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
     public final int activeContextCount(DroneController controller) {
         Map<String, Execution<C>> executions = this.active.get(controller);
         return executions != null ? executions.size() : 0;
+    }
+
+    private void cancelExisting(DroneController controller, String operation) {
+        Map<String, Execution<C>> executions = this.active.get(controller);
+        if (executions == null) return;
+        Execution<C> previous = executions.remove(operation);
+        if (previous == null) return;
+        previous.action.cancel(previous.context);
+        previous.context.cancel();
+        if (executions.isEmpty()) this.active.remove(controller);
     }
 
     private void retain(DroneController controller, String operation, Execution<C> execution) {

@@ -1,8 +1,7 @@
-package ir.layercloud.cortexdrone.harness;
+package ir.layercloud.cortexdrone.harness.agent;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
@@ -11,7 +10,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -82,17 +80,6 @@ final class DroneContextBuilder {
         taskState.addProperty("navigationActive", manager.getNavigationManager().isActive(ctrl));
         taskState.addProperty("activeActions", manager.getActionRegistry().activeContextCount(ctrl));
         ctx.add("task", taskState);
-
-        String ownerKey = player != null ? player.getCommandSenderName() : ctrl.ownerName;
-        List<AIConfig.SavedLocation> savedLocs = manager.getConfig().listLocations(ownerKey);
-        if (!savedLocs.isEmpty()) {
-            JsonObject locsObj = new JsonObject();
-            for (AIConfig.SavedLocation loc : savedLocs) {
-                locsObj.addProperty(loc.getName(), "(" + loc.getX() + "," + loc.getY() + "," + loc.getZ() + ")"
-                        + (loc.getTags() != null && !loc.getTags().isEmpty() ? " [" + loc.getTags() + "]" : ""));
-            }
-            ctx.add("savedLocations", locsObj);
-        }
 
         JsonObject resources = new JsonObject();
         try {

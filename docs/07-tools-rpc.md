@@ -34,7 +34,6 @@ Returns live status. Important fields:
 - navigation: `navigationActive`, `navigationPhase`, `navigationReason`,
   `navigationError`, `distanceToGoal`, `arrived`;
 - work: `busy` (navigation or any retained action);
-- counters: `builtCount`, `scoopedCount`;
 - lighting: `lightActive`, `lightRadius`, `lightLevel`, `lightColor`;
 - inventory: `inventory`, `freeSlots`, `totalItems`, `isFull`;
 - loop: `aborted` when the calling loop ID was cancelled.
@@ -67,8 +66,6 @@ Read-only query namespace. Ops:
 | `machines {radius,machine?}` | machine tile scan/description |
 | `machineIngredients {filter,machine?,radius?}` | ingredient availability |
 | `breadcrumbs {limit}` | trail snapshot + surface anchor |
-| `base {}` | player base location |
-| `locations {}` / `location {name}` | saved named locations |
 | `buildSite {...}` | find a build site |
 | `plan {...}` | structure blueprint |
 | `doc {query,mod?}` | local/web documentation lookup |
@@ -159,8 +156,8 @@ Ops: `move`, `give`, `take`, `withdraw`, `deposit`, `drop`, `suck`.
 ### `drone.craft(filter, count)`
 
 - Vanilla crafting primitive.
-- Resolves recipes, withdraws/takes missing ingredients where possible,
-  recursively crafts, inserts output.
+- Uses only the drone inventory. Missing ingredients return an error instead of
+  pulling from chests or the player.
 - Returns `CraftResult` fields (`crafted`, `item`, error).
 
 ## 8. Visuals and skills
@@ -173,6 +170,7 @@ Kinds:
 | --- | --- |
 | `led` / `color` | `set_led` (fixed color or clear) |
 | `ledEffect` | `led_effect` (RAINBOW/DISCO/POLICE/PULSE/BREATHE/STROBE/FIRE/OCEAN/HEARTBEAT/MATRIX) |
+| `light` / `aura` | `set_light` (enable/disable, radius, level, color) |
 | `particles` | `spawn_particles` |
 | `sound` | `play_sound` |
 | `note` | `play_note` |
@@ -278,7 +276,7 @@ HTTP response says `{ok:true,queued:true}`.
 ```text
 get_block, get_blocks_in_box, get_top_y, scan_room, scan_blocks,
 scan_veins, find_distant, get_entities, get_drops, raycast_player,
-find_base, get_location, list_locations, lookup_doc,
+lookup_doc,
 find_build_site, plan_structure
 ```
 

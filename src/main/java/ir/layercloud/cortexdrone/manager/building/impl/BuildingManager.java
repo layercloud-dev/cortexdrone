@@ -16,10 +16,10 @@ import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
@@ -35,18 +35,12 @@ import java.util.List;
 public final class BuildingManager extends ActionManager<BlockContext, BlockRequest, BlockResult> {
     private final AIDroneManager manager;
     private final DroneLogger logger;
-    private final InventoryService inventoryService;
     private Method blockGetDropsMethod = null;
 
-    public BuildingManager(
-            AIDroneManager manager,
-            DroneLogger logger,
-            InventoryService inventoryService
-    ) {
+    public BuildingManager(AIDroneManager manager, DroneLogger logger) {
         super("block", "break_block", "place_block");
         this.manager = manager;
         this.logger = logger;
-        this.inventoryService = inventoryService;
         try {
             this.blockGetDropsMethod = Block.class.getMethod(
                     "getDrops", World.class, int.class, int.class, int.class, int.class, int.class
@@ -123,7 +117,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
     /**
      * Places exactly one explicit block from drone/chest/player inventory.
      */
-    public boolean placeBlock(DroneController controller, EntityPlayerMP player,
+    public boolean placeBlock(DroneController controller,
                               int x, int y, int z, String filter, int metaOverride) {
         if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
             return false;
@@ -132,18 +126,10 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         World world = drone.worldObj;
         if (!ItemClassifier.isReplaceableBlock(world, x, y, z)) return false;
 
+        // Strict primitive: only the drone inventory is used. If the block is
+        // not there, fail so the model can gather or take it explicitly.
         IInventory inventory = drone.mainInventory();
         int slot = InventoryService.findPlaceableItemSlot(inventory, filter);
-        if (slot < 0) {
-            int pulled = this.inventoryService.withdrawMatchingFromNearbyChests(
-                    world, controller, player, filter, 64);
-            if (pulled > 0) slot = InventoryService.findPlaceableItemSlot(inventory, filter);
-            if (slot < 0 && player != null) {
-                int taken = this.inventoryService.takeFromPlayerInventory(
-                        controller, player, filter, 64);
-                if (taken > 0) slot = InventoryService.findPlaceableItemSlot(inventory, filter);
-            }
-        }
         if (slot < 0) return false;
 
         ItemStack stack = inventory.getStackInSlot(slot);
@@ -159,7 +145,6 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
             world.playAuxSFX(2001, x, y, z, Block.getIdFromBlock(block) + (meta << 12));
             inventory.decrStackSize(slot, 1);
             inventory.markDirty();
-            controller.builtCount++;
             this.logger.log("BUILD", controller,
                     String.format("Placed %s at (%d,%d,%d)", block.getLocalizedName(), x, y, z), "");
         }

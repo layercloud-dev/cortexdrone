@@ -1,14 +1,14 @@
-package ir.layercloud.cortexdrone.service.visuals;
+package ir.layercloud.cortexdrone.manager.visuals.impl;
 
 import lombok.experimental.UtilityClass;
 
 /**
- * Dedicated LED color parser, HSV-to-RGB converter, and 20-FPS procedural
- * lighting animation engine for OpenComputers Drones.
+ * Manager-owned LED color parser, HSV-to-RGB converter and procedural lighting
+ * animation steps for OpenComputers Drones.
  * Supports: RAINBOW, DISCO, POLICE, PULSE/BREATHE, STROBE, FIRE, OCEAN, HEARTBEAT, MATRIX.
  */
 @UtilityClass
-public final class LedEffectEngine {
+public final class LedEffects {
     private static final int[] DISCO_PALETTE = new int[]{
             0xFF0055, 0x00FFCC, 0xFFEE00, 0xAA00FF, 0x00FF44, 0xFF6600, 0xFF00AA
     };
@@ -73,6 +73,10 @@ public final class LedEffectEngine {
         if (s.contains("white") || s.contains("silver")) return 0xFFFFFF;
         if (s.contains("black") || s.contains("off") || s.contains("dark")) return 0x111111;
         return null;
+    }
+
+    public static boolean isAnimated(String raw) {
+        return isEffectName(raw);
     }
 
     public static boolean isEffectName(String raw) {

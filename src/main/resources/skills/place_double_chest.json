@@ -1,6 +1,6 @@
 {
   "name": "place_double_chest",
-  "description": "Craft chests then place two adjacent chest blocks using the single-block placement primitive",
+  "description": "Craft chests from planks already in the drone inventory, then place two adjacent chests; reports missing materials instead of pulling from storage",
   "tags": "craft place double chest planks wood",
-  "code": "const p = await drone.inspect('player', {});\nawait drone.craft('chest', 2);\nawait drone.placeBlock(p.blockX + 1, p.blockY, p.blockZ, 'chest');\nawait drone.placeBlock(p.blockX + 2, p.blockY, p.blockZ, 'chest');\nreturn { placed: 2 };"
+  "code": "const p = await drone.inspect('player', {});\nconst c = await drone.craft('chest', 2);\nconst made = Number((c && c.crafted) || 0);\nif (!c || c.ok === false || made < 2) {\n  return { ok: false, error: 'Need 2 chests in the drone inventory. Craft result: ' + ((c && c.error) || 'none') + '. Gather wood/planks first (transfer take or break_block).' };\n}\nconst a = await drone.placeBlock(p.blockX + 1, p.blockY, p.blockZ, 'chest');\nconst b = await drone.placeBlock(p.blockX + 2, p.blockY, p.blockZ, 'chest');\nreturn { ok: !!(a.placed && b.placed), placed: [a.placed, b.placed].filter(Boolean).length };"
 }

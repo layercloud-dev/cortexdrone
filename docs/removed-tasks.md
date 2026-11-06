@@ -33,7 +33,7 @@ for them are deleted.
   - `remove` (use `despawn`), `info`/`inv`/`inventory` (use `status`),
     `eval`/`code` (use `js`).
 - Management commands that remain: `spawn`, `link`, `despawn`, `list`,
-  `status`, `setbase`, `debug`, `config`, `js`, `help`.
+  `status`, `debug`, `config`, `js`, `help`.
 
 Unknown `/drone` subcommands fall through to natural-language task handling.
 
@@ -53,8 +53,11 @@ Unknown `/drone` subcommands fall through to natural-language task handling.
 | `CaveEscapeService`, `DigPathService`, `DigRouteAction` | `break_block` composed by the model, then `goto` again |
 | `FlightPilot` | `NavigateAction` executor |
 | `CombatService`, `Mode.HUNT` | interaction attack primitive + AI composition |
-| `Mode` enum + `setDroneMode` | derived work state: navigation session, mining target/queue, retained action |
+| `Mode` enum + `setDroneMode` | derived work state: navigation session + retained action |
 | `TaskSnapshot` / `escapeResume` self-rescue restore | no internal dig work exists |
+| `NavContext`, `HoldAction`, `NavigationMode.HOLD` | controller path fields + `StopAction` |
+| `builtCount`, `scoopedCount` | no per-drone counters |
+| `AIConfig.playerBases`, `AIConfig.savedLocations` | no location memory; use `goto` coordinates |
 | `mineUntilFull`, `returnToOwnerAfterMine`, `mineFilter`, `mineExactQueueOnly` | explicit tool calls composed by the model |
 | `FOLLOW` / `STAY` / `GOTO` / `MINE` / `DEPOSIT` / `DROP` behavior switch | actions + navigation session |
 | per-category context packages | `context/impl/` |

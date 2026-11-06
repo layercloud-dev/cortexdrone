@@ -5,7 +5,6 @@ import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
@@ -61,7 +60,6 @@ public final class DronePhysicsService {
     /**
      * Allocation-free velocity integration with predictive braking & cruise-speed profile.
      * - Avoids Vec3 allocation (zero-pressure tick path).
-     * - Uses controller's integrated velocity estimate (velX/Y/Z) for anti-overshoot braking.
      * - Distance-dependent max velocity: full cruise far away, ease-in near the target so the
      * drone arrives without oscillation and never walks into the floor (target is 3D, not ground-hugging).
      */
@@ -119,65 +117,9 @@ public final class DronePhysicsService {
         d.motionX = vx * drag;
         d.motionY = vy * drag;
         d.motionZ = vz * drag;
-        if (ctrl != null) {
-            ctrl.velX = vx;
-            ctrl.velY = vy;
-            ctrl.velZ = vz;
-        }
     }
 
-    public static boolean isPlayerLookingAtDrone(EntityPlayerMP player, Drone drone) {
-        if (player == null || drone == null || player.worldObj != drone.worldObj) return false;
-        double ex = player.posX;
-        double ey = player.posY + 1.62;
-        double ez = player.posZ;
-        double dx = drone.posX - ex;
-        double dy = (drone.posY + 0.18) - ey;
-        double dz = drone.posZ - ez;
-        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (dist < 0.2 || dist > 4.5) return false;
-
-        double yawRad = Math.toRadians(player.rotationYaw);
-        double pitchRad = Math.toRadians(player.rotationPitch);
-        double lx = -Math.sin(yawRad) * Math.cos(pitchRad);
-        double ly = -Math.sin(pitchRad);
-        double lz = Math.cos(yawRad) * Math.cos(pitchRad);
-
-        double dot = (dx * lx + dy * ly + dz * lz) / dist;
-        return dot > 0.70;
-    }
-
-    public static double[] computeStableFollowAnchor(World world, EntityPlayerMP target, Drone d) {
-        double px = target.posX;
-        double py = target.posY + 1.65;
-        double pz = target.posZ;
-
-        double baseAngle = Math.atan2(d.posZ - pz, d.posX - px);
-        double[] offsets = new double[]{0.0, 0.55, -0.55, 1.1, -1.1, 1.65, -1.65, 2.2, -2.2, Math.PI};
-        double[] radii = new double[]{2.2, 1.8, 2.7};
-        double[] yOffsets = new double[]{0.0, 0.45, 0.85, -0.25};
-
-        for (double r : radii) {
-            for (double yOff : yOffsets) {
-                for (double aOff : offsets) {
-                    double ang = baseAngle + aOff;
-                    double cx = px + Math.cos(ang) * r;
-                    double cy = py + yOff;
-                    double cz = pz + Math.sin(ang) * r;
-                    int bx = MathHelper.floor_double(cx);
-                    int by = MathHelper.floor_double(cy);
-                    int bz = MathHelper.floor_double(cz);
-                    if (ItemClassifier.isPassableVoxel(world, bx, by, bz)
-                            && FlightPathfinder.isFlightLineClear(world, px, py + 0.3, pz, cx, cy, cz)) {
-                        return new double[]{cx, cy, cz};
-                    }
-                }
-            }
-        }
-        return new double[]{px, target.posY + 1.8, pz};
-    }
-
-    private static boolean hasHeadroom(World world, int x, int y, int z) {
+    public static boolean hasHeadroom(World world, int x, int y, int z) {
         return ItemClassifier.isPassableVoxel(world, x, y, z)
                 && ItemClassifier.isPassableVoxel(world, x, y + 1, z);
     }

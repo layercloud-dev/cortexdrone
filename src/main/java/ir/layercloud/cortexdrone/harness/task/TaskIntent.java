@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.harness;
+package ir.layercloud.cortexdrone.harness.task;
 
 /**
  * How an incoming player message relates to the single active task.

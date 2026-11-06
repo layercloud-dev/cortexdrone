@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
@@ -358,64 +357,6 @@ public class WorldRpcHandler implements RpcHandler {
                     res.add(e.getKey(), e.getValue());
                 }
             }
-            return res;
-        }
-
-        if (m.equals("find_base")) {
-            double[] base = this.worldScanner.findBaseLocation(world, player);
-            res.addProperty("x", Math.round(base[0] * 10.0) / 10.0);
-            res.addProperty("y", Math.round(base[1] * 10.0) / 10.0);
-            res.addProperty("z", Math.round(base[2] * 10.0) / 10.0);
-            return res;
-        }
-
-        if (m.equals("get_location")) {
-            EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
-            String ownerKey = p != null ? p.getCommandSenderName() : ctrl.ownerName;
-            String name = args.has("name") ? args.get("name").getAsString()
-                    : (args.has("query") ? args.get("query").getAsString() : "base");
-            AIConfig.SavedLocation loc = this.manager.getConfig().getLocation(ownerKey, name);
-            if (loc != null) {
-                res.addProperty("found", true);
-                res.addProperty("name", loc.getName());
-                res.addProperty("owner", loc.getOwner());
-                res.addProperty("x", loc.getX());
-                res.addProperty("y", loc.getY());
-                res.addProperty("z", loc.getZ());
-                res.addProperty("tags", loc.getTags());
-                return res;
-            }
-            if (name.equalsIgnoreCase("base") || name.equalsIgnoreCase("home")) {
-                double[] base = this.worldScanner.findBaseLocation(world, p);
-                res.addProperty("found", true);
-                res.addProperty("name", "base");
-                res.addProperty("x", Math.round(base[0] * 10.0) / 10.0);
-                res.addProperty("y", Math.round(base[1] * 10.0) / 10.0);
-                res.addProperty("z", Math.round(base[2] * 10.0) / 10.0);
-                return res;
-            }
-            res.addProperty("found", false);
-            return res;
-        }
-
-        if (m.equals("list_locations")) {
-            EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
-            String ownerKey = p != null ? p.getCommandSenderName() : ctrl.ownerName;
-            List<AIConfig.SavedLocation> list = this.manager.getConfig().listLocations(ownerKey);
-            JsonArray arr = new JsonArray();
-            for (AIConfig.SavedLocation loc : list) {
-                JsonObject lo = new JsonObject();
-                lo.addProperty("name", loc.getName());
-                lo.addProperty("owner", loc.getOwner());
-                lo.addProperty("x", loc.getX());
-                lo.addProperty("y", loc.getY());
-                lo.addProperty("z", loc.getZ());
-                lo.addProperty("tags", loc.getTags() != null ? loc.getTags() : "");
-                lo.addProperty("dist", Math.round(d.getDistance(loc.getX(), loc.getY(), loc.getZ()) * 10.0) / 10.0);
-                arr.add(lo);
-            }
-            res.addProperty("count", arr.size());
-            res.add("locations", arr);
             return res;
         }
 

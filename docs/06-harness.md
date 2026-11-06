@@ -98,7 +98,6 @@ which adds:
 - drone and player inventory summaries;
 - distance to player, task state, script count;
 - last path partial/nodes, last thought;
-- saved locations for the owner;
 - nearby resource summary (24 m).
 
 Matched skills (top 3 by BM25) are appended to the system message when available.
@@ -192,7 +191,7 @@ Deterministic anti-loop helpers:
 - physical action detection (`goto`, `stop`, `breakBlock`, `placeBlock`,
   `interactBlock`, `useItem`, `transfer`, `craft`);
 - concrete progress detection (`started/placed/used/activated/broken/
-  transferred/moved/withdrawn/deposited/crafted/builtCount/arrived`);
+  transferred/moved/withdrawn/deposited/crafted/arrived`);
 - repeated-result detection;
 - machine-config/empty-search fast final;
 - query fingerprinting for repeated `inspect/state` targets;

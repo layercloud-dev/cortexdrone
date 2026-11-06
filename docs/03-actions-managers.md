@@ -85,7 +85,7 @@ Operations: `goto`, `stop` only.
 - Creates a `Session` (goal, phase, current leg, trail state, attempts).
 - Keeps the session until arrival, explicit stop, or proven failure.
 - Uses the `BreadcrumbService` suggestion and `FlightPathfinder`.
-- Delegates to `NavigateAction`, `HoldAction`, `StopAction`.
+- Delegates to `NavigateAction`, `StopAction`.
 - `flyToward`/`hold` are internal helpers for deposit/delivery and block
   standoffs; they still execute through actions.
 
@@ -100,8 +100,8 @@ Responsibilities, and nothing more:
 - `break_block` removes exactly one block immediately, computes its drops
   (reflection `Block.getDrops`, fallback `quantityDropped`/`getItemDropped`,
   Fortune aware), inserts them into the drone inventory and spills the rest;
-- `place_block` places one block from drone/chest/player inventory, with
-  withdrawal/take fallback and metadata selection.
+- `place_block` places one block from the drone inventory only. If the block is
+  not there, it fails and the model must gather or take it explicitly.
 
 There is no mining queue, no target selection, no standoff search, no dig
 planner and no break-progress state. The model chooses each block and calls the
@@ -140,22 +140,25 @@ Operations: `transfer`, `craft`.
 | `drop` | `DropAction` | hand the inventory to the owner, or drop it in place when they are offline |
 | `suck` | `SuckItemsAction` | vacuum nearby dropped items |
 
-`craft` uses `CraftAction` and `InventoryService.craftItem` (vanilla crafting
-recipe resolution, ingredient withdrawal/take fallback, recursive crafting).
+`craft` uses `CraftAction` and `CraftingService.craftItem` (vanilla recipes from
+the drone inventory only; missing ingredients fail the call, no chest/player
+pull; sub-crafting stays inside the inventory).
 
 ### VisualsManager (`manager/visuals/impl`)
 
 Operations: `set_led`, `led_effect`, `spawn_particles`, `play_sound`,
 `play_note`, `say`, `set_status_text`.
 
-- `SetLedAction` sets fixed color, LED effect name, or clears it.
+- `SetLedAction` sets a fixed color (one-shot) or an animated effect (retained;
+  the action advances the animation itself).
+- `SetLightAction` toggles/configures the illumination aura and, while it is on,
+  retains itself and re-applies the light.
 - `SpawnParticlesAction` spawns a particle burst.
 - `PlaySoundAction` plays sound/note.
 - `SayAction` sends chat through the root manager.
 - `SetStatusTextAction` updates drone status text.
-- `LightingAura` is owned by the manager (not an action) and runs every tick
-  when `autoTorch` is enabled or cells remain; it applies/restores block light and
-  syncs affected chunks.
+- `LightingAura` and `LedEffects` are manager components; there is no background
+  lighting/LED loop in `TickManager`.
 
 ## 6. Action inventory
 
@@ -190,7 +193,7 @@ item use/attack. DTOs: `InteractionRequest`, `InteractionResult`.
 
 ### Navigation
 
-`NavigateAction`, `HoldAction`, `StopAction`.
+`NavigateAction`, `StopAction`.
 DTOs: `NavigationMode`, `NavigateResult`, `NavigationContext`.
 
 ### Visuals

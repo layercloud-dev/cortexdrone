@@ -159,7 +159,7 @@ Config file values fill in when env vars are absent; env wins when set.
 | HTTP 504 | RPC method exceeded budget; check server thread |
 | Large scan busy | another scan active; poll `jobId` |
 | No skill results | `skills/index.json` files present; world skill override |
-| Lighting not restored | `lightCells` state; shutdown/despawn restore path |
+| Lighting not restored | retained `SetLightAction` cancelled; shutdown/despawn restore path |
 
 ## 12. Release checklist
 

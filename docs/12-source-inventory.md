@@ -40,14 +40,14 @@ not a substitute for the subsystem chapters.
 | `inventory/impl/WithdrawChestAction` | Withdraw from chest/container |
 | `navigation/NavigateResult` | One navigation leg result (`moved/legDone/blocked/partial/error`) |
 | `navigation/NavigationMode` | Flight/hold/stop legs |
-| `navigation/impl/HoldAction` | Applies hold target/motion damping |
 | `navigation/impl/NavigateAction` | Flight leg execution (A*, waypoints, blocked detection) |
 | `navigation/impl/StopAction` | Clears path and stops/hovers |
 | `visuals/VisualsRequest` | Visuals request DTO |
 | `visuals/VisualsResult` | Visuals result DTO |
 | `visuals/impl/PlaySoundAction` | Sound/note |
 | `visuals/impl/SayAction` | Chat through root manager |
-| `visuals/impl/SetLedAction` | LED color/effect/clear |
+| `visuals/impl/SetLedAction` | LED color, or retained animated effect |
+| `visuals/impl/SetLightAction` | Illumination aura on/off/config (retained while on) |
 | `visuals/impl/SetStatusTextAction` | Drone status text |
 | `visuals/impl/SpawnParticlesAction` | Particle burst |
 
@@ -70,7 +70,7 @@ not a substitute for the subsystem chapters.
 | `ActionManager` | Typed action lifecycle base (create/execute/retain/tick/cancel) |
 | `ActionRegistry` | Operation→manager map, tick/cancel all, duplicate detection |
 | `TickManager` | 20-Hz pipeline: breadcrumbs, stalls, aura, navigation, retained actions, idle hold, LED, physics |
-| `building/impl/BuildingManager` | One immediate break (drops, Fortune) and one place |
+| `building/impl/BuildingManager` | One immediate break (drops, Fortune) and one strict place |
 | `interact/impl/InteractionManager` | Interaction/attack/pick/unpick action dispatch |
 | `inventory/impl/InventoryManager` | Transfer/craft action dispatch |
 | `navigation/NavigationRequest` | Goto request DTO |
@@ -80,6 +80,7 @@ not a substitute for the subsystem chapters.
 | `visuals/LightConfig` | Light aura configuration DTO |
 | `visuals/LightResult` | Light aura result DTO |
 | `visuals/impl/LightingAura` | Torch-free light application/restore, chunk sync |
+| `visuals/impl/LedEffects` | Color parsing, HSV→RGB, procedural LED steps |
 | `visuals/impl/VisualsManager` | Visuals action dispatch + lighting aura ownership |
 
 ## `service/inventory/`
@@ -98,24 +99,18 @@ not a substitute for the subsystem chapters.
 
 | Class | Responsibility |
 | --- | --- |
-| `MachineRecipeService` | HBM/mod machine recipe JSON/live introspection, ranking, best recipe, caches |
+| `MachineRecipeService` | Read-only recipe facade; composes optional hooks, ranks, caches |
+| `MachineRecipeHook` / `HbmRecipeFileHook` / `HbmRecipeLiveHook` | Optional HBM recipe sources (JSON dir, live reflection) |
 | `MachineRecipeParser` | Recipe JSON schema normalization |
 | `MachineRecipeRanker` | Output/filter ranking, ingredient availability, nearby count cache |
-| `MachineRecipeReflection` | Live HBM recipe reflection fallback |
+| `MachineRecipeReflection` | Live HBM recipe reflection (used by `HbmRecipeLiveHook`) |
 | `MachineTileInspector` | Machine tile discovery/aliases/description/power/fluid |
 | `FurnaceScanner` | Furnace tile scan |
-
-## `service/visuals/`
-
-| Class | Responsibility |
-| --- | --- |
-| `LedEffectEngine` | Color parsing, HSV→RGB, procedural LED effects |
 
 ## `service/navigation/`
 
 | Class | Responsibility |
 | --- | --- |
-| `NavContext` | Immutable start/goal/route/world/cache snapshot + live path helpers |
 | `Breadcrumb` | Trail point DTO |
 | `TrailPlan` | Trail suggestion DTO |
 | `impl/BreadcrumbService` | Trail recording/dedupe/pruning/surface anchor/backtrack suggestion |
@@ -145,17 +140,17 @@ not a substitute for the subsystem chapters.
 
 | Class | Responsibility |
 | --- | --- |
-| `LlmAgentService` | LLM loop, prompt/context, HTTP call, turn handling, self-correction, skill match |
-| `DroneContextBuilder` | Read-only "Initial World State" JSON: player, drone, saved locations, nearby resources |
+| `agent/LlmAgentService` | LLM loop, prompt/context, HTTP call, turn handling, self-correction, skill match |
+| `agent/DroneContextBuilder` | Read-only "Initial World State" JSON: player, drone, saved locations, nearby resources |
 | `CodeModeRuntime` | Node.js runner, SDK bundle, temp script, timeout/supersession, JSON parse |
-| `LlmResponseParser` | Tolerant JSON/code salvage, think stripping, prose blocker detection |
-| `PromptCompactor` | Bounded context + continuation digest |
-| `AgentHeartbeat` | Premature-done rejection, continuation resurrection |
-| `AgentLoopHeuristics` | Deadline, message pruning, loop/query fingerprints, nudges, progress detection |
-| `LoopTracer` | Loop trace/superseded/error logging, key masking |
-| `TaskCoordinator` | One-session intent handling |
-| `TaskIntent` | Intent enum |
-| `TaskIntentClassifier` | Deterministic intent classifier |
+| `agent/LlmResponseParser` | Tolerant JSON/code salvage, think stripping, prose blocker detection |
+| `agent/PromptCompactor` | Bounded context + continuation digest |
+| `agent/AgentHeartbeat` | Premature-done rejection, continuation resurrection |
+| `agent/AgentLoopHeuristics` | Deadline, message pruning, loop/query fingerprints, nudges, progress detection |
+| `agent/LoopTracer` | Loop trace/superseded/error logging, key masking |
+| `task/TaskCoordinator` | One-session intent handling |
+| `task/TaskIntent` | Intent enum |
+| `task/TaskIntentClassifier` | Deterministic intent classifier |
 | `SkillLibrary` | Bundled/saved skills, BM25 search, self-corrected skills |
 | `RpcDispatcher` | Main-thread RPC, timeouts, time-sliced large scans, poll_scan |
 | `MasterToolCatalog` | Canonical tool names + removed tools |
@@ -197,5 +192,5 @@ not a substitute for the subsystem chapters.
 | `action/ActionRegistryTest` | Manager lifecycle/registry invariants |
 | `harness/MasterToolSurfaceTest` | Tool surface and removed-tool rejection |
 | `harness/SkillLibraryTest` | Bundled skill load/search |
-| `harness/TaskIntentClassifierTest` | Intent classification |
+| `harness/task/TaskIntentClassifierTest` | Intent classification |
 | `drone/TaskSessionTest` | Session lifecycle/notes |

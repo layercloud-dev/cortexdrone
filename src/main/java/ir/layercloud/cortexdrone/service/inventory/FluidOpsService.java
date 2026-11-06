@@ -125,8 +125,7 @@ public class FluidOpsService {
             owner.inventory.addItemStackToInventory(filledStack);
             InventoryService.syncPlayerInventory(owner);
         }
-        ctrl.scoopedCount++;
-        this.logger.log("SCOOP", ctrl, String.format("Scooped %s at (%d,%d,%d)", filledStack.getDisplayName(), x, y, z), "scooped=" + ctrl.scoopedCount);
+        this.logger.log("SCOOP", ctrl, String.format("Scooped %s at (%d,%d,%d)", filledStack.getDisplayName(), x, y, z), "");
         return true;
     }
 }

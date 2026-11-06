@@ -1,19 +1,19 @@
-package ir.layercloud.cortexdrone.harness;
+package ir.layercloud.cortexdrone.harness.agent;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.harness.CodeModeRuntime;
+import ir.layercloud.cortexdrone.harness.RpcDispatcher;
+import ir.layercloud.cortexdrone.harness.SkillLibrary;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 import java.io.BufferedReader;
@@ -24,7 +24,6 @@ import java.net.Proxy;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @RequiredArgsConstructor
@@ -64,18 +63,6 @@ public class LlmAgentService {
 
     public JsonObject buildDroneContextForLlm(EntityPlayerMP player, DroneController ctrl) {
         return DroneContextBuilder.build(this.manager, this.worldScanner, player, ctrl);
-    }
-
-    public static String sanitizeThought(String rawThought, String fallbackReasoning) {
-        return LlmResponseParser.sanitizeThought(rawThought, fallbackReasoning);
-    }
-
-    public static JsonObject parseCodeModeLlmContent(String raw) {
-        return LlmResponseParser.parse(raw, "");
-    }
-
-    public static JsonObject parseCodeModeLlmContent(String raw, String reasoningContent) {
-        return LlmResponseParser.parse(raw, reasoningContent);
     }
 
     public void runAgentLoop(final EntityPlayerMP player, final DroneController ctrl, final String userPrompt, final JsonObject worldContext, final int myLoopId) {

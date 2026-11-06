@@ -9,9 +9,6 @@ import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityChest;
-import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
@@ -261,69 +258,5 @@ public class WorldScanner {
             }
         }
         return summary;
-    }
-
-    /**
-     * Dynamically locates the player's base without hardcoded coordinates:
-     * 1) Checks per-player saved base in AIConfig.
-     * 2) Finds the centroid of the highest-density TileEntityChest cluster in loaded chunks.
-     * 3) Checks the player's bed spawn point.
-     * 4) Falls back to world spawn coordinates.
-     */
-    @SuppressWarnings("deprecation")
-    public double[] findBaseLocation(World world, EntityPlayerMP player) {
-        if (player != null && this.config != null) {
-            double[] saved = this.config.getPlayerBase(player.getCommandSenderName());
-            if (saved != null) {
-                return saved;
-            }
-        }
-
-        if (world != null && world.loadedTileEntityList != null) {
-            Map<Long, List<TileEntity>> byChunk = new HashMap<Long, List<TileEntity>>();
-            List<TileEntity> bestList = null;
-            for (Object o : world.loadedTileEntityList) {
-                if (o instanceof TileEntityChest) {
-                    TileEntity te = (TileEntity) o;
-                    long ck = (((long) (te.xCoord >> 4)) << 32) | ((te.zCoord >> 4) & 0xFFFFFFFFL);
-                    List<TileEntity> list = byChunk.get(ck);
-                    if (list == null) {
-                        list = new ArrayList<TileEntity>();
-                        byChunk.put(ck, list);
-                    }
-                    list.add(te);
-                    if (bestList == null || list.size() > bestList.size()) {
-                        bestList = list;
-                    }
-                }
-            }
-            if (bestList != null && !bestList.isEmpty()) {
-                double sx = 0, sy = 0, sz = 0;
-                for (TileEntity te : bestList) {
-                    sx += te.xCoord + 0.5;
-                    sy += te.yCoord + 1.0;
-                    sz += te.zCoord + 0.5;
-                }
-                return new double[]{sx / bestList.size(), sy / bestList.size(), sz / bestList.size()};
-            }
-        }
-
-        if (player != null) {
-            ChunkCoordinates bed = player.getBedLocation();
-            if (bed != null) {
-                return new double[]{bed.posX + 0.5, bed.posY + 1.0, bed.posZ + 0.5};
-            }
-        }
-
-        if (world != null && world.getSpawnPoint() != null) {
-            ChunkCoordinates spawn = world.getSpawnPoint();
-            int topY = world.getHeightValue(spawn.posX, spawn.posZ);
-            return new double[]{spawn.posX + 0.5, Math.max(topY + 1.0, (double) spawn.posY), spawn.posZ + 0.5};
-        }
-
-        if (player != null) {
-            return new double[]{player.posX, player.posY, player.posZ};
-        }
-        return new double[]{0.5, 65.0, 0.5};
     }
 }

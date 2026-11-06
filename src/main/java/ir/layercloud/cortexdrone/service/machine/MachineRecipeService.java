@@ -1,18 +1,12 @@
 package ir.layercloud.cortexdrone.service.machine;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -29,11 +23,12 @@ import java.util.Set;
  * ChanceOutputMulti / AnvilRecipes$AnvilConstructionRecipe semantics,
  * driven by OreDictionary lookups so new entries light up automatically.
  *
- * <p>Core API only. JSON schema parsing lives in
- * {@link MachineRecipeParser}; ranking, filtering, and ingredient
- * extraction live in {@link MachineRecipeRanker}.
+ * <p>Read-only by contract. HBM access is optional and isolated behind
+ * {@link MachineRecipeHook} implementations, so a server without HBM simply has
+ * no recipes. JSON schema parsing lives in {@link MachineRecipeParser};
+ * ranking, filtering and ingredient extraction live in
+ * {@link MachineRecipeRanker}.
  */
-@RequiredArgsConstructor
 public class MachineRecipeService {
     // Recipe JSON is re-read from disk on every call; cache it for a few seconds
     // so repeated HUD/lookup calls in the same tick window do not thrash I/O.
@@ -42,6 +37,7 @@ public class MachineRecipeService {
     private long cachedRecipesAtMs = -1L;
 
     private final InventoryService inventoryService;
+    private final List<MachineRecipeHook> hooks = new ArrayList<MachineRecipeHook>();
 
     static class NormalizedRecipe {
         String machine;
@@ -73,6 +69,12 @@ public class MachineRecipeService {
         private int missing;
         private int needed;
         private boolean sufficient;
+    }
+
+    public MachineRecipeService(InventoryService inventoryService) {
+        this.inventoryService = inventoryService;
+        this.hooks.add(new HbmRecipeFileHook());
+        this.hooks.add(new HbmRecipeLiveHook());
     }
 
     public JsonObject getMachineRecipesForFilter(String rawFilter, String rawMachine) {
@@ -184,79 +186,17 @@ public class MachineRecipeService {
             return new ArrayList<NormalizedRecipe>(this.cachedRecipes);
         }
         List<NormalizedRecipe> out = new ArrayList<NormalizedRecipe>();
-        File configDir = resolveConfigDirectory();
-        File hbmDir = new File(configDir, "hbmRecipes");
-        if (hbmDir.isDirectory()) {
-            File[] files = hbmDir.listFiles();
-            if (files != null) {
-                for (File f : files) {
-                    if (!f.getName().endsWith(".json")) continue;
-                    String machine = MachineTileInspector.recipeFileToMachine(f.getName());
-                    List<NormalizedRecipe> parsed = parseFile(f, machine, f.getName());
-                    out.addAll(parsed);
-                }
+        Set<String> seen = new HashSet<String>();
+        for (MachineRecipeHook hook : this.hooks) {
+            if (!hook.isAvailable()) continue;
+            for (NormalizedRecipe recipe : hook.load()) {
+                if (recipe == null) continue;
+                String key = recipe.machine + "\n" + recipe.name;
+                if (seen.add(key)) out.add(recipe);
             }
         }
-        if (out.isEmpty()) {
-            out.addAll(readLiveRecipesViaReflection());
-        } else {
-            // JSON templates cover most kinds, but some recipe families exist ONLY
-            // in memory (smithing pairs and construction-index tags). Merge the
-            // live-only entries without duplicating what JSON already produced.
-            List<NormalizedRecipe> live = readLiveRecipesViaReflection();
-            Set<String> seen = new HashSet<String>();
-            for (NormalizedRecipe r : out) {
-                seen.add(r.machine + "\n" + r.name);
-            }
-            for (NormalizedRecipe r : live) {
-                if (!seen.contains(r.machine + "\n" + r.name)) out.add(r);
-            }
-        }
-        if (!out.isEmpty()) {
-            this.cachedRecipes = out;
-            this.cachedRecipesAtMs = now;
-            return new ArrayList<NormalizedRecipe>(out);
-        }
-        return out;
-    }
-
-    private List<NormalizedRecipe> readLiveRecipesViaReflection() {
-        return MachineRecipeReflection.readLive(this);
-    }
-
-    private List<NormalizedRecipe> parseFile(File f, String machine, String fileName) {
-        List<NormalizedRecipe> out = new ArrayList<NormalizedRecipe>();
-        try (BufferedReader br = new BufferedReader(new FileReader(f))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line);
-            if (sb.length() == 0) return out;
-            JsonElement parsed = new JsonParser().parse(sb.toString());
-            if (!parsed.isJsonObject()) return out;
-            JsonObject root = parsed.getAsJsonObject();
-            JsonArray recipes = root.has("recipes") ? root.getAsJsonArray("recipes") : null;
-            if (recipes == null) return out;
-            for (JsonElement el : recipes) {
-                if (!el.isJsonObject()) continue;
-                NormalizedRecipe r = MachineRecipeParser.normalizeJsonRecipe(el.getAsJsonObject(), machine, fileName);
-                if (r != null) out.add(r);
-            }
-        } catch (Exception ignored) {
-        }
-        return out;
-    }
-
-    private static File resolveConfigDirectory() {
-        try {
-            net.minecraft.server.MinecraftServer srv = net.minecraft.server.MinecraftServer.getServer();
-            if (srv != null) {
-                File f = srv.getFile("config");
-                if (f != null && f.isDirectory()) return f;
-            }
-        } catch (Throwable ignored) {
-        }
-        File rel = new File("config");
-        if (rel.isDirectory()) return rel;
-        return new File("/root/forge-smp/config");
+        this.cachedRecipes = out;
+        this.cachedRecipesAtMs = now;
+        return new ArrayList<NormalizedRecipe>(out);
     }
 }

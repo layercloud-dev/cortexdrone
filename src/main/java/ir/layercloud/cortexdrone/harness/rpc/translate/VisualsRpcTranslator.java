@@ -6,8 +6,6 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
 import ir.layercloud.cortexdrone.harness.SkillLibrary;
-import ir.layercloud.cortexdrone.manager.visuals.LightConfig;
-import ir.layercloud.cortexdrone.manager.visuals.LightResult;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
@@ -33,31 +31,6 @@ public final class VisualsRpcTranslator {
         VisualsResult result = this.service.handle(
                 controller, player, operation, parse(args));
         return serialize(result);
-    }
-
-    public JsonObject configureLight(DroneController controller, JsonObject args) {
-        LightResult result = this.service.lighting().configure(controller, parseLight(args));
-        if (!result.isOk()) return RpcJson.error(result.getError());
-        JsonObject response = RpcJson.ok();
-        response.addProperty("active", result.isActive());
-        response.addProperty("radius", result.getRadius());
-        response.addProperty("level", result.getLevel());
-        response.addProperty("color", String.format("0x%06X", result.getColor() & 0xFFFFFF));
-        response.addProperty("cells", result.getCells());
-        response.addProperty("torchFree", result.isTorchFree());
-        return response;
-    }
-
-    private static LightConfig parseLight(JsonObject args) {
-        Boolean enabled = RpcArgs.has(args, "enabled")
-                ? Boolean.valueOf(args.get("enabled").getAsBoolean()) : null;
-        return LightConfig.builder()
-                .enabled(enabled)
-                .toggle(RpcArgs.has(args, "toggle") && args.get("toggle").getAsBoolean())
-                .radius(RpcArgs.has(args, "radius") ? Integer.valueOf(args.get("radius").getAsInt()) : null)
-                .level(RpcArgs.has(args, "level") ? Integer.valueOf(args.get("level").getAsInt()) : null)
-                .color(parseLightColor(args))
-                .build();
     }
 
     private static Integer parseLightColor(JsonObject args) {
@@ -133,8 +106,6 @@ public final class VisualsRpcTranslator {
         response.addProperty("lightColor", String.format("0x%06X", controller.lightColor & 0xFFFFFF));
         response.addProperty("solidEscalations", controller.solidEscalations);
         response.addProperty("blockedWaypoints", controller.solidWaypointHits.size());
-        response.addProperty("builtCount", controller.builtCount);
-        response.addProperty("scoopedCount", controller.scoopedCount);
 
         JsonArray inventory = new JsonArray();
         IInventory inv = drone.mainInventory();
@@ -237,6 +208,12 @@ public final class VisualsRpcTranslator {
                 .semitone(RpcArgs.clampedInt(args, "semitone", -1, -1, 24))
                 .message(RpcArgs.string(args, "message", ""))
                 .text(RpcArgs.string(args, "text", ""))
+                .lightEnabled(RpcArgs.has(args, "enabled")
+                        ? Boolean.valueOf(args.get("enabled").getAsBoolean()) : null)
+                .lightToggle(RpcArgs.has(args, "toggle") && args.get("toggle").getAsBoolean())
+                .lightRadius(RpcArgs.has(args, "radius") ? Integer.valueOf(args.get("radius").getAsInt()) : null)
+                .lightLevel(RpcArgs.has(args, "level") ? Integer.valueOf(args.get("level").getAsInt()) : null)
+                .lightColor(parseLightColor(args))
                 .build();
     }
 

@@ -5,6 +5,8 @@ import ir.layercloud.cortexdrone.command.impl.DroneCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.harness.*;
+import ir.layercloud.cortexdrone.harness.agent.LlmAgentService;
+import ir.layercloud.cortexdrone.harness.task.TaskCoordinator;
 import ir.layercloud.cortexdrone.harness.rpc.translate.ActionRpcTranslator;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.manager.ActionRegistry;
@@ -87,7 +89,7 @@ public class AIDroneManager {
         this.visualsManager = new VisualsManager(this, this.logger);
         this.interactionManager = new InteractionManager(this.inventoryService);
         this.inventoryManager = new InventoryManager(this, this.inventoryService);
-        this.buildingManager = new BuildingManager(this, this.logger, this.inventoryService);
+        this.buildingManager = new BuildingManager(this, this.logger);
         this.navigationManager = new NavigationManager(this, this.logger,
                 this.pathfinder, this.breadcrumbService);
         this.actionRegistry = new ActionRegistry();
@@ -110,7 +112,6 @@ public class AIDroneManager {
         this.tickManager = new TickManager(
                 this,
                 this.logger,
-                this.visualsManager,
                 this.navigationManager,
                 this.breadcrumbService
         );
@@ -150,8 +151,6 @@ public class AIDroneManager {
         this.config.setApiKey(loaded.getApiKey());
         this.config.setHttpPort(loaded.getHttpPort());
         this.config.setSavedDrones(loaded.getSavedDrones());
-        this.config.setPlayerBases(loaded.getPlayerBases());
-        this.config.setSavedLocations(loaded.getSavedLocations());
     }
 
     public synchronized void saveConfig() {
@@ -330,6 +329,7 @@ public class AIDroneManager {
                     ctrl.autoTorch = restoredTorch;
                     ctrl.ledEffect = restoredLedEffect;
                     ctrl.customLedColor = restoredCustomLed;
+                    this.visualsManager.restore(ctrl);
                     this.logger.log("LINK", ctrl, "Auto-reconnected world drone",
                             String.format("owner=%s pos=(%.1f,%.1f,%.1f)", owner, d.posX, d.posY, d.posZ));
                 }

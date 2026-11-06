@@ -1,4 +1,6 @@
-package ir.layercloud.cortexdrone.harness;
+package ir.layercloud.cortexdrone.harness.agent;
+
+import ir.layercloud.cortexdrone.harness.RpcDispatcher;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -129,7 +131,7 @@ final class AgentLoopHeuristics {
         if (execRes == null || !execRes.has("result") || !execRes.get("result").isJsonObject()) return false;
         JsonObject res = execRes.getAsJsonObject("result");
         String[] counters = new String[]{"started", "placed", "used", "activated", "broken",
-                "transferred", "moved", "withdrawn", "deposited", "crafted", "builtCount"};
+                "transferred", "moved", "withdrawn", "deposited", "crafted"};
         for (String k : counters) {
             if (res.has(k) && !res.get(k).isJsonNull()) {
                 JsonElement v = res.get(k);

@@ -185,12 +185,10 @@ them; `goto` only flies.
 
 ## 7. Non-harness callers
 
-Deposit, delivery and block standoffs call:
+Deposit, delivery and block standoffs call `NavigationManager.flyToward`;
 
 - `NavigationManager.flyToward(ctrl, x,y,z, label)` — runs one `NavigateAction`
   tick (no session), returns `NavigateResult`.
-- `NavigationManager.hold(ctrl, label)` — runs `HoldAction`.
-
 This keeps all motion inside action executors and avoids a second flight engine.
 
 ## 8. Deposit and delivery

@@ -16,7 +16,7 @@ import java.util.List;
 @UtilityClass
 final class MachineRecipeReflection {
 
-    static List<MachineRecipeService.NormalizedRecipe> readLive(MachineRecipeService owner) {
+    static List<MachineRecipeService.NormalizedRecipe> readLive() {
         List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<MachineRecipeService.NormalizedRecipe>();
         try {
             Class<?> anvil = Class.forName("com.hbm.inventory.recipes.anvil.AnvilRecipes");
@@ -25,7 +25,7 @@ final class MachineRecipeReflection {
             if (cons != null) {
                 int ctorIndex = 0;
                 for (Object recipe : cons) {
-                    MachineRecipeService.NormalizedRecipe r = normalizeAnvil(owner, recipe, ctorIndex);
+                    MachineRecipeService.NormalizedRecipe r = normalizeAnvil(recipe, ctorIndex);
                     if (r != null && !r.inputs.isEmpty() && !r.outputs.isEmpty()) out.add(r);
                     ctorIndex++;
                 }
@@ -38,7 +38,7 @@ final class MachineRecipeReflection {
                 List<?> smith = (List<?>) getSm.invoke(null);
                 if (smith != null) {
                     for (Object recipe : smith) {
-                        MachineRecipeService.NormalizedRecipe r = normalizeSmithing(owner, recipe);
+                        MachineRecipeService.NormalizedRecipe r = normalizeSmithing(recipe);
                         if (r != null && !r.inputs.isEmpty() && !r.outputs.isEmpty()) out.add(r);
                     }
                 }
@@ -67,7 +67,7 @@ final class MachineRecipeReflection {
                             if (machine == null || machine.isEmpty()) machine = handlerName;
                             int addedBefore = out.size();
                             for (Object genRecipe : ordList) {
-                                MachineRecipeService.NormalizedRecipe r = normalizeGeneric(owner, genRecipe, machine);
+                                MachineRecipeService.NormalizedRecipe r = normalizeGeneric(genRecipe, machine);
                                 if (r != null) out.add(r);
                             }
                             // Guard: if the first recipe normalized to nothing, the
@@ -83,16 +83,16 @@ final class MachineRecipeReflection {
             // Backstop for the three primary GenericRecipes handlers in case
             // recipeHandlers was empty before recipe registration completed.
             if (out.isEmpty()) {
-                addGeneric(out, owner, "com.hbm.inventory.recipes.AssemblyMachineRecipes", "assembly_machine");
-                addGeneric(out, owner, "com.hbm.inventory.recipes.ChemicalPlantRecipes", "chemical_plant");
-                addGeneric(out, owner, "com.hbm.inventory.recipes.BlastFurnaceRecipesNT", "blast_furnace");
+                addGeneric(out, "com.hbm.inventory.recipes.AssemblyMachineRecipes", "assembly_machine");
+                addGeneric(out, "com.hbm.inventory.recipes.ChemicalPlantRecipes", "chemical_plant");
+                addGeneric(out, "com.hbm.inventory.recipes.BlastFurnaceRecipesNT", "blast_furnace");
             }
         } catch (Throwable ignored) {
         }
         return out;
     }
 
-    private static void addGeneric(List<MachineRecipeService.NormalizedRecipe> out, MachineRecipeService owner, String className, String machine) {
+    private static void addGeneric(List<MachineRecipeService.NormalizedRecipe> out, String className, String machine) {
         try {
             Class<?> cls = Class.forName(className);
             java.lang.reflect.Field inst = cls.getField("INSTANCE");
@@ -101,7 +101,7 @@ final class MachineRecipeReflection {
             List<?> ordList = (List<?>) ord.get(instObj);
             if (ordList != null) {
                 for (Object genRecipe : ordList) {
-                    MachineRecipeService.NormalizedRecipe r = normalizeGeneric(owner, genRecipe, machine);
+                    MachineRecipeService.NormalizedRecipe r = normalizeGeneric(genRecipe, machine);
                     if (r != null) out.add(r);
                 }
             }
@@ -109,7 +109,7 @@ final class MachineRecipeReflection {
         }
     }
 
-    private static MachineRecipeService.NormalizedRecipe normalizeAnvil(MachineRecipeService owner, Object recipe, int recipeIndex) {
+    private static MachineRecipeService.NormalizedRecipe normalizeAnvil(Object recipe, int recipeIndex) {
         try {
             MachineRecipeService.NormalizedRecipe r = new MachineRecipeService.NormalizedRecipe();
             r.machine = "anvil";
@@ -122,13 +122,13 @@ final class MachineRecipeReflection {
             List<?> outputs = (List<?>) recipe.getClass().getField("output").get(recipe);
             if (inputs != null) {
                 for (Object a : inputs) {
-                    JsonObject io = normalizeAStack(owner, a);
+                    JsonObject io = normalizeAStack(a);
                     if (io != null) r.inputs.add(io);
                 }
             }
             if (outputs != null) {
                 for (Object a : outputs) {
-                    JsonObject io = normalizeAnvilOutput(owner, a);
+                    JsonObject io = normalizeAnvilOutput(a);
                     if (io != null) r.outputs.add(io);
                 }
             }
@@ -147,7 +147,7 @@ final class MachineRecipeReflection {
         }
     }
 
-    private static MachineRecipeService.NormalizedRecipe normalizeSmithing(MachineRecipeService owner, Object recipe) {
+    private static MachineRecipeService.NormalizedRecipe normalizeSmithing(Object recipe) {
         try {
             String cls = recipe.getClass().getName();
             boolean hot = cls.contains("Hot");
@@ -183,8 +183,8 @@ final class MachineRecipeReflection {
             rightF.setAccessible(true);
             Object left = leftF.get(recipe);
             Object right = rightF.get(recipe);
-            JsonObject ioL = normalizeAStack(owner, left);
-            JsonObject ioR = normalizeAStack(owner, right);
+            JsonObject ioL = normalizeAStack(left);
+            JsonObject ioR = normalizeAStack(right);
             if (ioL != null) r.inputs.add(ioL);
             if (ioR != null) r.inputs.add(ioR);
             if (outSt == null || outSt.getItem() == null) return null;
@@ -205,7 +205,7 @@ final class MachineRecipeReflection {
         }
     }
 
-    private static MachineRecipeService.NormalizedRecipe normalizeGeneric(MachineRecipeService owner, Object genRecipe, String machine) {
+    private static MachineRecipeService.NormalizedRecipe normalizeGeneric(Object genRecipe, String machine) {
         try {
             MachineRecipeService.NormalizedRecipe r = new MachineRecipeService.NormalizedRecipe();
             r.machine = machine;
@@ -220,14 +220,14 @@ final class MachineRecipeReflection {
             Object[] inArr = (Object[]) genRecipe.getClass().getField("inputItem").get(genRecipe);
             if (inArr != null) {
                 for (Object a : inArr) {
-                    JsonObject io = normalizeAStack(owner, a);
+                    JsonObject io = normalizeAStack(a);
                     if (io != null) r.inputs.add(io);
                 }
             }
             Object[] outArr = (Object[]) genRecipe.getClass().getField("outputItem").get(genRecipe);
             if (outArr != null) {
                 for (Object ioObj : outArr) {
-                    JsonObject io = normalizeIOutput(owner, ioObj);
+                    JsonObject io = normalizeIOutput(ioObj);
                     if (io != null) r.outputs.add(io);
                 }
             }
@@ -251,7 +251,7 @@ final class MachineRecipeReflection {
         }
     }
 
-    static JsonObject normalizeAStack(MachineRecipeService owner, Object a) {
+    static JsonObject normalizeAStack(Object a) {
         try {
             if (a == null) return null;
             String cls = a.getClass().getName();
@@ -285,7 +285,7 @@ final class MachineRecipeReflection {
         }
     }
 
-    private static JsonObject normalizeAnvilOutput(MachineRecipeService owner, Object a) {
+    private static JsonObject normalizeAnvilOutput(Object a) {
         try {
             ItemStack st = (ItemStack) a.getClass().getField("stack").get(a);
             float chance = a.getClass().getField("chance").getFloat(a);
@@ -304,7 +304,7 @@ final class MachineRecipeReflection {
         }
     }
 
-    private static JsonObject normalizeIOutput(MachineRecipeService owner, Object o) {
+    private static JsonObject normalizeIOutput(Object o) {
         try {
             JsonObject best = null;
             float bestChance = -1.0f;

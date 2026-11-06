@@ -24,8 +24,9 @@
 
 `drone/`, `config/`, `oc/`, `http/`, `command/` are support packages used by the
 layers; they are not a fifth execution layer. There is no `model/` package:
-the controller and its modes live in `drone/`, the LED engine is a
-`service/visuals` service, and log/chat records live with `config/DroneLogger`.
+the controller lives in `drone/`, the LED effects live with the visuals
+manager (`manager/visuals/impl/LedEffects`), and log/chat records live with
+`config/DroneLogger`.
 
 ## 2. Hard rules
 
@@ -165,7 +166,7 @@ read-only inspect ops, and injects the `needsMovement` standoff contract.
 ## 7. Package conventions
 
 - Abstract bases/interfaces at package root (`action/Action.java`,
-  `manager/ActionManager.java`, `service/navigation/NavContext.java`).
+  `manager/ActionManager.java`, `service/navigation/Breadcrumb.java`).
 - Concrete implementations in `impl/`.
 - DTOs are immutable Lombok `@Value`/`@Builder` or `@Data` where the model is
   intentionally mutable.

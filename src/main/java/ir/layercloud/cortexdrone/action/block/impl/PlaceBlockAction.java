@@ -19,7 +19,7 @@ public final class PlaceBlockAction implements Action<BlockContext> {
     public void execute(BlockContext context) {
         String filter = this.request.getFilter() != null ? this.request.getFilter() : "any";
         boolean placed = this.buildingManager.placeBlock(
-                context.controller(), context.player(),
+                context.controller(),
                 this.request.getX(), this.request.getY(), this.request.getZ(),
                 filter, this.request.getMeta());
         context.result(BlockResult.placed(placed, filter,

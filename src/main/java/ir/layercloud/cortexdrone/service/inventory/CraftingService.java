@@ -244,9 +244,11 @@ public class CraftingService {
         while (totalCrafted < targetTotal) {
             boolean craftedThisPass = false;
 
-            for (int modePass = 0; modePass < 3 && !craftedThisPass; modePass++) {
-                boolean allowExternalPull = (modePass >= 1);
-                boolean allowSubcraft = (modePass == 2);
+            for (int modePass = 0; modePass < 2 && !craftedThisPass; modePass++) {
+                // Strict: ingredients come from the drone inventory only. Never
+                // pull from nearby chests or the player; the model does that
+                // explicitly (transfer withdraw/take, break_block, craft).
+                boolean allowSubcraft = (modePass == 1);
                 for (IRecipe recipe : matchingRecipes) {
                     List<List<ItemStack>> reqSlots = extractRecipeIngredients(recipe);
                     if (reqSlots.isEmpty()) continue;
@@ -261,26 +263,6 @@ public class CraftingService {
                             if (st != null && (st.stackSize - reservedCounts[i]) > 0 && stackMatchesAnyOption(st, slotOpts)) {
                                 foundSlot = i;
                                 break;
-                            }
-                        }
-                        if (foundSlot < 0 && allowExternalPull && !slotOpts.isEmpty()) {
-                            for (ItemStack opt : slotOpts) {
-                                if (opt == null || opt.getItem() == null) continue;
-                                int m = opt.getItemDamage() == OreDictionary.WILDCARD_VALUE ? 0 : opt.getItemDamage();
-                                ItemStack probe = new ItemStack(opt.getItem(), 1, m);
-                                String optName = probe.getDisplayName();
-                                int pulled = this.inventoryService.withdrawMatchingFromNearbyChests(world, ctrl, owner, optName, 8);
-                                if (pulled == 0 && owner != null) {
-                                    pulled = this.inventoryService.takeFromPlayerInventory(ctrl, owner, optName, 8);
-                                }
-                                if (pulled > 0) break;
-                            }
-                            for (int i = 0; i < droneInv.getSizeInventory(); i++) {
-                                ItemStack st = droneInv.getStackInSlot(i);
-                                if (st != null && (st.stackSize - reservedCounts[i]) > 0 && stackMatchesAnyOption(st, slotOpts)) {
-                                    foundSlot = i;
-                                    break;
-                                }
                             }
                         }
                         if (foundSlot < 0 && allowSubcraft && depth < 1 && !slotOpts.isEmpty()) {
@@ -345,9 +327,11 @@ public class CraftingService {
             if (!craftedThisPass) break;
         }
 
-        if (totalCrafted > 0) {
-            this.logger.log("INV", ctrl, "Crafted " + totalCrafted + "x " + craftedName, "filter=" + f);
+        if (totalCrafted <= 0) {
+            return CraftResult.failure("Missing ingredients for '" + f
+                    + "' in the drone inventory; take or gather them first");
         }
+        this.logger.log("INV", ctrl, "Crafted " + totalCrafted + "x " + craftedName, "filter=" + f);
         return CraftResult.success(totalCrafted, craftedName);
     }
 }

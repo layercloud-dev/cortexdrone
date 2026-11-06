@@ -5,7 +5,6 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.action.navigation.NavigationMode;
-import ir.layercloud.cortexdrone.action.navigation.impl.HoldAction;
 import ir.layercloud.cortexdrone.action.navigation.impl.NavigateAction;
 import ir.layercloud.cortexdrone.action.navigation.impl.StopAction;
 import ir.layercloud.cortexdrone.config.DroneLogger;
@@ -19,6 +18,9 @@ import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import li.cil.oc.common.entity.Drone;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
@@ -66,7 +68,6 @@ public final class NavigationManager {
 
         this.sessions.remove(controller);
         this.pathfinder.clearNavigation(controller);
-        controller.navigationGeneration++;
         controller.stuckTicks = 0;
         controller.lastPathPartial = false;
         controller.navigationError = "";
@@ -84,7 +85,6 @@ public final class NavigationManager {
             return NavigationResult.failure("No active drone");
         }
         this.sessions.remove(controller);
-        controller.navigationGeneration++;
         this.pathfinder.clearNavigation(controller);
         controller.stuckTicks = 0;
         NavigationContext context = new NavigationContext(controller, player,
@@ -145,20 +145,6 @@ public final class NavigationManager {
         } finally {
             context.complete();
         }
-    }
-
-    /**
-     * Holds the current position. All motion is applied by {@link HoldAction}.
-     */
-    public NavigateResult hold(DroneController controller, String label) {
-        if (controller == null || controller.drone == null) {
-            return NavigateResult.failure("No active drone");
-        }
-        NavigationContext context = new NavigationContext(controller, null,
-                NavigationMode.HOLD, controller.drone.posX, controller.drone.posY,
-                controller.drone.posZ, label);
-        new HoldAction().execute(context);
-        return context.result() != null ? context.result() : NavigateResult.done();
     }
 
     public boolean isActive(DroneController controller) {
@@ -325,8 +311,6 @@ public final class NavigationManager {
         switch (mode) {
             case STOP:
                 return new StopAction();
-            case HOLD:
-                return new HoldAction();
             case FLIGHT:
             default:
                 return new NavigateAction(this.pathfinder, this.breadcrumbService);
@@ -391,6 +375,8 @@ public final class NavigationManager {
         }
     }
 
+    @Getter
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Status {
         private final boolean active;
         private final String phase;
@@ -399,42 +385,8 @@ public final class NavigationManager {
         private final double goalY;
         private final double goalZ;
 
-        private Status(boolean active, String phase, String reason,
-                       double goalX, double goalY, double goalZ) {
-            this.active = active;
-            this.phase = phase;
-            this.reason = reason;
-            this.goalX = goalX;
-            this.goalY = goalY;
-            this.goalZ = goalZ;
-        }
-
         public static Status idle() {
             return new Status(false, "idle", "", 0, 0, 0);
-        }
-
-        public boolean isActive() {
-            return this.active;
-        }
-
-        public String getPhase() {
-            return this.phase;
-        }
-
-        public String getReason() {
-            return this.reason;
-        }
-
-        public double getGoalX() {
-            return this.goalX;
-        }
-
-        public double getGoalY() {
-            return this.goalY;
-        }
-
-        public double getGoalZ() {
-            return this.goalZ;
         }
     }
 }

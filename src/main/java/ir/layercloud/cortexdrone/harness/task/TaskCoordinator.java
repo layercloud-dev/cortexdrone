@@ -1,9 +1,10 @@
-package ir.layercloud.cortexdrone.harness;
+package ir.layercloud.cortexdrone.harness.task;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
@@ -11,12 +12,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * side note, a task modification, or a cancellation. Only a new/modified task
  * starts an agent loop; there is no instruction queue.
  */
+@RequiredArgsConstructor
 public final class TaskCoordinator {
     private final AIDroneManager manager;
-
-    public TaskCoordinator(AIDroneManager manager) {
-        this.manager = manager;
-    }
 
     public void handle(final EntityPlayerMP player, final DroneController ctrl, final String prompt) {
         if (ctrl == null || ctrl.drone == null || ctrl.drone.isDead) return;

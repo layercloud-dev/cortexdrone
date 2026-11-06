@@ -20,14 +20,14 @@ Respond ONLY with one valid JSON object matching this exact schema:
    - Returns `arrived:true` and `navigationError` when it cannot reach the goal.
 4. `await drone.stop()` -> cancel navigation and hover in place.
 5. `await drone.breakBlock(x, y, z, opts)` -> breaks exactly ONE explicit block. No filter, no count, no neighbour propagation, no queue. If out of reach it returns `{needsMovement:true, standoff}`, then the SDK moves there and calls the break again. Resolves after the block is gone/action ends, returns `broken`.
-6. `await drone.placeBlock(x, y, z, block, meta, opts)` -> places exactly ONE explicit block from drone/chest/player inventory, and nothing else. No blueprint, no queue, no hidden substitution. If out of reach it uses the same move-then-place flow.
+6. `await drone.placeBlock(x, y, z, block, meta, opts)` -> places exactly ONE explicit block from the DRONE inventory, and nothing else. No blueprint, no queue, no hidden substitution, and it never pulls from chests or the player. If the block is not in the drone inventory it fails: gather it first (`breakBlock`, `transfer take`/`withdraw`, or `craft`). If out of reach it uses the same move-then-place flow.
 7. `await drone.interactBlock(x, y, z, side)` -> exactly ONE action: right-click/activate the target block (door, lever, furnace, machine, chest...). It does NOT also use the held item. Moves into reach first if needed.
 8. `await drone.useItem(itemOrSlot, x?, y?, z?, side?)` or `await drone.useItem({item:'hoe', x, y, z, side})` -> exactly ONE item-use action, optionally on a target block. It does NOT activate the block first. Moves into reach first if needed. `await drone.useItem({entityId: id, item:'sword'})` (or `{attack:id}`) performs exactly ONE melee attack with the selected/held item; get the id from `inspect('entities')`. Moves into reach first.
 9. `await drone.pickEntity(id)` -> mounts exactly one entity (including a player) onto the drone. If out of reach it moves to the returned standoff and retries. Returns `{picked:true, entityId, name}`.
 10. `await drone.unpickEntity({entityId?})` -> dismounts the current rider, or the explicit entity. Returns `{unpicked:true, entityId, name}`.
 11. `await drone.transfer({op:'move'|'withdraw'|'deposit'|'give'|'take'|'drop'|'suck', ...})` -> generic inventory transfer primitive.
-12. `await drone.craft(filter, count)` -> vanilla crafting primitive.
-13. `await drone.visuals(kind, args)` -> visual/audio/chat: `kind:'led'|'ledEffect'|'particles'|'sound'|'note'|'status'|'say'`.
+12. `await drone.craft(filter, count)` -> vanilla crafting primitive using the DRONE inventory only. Missing ingredients fail the call; pull or gather them first, then craft.
+13. `await drone.visuals(kind, args)` -> visual/audio/chat: `kind:'led'|'ledEffect'|'light'|'particles'|'sound'|'note'|'status'|'say'`.
 14. `await drone.skills(op, args)` -> reusable-skill memory: `op:'search'|'list'|'save'`. Built-in skills from `resources/skills/` are loaded at startup; use `drone.skills('list')` to see them.
 15. `await drone.cancel()` -> cancel the current task/session.
 
@@ -44,7 +44,7 @@ Respond ONLY with one valid JSON object matching this exact schema:
 - `raycast {maxDist}` -> player look target
 - `player {}` / `playerInventory {}` -> player position/look/held/inventory
 - `recipe {filter}` / `chest {x,y,z}` / `chests {radius,filter}` / `findItem {filter,radius}` / `findItemInChests {filter,radius}` / `furnaces {radius}` / `machineRecipes|recipe|machines|machineIngredients`
-- `breadcrumbs {limit}` / `base {}` / `locations {}` / `location {name}` / `buildSite {...}` / `plan {...}` / `doc {query}`
+- `breadcrumbs {limit}` / `buildSite {...}` / `plan {...}` / `doc {query}`
 
 There are no alias globals: use `drone.inspect` directly, and `drone.skills('search'|'list'|'save', ...)` for reusable-skill memory. `sleep`, `log`, and `hsvToRgb` are the only utility globals.
 

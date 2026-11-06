@@ -38,8 +38,8 @@ Central inventory/container service. Provides:
 
 It constructs and owns:
 
-- `CraftingService` — vanilla crafting recipe lookup, ingredient extraction,
-  recursive crafting, ingredient withdrawal/take fallback, 30 s recipe cache.
+- `CraftingService` — vanilla crafting recipe lookup inside the drone inventory,
+  sub-crafting, 30 s recipe cache. Never pulls from chests or the player.
 - `FluidOpsService` — bucket/container discovery, liquid scoop, filled-container
   resolution.
 - `ContainerSearchService` — chest/item search across nearby inventories/player,
@@ -204,17 +204,6 @@ Used by `inspect('doc')`.
 
 ## 4. Navigation services (`service/navigation`)
 
-### `NavContext`
-
-Immutable snapshot of one navigation request:
-
-- controller, drone, world;
-- start/goal;
-- route label (`auto` now; route decisions are internal);
-- `ChunkCacheContext`;
-- live path helpers that intentionally update the controller's path fields
-  (`setPath`, `advanceWaypoint`, `clearPath`).
-
 ### `Breadcrumb` / `TrailPlan`
 
 - `Breadcrumb`: x, y, z, skyVisible.
@@ -239,14 +228,18 @@ Low-level motion/physics: server-side physics step, obstruction description,
 nearby leaf clearing, stable follow anchor, block standoff search, player-look
 test, headroom.
 
-## 5. Visuals service (`service/visuals`)
+## 5. Machine services (`service/machine`)
 
-### `LedEffectEngine`
+`MachineRecipeService` is read-only and composes optional `MachineRecipeHook`
+implementations:
 
-Pure functions only: named/hex color parsing, HSV→RGB, effect-name validation,
-and the procedural LED animation resolver (RAINBOW, DISCO, POLICE, PULSE/BREATHE,
-STROBE, FIRE, OCEAN, HEARTBEAT, MATRIX). `SetLedAction` and `TickManager` call it;
-it holds no state.
+- `hbm-json` — reads `config/hbmRecipes/*.json` when the directory exists;
+- `hbm-live` — reads live HBM recipe objects by reflection when the HBM classes
+  exist.
+
+With no HBM present both hooks are unavailable and the service simply returns no
+recipes. There is no action for machines: nothing here mutates the world, so
+`action/hbm` does not exist.
 
 ## 6. Service boundaries and caches
 

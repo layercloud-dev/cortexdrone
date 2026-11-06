@@ -59,14 +59,12 @@ They are separate so a hung agent cannot starve telemetry/RPC and vice versa.
 3. compute movement delta and update last position;
 4. `BreadcrumbService.observe` (service throttles to every 4 ticks);
 5. stall detection/logging and leaf-obstruction clearing;
-6. lighting aura tick;
-7. `NavigationManager.tick` (only when a goal session exists);
-8. `ActionRegistry.tick` (all retained actions: deposit and delivery);
-9. idle hold: when no session and no retained action, cancel leftover velocity
+6. `NavigationManager.tick` (only when a goal session exists);
+7. `ActionRegistry.tick` (deposit, delivery, LED animation, light aura);
+8. idle hold: when no session and no retained action, cancel leftover velocity
    and pin the flight target to the current position;
-10. complete task session if no loop/script/task work;
-11. LED animation/color update and disco note particles;
-12. server-side physics step when needed (blocked, long-range, machine not
+9. complete task session if no loop/script/task work;
+10. server-side physics step when needed (blocked, long-range, machine not
     running).
 
 ## 4. Work state (no modes)
@@ -135,8 +133,6 @@ Every 40 ticks and at startup, unlinked live OC drones are adopted:
 | `apiKey` | built-in default / env override |
 | `httpPort` | `25580` |
 | `savedDrones` | list |
-| `playerBases` | map owner -> x/y/z |
-| `savedLocations` | map owner:name -> location |
 
 Environment variables:
 
@@ -150,13 +146,9 @@ Saved drones store UUID/name/owner/autoTorch/LED effect/custom color/dimension/
 position. Work state is never saved: a restarted drone comes back idle. Server
 drones are not saved.
 
-Saved locations support exact owner key, global key, fuzzy name/tags matching,
-and owner-first fallback. Player bases are lowercased owner keys.
-
 Config changes:
 
 - `/drone config <url|model|key> <value>` (operator only) updates and saves;
-- `/drone setbase [x y z]` saves player base;
 - HTTP `/action` can spawn/despawn;
 - all saves are synchronized.
 
@@ -172,7 +164,6 @@ Subcommands:
 - `despawn [name]`
 - `list`
 - `status`
-- `setbase [x y z]`
 - `debug [on|off|tail|clear]`
 - `config [url|model|key] [value]`
 - `js <code>`
@@ -234,9 +225,10 @@ Common categories: `SYSTEM`, `PATH`, `NAV`, `STUCK`, `ESCAPE`, `MINE`,
 `InertMachineArchitecture` is a no-op architecture so paused machines save
 cleanly.
 
-## 11. Lighting aura and LED
+## 11. Lighting aura and LED (manager actions)
 
-`LightingAura`:
+`LightingAura` is owned by `VisualsManager` and driven by the retained
+`SetLightAction`:
 
 - radius 2–12, light level 4–15;
 - applies every 10 ticks when moved/anchor changed;
@@ -247,17 +239,14 @@ cleanly.
   blocks;
 - 1.7.10 light is scalar; RGB is presentation color (drone glow/particles).
 
-`LedEffectEngine`:
+`LedEffects` (manager component, driven by the retained `SetLedAction`):
 
 - parses named/hex colors;
 - HSV→RGB;
 - procedural effects: RAINBOW, DISCO, POLICE, PULSE/BREATHE, STROBE, FIRE, OCEAN,
   HEARTBEAT, MATRIX;
 - `resolveEffectiveLedColor` uses tick + custom color + fallback;
-- `DroneController.resolveEffectiveLedColor` delegates.
-
-`TickManager` updates LED color each tick and emits disco note particles every 6
-ticks.
+- the retained action advances `ledEffectTick` and emits disco note particles.
 
 ## 12. Model state (`DroneController`)
 

@@ -5,12 +5,18 @@ import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
 import ir.layercloud.cortexdrone.context.impl.VisualsContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.service.visuals.LedEffectEngine;
+import ir.layercloud.cortexdrone.manager.visuals.impl.LedEffects;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 
 /**
- * Single-use command: change the drone LED color or effect.
+ * Command: change the drone LED color or effect.
+ *
+ * <p>A static color is one-shot. An animated effect retains this action and the
+ * action itself advances the animation, so the runtime pipeline does not run a
+ * hidden LED loop for every drone.</p>
  */
 @RequiredArgsConstructor
 public final class SetLedAction implements Action<VisualsContext> {
@@ -30,13 +36,14 @@ public final class SetLedAction implements Action<VisualsContext> {
                 controller.customLedColor = null;
             } else {
                 controller.ledEffect = normalized;
-                drone.lightColor_$eq(LedEffectEngine.resolveEffectiveLedColor(
+                drone.lightColor_$eq(LedEffects.resolveEffectiveLedColor(
                         controller.ledEffect, controller.ledEffectTick,
                         controller.customLedColor, drone.lightColor()));
             }
             context.result(VisualsResult.success(
                     "effect", controller.ledEffect,
                     "color", color(drone)));
+            retainIfAnimated(context, controller);
             return;
         }
 
@@ -55,7 +62,7 @@ public final class SetLedAction implements Action<VisualsContext> {
         if (request.getHue() != null) {
             float saturation = request.getSaturation() != null ? request.getSaturation() : 1.0f;
             float brightness = request.getBrightness() != null ? request.getBrightness() : 1.0f;
-            int packed = LedEffectEngine.hsvToRgbInt(request.getHue(), saturation, brightness);
+            int packed = LedEffects.hsvToRgbInt(request.getHue(), saturation, brightness);
             controller.customLedColor = packed;
             controller.ledEffect = "NONE";
             drone.lightColor_$eq(packed);
@@ -66,14 +73,15 @@ public final class SetLedAction implements Action<VisualsContext> {
         if (request.getColorText() != null) {
             String raw = request.getColorText().trim();
             String upper = raw.toUpperCase();
-            if (LedEffectEngine.isEffectName(upper)) {
+            if (LedEffects.isEffectName(upper)) {
                 controller.ledEffect = upper;
-                drone.lightColor_$eq(LedEffectEngine.resolveEffectiveLedColor(
+                drone.lightColor_$eq(LedEffects.resolveEffectiveLedColor(
                         controller.ledEffect, controller.ledEffectTick,
                         controller.customLedColor, drone.lightColor()));
                 context.result(VisualsResult.success(
                         "effect", controller.ledEffect,
                         "color", color(drone)));
+                retainIfAnimated(context, controller);
                 return;
             }
             if ("DEFAULT".equals(upper) || "AUTO".equals(upper) || "RESET".equals(upper)) {
@@ -82,7 +90,7 @@ public final class SetLedAction implements Action<VisualsContext> {
                 context.result(VisualsResult.success("effect", "NONE"));
                 return;
             }
-            Integer parsed = LedEffectEngine.parseNamedOrHexColor(raw);
+            Integer parsed = LedEffects.parseNamedOrHexColor(raw);
             int packed = parsed != null ? parsed : 0x00FFFF;
             controller.customLedColor = packed;
             controller.ledEffect = "NONE";
@@ -101,6 +109,34 @@ public final class SetLedAction implements Action<VisualsContext> {
         }
 
         context.result(VisualsResult.success());
+    }
+
+    @Override
+    public void tick(VisualsContext context) {
+        DroneController controller = context.controller();
+        if (controller == null || controller.drone == null || controller.drone.isDead
+                || !LedEffects.isAnimated(controller.ledEffect)) {
+            context.complete();
+            return;
+        }
+        controller.ledEffectTick++;
+        Drone drone = controller.drone;
+        drone.lightColor_$eq(LedEffects.resolveEffectiveLedColor(
+                controller.ledEffect, controller.ledEffectTick,
+                controller.customLedColor, drone.lightColor()));
+        World world = drone.worldObj;
+        if ("DISCO".equalsIgnoreCase(controller.ledEffect)
+                && controller.ledEffectTick % 6 == 0 && world instanceof WorldServer) {
+            ((WorldServer) world).func_147487_a(
+                    "note", drone.posX, drone.posY + 0.45, drone.posZ, 2, 0.25, 0.25, 0.25, 0.5);
+        }
+    }
+
+    private static void retainIfAnimated(VisualsContext context, DroneController controller) {
+        if (LedEffects.isAnimated(controller.ledEffect)) {
+            controller.ledEffectTick = 0;
+            context.retain();
+        }
     }
 
     private static int clamp(int value) {

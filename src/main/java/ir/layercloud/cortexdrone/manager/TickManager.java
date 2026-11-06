@@ -4,14 +4,11 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
-import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
-import ir.layercloud.cortexdrone.service.visuals.LedEffectEngine;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
 
 /**
  * Per-tick runtime pipeline.
@@ -25,7 +22,6 @@ import net.minecraft.world.WorldServer;
 public class TickManager {
     private final AIDroneManager manager;
     private final DroneLogger logger;
-    private final VisualsManager visualsManager;
     private final NavigationManager navigationManager;
     private final BreadcrumbService breadcrumbService;
 
@@ -35,7 +31,6 @@ public class TickManager {
         if (world == null || world.isRemote) return;
         ctrl.tickClock++;
         if (ctrl.attackCooldown > 0) ctrl.attackCooldown--;
-        if (ctrl.pickupCooldown > 0) ctrl.pickupCooldown--;
         if (ctrl.repathCooldown > 0) ctrl.repathCooldown--;
 
         double movedSq = (d.posX - ctrl.lastX) * (d.posX - ctrl.lastX)
@@ -54,10 +49,6 @@ public class TickManager {
 
         trackStalls(ctrl, d, world, movedSq);
 
-        if (ctrl.autoTorch || !ctrl.lightCells.isEmpty()) {
-            this.visualsManager.tickLighting(ctrl);
-        }
-
         this.navigationManager.tick(ctrl);
         // Retained action contexts drive mining, deposit and delivery work.
         this.manager.getActionRegistry().tick(ctrl);
@@ -66,8 +57,6 @@ public class TickManager {
         if (ctrl.task.isActive() && ctrl.activeScriptCount.get() == 0 && !ctrl.hasActiveTaskOrLoop(0)) {
             ctrl.task.complete();
         }
-
-        tickLed(ctrl, d, world);
 
         double postTargetDist = d.getDistance(d.targetX(), d.targetY(), d.targetZ());
         double distFinalGoal = Double.isNaN(ctrl.goalX) ? postTargetDist : d.getDistance(ctrl.goalX, ctrl.goalY, ctrl.goalZ);
@@ -119,15 +108,4 @@ public class TickManager {
         d.motionZ *= 0.25;
     }
 
-    private void tickLed(DroneController ctrl, Drone d, World world) {
-        ctrl.ledEffectTick++;
-        if (ctrl.customLedColor == null && (ctrl.ledEffect == null || "NONE".equalsIgnoreCase(ctrl.ledEffect))) {
-            return;
-        }
-        d.lightColor_$eq(LedEffectEngine.resolveEffectiveLedColor(
-                ctrl.ledEffect, ctrl.ledEffectTick, ctrl.customLedColor, d.lightColor()));
-        if ("DISCO".equalsIgnoreCase(ctrl.ledEffect) && ctrl.ledEffectTick % 6 == 0 && world instanceof WorldServer) {
-            ((WorldServer) world).func_147487_a("note", d.posX, d.posY + 0.45, d.posZ, 2, 0.25, 0.25, 0.25, 0.5);
-        }
-    }
 }

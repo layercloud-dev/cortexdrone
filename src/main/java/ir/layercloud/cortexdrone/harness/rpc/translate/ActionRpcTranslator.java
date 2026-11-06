@@ -50,9 +50,6 @@ public final class ActionRpcTranslator {
         return this.visuals.skills(controller, player, operation, args);
     }
 
-    public JsonObject configureLight(DroneController controller, JsonObject args) {
-        return this.visuals.configureLight(controller, args);
-    }
 
     private static boolean isInteraction(String operation) {
         return "interact_block".equals(operation) || "use_item".equals(operation)
@@ -61,6 +58,7 @@ public final class ActionRpcTranslator {
 
     private static boolean isVisuals(String operation) {
         return "set_led".equals(operation) || "led_effect".equals(operation)
+                || "set_light".equals(operation)
                 || "spawn_particles".equals(operation) || "play_sound".equals(operation)
                 || "play_note".equals(operation) || "say".equals(operation)
                 || "set_status_text".equals(operation);

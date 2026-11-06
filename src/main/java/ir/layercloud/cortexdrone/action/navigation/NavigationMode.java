@@ -6,6 +6,5 @@ package ir.layercloud.cortexdrone.action.navigation;
  */
 public enum NavigationMode {
     FLIGHT,
-    HOLD,
     STOP
 }

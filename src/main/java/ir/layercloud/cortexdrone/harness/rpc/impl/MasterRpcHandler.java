@@ -132,15 +132,6 @@ public class MasterRpcHandler implements RpcHandler {
         } else if (op.equals("raycast")) {
             method = "raycast_player";
             handler = this.worldReader;
-        } else if (op.equals("base") || op.equals("findbase")) {
-            method = "find_base";
-            handler = this.worldReader;
-        } else if (op.equals("locations") || op.equals("listlocations")) {
-            method = "list_locations";
-            handler = this.worldReader;
-        } else if (op.equals("location") || op.equals("getlocation")) {
-            method = "get_location";
-            handler = this.worldReader;
         } else if (op.equals("buildsite") || op.equals("findbuildsite")) {
             method = "find_build_site";
             handler = this.worldReader;
@@ -272,6 +263,7 @@ public class MasterRpcHandler implements RpcHandler {
         String method;
         if (kind.equals("led") || kind.equals("color")) method = "set_led";
         else if (kind.equals("ledeffect")) method = "led_effect";
+        else if (kind.equals("light") || kind.equals("aura")) method = "set_light";
         else if (kind.equals("particles")) method = "spawn_particles";
         else if (kind.equals("sound")) method = "play_sound";
         else if (kind.equals("note")) method = "play_note";

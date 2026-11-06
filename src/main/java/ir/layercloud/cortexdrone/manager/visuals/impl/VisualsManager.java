@@ -12,15 +12,16 @@ import ir.layercloud.cortexdrone.drone.DroneController;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
- * Long-lived visuals manager. It creates one single-use action per visuals
- * request and owns the domain lighting aura. JSON stays in VisualsRpcTranslator.
+ * Long-lived visuals manager. Every visual effect is an action; animated LED
+ * effects and the illumination aura are retained actions, so nothing runs on
+ * the drone unless a tool started it. JSON stays in VisualsRpcTranslator.
  */
 public final class VisualsManager extends ActionManager<VisualsContext, VisualsRequest, VisualsResult> {
     private final AIDroneManager manager;
     private final LightingAura lightingAura;
 
     public VisualsManager(AIDroneManager manager, DroneLogger logger) {
-        super("visuals", "set_led", "led_effect", "spawn_particles",
+        super("visuals", "set_led", "led_effect", "set_light", "spawn_particles",
                 "play_sound", "play_note", "say", "set_status_text");
         this.manager = manager;
         this.lightingAura = new LightingAura(logger);
@@ -38,6 +39,9 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
         if ("set_led".equals(operation) || "led_effect".equals(operation)) {
             return new SetLedAction(request);
         }
+        if ("set_light".equals(operation)) {
+            return new SetLightAction(this.lightingAura, request);
+        }
         if ("spawn_particles".equals(operation)) return new SpawnParticlesAction(request);
         if ("play_sound".equals(operation) || "play_note".equals(operation)) {
             return new PlaySoundAction(request);
@@ -52,12 +56,22 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
         return context.result();
     }
 
-    public LightingAura lighting() {
-        return this.lightingAura;
-    }
-
-    public void tickLighting(DroneController controller) {
-        this.lightingAura.tick(controller);
+    /**
+     * Restarts the retained visuals a reconnected drone had before the restart.
+     * Nothing runs unless the saved state actually asked for it.
+     */
+    public void restore(DroneController controller) {
+        if (controller == null) return;
+        if (controller.autoTorch) {
+            VisualsContext context = createContext(controller, null, "set_light");
+            VisualsRequest request = VisualsRequest.builder().lightEnabled(Boolean.TRUE).build();
+            run(controller, null, "set_light", context, new SetLightAction(this.lightingAura, request));
+        }
+        if (LedEffects.isAnimated(controller.ledEffect)) {
+            VisualsContext context = createContext(controller, null, "set_led");
+            VisualsRequest request = VisualsRequest.builder().effect(controller.ledEffect).build();
+            run(controller, null, "set_led", context, new SetLedAction(request));
+        }
     }
 
     public void clearLighting(DroneController controller) {

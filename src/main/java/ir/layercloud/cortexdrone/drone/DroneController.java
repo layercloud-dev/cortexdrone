@@ -25,8 +25,6 @@ public class DroneController {
     public double goalX;
     public double goalY;
     public double goalZ;
-    // Incremented for every accepted navigation request.
-    public int navigationGeneration = 0;
     public String navigationError = "";
     // Single task / single session state. The harness never queues instructions.
     public final TaskSession task = new TaskSession();
@@ -63,11 +61,6 @@ public class DroneController {
     // packed world position -> original block-light level, for exact restore
     public final Map<Long, Integer> lightCells = new HashMap<Long, Integer>();
 
-    // Counters for the two block/interaction primitives. No mining queue, no
-    // target, no progress: break_block is a single immediate operation.
-    public int builtCount = 0;
-    public int scoopedCount = 0;
-
     // Active Code Mode loop generation ID & running script counter
     public final AtomicInteger activeLoopId = new AtomicInteger(0);
     public final AtomicInteger activeScriptCount = new AtomicInteger(0);
@@ -77,12 +70,8 @@ public class DroneController {
     public final Deque<String> thoughtHistory = new ConcurrentLinkedDeque<String>();
 
     public int attackCooldown = 0;
-    public int pickupCooldown = 0;
     public int stuckTicks = 0;
     public int tickClock = 0;          // ever-incrementing per-drone tick counter
-    public double velX = 0.0;
-    public double velY = 0.0;
-    public double velZ = 0.0;
     // Path-cache signature (world-revision + endpoint bucket) for findFlightPath reuse
     public long cachedPathSignature = Long.MIN_VALUE;
     public long cachedPathCreatedTick = -1;

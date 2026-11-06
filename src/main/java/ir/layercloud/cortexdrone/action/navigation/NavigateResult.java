@@ -19,10 +19,6 @@ public class NavigateResult {
         return builder().moved(true).partial(partial).build();
     }
 
-    public static NavigateResult legDone() {
-        return builder().legDone(true).build();
-    }
-
     public static NavigateResult blocked(boolean partial) {
         return builder().blocked(true).partial(partial).build();
     }

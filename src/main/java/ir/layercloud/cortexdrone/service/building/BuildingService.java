@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.action.block;
+package ir.layercloud.cortexdrone.service.building;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
@@ -16,6 +16,7 @@ import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -25,18 +26,18 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
 /**
- * Long-lived mining engine. It owns the mining loop and block-drop
- * calculations used by the break action and by navigation self-rescue.
- * It is not an action dispatcher.
+ * Long-lived building service. It owns block break/place behavior, the mining
+ * loop and block-drop calculations used by block actions and navigation
+ * self-rescue. It is not an action dispatcher.
  */
-public final class MiningEngine {
+public final class BuildingService {
     private final AIDroneManager manager;
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final InventoryService inventoryService;
     private Method blockGetDropsMethod = null;
 
-    public MiningEngine(
+    public BuildingService(
         AIDroneManager manager,
         DroneLogger logger,
         FlightPathfinder pathfinder,
@@ -471,5 +472,97 @@ public final class MiningEngine {
         }
         this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Self-rescue complete");
     }
+
+    /**
+     * Starts breaking exactly one explicit block. The mining loop is advanced
+     * by {@link #tick(DroneController, EntityPlayerMP)}.
+     */
+    public boolean startBreak(DroneController controller, int x, int y, int z) {
+        if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
+            return false;
+        }
+        Drone drone = controller.drone;
+        World world = drone.worldObj;
+        if (!ItemClassifier.isMineableBlock(world, x, y, z)) return false;
+
+        if (controller.currentMineTarget != null) {
+            world.destroyBlockInWorldPartially(drone.getEntityId(),
+                controller.currentMineTarget[0], controller.currentMineTarget[1],
+                controller.currentMineTarget[2], -1);
+        }
+        controller.clearSelfRescue(false);
+        controller.mineQueue.clear();
+        controller.currentMineTarget = new int[]{x, y, z};
+
+        double[] standoff = FlightPathfinder.findMiningStandoff(world, drone, x, y, z);
+        if (standoff == null && drone.getDistance(x + 0.5, y + 0.5, z + 0.5) <= 2.2) {
+            standoff = new double[]{drone.posX, drone.posY, drone.posZ};
+        }
+        controller.currentMineStandoff = standoff;
+        controller.mineFilter = "all";
+        controller.mineExactQueueOnly = true;
+        controller.mineTargetCount = 0;
+        controller.mineMatchedCount = 0;
+        controller.minedCount = 0;
+        controller.returnToOwnerAfterMine = false;
+        controller.mineUntilFull = false;
+        controller.mineProgressTicks = 0;
+        controller.stuckTicks = 0;
+        controller.lastPathPartial = false;
+        controller.pathWaypoints.clear();
+        controller.pathIndex = 0;
+        controller.repathCooldown = 0;
+
+        this.manager.setDroneMode(controller, Mode.MINE,
+            "Master break_block (" + x + "," + y + "," + z + ")");
+        drone.lightColor_$eq(0x00FF66);
+        drone.statusText_$eq("Break block\n" + x + "," + y + "," + z);
+        return true;
+    }
+
+    /** Places exactly one explicit block from drone/chest/player inventory. */
+    public boolean placeBlock(DroneController controller, EntityPlayerMP player,
+                              int x, int y, int z, String filter, int metaOverride) {
+        if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
+            return false;
+        }
+        Drone drone = controller.drone;
+        World world = drone.worldObj;
+        if (!ItemClassifier.isReplaceableBlock(world, x, y, z)) return false;
+
+        IInventory inventory = drone.mainInventory();
+        int slot = InventoryService.findPlaceableItemSlot(inventory, filter);
+        if (slot < 0) {
+            int pulled = this.inventoryService.withdrawMatchingFromNearbyChests(
+                world, controller, player, filter, 64);
+            if (pulled > 0) slot = InventoryService.findPlaceableItemSlot(inventory, filter);
+            if (slot < 0 && player != null) {
+                int taken = this.inventoryService.takeFromPlayerInventory(
+                    controller, player, filter, 64);
+                if (taken > 0) slot = InventoryService.findPlaceableItemSlot(inventory, filter);
+            }
+        }
+        if (slot < 0) return false;
+
+        ItemStack stack = inventory.getStackInSlot(slot);
+        if (stack == null || stack.stackSize <= 0 || stack.getItem() == null) return false;
+
+        Item item = stack.getItem();
+        Block block = Block.getBlockFromItem(item);
+        if (block == null || block == Blocks.air) return false;
+
+        int meta = metaOverride >= 0 ? metaOverride : item.getMetadata(stack.getItemDamage());
+        boolean placed = world.setBlock(x, y, z, block, meta, 3);
+        if (placed) {
+            world.playAuxSFX(2001, x, y, z, Block.getIdFromBlock(block) + (meta << 12));
+            inventory.decrStackSize(slot, 1);
+            inventory.markDirty();
+            controller.builtCount++;
+            this.logger.log("BUILD", controller,
+                String.format("Placed %s at (%d,%d,%d)", block.getLocalizedName(), x, y, z), "");
+        }
+        return placed;
+    }
+
 
 }

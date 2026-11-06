@@ -1,7 +1,6 @@
 package ir.layercloud.cortexdrone.service.block.impl;
 
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.ActionArgs;
 import ir.layercloud.cortexdrone.action.ActionJson;
@@ -9,11 +8,10 @@ import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.action.block.impl.BreakBlockAction;
 import ir.layercloud.cortexdrone.action.block.impl.PlaceBlockAction;
-import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.block.impl.BlockContext;
-import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.ActionService;
+import ir.layercloud.cortexdrone.service.building.BuildingService;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
@@ -21,16 +19,11 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * single-use action, serializes the result and manages context lifetime.
  */
 public final class BlockService extends ActionService<BlockContext> {
-    private final AIDroneManager manager;
-    private final InventoryService inventoryService;
-    private final DroneLogger logger;
+    private final BuildingService buildingService;
 
-    public BlockService(AIDroneManager manager, InventoryService inventoryService,
-                        DroneLogger logger) {
+    public BlockService(BuildingService buildingService) {
         super("block", "break_block", "place_block");
-        this.manager = manager;
-        this.inventoryService = inventoryService;
-        this.logger = logger;
+        this.buildingService = buildingService;
     }
 
     @Override
@@ -46,7 +39,7 @@ public final class BlockService extends ActionService<BlockContext> {
             if (!ActionArgs.has(args, "x") || !ActionArgs.has(args, "y") || !ActionArgs.has(args, "z")) {
                 return ignored -> context.result(BlockResult.failure("break_block requires x/y/z"));
             }
-            return new BreakBlockAction(this.manager, BlockRequest.builder()
+            return new BreakBlockAction(this.buildingService, BlockRequest.builder()
                 .x(args.get("x").getAsInt())
                 .y(args.get("y").getAsInt())
                 .z(args.get("z").getAsInt())
@@ -58,7 +51,7 @@ public final class BlockService extends ActionService<BlockContext> {
             }
             String filter = ActionArgs.string(args, "block",
                 ActionArgs.string(args, "with", ActionArgs.string(args, "item", "any")));
-            return new PlaceBlockAction(this.inventoryService, this.logger, BlockRequest.builder()
+            return new PlaceBlockAction(this.buildingService, BlockRequest.builder()
                 .x(args.get("x").getAsInt())
                 .y(args.get("y").getAsInt())
                 .z(args.get("z").getAsInt())

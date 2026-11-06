@@ -2,7 +2,7 @@ package ir.layercloud.cortexdrone;
 
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ir.layercloud.cortexdrone.action.ActionRegistry;
-import ir.layercloud.cortexdrone.action.block.MiningEngine;
+import ir.layercloud.cortexdrone.service.building.BuildingService;
 import ir.layercloud.cortexdrone.service.combat.CombatService;
 import ir.layercloud.cortexdrone.codemode.CodeModeRuntime;
 import ir.layercloud.cortexdrone.codemode.LlmAgentService;
@@ -60,7 +60,7 @@ public class AIDroneManager {
     private final FlightPathfinder pathfinder;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
-    private final MiningEngine miningEngine;
+    private final BuildingService buildingService;
     private final MovementService movementService;
     private final BlockService blockService;
     private final EffectService effectService;
@@ -90,9 +90,9 @@ public class AIDroneManager {
         this.inventoryService = new InventoryService(this.logger);
         this.effectService = new EffectService(this, this.logger);
         this.interactionService = new InteractionService(this.inventoryService);
-        this.miningEngine = new MiningEngine(this, this.logger, this.pathfinder, this.inventoryService);
+        this.buildingService = new BuildingService(this, this.logger, this.pathfinder, this.inventoryService);
         this.movementService = new MovementService(this);
-        this.blockService = new BlockService(this, this.inventoryService, this.logger);
+        this.blockService = new BlockService(this.buildingService);
         this.combatService = new CombatService(this, this.logger, this.pathfinder);
         this.actionRegistry = new ActionRegistry();
         this.actionRegistry.register(this.movementService);
@@ -115,7 +115,7 @@ public class AIDroneManager {
             this.logger,
             this.pathfinder,
             this.inventoryService,
-            this.miningEngine,
+            this.buildingService,
             this.effectService,
             this.combatService
         );

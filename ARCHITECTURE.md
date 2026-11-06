@@ -42,8 +42,10 @@ All operation behavior lives in action classes under `action/<category>/impl/`.
 For example, `InteractBlockAction` owns liquid scooping and block activation,
 `UseItemAction` owns held-item use, `AttackEntityAction` owns melee combat,
 `BreakBlockAction` starts one block break and `PlaceBlockAction` performs the
-complete placement. The long-running mining loop is a domain engine
-(`action.block.MiningEngine`), not action-dispatch logic in a service.
+complete placement. Block break/place behavior and the long-running mining loop
+live in the domain service `service/building/BuildingService`; the AI composes
+mining as an `inspect -> moveTo -> breakBlock` skill (see
+`docs/skills/mining.md`).
 
 Project convention: interfaces and abstract bases live at the package root;
 concrete implementations live under an `impl` subpackage. Defaults and concrete

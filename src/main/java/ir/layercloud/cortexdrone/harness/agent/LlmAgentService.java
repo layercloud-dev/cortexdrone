@@ -114,23 +114,15 @@ public class LlmAgentService {
                     final String deadlineReply = AgentLoopHeuristics.progressReplyFor(
                             "Stopped at the time limit. No further progress was possible without more info.",
                             hadProgress, ctrl.lastThought);
-                    this.manager.getMod().queueMain(new Runnable() {
-                        @Override
-                        public void run() {
-                            manager.droneSay(player, ctrl, deadlineReply);
-                        }
-                    });
+                    this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, deadlineReply));
                     return;
                 }
 
                 final int curTurn = turn;
-                this.manager.getMod().queueMain(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl)) {
-                            ctrl.drone.lightColor_$eq(0xAA55FF);
-                            ctrl.drone.statusText_$eq("Thinking...\nTurn " + curTurn);
-                        }
+                this.manager.getMod().queueMain(() -> {
+                    if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl)) {
+                        ctrl.drone.lightColor_$eq(0xAA55FF);
+                        ctrl.drone.statusText_$eq("Thinking...\nTurn " + curTurn);
                     }
                 });
 
@@ -169,12 +161,7 @@ public class LlmAgentService {
                     final String partialMsg = AgentLoopHeuristics.progressReplyFor(
                             "AI backend error: " + detail + ". Fix the API key / gateway then re-send your instruction.",
                             hadProgress, ctrl.lastThought);
-                    this.manager.getMod().queueMain(new Runnable() {
-                        @Override
-                        public void run() {
-                            manager.droneSay(player, ctrl, partialMsg);
-                        }
-                    });
+                    this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, partialMsg));
                     return;
                 }
 
@@ -184,12 +171,9 @@ public class LlmAgentService {
                 if (!thought.isEmpty()) {
                     ctrl.recordThought(turn, thought);
                     this.logger.log("THINK", ctrl, "Turn " + turn + ": " + thought, "");
-                    this.manager.getMod().queueMain(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl))
-                                ctrl.drone.statusText_$eq("Think T" + curTurn + "\n" + AIDroneManager.trimStatus(thought));
-                        }
+                    this.manager.getMod().queueMain(() -> {
+                        if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl))
+                            ctrl.drone.statusText_$eq("Think T" + curTurn + "\n" + AIDroneManager.trimStatus(thought));
                     });
                 }
 
@@ -211,12 +195,7 @@ public class LlmAgentService {
                             + "alternative, then re-request.";
                     completedOk = true;
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn + " early-final forced done:true", "loopId=" + myLoopId);
-                    this.manager.getMod().queueMain(new Runnable() {
-                        @Override
-                        public void run() {
-                            manager.droneSay(player, ctrl, earlyReply);
-                        }
-                    });
+                    this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, earlyReply));
                     return;
                 }
                 if (AgentLoopHeuristics.isMachineBlockerResult(lastMachineBlocker) && !AgentLoopHeuristics.codeMentionsPhysicalAction(code)
@@ -228,12 +207,7 @@ public class LlmAgentService {
                     completedOk = true;
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn
                             + " machine-config blocker seen -> immediate done:true (no re-query)", "");
-                    this.manager.getMod().queueMain(new Runnable() {
-                        @Override
-                        public void run() {
-                            manager.droneSay(player, ctrl, blockerReply);
-                        }
-                    });
+                    this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, blockerReply));
                     return;
                 }
                 if (AgentLoopHeuristics.shouldStopBeforeExecute(plan, code, isMalformed) && !stoppedPrevInThisLoop) {
@@ -257,31 +231,20 @@ public class LlmAgentService {
 
                 if (!code.isEmpty()) {
                     executedAnyAction = true;
-                    this.manager.getMod().queueMain(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl))
-                                ctrl.drone.lightColor_$eq(0xAA55FF);
-                        }
+                    this.manager.getMod().queueMain(() -> {
+                        if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl))
+                            ctrl.drone.lightColor_$eq(0xAA55FF);
                     });
 
                     final AtomicBoolean jsFinished = new AtomicBoolean(false);
                     if (done && !thought.isEmpty()) {
-                        Thread ackThread = new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    Thread.sleep(1200);
-                                    if (!jsFinished.get() && !ctrl.isLoopCancelled(myLoopId)) {
-                                        manager.getMod().queueMain(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                manager.droneSay(player, ctrl, "Working on it: " + thought);
-                                            }
-                                        });
-                                    }
-                                } catch (InterruptedException ignored) {
+                        Thread ackThread = new Thread(() -> {
+                            try {
+                                Thread.sleep(1200);
+                                if (!jsFinished.get() && !ctrl.isLoopCancelled(myLoopId)) {
+                                    manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, "Working on it: " + thought));
                                 }
+                            } catch (InterruptedException ignored) {
                             }
                         }, "CortexDrone-Ack-" + ctrl.id);
                         ackThread.setDaemon(true);
@@ -402,12 +365,7 @@ public class LlmAgentService {
                         }
                         if (!hadProgress && AgentLoopHeuristics.hasConcreteProgress(execRes, code)) {
                             final String relayMsg = "Progress: first step done. Continuing with next step.";
-                            this.manager.getMod().queueMain(new Runnable() {
-                                @Override
-                                public void run() {
-                                    manager.droneSay(player, ctrl, relayMsg);
-                                }
-                            });
+                            this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, relayMsg));
                             hadProgress = true;
                         }
                         AgentLoopHeuristics.appendTurnFeedback(messages, thought, code, feedback);
@@ -420,12 +378,7 @@ public class LlmAgentService {
                     }
                     completedOk = true;
                     if (!reply.isEmpty()) {
-                        this.manager.getMod().queueMain(new Runnable() {
-                            @Override
-                            public void run() {
-                                manager.droneSay(player, ctrl, reply);
-                            }
-                        });
+                        this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, reply));
                     }
                     return;
                 } else {
@@ -434,12 +387,7 @@ public class LlmAgentService {
                         final String fallbackReply = reply.isEmpty()
                                 ? "I couldn't form a valid action plan for that. Please rephrase or simplify the task."
                                 : reply;
-                        this.manager.getMod().queueMain(new Runnable() {
-                            @Override
-                            public void run() {
-                                manager.droneSay(player, ctrl, fallbackReply);
-                            }
-                        });
+                        this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, fallbackReply));
                         return;
                     }
                     AgentLoopHeuristics.appendTurnFeedback(
@@ -454,12 +402,7 @@ public class LlmAgentService {
                     "Stopped at the turn cap (" + MAX_AGENT_TURNS + "). What stands so far is in the last status/checkpoint above; "
                             + "the blocker (missing item/machine) is named there.",
                     hadProgress, ctrl.lastThought);
-            this.manager.getMod().queueMain(new Runnable() {
-                @Override
-                public void run() {
-                    manager.droneSay(player, ctrl, capReply);
-                }
-            });
+            this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, capReply));
         } catch (Throwable e) {
             // Catch Throwable, not Exception: an Error (OOM/NoClassDefFound/...) on a
             // pool thread otherwise dies silently after TRACE turn=0. Always log + speak.
@@ -468,12 +411,7 @@ public class LlmAgentService {
             final String errDetail = e.toString();
             final String errReply = "Stopped due to an internal error (" + errDetail + "). Re-send the instruction to retry.";
             try {
-                this.manager.getMod().queueMain(new Runnable() {
-                    @Override
-                    public void run() {
-                        manager.droneSay(player, ctrl, errReply);
-                    }
-                });
+                this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, errReply));
             } catch (Throwable ignored) {
                 LoopTracer.sayError(this.manager, player, ctrl, errDetail);
             }

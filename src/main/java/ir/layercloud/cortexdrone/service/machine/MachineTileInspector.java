@@ -144,39 +144,91 @@ public final class MachineTileInspector {
     }
 
     private static String mapAlias(String m) {
-        if (m.equals("anvil") || m.equals("anvil_craft") || m.equals("smithing")) return "anvil";
-        if ((m.equals("assembly") || m.equals("assembler") || m.equals("assembler_machine") || m.equals("assembly_machine")
-                || m.equals("assemblymachine") || m.equals("assembly_factory") || m.equals("assemblyfactory")
-                || m.equals("machine_assembly") || m.equals("machine_assembly_machine") || m.equals("machine_assembly_factory"))) {
-            return "assembly_machine";
+        switch (m) {
+            case "anvil":
+            case "anvil_craft":
+            case "smithing":
+                return "anvil";
+            case "assembly":
+            case "assembler":
+            case "assembler_machine":
+            case "assembly_machine":
+            case "assemblymachine":
+            case "assembly_factory":
+            case "assemblyfactory":
+            case "machine_assembly":
+            case "machine_assembly_machine":
+            case "machine_assembly_factory":
+                return "assembly_machine";
+            case "chemical":
+            case "chem":
+            case "chem_plant":
+            case "chemical_plant":
+            case "chemicalplant":
+            case "machine_chemical_plant":
+            case "chemplant":
+                return "chemical_plant";
+            case "blast":
+            case "blast_furnace":
+            case "blastfurnace":
+            case "blast_furnace_legacy":
+                return "blast_furnace";
+            case "arc":
+            case "arc_furnace":
+            case "arcfurnace":
+            case "arcfurnace_large":
+                return "arc_furnace";
+            case "arc_welder":
+            case "arcwelder":
+            case "welder":
+                return "arc_welder";
+            case "press":
+            case "machine_press":
+                return "press";
+            case "shredder":
+            case "machine_shredder":
+                return "shredder";
+            case "centrifuge":
+            case "machine_centrifuge":
+                return "centrifuge";
+            case "compressor":
+            case "machine_compressor":
+                return "compressor";
+            case "mixer":
+            case "machine_mixer":
+                return "mixer";
+            case "coker":
+            case "machine_coker":
+                return "coker";
+            case "electrolyser":
+            case "electrolyzer":
+                return "electrolyser";
+            case "crystallizer":
+                return "crystallizer";
+            case "pyrolysis":
+            case "pyro":
+                return "pyrolysis";
+            case "rockmill":
+            case "rock_mill":
+            case "rock":
+                return "rock_mill";
+            case "soldering":
+            case "soldering_station":
+            case "solder":
+                return "soldering_station";
+            case "rotary":
+            case "rotary_furnace":
+                return "rotary_furnace";
+            case "precision":
+            case "precision_assembly":
+            case "precisionassembly":
+            case "precass":
+                return "precision_assembly";
+            case "crucible":
+            case "smelting":
+            case "crucible_smelting":
+                return "crucible";
         }
-        if (m.equals("chemical") || m.equals("chem") || m.equals("chem_plant") || m.equals("chemical_plant")
-                || m.equals("chemicalplant") || m.equals("machine_chemical_plant") || m.equals("chemplant")) {
-            return "chemical_plant";
-        }
-        if (m.equals("blast") || m.equals("blast_furnace") || m.equals("blastfurnace") || m.equals("blast_furnace_legacy")) {
-            return "blast_furnace";
-        }
-        if (m.equals("arc") || m.equals("arc_furnace") || m.equals("arcfurnace") || m.equals("arcfurnace_large")) {
-            return "arc_furnace";
-        }
-        if (m.equals("arc_welder") || m.equals("arcwelder") || m.equals("welder")) return "arc_welder";
-        if (m.equals("press") || m.equals("machine_press")) return "press";
-        if (m.equals("shredder") || m.equals("machine_shredder")) return "shredder";
-        if (m.equals("centrifuge") || m.equals("machine_centrifuge")) return "centrifuge";
-        if (m.equals("compressor") || m.equals("machine_compressor")) return "compressor";
-        if (m.equals("mixer") || m.equals("machine_mixer")) return "mixer";
-        if (m.equals("coker") || m.equals("machine_coker")) return "coker";
-        if (m.equals("electrolyser") || m.equals("electrolyzer")) return "electrolyser";
-        if (m.equals("crystallizer")) return "crystallizer";
-        if (m.equals("pyrolysis") || m.equals("pyro")) return "pyrolysis";
-        if (m.equals("rockmill") || m.equals("rock_mill") || m.equals("rock")) return "rock_mill";
-        if (m.equals("soldering") || m.equals("soldering_station") || m.equals("solder")) return "soldering_station";
-        if (m.equals("rotary") || m.equals("rotary_furnace")) return "rotary_furnace";
-        if (m.equals("precision") || m.equals("precision_assembly") || m.equals("precisionassembly") || m.equals("precass")) {
-            return "precision_assembly";
-        }
-        if (m.equals("crucible") || m.equals("smelting") || m.equals("crucible_smelting")) return "crucible";
         if (m.equals("electrolyser") || m.equals("electrolyzer") || m.equals("electrolyse")
                 || m.equals("electrolyser_fluid") || m.equals("electrolyser_metal")) return "electrolyser";
         if (m.equals("pedestal") || m.equals("machine_pedestal")) return "pedestal";
@@ -338,17 +390,14 @@ public final class MachineTileInspector {
         double fx = x;
         double fy = y;
         double fz = z;
-        java.util.Collections.sort(out, new Comparator<TileEntity>() {
-            @Override
-            public int compare(TileEntity a, TileEntity b) {
-                double da = (a.xCoord + 0.5 - fx) * (a.xCoord + 0.5 - fx)
-                        + (a.yCoord + 0.5 - fy) * (a.yCoord + 0.5 - fy)
-                        + (a.zCoord + 0.5 - fz) * (a.zCoord + 0.5 - fz);
-                double db = (b.xCoord + 0.5 - fx) * (b.xCoord + 0.5 - fx)
-                        + (b.yCoord + 0.5 - fy) * (b.yCoord + 0.5 - fy)
-                        + (b.zCoord + 0.5 - fz) * (b.zCoord + 0.5 - fz);
-                return Double.compare(da, db);
-            }
+        out.sort((a, b) -> {
+            double da = (a.xCoord + 0.5 - fx) * (a.xCoord + 0.5 - fx)
+                    + (a.yCoord + 0.5 - fy) * (a.yCoord + 0.5 - fy)
+                    + (a.zCoord + 0.5 - fz) * (a.zCoord + 0.5 - fz);
+            double db = (b.xCoord + 0.5 - fx) * (b.xCoord + 0.5 - fx)
+                    + (b.yCoord + 0.5 - fy) * (b.yCoord + 0.5 - fy)
+                    + (b.zCoord + 0.5 - fz) * (b.zCoord + 0.5 - fz);
+            return Double.compare(da, db);
         });
         return out;
     }

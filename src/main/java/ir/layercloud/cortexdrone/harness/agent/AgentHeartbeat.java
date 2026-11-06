@@ -167,23 +167,20 @@ final class AgentHeartbeat {
         this.logger.log("HEARTBEAT", this.ctrl, "Scheduling resurrection of loop " + this.loopId,
                 "active=" + active + " hadProgress=" + this.hadProgress + " deliveryPending=" + deliveryPending
                         + " emptyResponses=" + this.emptyResponses);
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Thread.sleep(RESURRECT_DELAY_MS);
-                } catch (InterruptedException ignored) {
-                    return;
-                }
-                if (ctrl.drone == null || ctrl.drone.isDead) return;
-                if (ctrl.activeLoopId.get() != expectedGeneration) return;
-                logger.log("HEARTBEAT", ctrl, "Resurrecting abandoned job as a compacted continuation loop",
-                        "fromLoop=" + loopId);
-                try {
-                    manager.handleNaturalInstruction(player, ctrl, resumePrompt);
-                } catch (Throwable t2) {
-                    logger.log("HEARTBEAT", ctrl, "Resurrection failed", "error=" + t2);
-                }
+        Thread t = new Thread(() -> {
+            try {
+                Thread.sleep(RESURRECT_DELAY_MS);
+            } catch (InterruptedException ignored) {
+                return;
+            }
+            if (ctrl.drone == null || ctrl.drone.isDead) return;
+            if (ctrl.activeLoopId.get() != expectedGeneration) return;
+            logger.log("HEARTBEAT", ctrl, "Resurrecting abandoned job as a compacted continuation loop",
+                    "fromLoop=" + loopId);
+            try {
+                manager.handleNaturalInstruction(player, ctrl, resumePrompt);
+            } catch (Throwable t2) {
+                logger.log("HEARTBEAT", ctrl, "Resurrection failed", "error=" + t2);
             }
         }, "CortexDrone-Heartbeat-" + this.ctrl.id);
         t.setDaemon(true);

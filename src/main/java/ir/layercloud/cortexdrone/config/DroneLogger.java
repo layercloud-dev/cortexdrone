@@ -84,12 +84,7 @@ public class DroneLogger {
             }
         }
         if (needSchedule) {
-            CortexDroneMod.HTTP_POOL.submit(new Runnable() {
-                @Override
-                public void run() {
-                    flushPendingLog(600L);
-                }
-            });
+            CortexDroneMod.HTTP_POOL.submit(() -> flushPendingLog(600L));
         }
     }
 
@@ -125,12 +120,7 @@ public class DroneLogger {
             // If more lines arrived while writing, schedule another coalesced flush.
             if (this.pendingLogText.length() > 0 && !this.logFlushScheduled) {
                 this.logFlushScheduled = true;
-                CortexDroneMod.HTTP_POOL.submit(new Runnable() {
-                    @Override
-                    public void run() {
-                        flushPendingLog(600L);
-                    }
-                });
+                CortexDroneMod.HTTP_POOL.submit(() -> flushPendingLog(600L));
             }
         }
     }

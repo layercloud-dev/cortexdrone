@@ -154,11 +154,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
     }
 
     private void retain(DroneController controller, String operation, Execution<C> execution) {
-        Map<String, Execution<C>> executions = this.active.get(controller);
-        if (executions == null) {
-            executions = new LinkedHashMap<>();
-            this.active.put(controller, executions);
-        }
+        Map<String, Execution<C>> executions = this.active.computeIfAbsent(controller, k -> new LinkedHashMap<>());
         Execution<C> previous = executions.put(operation, execution);
         if (previous != null && previous != execution) {
             previous.action.cancel(previous.context);

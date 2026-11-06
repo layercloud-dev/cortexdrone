@@ -63,12 +63,7 @@ public final class LoopTracer {
                            final DroneController ctrl, final String message) {
         if (manager == null || message == null || message.isEmpty()) return;
         try {
-            manager.getMod().queueMain(new Runnable() {
-                @Override
-                public void run() {
-                    manager.droneSay(player, ctrl, message);
-                }
-            });
+            manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, message));
         } catch (Exception ignored) {
         }
     }

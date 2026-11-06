@@ -234,8 +234,7 @@ public class LightingAura {
     private static void addChunkMask(Map<Long, Integer> chunkMasks, int x, int y, int z) {
         long key = chunkKey(x, z);
         int bit = 1 << (y >> 4);
-        Integer old = chunkMasks.get(Long.valueOf(key));
-        chunkMasks.put(Long.valueOf(key), Integer.valueOf((old == null ? 0 : old) | bit));
+        chunkMasks.compute(Long.valueOf(key), (k, old) -> Integer.valueOf((old == null ? 0 : old) | bit));
     }
 
 

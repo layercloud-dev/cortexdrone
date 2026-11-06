@@ -40,7 +40,7 @@ public final class VeinScanner {
                         int id = Block.getIdFromBlock(b);
                         matched.put(FlightPathfinder.packBlockPos(x, y, z), new int[]{x, y, z, id, meta});
                         String disp = ItemClassifier.getBlockDisplayName(b, meta);
-                        histogram.put(disp, (histogram.containsKey(disp) ? histogram.get(disp) : 0) + 1);
+                        histogram.put(disp, (histogram.getOrDefault(disp, 0)) + 1);
                     }
                 }
             }
@@ -118,14 +118,11 @@ public final class VeinScanner {
             veins.add(vo);
         }
 
-        Collections.sort(veins, new Comparator<JsonObject>() {
-            @Override
-            public int compare(JsonObject a, JsonObject b) {
-                boolean expA = a.get("exposed").getAsBoolean();
-                boolean expB = b.get("exposed").getAsBoolean();
-                if (expA != expB) return expA ? -1 : 1;
-                return Double.compare(a.get("dist").getAsDouble(), b.get("dist").getAsDouble());
-            }
+        veins.sort((a, b) -> {
+            boolean expA = a.get("exposed").getAsBoolean();
+            boolean expB = b.get("exposed").getAsBoolean();
+            if (expA != expB) return expA ? -1 : 1;
+            return Double.compare(a.get("dist").getAsDouble(), b.get("dist").getAsDouble());
         });
 
         JsonArray veinsArr = new JsonArray();

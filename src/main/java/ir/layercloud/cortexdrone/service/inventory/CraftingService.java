@@ -177,12 +177,7 @@ public class CraftingService {
                 }
             }
         }
-        Collections.sort(scored, new Comparator<ScoredRecipe>() {
-            @Override
-            public int compare(ScoredRecipe a, ScoredRecipe b) {
-                return Integer.compare(b.getScore(), a.getScore());
-            }
-        });
+        scored.sort((a, b) -> Integer.compare(b.getScore(), a.getScore()));
         List<IRecipe> result = new ArrayList<>(scored.size());
         for (ScoredRecipe sr : scored) {
             result.add(sr.getRecipe());

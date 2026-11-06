@@ -37,8 +37,7 @@ public class StructureArchitect {
 
         public void addTask(int x, int y, int z, String blockFilter, int meta, boolean replace) {
             this.buildTasks.add(new BuildTask(x, y, z, blockFilter, meta, replace));
-            Integer prev = this.materialCounts.get(blockFilter);
-            this.materialCounts.put(blockFilter, (prev != null ? prev : 0) + 1);
+            this.materialCounts.compute(blockFilter, (k, prev) -> (prev != null ? prev : 0) + 1);
         }
 
         public JsonObject toJson() {

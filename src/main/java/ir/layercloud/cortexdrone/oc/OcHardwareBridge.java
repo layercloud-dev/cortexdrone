@@ -58,7 +58,6 @@ public class OcHardwareBridge {
         }
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public boolean ensureMachineRunningState(Drone drone) {
         if (drone == null) return false;
         try {
@@ -119,16 +118,20 @@ public class OcHardwareBridge {
                 Object compProxy = Proxy.newProxyInstance(
                         li.cil.oc.api.network.Component.class.getClassLoader(),
                         new Class<?>[]{li.cil.oc.api.network.Component.class},
-                        new InvocationHandler() {
-                            @Override
-                            public Object invoke(Object proxy, Method method, Object[] args) {
-                                String name = method.getName();
-                                if ("changeBuffer".equals(name)) return Double.valueOf(0.0);
-                                if ("tryChangeBuffer".equals(name)) return Boolean.TRUE;
-                                if ("address".equals(name)) return "00000000-0000-0000-0000-000000000000";
-                                if ("canBeSeenFrom".equals(name) || "canConnect".equals(name)) return Boolean.TRUE;
-                                return null;
+                        (proxy, method, args) -> {
+                            String name = method.getName();
+                            switch (name) {
+                                case "changeBuffer":
+                                    return Double.valueOf(0.0);
+                                case "tryChangeBuffer":
+                                    return Boolean.TRUE;
+                                case "address":
+                                    return "00000000-0000-0000-0000-000000000000";
+                                case "canBeSeenFrom":
+                                case "canConnect":
+                                    return Boolean.TRUE;
                             }
+                            return null;
                         }
                 );
                 li.cil.oc.server.component.Drone ctrlComp = new li.cil.oc.server.component.Drone(drone);

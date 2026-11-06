@@ -105,7 +105,7 @@ public final class RoomScanner {
                     floorList.add(new int[]{ax, fy, az});
                     Block fb = world.getBlock(ax, fy, az);
                     String fn = ItemClassifier.getBlockDisplayName(fb, world.getBlockMetadata(ax, fy, az));
-                    floorMats.put(fn, (floorMats.containsKey(fn) ? floorMats.get(fn) : 0) + 1);
+                    floorMats.put(fn, (floorMats.getOrDefault(fn, 0)) + 1);
                 }
             }
 
@@ -116,7 +116,7 @@ public final class RoomScanner {
                     ceilingList.add(new int[]{ax, cy, az});
                     Block cb = world.getBlock(ax, cy, az);
                     String cn = ItemClassifier.getBlockDisplayName(cb, world.getBlockMetadata(ax, cy, az));
-                    ceilMats.put(cn, (ceilMats.containsKey(cn) ? ceilMats.get(cn) : 0) + 1);
+                    ceilMats.put(cn, (ceilMats.getOrDefault(cn, 0)) + 1);
                 }
             }
 
@@ -134,7 +134,7 @@ public final class RoomScanner {
                         else eastWall.add(pt);
                         Block wb = world.getBlock(wx, ay, wz);
                         String wn = ItemClassifier.getBlockDisplayName(wb, world.getBlockMetadata(wx, ay, wz));
-                        wallMats.put(wn, (wallMats.containsKey(wn) ? wallMats.get(wn) : 0) + 1);
+                        wallMats.put(wn, (wallMats.getOrDefault(wn, 0)) + 1);
                     }
                 }
             }

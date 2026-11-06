@@ -28,7 +28,6 @@ public class DocLookupService {
     private final InventoryService inventoryService;
     private final Map<String, String> webDocCache = new ConcurrentHashMap<>();
 
-    @SuppressWarnings("unchecked")
     public JsonObject lookup(String rawQuery, String rawModId, boolean includeWeb) {
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);

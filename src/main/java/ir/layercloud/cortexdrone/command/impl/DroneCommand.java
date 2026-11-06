@@ -84,91 +84,92 @@ public class DroneCommand extends BaseCommand {
 
         String sub = args[0].toLowerCase();
 
-        if (sub.equals("debug")) {
-            String mode = args.length >= 2 ? args[1].toLowerCase() : "toggle";
-            if (mode.equals("tail")) {
-                List<DebugEntry> tail = logger.getRecentDebugEntries(10);
-                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Drone Debug Log (last " + tail.size() + ") ===");
-                for (DebugEntry e : tail) {
-                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + e.toLogLine());
+        switch (sub) {
+            case "debug":
+                String mode = args.length >= 2 ? args[1].toLowerCase() : "toggle";
+                if (mode.equals("tail")) {
+                    List<DebugEntry> tail = logger.getRecentDebugEntries(10);
+                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Drone Debug Log (last " + tail.size() + ") ===");
+                    for (DebugEntry e : tail) {
+                        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + e.toLogLine());
+                    }
+                    return;
                 }
-                return;
-            }
-            if (mode.equals("clear")) {
-                logger.clearDebugLog();
-                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[DroneDebug] Cleared debug log buffer and file.");
-                return;
-            }
-            if (player != null) {
-                String pName = player.getCommandSenderName();
-                Set<String> subs = logger.getSubscribers();
-                boolean enable = mode.equals("on") || (mode.equals("toggle") && !subs.contains(pName));
-                if (enable) {
-                    subs.add(pName);
-                    CortexDroneMod.sendMsg(player, EnumChatFormatting.GREEN + "[DroneDebug] Live debug stream ENABLED for your chat. Use '/drone debug off' to stop.");
+                if (mode.equals("clear")) {
+                    logger.clearDebugLog();
+                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[DroneDebug] Cleared debug log buffer and file.");
+                    return;
+                }
+                if (player != null) {
+                    String pName = player.getCommandSenderName();
+                    Set<String> subs = logger.getSubscribers();
+                    boolean enable = mode.equals("on") || (mode.equals("toggle") && !subs.contains(pName));
+                    if (enable) {
+                        subs.add(pName);
+                        CortexDroneMod.sendMsg(player, EnumChatFormatting.GREEN + "[DroneDebug] Live debug stream ENABLED for your chat. Use '/drone debug off' to stop.");
+                    } else {
+                        subs.remove(pName);
+                        CortexDroneMod.sendMsg(player, EnumChatFormatting.YELLOW + "[DroneDebug] Live debug stream DISABLED.");
+                    }
                 } else {
-                    subs.remove(pName);
-                    CortexDroneMod.sendMsg(player, EnumChatFormatting.YELLOW + "[DroneDebug] Live debug stream DISABLED.");
+                    CortexDroneMod.sendMsg(sender, "Use /drone debug tail or /drone debug clear from console.");
                 }
-            } else {
-                CortexDroneMod.sendMsg(sender, "Use /drone debug tail or /drone debug clear from console.");
-            }
-            return;
-        }
-
-        if (sub.equals("list")) {
-            if (this.manager.getControllersById().isEmpty()) {
-                CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "[Drone] No active AI drones.");
                 return;
-            }
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Active AI Drones (" + this.manager.getControllersById().size() + ") ===");
-            for (DroneController c : this.manager.getControllersById().values()) {
-                if (c.drone == null || c.drone.isDead) continue;
-                CortexDroneMod.sendMsg(sender, String.format(
-                        EnumChatFormatting.AQUA + "#%d %s" + EnumChatFormatting.GRAY + " (Owner: %s) "
-                                + EnumChatFormatting.YELLOW + "[%s] " + EnumChatFormatting.WHITE + "@ (%.1f, %.1f, %.1f) "
-                                + EnumChatFormatting.GREEN + "Items: %d",
-                        c.id, c.name, c.ownerName,
-                        this.manager.getNavigationManager().isActive(c) ? "navigating" : "idle",
-                        c.drone.posX, c.drone.posY, c.drone.posZ,
-                        InventoryService.countInventoryItems(c.drone.mainInventory())
-                ));
-            }
-            return;
-        }
-
-        if (sub.equals("config")) {
-            boolean isOp = !(sender instanceof EntityPlayerMP) || sender.canCommandSenderUseCommand(2, "drone");
-            if (!isOp) {
-                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "[Drone] Only server operators can change AI config.");
+            case "list":
+                if (this.manager.getControllersById().isEmpty()) {
+                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "[Drone] No active AI drones.");
+                    return;
+                }
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Active AI Drones (" + this.manager.getControllersById().size() + ") ===");
+                for (DroneController c : this.manager.getControllersById().values()) {
+                    if (c.drone == null || c.drone.isDead) continue;
+                    CortexDroneMod.sendMsg(sender, String.format(
+                            EnumChatFormatting.AQUA + "#%d %s" + EnumChatFormatting.GRAY + " (Owner: %s) "
+                                    + EnumChatFormatting.YELLOW + "[%s] " + EnumChatFormatting.WHITE + "@ (%.1f, %.1f, %.1f) "
+                                    + EnumChatFormatting.GREEN + "Items: %d",
+                            c.id, c.name, c.ownerName,
+                            this.manager.getNavigationManager().isActive(c) ? "navigating" : "idle",
+                            c.drone.posX, c.drone.posY, c.drone.posZ,
+                            InventoryService.countInventoryItems(c.drone.mainInventory())
+                    ));
+                }
                 return;
-            }
-            if (args.length < 3) {
-                String maskedKey = (config.getApiKey() != null && config.getApiKey().length() > 6)
-                        ? (config.getApiKey().substring(0, 4) + "..." + config.getApiKey().substring(config.getApiKey().length() - 2))
-                        : (config.getApiKey() == null || config.getApiKey().isEmpty() ? "<not set>" : "***");
-                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "[Drone AI Config] "
-                        + EnumChatFormatting.YELLOW + "URL: " + EnumChatFormatting.WHITE + config.getApiUrl()
-                        + EnumChatFormatting.YELLOW + " | Model: " + EnumChatFormatting.WHITE + config.getModel()
-                        + EnumChatFormatting.YELLOW + " | Key: " + EnumChatFormatting.WHITE + maskedKey);
-                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "Usage: /drone config <url|model|key> <value>");
+            case "config":
+                boolean isOp = !(sender instanceof EntityPlayerMP) || sender.canCommandSenderUseCommand(2, "drone");
+                if (!isOp) {
+                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "[Drone] Only server operators can change AI config.");
+                    return;
+                }
+                if (args.length < 3) {
+                    String maskedKey = (config.getApiKey() != null && config.getApiKey().length() > 6)
+                            ? (config.getApiKey().substring(0, 4) + "..." + config.getApiKey().substring(config.getApiKey().length() - 2))
+                            : (config.getApiKey() == null || config.getApiKey().isEmpty() ? "<not set>" : "***");
+                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "[Drone AI Config] "
+                            + EnumChatFormatting.YELLOW + "URL: " + EnumChatFormatting.WHITE + config.getApiUrl()
+                            + EnumChatFormatting.YELLOW + " | Model: " + EnumChatFormatting.WHITE + config.getModel()
+                            + EnumChatFormatting.YELLOW + " | Key: " + EnumChatFormatting.WHITE + maskedKey);
+                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "Usage: /drone config <url|model|key> <value>");
+                    return;
+                }
+                String key = args[1].toLowerCase();
+                String val = args[2];
+                switch (key) {
+                    case "url":
+                        config.setApiUrl(val);
+                        break;
+                    case "model":
+                        config.setModel(val);
+                        break;
+                    case "key":
+                        config.setApiKey(val.equalsIgnoreCase("clear") ? "" : val);
+                        break;
+                    default:
+                        CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "Usage: /drone config <url|model|key> <value>");
+                        return;
+                }
+                this.manager.saveConfig();
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] Updated AI config '" + key + "' and saved to world/layercloud-ai.json.");
                 return;
-            }
-            String key = args[1].toLowerCase();
-            String val = args[2];
-            if (key.equals("url")) {
-                config.setApiUrl(val);
-            } else if (key.equals("model")) {
-                config.setModel(val);
-            } else if (key.equals("key")) {
-                config.setApiKey(val.equalsIgnoreCase("clear") ? "" : val);
-            } else {
-                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "Usage: /drone config <url|model|key> <value>");
-                return;
-            }
-            this.manager.saveConfig();
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] Updated AI config '" + key + "' and saved to world/layercloud-ai.json.");
-            return;
         }
 
         if (player == null) {
@@ -231,17 +232,9 @@ public class DroneCommand extends BaseCommand {
             final String code = args.length >= 2 ? joinArgs(args, 1) : "return await drone.state();";
             final DroneController fCtrl = ctrl;
             final EntityPlayerMP fPlayer = player;
-            CortexDroneMod.HTTP_POOL.submit(new Runnable() {
-                @Override
-                public void run() {
-                    final JsonObject res = manager.getCodeModeRuntime().executeJavaScript(fCtrl, fPlayer, code);
-                    manager.getMod().queueMain(new Runnable() {
-                        @Override
-                        public void run() {
-                            manager.droneSay(fPlayer, fCtrl, "JS Result: " + res.toString());
-                        }
-                    });
-                }
+            CortexDroneMod.HTTP_POOL.submit(() -> {
+                final JsonObject res = manager.getCodeModeRuntime().executeJavaScript(fCtrl, fPlayer, code);
+                manager.getMod().queueMain(() -> manager.droneSay(fPlayer, fCtrl, "JS Result: " + res.toString()));
             });
             return;
         }

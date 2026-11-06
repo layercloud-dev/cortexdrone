@@ -205,20 +205,17 @@ public class InventoryService {
             }
         }
 
-        Collections.sort(tiles, new Comparator<TileEntity>() {
-            @Override
-            public int compare(TileEntity a, TileEntity b) {
-                boolean ca = a instanceof TileEntityChest;
-                boolean cb = b instanceof TileEntityChest;
-                if (ca != cb) return ca ? -1 : 1;
-                double da = (a.xCoord + 0.5 - x) * (a.xCoord + 0.5 - x)
-                        + (a.yCoord + 0.5 - y) * (a.yCoord + 0.5 - y)
-                        + (a.zCoord + 0.5 - z) * (a.zCoord + 0.5 - z);
-                double db = (b.xCoord + 0.5 - x) * (b.xCoord + 0.5 - x)
-                        + (b.yCoord + 0.5 - y) * (b.yCoord + 0.5 - y)
-                        + (b.zCoord + 0.5 - z) * (b.zCoord + 0.5 - z);
-                return Double.compare(da, db);
-            }
+        tiles.sort((a, b) -> {
+            boolean ca = a instanceof TileEntityChest;
+            boolean cb = b instanceof TileEntityChest;
+            if (ca != cb) return ca ? -1 : 1;
+            double da = (a.xCoord + 0.5 - x) * (a.xCoord + 0.5 - x)
+                    + (a.yCoord + 0.5 - y) * (a.yCoord + 0.5 - y)
+                    + (a.zCoord + 0.5 - z) * (a.zCoord + 0.5 - z);
+            double db = (b.xCoord + 0.5 - x) * (b.xCoord + 0.5 - x)
+                    + (b.yCoord + 0.5 - y) * (b.yCoord + 0.5 - y)
+                    + (b.zCoord + 0.5 - z) * (b.zCoord + 0.5 - z);
+            return Double.compare(da, db);
         });
         return tiles;
     }

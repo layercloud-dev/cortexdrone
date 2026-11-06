@@ -33,12 +33,26 @@ public final class InventoryRpcTranslator {
         }
 
         String op = RpcArgs.string(args, "op", "move").trim().toLowerCase();
-        if ("moveslot".equals(op)) op = "move";
-        else if ("withdrawchest".equals(op)) op = "withdraw";
-        else if ("depositchest".equals(op)) op = "deposit";
-        else if ("givetoplayer".equals(op)) op = "give";
-        else if ("takefromplayer".equals(op)) op = "take";
-        else if ("suckitems".equals(op)) op = "suck";
+        switch (op) {
+            case "moveslot":
+                op = "move";
+                break;
+            case "withdrawchest":
+                op = "withdraw";
+                break;
+            case "depositchest":
+                op = "deposit";
+                break;
+            case "givetoplayer":
+                op = "give";
+                break;
+            case "takefromplayer":
+                op = "take";
+                break;
+            case "suckitems":
+                op = "suck";
+                break;
+        }
 
         String filter = first(args, "filter", "target");
         String item = RpcArgs.string(args, "item", null);

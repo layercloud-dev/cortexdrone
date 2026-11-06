@@ -89,44 +89,44 @@ public final class LedEffects {
 
     public static int resolveEffectiveLedColor(String ledEffect, int tick, Integer customLedColor, int fallbackColor) {
         String eff = ledEffect != null ? ledEffect.toUpperCase() : "NONE";
-        if ("RAINBOW".equals(eff)) {
-            return hsvToRgbInt((tick * 8.0f) % 360.0f, 1.0f, 1.0f);
-        }
-        if ("DISCO".equals(eff)) {
-            return DISCO_PALETTE[(tick / 3) % DISCO_PALETTE.length];
-        }
-        if ("POLICE".equals(eff)) {
-            return (tick % 8 < 4) ? 0xFF0000 : 0x0044FF;
-        }
-        if ("STROBE".equals(eff)) {
-            int base = customLedColor != null ? customLedColor : 0xFFFFFF;
-            return (tick % 4 < 2) ? base : 0x111111;
-        }
-        if ("FIRE".equals(eff)) {
-            float hue = 18.0f + (float) (Math.sin(tick * 0.45) * 14.0 + Math.cos(tick * 0.9) * 6.0);
-            float val = 0.80f + (float) (0.20 * Math.sin(tick * 0.7));
-            return hsvToRgbInt(Math.max(0.0f, hue), 1.0f, val);
-        }
-        if ("OCEAN".equals(eff)) {
-            float hue = 195.0f + (float) (Math.sin(tick * 0.18) * 25.0);
-            return hsvToRgbInt(hue, 0.90f, 0.95f);
-        }
-        if ("HEARTBEAT".equals(eff)) {
-            int phase = tick % 20;
-            float v = (phase == 0 || phase == 1 || phase == 4 || phase == 5) ? 1.0f : 0.22f;
-            return hsvToRgbInt(352.0f, 0.95f, v);
-        }
-        if ("MATRIX".equals(eff)) {
-            float v = 0.35f + 0.65f * (float) (0.5 + 0.5 * Math.sin(tick * 0.35));
-            return hsvToRgbInt(125.0f, 0.95f, v);
-        }
-        if ("PULSE".equals(eff) || "BREATHE".equals(eff)) {
-            int base = customLedColor != null ? customLedColor : fallbackColor;
-            double factor = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(tick * 0.22));
-            int r = (int) Math.round(((base >> 16) & 0xFF) * factor);
-            int g = (int) Math.round(((base >> 8) & 0xFF) * factor);
-            int b = (int) Math.round((base & 0xFF) * factor);
-            return (r << 16) | (g << 8) | b;
+        switch (eff) {
+            case "RAINBOW":
+                return hsvToRgbInt((tick * 8.0f) % 360.0f, 1.0f, 1.0f);
+            case "DISCO":
+                return DISCO_PALETTE[(tick / 3) % DISCO_PALETTE.length];
+            case "POLICE":
+                return (tick % 8 < 4) ? 0xFF0000 : 0x0044FF;
+            case "STROBE": {
+                int base = customLedColor != null ? customLedColor : 0xFFFFFF;
+                return (tick % 4 < 2) ? base : 0x111111;
+            }
+            case "FIRE": {
+                float hue = 18.0f + (float) (Math.sin(tick * 0.45) * 14.0 + Math.cos(tick * 0.9) * 6.0);
+                float val = 0.80f + (float) (0.20 * Math.sin(tick * 0.7));
+                return hsvToRgbInt(Math.max(0.0f, hue), 1.0f, val);
+            }
+            case "OCEAN": {
+                float hue = 195.0f + (float) (Math.sin(tick * 0.18) * 25.0);
+                return hsvToRgbInt(hue, 0.90f, 0.95f);
+            }
+            case "HEARTBEAT": {
+                int phase = tick % 20;
+                float v = (phase == 0 || phase == 1 || phase == 4 || phase == 5) ? 1.0f : 0.22f;
+                return hsvToRgbInt(352.0f, 0.95f, v);
+            }
+            case "MATRIX": {
+                float v = 0.35f + 0.65f * (float) (0.5 + 0.5 * Math.sin(tick * 0.35));
+                return hsvToRgbInt(125.0f, 0.95f, v);
+            }
+            case "PULSE":
+            case "BREATHE": {
+                int base = customLedColor != null ? customLedColor : fallbackColor;
+                double factor = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(tick * 0.22));
+                int r = (int) Math.round(((base >> 16) & 0xFF) * factor);
+                int g = (int) Math.round(((base >> 8) & 0xFF) * factor);
+                int b = (int) Math.round((base & 0xFF) * factor);
+                return (r << 16) | (g << 8) | b;
+            }
         }
         if (customLedColor != null) {
             return customLedColor;

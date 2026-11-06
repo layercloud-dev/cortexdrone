@@ -94,7 +94,7 @@ public class ContainerSearchService {
                 if (score > bestChestScore) bestChestScore = score;
 
                 String itemKey = (disp != null ? disp : "Item") + ":" + meta;
-                totalsByItem.put(disp, (totalsByItem.containsKey(disp) ? totalsByItem.get(disp) : 0) + st.stackSize);
+                totalsByItem.put(disp, (totalsByItem.getOrDefault(disp, 0)) + st.stackSize);
 
                 // Aggregate stacks of the same item within the chest so 27 stacks of Cobblestone become 1 concise entry
                 JsonObject existing = aggregatedByItem.get(itemKey);
@@ -141,14 +141,11 @@ public class ContainerSearchService {
             matchedChests.add(new ChestMatchResult(co, bestChestScore, matchingInChest, dist));
         }
 
-        Collections.sort(matchedChests, new Comparator<ChestMatchResult>() {
-            @Override
-            public int compare(ChestMatchResult a, ChestMatchResult b) {
-                if (a.getBestScore() != b.getBestScore()) return Integer.compare(b.getBestScore(), a.getBestScore());
-                if (a.getTotalMatching() != b.getTotalMatching())
-                    return Integer.compare(b.getTotalMatching(), a.getTotalMatching());
-                return Double.compare(a.getDist(), b.getDist());
-            }
+        matchedChests.sort((a, b) -> {
+            if (a.getBestScore() != b.getBestScore()) return Integer.compare(b.getBestScore(), a.getBestScore());
+            if (a.getTotalMatching() != b.getTotalMatching())
+                return Integer.compare(b.getTotalMatching(), a.getTotalMatching());
+            return Double.compare(a.getDist(), b.getDist());
         });
 
         JsonArray chestsOut = new JsonArray();

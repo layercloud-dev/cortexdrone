@@ -110,16 +110,13 @@ public class CodeModeRuntime {
             pb.redirectErrorStream(true);
             final Process proc = pb.start();
             final StringBuilder sb = new StringBuilder();
-            Thread readerThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                        String line;
-                        while ((line = br.readLine()) != null) {
-                            sb.append(line);
-                        }
-                    } catch (Exception ignored) {
+            Thread readerThread = new Thread(() -> {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        sb.append(line);
                     }
+                } catch (Exception ignored) {
                 }
             }, "CortexDrone-JS-Reader-" + ctrl.id);
             readerThread.setDaemon(true);

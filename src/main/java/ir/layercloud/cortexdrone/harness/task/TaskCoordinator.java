@@ -73,12 +73,7 @@ public final class TaskCoordinator {
         worldContext.addProperty("singleSession", true);
         ctrl.registerLoop(myLoopId);
         final String sessionPrompt = cleanPrompt;
-        CortexDroneMod.HTTP_POOL.submit(new Runnable() {
-            @Override
-            public void run() {
-                manager.getAgentService().runAgentLoop(player, ctrl, sessionPrompt, worldContext, myLoopId);
-            }
-        });
+        CortexDroneMod.HTTP_POOL.submit(() -> manager.getAgentService().runAgentLoop(player, ctrl, sessionPrompt, worldContext, myLoopId));
     }
 
     private void cancel(DroneController ctrl, String reason) {

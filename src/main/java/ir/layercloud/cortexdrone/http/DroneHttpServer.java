@@ -50,210 +50,183 @@ public class DroneHttpServer {
             int port = this.manager.getConfig().getHttpPort() > 0 ? this.manager.getConfig().getHttpPort() : 25580;
             this.httpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
 
-            this.httpServer.createContext("/state", new HttpHandler() {
-                @Override
-                public void handle(HttpExchange exchange) throws IOException {
-                    try {
-                        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-                            sendJsonResponse(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
-                            return;
-                        }
-                        JsonObject cached = cachedStateJson;
-                        if (cached != null && !cached.entrySet().isEmpty()) {
-                            sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(cached));
-                            return;
-                        }
-                        final AtomicReference<JsonObject> ref = new AtomicReference<>(null);
-                        final CountDownLatch latch = new CountDownLatch(1);
-                        manager.getMod().queueMain(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    JsonObject st = buildStateJson();
-                                    cachedStateJson = st;
-                                    ref.set(st);
-                                } finally {
-                                    latch.countDown();
-                                }
-                            }
-                        });
-                        latch.await(1500, TimeUnit.MILLISECONDS);
-                        JsonObject out = ref.get() != null ? ref.get() : cachedStateJson;
-                        sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(out));
-                    } catch (Exception e) {
-                        sendJsonResponse(exchange, 500, "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
+            this.httpServer.createContext("/state", exchange -> {
+                try {
+                    if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                        sendJsonResponse(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
+                        return;
                     }
+                    JsonObject cached = cachedStateJson;
+                    if (cached != null && !cached.entrySet().isEmpty()) {
+                        sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(cached));
+                        return;
+                    }
+                    final AtomicReference<JsonObject> ref = new AtomicReference<>(null);
+                    final CountDownLatch latch = new CountDownLatch(1);
+                    manager.getMod().queueMain(() -> {
+                        try {
+                            JsonObject st = buildStateJson();
+                            cachedStateJson = st;
+                            ref.set(st);
+                        } finally {
+                            latch.countDown();
+                        }
+                    });
+                    latch.await(1500, TimeUnit.MILLISECONDS);
+                    JsonObject out = ref.get() != null ? ref.get() : cachedStateJson;
+                    sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(out));
+                } catch (Exception e) {
+                    sendJsonResponse(exchange, 500, "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
                 }
             });
 
-            this.httpServer.createContext("/debug", new HttpHandler() {
-                @Override
-                public void handle(HttpExchange exchange) throws IOException {
-                    try {
-                        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-                            sendJsonResponse(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
-                            return;
-                        }
-                        JsonObject cached = cachedDebugJson;
-                        if (cached != null && !cached.entrySet().isEmpty()) {
-                            sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(cached));
-                            return;
-                        }
-                        final AtomicReference<JsonObject> ref = new AtomicReference<>(null);
-                        final CountDownLatch latch = new CountDownLatch(1);
-                        manager.getMod().queueMain(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    JsonObject dbg = buildDebugJson();
-                                    cachedDebugJson = dbg;
-                                    ref.set(dbg);
-                                } finally {
-                                    latch.countDown();
-                                }
-                            }
-                        });
-                        latch.await(1500, TimeUnit.MILLISECONDS);
-                        JsonObject out = ref.get() != null ? ref.get() : cachedDebugJson;
-                        sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(out));
-                    } catch (Exception e) {
-                        sendJsonResponse(exchange, 500, "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
+            this.httpServer.createContext("/debug", exchange -> {
+                try {
+                    if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                        sendJsonResponse(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
+                        return;
                     }
+                    JsonObject cached = cachedDebugJson;
+                    if (cached != null && !cached.entrySet().isEmpty()) {
+                        sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(cached));
+                        return;
+                    }
+                    final AtomicReference<JsonObject> ref = new AtomicReference<>(null);
+                    final CountDownLatch latch = new CountDownLatch(1);
+                    manager.getMod().queueMain(() -> {
+                        try {
+                            JsonObject dbg = buildDebugJson();
+                            cachedDebugJson = dbg;
+                            ref.set(dbg);
+                        } finally {
+                            latch.countDown();
+                        }
+                    });
+                    latch.await(1500, TimeUnit.MILLISECONDS);
+                    JsonObject out = ref.get() != null ? ref.get() : cachedDebugJson;
+                    sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(out));
+                } catch (Exception e) {
+                    sendJsonResponse(exchange, 500, "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
                 }
             });
 
-            this.httpServer.createContext("/rpc", new HttpHandler() {
-                @Override
-                public void handle(HttpExchange exchange) throws IOException {
-                    try {
-                        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                            sendJsonResponse(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
-                            return;
+            this.httpServer.createContext("/rpc", exchange -> {
+                try {
+                    if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                        sendJsonResponse(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
+                        return;
+                    }
+                    final JsonObject req = readJsonBody(exchange);
+                    int droneId = req.has("droneId") ? req.get("droneId").getAsInt() : -1;
+                    String pName = req.has("player") && !req.get("player").isJsonNull() ? req.get("player").getAsString() : null;
+                    DroneController ctrl = droneId > 0 ? manager.getControllersById().get(droneId) : manager.getOrAnyDrone(pName);
+                    EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : null;
+                    String method = req.has("method") ? req.get("method").getAsString() : "";
+                    JsonObject args = req.has("args") && req.get("args").isJsonObject() ? req.getAsJsonObject("args") : req;
+                    if (req.has("loopId") && !args.has("loopId")) {
+                        args.add("loopId", req.get("loopId"));
+                    }
+                    // executeOnMainThread has its own per-method budget; the
+                    // socket read adds ~1s. Log + 504 instead of silently hanging.
+                    long rpcT0 = System.currentTimeMillis();
+                    final AtomicReference<JsonObject> rpcRef = new AtomicReference<>(null);
+                    final CountDownLatch rpcLatch = new CountDownLatch(1);
+                    CortexDroneMod.HTTP_POOL.submit(() -> {
+                        try {
+                            rpcRef.set(manager.getRpcDispatcher().executeOnMainThread(ctrl, p, method, args));
+                        } catch (Throwable t) {
+                            JsonObject err = new JsonObject();
+                            err.addProperty("ok", false);
+                            err.addProperty("error", t.toString());
+                            rpcRef.set(err);
+                        } finally {
+                            rpcLatch.countDown();
                         }
-                        final JsonObject req = readJsonBody(exchange);
-                        int droneId = req.has("droneId") ? req.get("droneId").getAsInt() : -1;
+                    });
+                    if (!rpcLatch.await(60, TimeUnit.SECONDS)) {
+                        logger.log("HTTP", ctrl, "RPC '" + method + "' via /rpc TIMEOUT after " + (System.currentTimeMillis() - rpcT0) + "ms", "droneId=" + droneId + " player=" + pName);
+                        sendJsonResponse(exchange, 504, "{\"ok\":false,\"error\":\"RPC timeout: " + escapeJson(method) + "\"}");
+                        return;
+                    }
+                    JsonObject res = rpcRef.get();
+                    if (res == null) {
+                        res = new JsonObject();
+                        res.addProperty("ok", false);
+                        res.addProperty("error", "RPC returned no result for method: " + method);
+                    }
+                    sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(res));
+                } catch (Exception e) {
+                    sendJsonResponse(exchange, 400, "{\"ok\":false,\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
+                }
+            });
+
+            this.httpServer.createContext("/action", exchange -> {
+                try {
+                    if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                        sendJsonResponse(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
+                        return;
+                    }
+                    final JsonObject req = readJsonBody(exchange);
+                    String actType = req.has("action") ? req.get("action").getAsString().toLowerCase() : "";
+                    if (actType.equals("js") || actType.equals("execute_js")) {
+                        int dId = req.has("droneId") ? req.get("droneId").getAsInt() : -1;
                         String pName = req.has("player") && !req.get("player").isJsonNull() ? req.get("player").getAsString() : null;
-                        DroneController ctrl = droneId > 0 ? manager.getControllersById().get(droneId) : manager.getOrAnyDrone(pName);
-                        EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : null;
-                        String method = req.has("method") ? req.get("method").getAsString() : "";
-                        JsonObject args = req.has("args") && req.get("args").isJsonObject() ? req.getAsJsonObject("args") : req;
-                        if (req.has("loopId") && !args.has("loopId")) {
-                            args.add("loopId", req.get("loopId"));
-                        }
-                        // executeOnMainThread has its own per-method budget; the
-                        // socket read adds ~1s. Log + 504 instead of silently hanging.
-                        long rpcT0 = System.currentTimeMillis();
-                        final AtomicReference<JsonObject> rpcRef = new AtomicReference<>(null);
-                        final CountDownLatch rpcLatch = new CountDownLatch(1);
-                        CortexDroneMod.HTTP_POOL.submit(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    rpcRef.set(manager.getRpcDispatcher().executeOnMainThread(ctrl, p, method, args));
-                                } catch (Throwable t) {
-                                    JsonObject err = new JsonObject();
-                                    err.addProperty("ok", false);
-                                    err.addProperty("error", t.toString());
-                                    rpcRef.set(err);
-                                } finally {
-                                    rpcLatch.countDown();
-                                }
+                        final DroneController ctrl = dId > 0 ? manager.getControllersById().get(dId) : manager.getOrAnyDrone(pName);
+                        final EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : null;
+                        final String code = req.has("code") ? req.get("code").getAsString() : "";
+                        // Bounded: never block the HTTP thread forever on a wedged node.
+                        final AtomicReference<JsonObject> jsRef = new AtomicReference<>(null);
+                        final CountDownLatch jsLatch = new CountDownLatch(1);
+                        CortexDroneMod.HTTP_POOL.submit(() -> {
+                            try {
+                                jsRef.set(manager.getCodeModeRuntime().executeJavaScript(ctrl, p, code));
+                            } catch (Throwable t) {
+                                JsonObject err = new JsonObject();
+                                err.addProperty("ok", false);
+                                err.addProperty("error", t.toString());
+                                jsRef.set(err);
+                            } finally {
+                                jsLatch.countDown();
                             }
                         });
-                        if (!rpcLatch.await(60, TimeUnit.SECONDS)) {
-                            logger.log("HTTP", ctrl, "RPC '" + method + "' via /rpc TIMEOUT after " + (System.currentTimeMillis() - rpcT0) + "ms", "droneId=" + droneId + " player=" + pName);
-                            sendJsonResponse(exchange, 504, "{\"ok\":false,\"error\":\"RPC timeout: " + escapeJson(method) + "\"}");
+                        if (!jsLatch.await(60, TimeUnit.SECONDS)) {
+                            logger.log("HTTP", ctrl, "JS execute via /action TIMEOUT after 60s", "droneId=" + dId + " player=" + pName);
+                            sendJsonResponse(exchange, 504, "{\"ok\":false,\"error\":\"JS engine timeout\"}");
                             return;
                         }
-                        JsonObject res = rpcRef.get();
-                        if (res == null) {
-                            res = new JsonObject();
-                            res.addProperty("ok", false);
-                            res.addProperty("error", "RPC returned no result for method: " + method);
+                        JsonObject jsRes = jsRef.get();
+                        if (jsRes == null) {
+                            jsRes = new JsonObject();
+                            jsRes.addProperty("ok", false);
+                            jsRes.addProperty("error", "JS engine returned no result");
                         }
-                        sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(res));
-                    } catch (Exception e) {
-                        sendJsonResponse(exchange, 400, "{\"ok\":false,\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
+                        sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(jsRes));
+                        return;
                     }
-                }
-            });
-
-            this.httpServer.createContext("/action", new HttpHandler() {
-                @Override
-                public void handle(HttpExchange exchange) throws IOException {
-                    try {
-                        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                            sendJsonResponse(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
-                            return;
+                    final AtomicReference<JsonObject> respRef = new AtomicReference<>(null);
+                    final CountDownLatch latch = new CountDownLatch(1);
+                    manager.getMod().queueMain(() -> {
+                        try {
+                            respRef.set(executeHttpAction(req));
+                        } catch (Exception ex) {
+                            JsonObject err = new JsonObject();
+                            err.addProperty("ok", false);
+                            err.addProperty("error", ex.getMessage());
+                            respRef.set(err);
+                        } finally {
+                            latch.countDown();
                         }
-                        final JsonObject req = readJsonBody(exchange);
-                        String actType = req.has("action") ? req.get("action").getAsString().toLowerCase() : "";
-                        if (actType.equals("js") || actType.equals("execute_js")) {
-                            int dId = req.has("droneId") ? req.get("droneId").getAsInt() : -1;
-                            String pName = req.has("player") && !req.get("player").isJsonNull() ? req.get("player").getAsString() : null;
-                            final DroneController ctrl = dId > 0 ? manager.getControllersById().get(dId) : manager.getOrAnyDrone(pName);
-                            final EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : null;
-                            final String code = req.has("code") ? req.get("code").getAsString() : "";
-                            // Bounded: never block the HTTP thread forever on a wedged node.
-                            final AtomicReference<JsonObject> jsRef = new AtomicReference<>(null);
-                            final CountDownLatch jsLatch = new CountDownLatch(1);
-                            CortexDroneMod.HTTP_POOL.submit(new Runnable() {
-                                @Override
-                                public void run() {
-                                    try {
-                                        jsRef.set(manager.getCodeModeRuntime().executeJavaScript(ctrl, p, code));
-                                    } catch (Throwable t) {
-                                        JsonObject err = new JsonObject();
-                                        err.addProperty("ok", false);
-                                        err.addProperty("error", t.toString());
-                                        jsRef.set(err);
-                                    } finally {
-                                        jsLatch.countDown();
-                                    }
-                                }
-                            });
-                            if (!jsLatch.await(60, TimeUnit.SECONDS)) {
-                                logger.log("HTTP", ctrl, "JS execute via /action TIMEOUT after 60s", "droneId=" + dId + " player=" + pName);
-                                sendJsonResponse(exchange, 504, "{\"ok\":false,\"error\":\"JS engine timeout\"}");
-                                return;
-                            }
-                            JsonObject jsRes = jsRef.get();
-                            if (jsRes == null) {
-                                jsRes = new JsonObject();
-                                jsRes.addProperty("ok", false);
-                                jsRes.addProperty("error", "JS engine returned no result");
-                            }
-                            sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(jsRes));
-                            return;
-                        }
-                        final AtomicReference<JsonObject> respRef = new AtomicReference<>(null);
-                        final CountDownLatch latch = new CountDownLatch(1);
-                        manager.getMod().queueMain(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    respRef.set(executeHttpAction(req));
-                                } catch (Exception ex) {
-                                    JsonObject err = new JsonObject();
-                                    err.addProperty("ok", false);
-                                    err.addProperty("error", ex.getMessage());
-                                    respRef.set(err);
-                                } finally {
-                                    latch.countDown();
-                                }
-                            }
-                        });
-                        latch.await(2500, TimeUnit.MILLISECONDS);
-                        JsonObject res = respRef.get();
-                        if (res == null) {
-                            res = new JsonObject();
-                            res.addProperty("ok", true);
-                            res.addProperty("queued", true);
-                        }
-                        sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(res));
-                    } catch (Exception e) {
-                        sendJsonResponse(exchange, 400, "{\"ok\":false,\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
+                    });
+                    latch.await(2500, TimeUnit.MILLISECONDS);
+                    JsonObject res = respRef.get();
+                    if (res == null) {
+                        res = new JsonObject();
+                        res.addProperty("ok", true);
+                        res.addProperty("queued", true);
                     }
+                    sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(res));
+                } catch (Exception e) {
+                    sendJsonResponse(exchange, 400, "{\"ok\":false,\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
                 }
             });
 

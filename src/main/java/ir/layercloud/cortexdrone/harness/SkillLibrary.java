@@ -137,8 +137,7 @@ public class SkillLibrary {
                 if (tf > 0) {
                     double docLen = dToks.size();
                     double termScore = idf * ((tf * (k1 + 1.0)) / (tf + k1 * (1.0 - b + b * (docLen / avgDocLen))));
-                    Double prev = bm25Scores.get(s.getName());
-                    bm25Scores.put(s.getName(), (prev != null ? prev : 0.0) + termScore);
+                    bm25Scores.compute(s.getName(), (k, prev) -> (prev != null ? prev : 0.0) + termScore);
                 }
             }
         }
@@ -148,15 +147,12 @@ public class SkillLibrary {
                 matched.add(s);
             }
         }
-        Collections.sort(matched, new Comparator<SkillEntry>() {
-            @Override
-            public int compare(SkillEntry a, SkillEntry b) {
-                double sa = bm25Scores.containsKey(a.getName()) ? bm25Scores.get(a.getName()) : 0.0;
-                double sb = bm25Scores.containsKey(b.getName()) ? bm25Scores.get(b.getName()) : 0.0;
-                int cmp = Double.compare(sb, sa);
-                if (cmp != 0) return cmp;
-                return Long.compare(b.getUpdatedAt(), a.getUpdatedAt());
-            }
+        matched.sort((a, b1) -> {
+            double sa = bm25Scores.getOrDefault(a.getName(), 0.0);
+            double sb = bm25Scores.getOrDefault(b1.getName(), 0.0);
+            int cmp = Double.compare(sb, sa);
+            if (cmp != 0) return cmp;
+            return Long.compare(b1.getUpdatedAt(), a.getUpdatedAt());
         });
         return matched.subList(0, Math.min(Math.max(1, limit), matched.size()));
     }

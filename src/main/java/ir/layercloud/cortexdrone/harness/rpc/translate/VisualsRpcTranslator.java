@@ -68,16 +68,31 @@ public final class VisualsRpcTranslator {
     private static String namedColor(String raw) {
         String value = raw == null ? "" : raw.toLowerCase()
                 .replace("-", "").replace("_", "").replace(" ", "");
-        if ("white".equals(value) || "normal".equals(value)
-                || "default".equals(value) || "warm".equals(value)) return "FFFFFF";
-        if ("red".equals(value)) return "FF3B30";
-        if ("orange".equals(value)) return "FF9500";
-        if ("yellow".equals(value)) return "FFD60A";
-        if ("green".equals(value)) return "34C759";
-        if ("cyan".equals(value) || "aqua".equals(value)) return "32ADE6";
-        if ("blue".equals(value)) return "0A84FF";
-        if ("purple".equals(value) || "violet".equals(value)) return "AF52DE";
-        if ("pink".equals(value)) return "FF2D55";
+        switch (value) {
+            case "white":
+            case "normal":
+            case "default":
+            case "warm":
+                return "FFFFFF";
+            case "red":
+                return "FF3B30";
+            case "orange":
+                return "FF9500";
+            case "yellow":
+                return "FFD60A";
+            case "green":
+                return "34C759";
+            case "cyan":
+            case "aqua":
+                return "32ADE6";
+            case "blue":
+                return "0A84FF";
+            case "purple":
+            case "violet":
+                return "AF52DE";
+            case "pink":
+                return "FF2D55";
+        }
         return null;
     }
 

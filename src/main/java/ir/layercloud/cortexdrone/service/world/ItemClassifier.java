@@ -333,17 +333,26 @@ public final class ItemClassifier {
         String disp = getBlockDisplayName(b, normMeta);
         String id = getBlockIdentifier(b, normMeta);
 
-        if (f.equals("all non air") || f.equals("*")) {
-            return b != Blocks.air;
-        }
-        if (f.equals("ore") || f.equals("ores") || f.equals("vein") || f.equals("all")) {
-            return isOreBlock(b, normMeta);
-        }
-        if (f.equals("tree") || f.equals("trees") || f.equals("wood") || f.equals("log") || f.equals("logs")) {
-            return isLogBlock(b);
-        }
-        if (f.equals("crop") || f.equals("crops") || f.equals("plant") || f.equals("plants")) {
-            return isCropOrReedBlock(b);
+        switch (f) {
+            case "all non air":
+            case "*":
+                return b != Blocks.air;
+            case "ore":
+            case "ores":
+            case "vein":
+            case "all":
+                return isOreBlock(b, normMeta);
+            case "tree":
+            case "trees":
+            case "wood":
+            case "log":
+            case "logs":
+                return isLogBlock(b);
+            case "crop":
+            case "crops":
+            case "plant":
+            case "plants":
+                return isCropOrReedBlock(b);
         }
         if (id.contains("ore" + f.replace(" ", ""))) {
             return true;
@@ -380,12 +389,22 @@ public final class ItemClassifier {
         String[] clauses = f.split("[,|/]+|\\s+or\\s+");
         for (String rawTok : clauses) {
             String tok = rawTok.trim().replace('_', ' ');
-            if (tok.isEmpty()) continue;
-            if (tok.equals("all") || tok.equals("mob") || tok.equals("mobs") || tok.equals("any") || tok.equals("these") || tok.equals("nearby")) {
-                return true;
-            }
-            if (tok.equals("animal") || tok.equals("animals") || tok.equals("passive") || tok.equals("food")) {
-                if (RegistryIntrospector.isPassiveEntity(el)) return true;
+            switch (tok) {
+                case "":
+                    continue;
+                case "all":
+                case "mob":
+                case "mobs":
+                case "any":
+                case "these":
+                case "nearby":
+                    return true;
+                case "animal":
+                case "animals":
+                case "passive":
+                case "food":
+                    if (RegistryIntrospector.isPassiveEntity(el)) return true;
+                    break;
             }
             if (tok.equals("hostile") || tok.equals("hostiles") || tok.equals("monster") || tok.equals("monsters")
                     || LexicalItemMatcher.fuzzyTokenMatches("mutant", tok) || tok.equals("enemy") || tok.equals("enemies")) {

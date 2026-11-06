@@ -102,83 +102,132 @@ public class MasterRpcHandler implements RpcHandler {
         String op = str(args, "op", "block").trim().toLowerCase();
         String method;
         RpcHandler handler;
-        if (op.equals("block") || op.equals("getblock")) {
-            method = "get_block";
-            handler = this.worldReader;
-        } else if (op.equals("box") || op.equals("blocksinbox")) {
-            method = "get_blocks_in_box";
-            handler = this.worldReader;
-        } else if (op.equals("top") || op.equals("topy")) {
-            method = "get_top_y";
-            handler = this.worldReader;
-        } else if (op.equals("room") || op.equals("scanroom")) {
-            method = "scan_room";
-            handler = this.worldReader;
-        } else if (op.equals("blocks") || op.equals("scanblocks")) {
-            method = "scan_blocks";
-            handler = this.worldReader;
-        } else if (op.equals("veins") || op.equals("scanveins")) {
-            method = "scan_veins";
-            handler = this.worldReader;
-        } else if (op.equals("distant") || op.equals("finddistant")) {
-            method = "find_distant";
-            handler = this.worldReader;
-        } else if (op.equals("entities") || op.equals("getentities")) {
-            method = "get_entities";
-            handler = this.worldReader;
-        } else if (op.equals("drops") || op.equals("getdrops")) {
-            method = "get_drops";
-            handler = this.worldReader;
-        } else if (op.equals("raycast")) {
-            method = "raycast_player";
-            handler = this.worldReader;
-        } else if (op.equals("buildsite") || op.equals("findbuildsite")) {
-            method = "find_build_site";
-            handler = this.worldReader;
-        } else if (op.equals("plan") || op.equals("planstructure")) {
-            method = "plan_structure";
-            handler = this.worldReader;
-        } else if (op.equals("player") || op.equals("getplayer")) {
-            method = "get_player";
-            handler = this.inventoryReader;
-        } else if (op.equals("playerinventory")) {
-            method = "get_player_inventory";
-            handler = this.inventoryReader;
-        } else if (op.equals("recipe") || op.equals("recipes") || op.equals("getrecipes")) {
-            method = "get_recipes";
-            handler = this.inventoryReader;
-        } else if (op.equals("chest") || op.equals("getchest")) {
-            method = "get_chest";
-            handler = this.inventoryReader;
-        } else if (op.equals("chests") || op.equals("scanchests")) {
-            method = "scan_chests";
-            handler = this.inventoryReader;
-        } else if (op.equals("finditem")) {
-            method = "find_item";
-            handler = this.inventoryReader;
-        } else if (op.equals("finditeminchests")) {
-            method = "find_item_in_chests";
-            handler = this.inventoryReader;
-        } else if (op.equals("furnaces") || op.equals("scanfurnaces")) {
-            method = "scan_furnaces";
-            handler = this.inventoryReader;
-        } else if (op.equals("machinerecipes")) {
-            method = "get_machine_recipes";
-            handler = this.inventoryReader;
-        } else if (op.equals("machinerecipe")) {
-            method = "get_machine_recipe";
-            handler = this.inventoryReader;
-        } else if (op.equals("machines") || op.equals("scanmachines")) {
-            method = "scan_machines";
-            handler = this.inventoryReader;
-        } else if (op.equals("machineingredients")) {
-            method = "machine_ingredients";
-            handler = this.inventoryReader;
-        } else if (op.equals("breadcrumbs")) return this.breadcrumbReader.read(ctrl, args);
-        else if (op.equals("doc") || op.equals("lookup") || op.equals("lookupdoc")) {
-            method = "lookup_doc";
-            handler = this.worldReader;
-        } else return error("Unknown inspect op: " + op);
+        switch (op) {
+            case "block":
+            case "getblock":
+                method = "get_block";
+                handler = this.worldReader;
+                break;
+            case "box":
+            case "blocksinbox":
+                method = "get_blocks_in_box";
+                handler = this.worldReader;
+                break;
+            case "top":
+            case "topy":
+                method = "get_top_y";
+                handler = this.worldReader;
+                break;
+            case "room":
+            case "scanroom":
+                method = "scan_room";
+                handler = this.worldReader;
+                break;
+            case "blocks":
+            case "scanblocks":
+                method = "scan_blocks";
+                handler = this.worldReader;
+                break;
+            case "veins":
+            case "scanveins":
+                method = "scan_veins";
+                handler = this.worldReader;
+                break;
+            case "distant":
+            case "finddistant":
+                method = "find_distant";
+                handler = this.worldReader;
+                break;
+            case "entities":
+            case "getentities":
+                method = "get_entities";
+                handler = this.worldReader;
+                break;
+            case "drops":
+            case "getdrops":
+                method = "get_drops";
+                handler = this.worldReader;
+                break;
+            case "raycast":
+                method = "raycast_player";
+                handler = this.worldReader;
+                break;
+            case "buildsite":
+            case "findbuildsite":
+                method = "find_build_site";
+                handler = this.worldReader;
+                break;
+            case "plan":
+            case "planstructure":
+                method = "plan_structure";
+                handler = this.worldReader;
+                break;
+            case "player":
+            case "getplayer":
+                method = "get_player";
+                handler = this.inventoryReader;
+                break;
+            case "playerinventory":
+                method = "get_player_inventory";
+                handler = this.inventoryReader;
+                break;
+            case "recipe":
+            case "recipes":
+            case "getrecipes":
+                method = "get_recipes";
+                handler = this.inventoryReader;
+                break;
+            case "chest":
+            case "getchest":
+                method = "get_chest";
+                handler = this.inventoryReader;
+                break;
+            case "chests":
+            case "scanchests":
+                method = "scan_chests";
+                handler = this.inventoryReader;
+                break;
+            case "finditem":
+                method = "find_item";
+                handler = this.inventoryReader;
+                break;
+            case "finditeminchests":
+                method = "find_item_in_chests";
+                handler = this.inventoryReader;
+                break;
+            case "furnaces":
+            case "scanfurnaces":
+                method = "scan_furnaces";
+                handler = this.inventoryReader;
+                break;
+            case "machinerecipes":
+                method = "get_machine_recipes";
+                handler = this.inventoryReader;
+                break;
+            case "machinerecipe":
+                method = "get_machine_recipe";
+                handler = this.inventoryReader;
+                break;
+            case "machines":
+            case "scanmachines":
+                method = "scan_machines";
+                handler = this.inventoryReader;
+                break;
+            case "machineingredients":
+                method = "machine_ingredients";
+                handler = this.inventoryReader;
+                break;
+            case "breadcrumbs":
+                return this.breadcrumbReader.read(ctrl, args);
+            case "doc":
+            case "lookup":
+            case "lookupdoc":
+                method = "lookup_doc";
+                handler = this.worldReader;
+                break;
+            default:
+                return error("Unknown inspect op: " + op);
+        }
         return handler.handle(ctrl, player, method, args);
     }
 
@@ -261,25 +310,55 @@ public class MasterRpcHandler implements RpcHandler {
     private JsonObject visuals(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         String kind = str(args, "kind", "led").trim().toLowerCase();
         String method;
-        if (kind.equals("led") || kind.equals("color")) method = "set_led";
-        else if (kind.equals("ledeffect")) method = "led_effect";
-        else if (kind.equals("light") || kind.equals("aura")) method = "set_light";
-        else if (kind.equals("particles")) method = "spawn_particles";
-        else if (kind.equals("sound")) method = "play_sound";
-        else if (kind.equals("note")) method = "play_note";
-        else if (kind.equals("status")) method = "set_status_text";
-        else if (kind.equals("say")) method = "say";
-        else return error("Unknown visuals kind: " + kind);
+        switch (kind) {
+            case "led":
+            case "color":
+                method = "set_led";
+                break;
+            case "ledeffect":
+                method = "led_effect";
+                break;
+            case "light":
+            case "aura":
+                method = "set_light";
+                break;
+            case "particles":
+                method = "spawn_particles";
+                break;
+            case "sound":
+                method = "play_sound";
+                break;
+            case "note":
+                method = "play_note";
+                break;
+            case "status":
+                method = "set_status_text";
+                break;
+            case "say":
+                method = "say";
+                break;
+            default:
+                return error("Unknown visuals kind: " + kind);
+        }
         return this.manager.getActionRpcTranslator().handle(ctrl, player, method, args);
     }
 
     private JsonObject skills(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         String op = str(args, "op", "search").trim().toLowerCase();
         String method;
-        if (op.equals("search")) method = "search_skills";
-        else if (op.equals("list")) method = "list_skills";
-        else if (op.equals("save")) method = "save_skill";
-        else return error("Unknown skills op: " + op);
+        switch (op) {
+            case "search":
+                method = "search_skills";
+                break;
+            case "list":
+                method = "list_skills";
+                break;
+            case "save":
+                method = "save_skill";
+                break;
+            default:
+                return error("Unknown skills op: " + op);
+        }
         return this.manager.getActionRpcTranslator().skills(ctrl, player, method, args);
     }
 

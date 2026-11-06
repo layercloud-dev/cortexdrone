@@ -117,16 +117,16 @@ final class MachineRecipeRanker {
 
     static void addToTotals(java.util.Map<String, Integer> totals, ItemStack st) {
         String key = totalsKey(st);
-        totals.put(key, (totals.containsKey(key) ? totals.get(key) : 0) + st.stackSize);
+        totals.put(key, (totals.getOrDefault(key, 0)) + st.stackSize);
         for (String tag : ItemClassifier.getOreDictNames(st)) {
             String tkey = "dict:" + tag.toLowerCase();
-            totals.put(tkey, (totals.containsKey(tkey) ? totals.get(tkey) : 0) + st.stackSize);
+            totals.put(tkey, (totals.getOrDefault(tkey, 0)) + st.stackSize);
         }
         BlockLike bl = toBlockLike(st);
         if (bl != null) {
             for (String tag : ItemClassifier.getOreDictNames(bl.getBlock(), bl.getMeta())) {
                 String tkey = "dict:" + tag.toLowerCase();
-                totals.put(tkey, (totals.containsKey(tkey) ? totals.get(tkey) : 0) + st.stackSize);
+                totals.put(tkey, (totals.getOrDefault(tkey, 0)) + st.stackSize);
             }
         }
     }
@@ -186,7 +186,7 @@ final class MachineRecipeRanker {
             int got = 0;
             if ("dict".equals(type)) {
                 String key = "dict:" + in.get("dict").getAsString().toLowerCase();
-                got = totals.containsKey(key) ? totals.get(key) : 0;
+                got = totals.getOrDefault(key, 0);
             } else if ("item".equals(type)) {
                 String reg = in.has("registryName") ? in.get("registryName").getAsString() : "";
                 int meta = in.has("meta") ? in.get("meta").getAsInt() : 0;
@@ -239,15 +239,12 @@ final class MachineRecipeRanker {
             if (r.displayName != null && r.displayName.toLowerCase().contains(q)) best = Math.max(best, 50);
             if (best > 0) scored.add(r);
         }
-        java.util.Collections.sort(scored, new Comparator<MachineRecipeService.NormalizedRecipe>() {
-            @Override
-            public int compare(MachineRecipeService.NormalizedRecipe a, MachineRecipeService.NormalizedRecipe b) {
-                int doc = Integer.compare(b.duration, a.duration);
-                if (doc != 0) return doc;
-                int pin = Integer.compare(a.inputs.size(), b.inputs.size());
-                if (pin != 0) return pin;
-                return Long.compare(a.power, b.power);
-            }
+        scored.sort((a, b) -> {
+            int doc = Integer.compare(b.duration, a.duration);
+            if (doc != 0) return doc;
+            int pin = Integer.compare(a.inputs.size(), b.inputs.size());
+            if (pin != 0) return pin;
+            return Long.compare(a.power, b.power);
         });
         return scored;
     }

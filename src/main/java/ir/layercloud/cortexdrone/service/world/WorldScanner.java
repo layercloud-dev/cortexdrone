@@ -157,7 +157,6 @@ public class WorldScanner {
             try {
                 dimId = world.provider.dimensionId;
             } catch (RuntimeException ignored) {
-                dimId = 0;
             }
         }
         boolean cacheable = radius >= 8 && radius <= NEARBY_RESOURCES_MAX_RADIUS;

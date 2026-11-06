@@ -137,12 +137,7 @@ public class RpcDispatcher {
             return busy;
         }
         try {
-            JsonObject res = this.manager.callOnMainThread(new Callable<JsonObject>() {
-                @Override
-                public JsonObject call() {
-                    return executeSync(ctrl, defaultPlayer, method, args != null ? args : new JsonObject());
-                }
-            }, getTimeoutForMethod(m, workArgs));
+            JsonObject res = this.manager.callOnMainThread(() -> executeSync(ctrl, defaultPlayer, method, args != null ? args : new JsonObject()), getTimeoutForMethod(m, workArgs));
             if (res == null) {
                 JsonObject err = new JsonObject();
                 err.addProperty("ok", false);
@@ -279,20 +274,17 @@ public class RpcDispatcher {
         this.jobByKey.put(queued.id, queued);
         // Push the first slice onto the normal main queue so the HTTP caller
         // gets partial confirmation quickly; the rest drains from onServerTickEnd.
-        this.manager.getMod().queueMain(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    ScanJob job = queued;
-                    drainActiveJobWithBudget(job, MAX_SLICE_MS);
-                } catch (Throwable t) {
-                    JsonObject err = new JsonObject();
-                    err.addProperty("ok", false);
-                    err.addProperty("error", t.toString());
-                    queued.result = err;
-                    queued.done = true;
-                    finishJob(queued);
-                }
+        this.manager.getMod().queueMain(() -> {
+            try {
+                ScanJob job = queued;
+                drainActiveJobWithBudget(job, MAX_SLICE_MS);
+            } catch (Throwable t) {
+                JsonObject err = new JsonObject();
+                err.addProperty("ok", false);
+                err.addProperty("error", t.toString());
+                queued.result = err;
+                queued.done = true;
+                finishJob(queued);
             }
         });
         JsonObject accepted = new JsonObject();
@@ -331,12 +323,7 @@ public class RpcDispatcher {
 
     private static final class CollectionsSortHelper {
         static void sortByDistanceSq(List<int[]> list) {
-            Collections.sort(list, new Comparator<int[]>() {
-                @Override
-                public int compare(int[] a, int[] b) {
-                    return Integer.compare(a[4], b[4]);
-                }
-            });
+            list.sort((a, b) -> Integer.compare(a[4], b[4]));
         }
     }
 

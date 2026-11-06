@@ -166,16 +166,13 @@ public class AIDroneManager {
         final AtomicReference<T> resRef = new AtomicReference<>(null);
         final AtomicReference<Exception> errRef = new AtomicReference<>(null);
         final CountDownLatch latch = new CountDownLatch(1);
-        this.mod.queueMain(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    resRef.set(callable.call());
-                } catch (Exception e) {
-                    errRef.set(e);
-                } finally {
-                    latch.countDown();
-                }
+        this.mod.queueMain(() -> {
+            try {
+                resRef.set(callable.call());
+            } catch (Exception e) {
+                errRef.set(e);
+            } finally {
+                latch.countDown();
             }
         });
         latch.await(timeoutMs, TimeUnit.MILLISECONDS);
@@ -494,11 +491,7 @@ public class AIDroneManager {
         if (duid != null) {
             this.despawnedUuids.add(duid);
             if (this.config != null && this.config.getSavedDrones() != null) {
-                Iterator<AIConfig.SavedDroneInfo> sit = this.config.getSavedDrones().iterator();
-                while (sit.hasNext()) {
-                    AIConfig.SavedDroneInfo s = sit.next();
-                    if (s != null && duid.toString().equals(s.getUuid())) sit.remove();
-                }
+                this.config.getSavedDrones().removeIf(s -> s != null && duid.toString().equals(s.getUuid()));
             }
         }
         d.setDead();
@@ -559,12 +552,7 @@ public class AIDroneManager {
 
     public void handleNaturalInstruction(final EntityPlayerMP player, final String prompt) {
         if (!isServerThread()) {
-            dispatchToServerThread(new Runnable() {
-                @Override
-                public void run() {
-                    handleNaturalInstruction(player, prompt);
-                }
-            });
+            dispatchToServerThread(() -> handleNaturalInstruction(player, prompt));
             return;
         }
         DroneController ctrl = player != null ? getPlayerDrone(player.getCommandSenderName()) : null;
@@ -580,12 +568,7 @@ public class AIDroneManager {
 
     public void handleNaturalInstruction(final EntityPlayerMP player, final DroneController ctrl, final String prompt) {
         if (!isServerThread()) {
-            dispatchToServerThread(new Runnable() {
-                @Override
-                public void run() {
-                    handleNaturalInstruction(player, ctrl, prompt);
-                }
-            });
+            dispatchToServerThread(() -> handleNaturalInstruction(player, ctrl, prompt));
             return;
         }
         this.taskCoordinator.handle(player, ctrl, prompt);
@@ -600,12 +583,9 @@ public class AIDroneManager {
 
     private void dispatchToServerThread(final Runnable task) {
         try {
-            this.callOnMainThread(new java.util.concurrent.Callable<Void>() {
-                @Override
-                public Void call() {
-                    task.run();
-                    return null;
-                }
+            this.callOnMainThread((Callable<Void>) () -> {
+                task.run();
+                return null;
             }, 5000L);
         } catch (Exception e) {
             this.logger.log("ERROR", null, "Failed to dispatch instruction to server thread", e.toString());

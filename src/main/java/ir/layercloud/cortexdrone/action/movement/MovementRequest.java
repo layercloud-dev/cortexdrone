@@ -22,7 +22,7 @@ public class MovementRequest {
     int standoffY;
     int standoffZ;
 
-    String route;
+    MovementRoute route;
     int depth;
     int limit;
 

@@ -75,7 +75,10 @@ use Lombok accessors, and actions/services use constructor injection from
 `navigation/NavContext` request snapshot. Movement actions live in
 `action/movement/impl/`: `NavigateAction`, `TunnelAction`, `DigUpAction`,
 `DigDownAction` and `BreadcrumbsAction`. `MovementService` is the only movement
-JSON boundary.
+JSON boundary and the decision point: it selects the action from the explicit
+operation and requested route. Each action owns its target/route plan; shared
+target resolution and the common navigation start live in the service. There is
+no separate movement planner/helper that decides between actions.
 
 The legacy one-shot executors (`AnvilService`, `MachineCraftExecutor`,
 `SmeltingService`, `ChestSorter`) and their batch queues (fluid scoop/place,

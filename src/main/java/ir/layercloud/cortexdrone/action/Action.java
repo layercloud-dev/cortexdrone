@@ -1,10 +1,9 @@
 package ir.layercloud.cortexdrone.action;
 
 import ir.layercloud.cortexdrone.context.ActionContext;
-import ir.layercloud.cortexdrone.service.action.ActionService;
 
 /**
- * A command managed by an {@link ActionService}.
+ * A command managed by an action service.
  *
  * <p>The service creates the action, executes it once, ticks it while its
  * context is retained, and releases it when it finishes. Actions contain the

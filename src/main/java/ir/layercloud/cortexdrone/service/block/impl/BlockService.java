@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.service.action.block.impl;
+package ir.layercloud.cortexdrone.service.block.impl;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
@@ -10,10 +10,10 @@ import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.action.block.impl.BreakBlockAction;
 import ir.layercloud.cortexdrone.action.block.impl.PlaceBlockAction;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.context.action.block.impl.BlockContext;
+import ir.layercloud.cortexdrone.context.block.impl.BlockContext;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.action.ActionService;
+import ir.layercloud.cortexdrone.service.ActionService;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**

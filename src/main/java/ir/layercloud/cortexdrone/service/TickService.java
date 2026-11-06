@@ -9,7 +9,7 @@ import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
-import ir.layercloud.cortexdrone.service.action.effect.impl.EffectService;
+import ir.layercloud.cortexdrone.service.effect.impl.EffectService;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;

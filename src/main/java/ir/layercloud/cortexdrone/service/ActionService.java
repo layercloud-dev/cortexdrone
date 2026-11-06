@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.service.action;
+package ir.layercloud.cortexdrone.service;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.Action;

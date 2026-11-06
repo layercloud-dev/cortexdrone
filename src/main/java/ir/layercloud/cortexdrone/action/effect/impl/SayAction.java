@@ -4,7 +4,7 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.effect.EffectRequest;
 import ir.layercloud.cortexdrone.action.effect.EffectResult;
-import ir.layercloud.cortexdrone.context.action.effect.impl.EffectContext;
+import ir.layercloud.cortexdrone.context.effect.impl.EffectContext;
 import lombok.RequiredArgsConstructor;
 
 /** Single-use command: say one chat message. */

@@ -4,7 +4,7 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.context.action.block.impl.BlockContext;
+import ir.layercloud.cortexdrone.context.block.impl.BlockContext;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.world.ItemClassifier;

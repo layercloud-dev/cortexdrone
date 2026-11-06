@@ -3,7 +3,7 @@ package ir.layercloud.cortexdrone.action.movement.impl;
 import ir.layercloud.cortexdrone.action.movement.MovementAction;
 import ir.layercloud.cortexdrone.action.movement.MovementRequest;
 import ir.layercloud.cortexdrone.action.movement.MovementResult;
-import ir.layercloud.cortexdrone.context.action.movement.impl.MovementContext;
+import ir.layercloud.cortexdrone.context.movement.impl.MovementContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import java.util.ArrayList;
 import java.util.List;

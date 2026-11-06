@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.context.action.effect.impl;
+package ir.layercloud.cortexdrone.context.effect.impl;
 
 import ir.layercloud.cortexdrone.action.effect.EffectResult;
 import ir.layercloud.cortexdrone.context.ActionContextBase;

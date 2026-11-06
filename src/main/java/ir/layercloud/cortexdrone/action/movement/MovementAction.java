@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.action.movement;
 
 import ir.layercloud.cortexdrone.action.Action;
-import ir.layercloud.cortexdrone.context.action.movement.impl.MovementContext;
+import ir.layercloud.cortexdrone.context.movement.impl.MovementContext;
 
 /**
  * Base for movement actions. Navigation progress and completion are action

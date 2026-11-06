@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.service.action.effect.impl;
+package ir.layercloud.cortexdrone.service.effect.impl;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -16,10 +16,10 @@ import ir.layercloud.cortexdrone.action.effect.impl.SetStatusTextAction;
 import ir.layercloud.cortexdrone.action.effect.impl.SpawnParticlesAction;
 import ir.layercloud.cortexdrone.codemode.SkillLibrary;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.context.action.effect.impl.EffectContext;
+import ir.layercloud.cortexdrone.context.effect.impl.EffectContext;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.action.ActionService;
+import ir.layercloud.cortexdrone.service.ActionService;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;

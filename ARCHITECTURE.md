@@ -23,7 +23,7 @@ categorized `action` package. The base is deliberately split in three parts:
   executed once, optionally ticked while active, then discarded;
 - `context.ActionContext` / `context.ActionContextBase` — mutable state for that
   one execution;
-- `service.action.ActionService<C>` — the long-lived manager that parses the
+- `service.ActionService<C>` — the long-lived manager that parses the
   request, creates the action, executes it, serializes the result, and
   retains/reaps the action/context pair.
 
@@ -31,10 +31,10 @@ categorized `action` package. The base is deliberately split in three parts:
 implement `Action` and contain no operation logic; they manage the action
 lifecycle. Each category owns one service and one context type:
 
-- `service.action.movement.impl.MovementService` + `context.action.movement.impl.MovementContext` — route selection and breadcrumbs
-- `service.action.block.impl.BlockService` + `context.action.block.impl.BlockContext` — one-block break and one-block place
-- `service.action.interact.impl.InteractionService` + `context.action.interact.impl.InteractionContext` — block interaction, item use and attack
-- `service.action.effect.impl.EffectService` + `context.action.effect.impl.EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
+- `service.movement.impl.MovementService` + `context.movement.impl.MovementContext` — route selection and breadcrumbs
+- `service.block.impl.BlockService` + `context.block.impl.BlockContext` — one-block break and one-block place
+- `service.interact.impl.InteractionService` + `context.interact.impl.InteractionContext` — block interaction, item use and attack
+- `service.effect.impl.EffectService` + `context.effect.impl.EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
 - `service.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
 
@@ -52,9 +52,9 @@ types are kept out of `action`:
 ```text
 action/<category>/impl/              actions
 context/ActionContext*.java          context base types
-context/action/<category>/impl/      action contexts
-service/action/ActionService.java    action-service base type
-service/action/<category>/impl/      action services
+context/<category>/impl/             action contexts
+service/ActionService.java           action-service base type
+service/<category>/impl/             action services
 service/combat/                      non-dispatch domain services
 ```
 

@@ -35,7 +35,8 @@ lifecycle. Each category owns one service and one context type:
 - `service.building.impl.BuildingService` + `context.block.impl.BlockContext` — one-block break, one-block place and the mining loop
 - `service.interact.impl.InteractionService` + `context.interact.impl.InteractionContext` — block interaction, item use and attack
 - `service.effect.impl.EffectService` + `context.effect.impl.EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
-- `service.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
+- `service.inventory.impl.InventoryActionService` + `context.inventory.impl.InventoryContext` — transfer and craft actions
+- `service.combat.CombatService` — internal hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
 
 All operation behavior lives in action classes under `action/<category>/impl/`.
@@ -46,6 +47,11 @@ complete placement. Block break/place behavior and the long-running mining loop
 live in the domain service `service/building/impl/BuildingService`; the AI composes
 mining as an `inspect -> moveTo -> breakBlock` skill (see
 `src/main/resources/skills/mine_blocks.json`).
+
+Inventory mutations (`transfer` and `craft`) are actions under
+`action/inventory/impl/`, managed by `InventoryActionService`. Read-only
+inventory/chest/furnace/machine inspection stays in
+`codemode/rpc/impl/InventoryRpcHandler`.
 
 Project convention: interfaces and abstract bases live at the package root;
 concrete implementations live under an `impl` subpackage. Defaults and concrete

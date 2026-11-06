@@ -35,7 +35,7 @@ public class MasterRpcHandler implements RpcHandler {
     public MasterRpcHandler(AIDroneManager manager) {
         this.manager = manager;
         this.worldReader = new WorldRpcHandler(manager, manager.getWorldScanner());
-        this.inventoryReader = new InventoryRpcHandler(manager, manager.getInventoryService());
+        this.inventoryReader = new InventoryRpcHandler(manager.getInventoryService());
     }
 
     @Override
@@ -203,21 +203,11 @@ public class MasterRpcHandler implements RpcHandler {
     }
 
     private JsonObject transfer(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
-        String op = str(args, "op", "move").trim().toLowerCase();
-        String method;
-        if (op.equals("move") || op.equals("moveslot")) method = "move_slot";
-        else if (op.equals("withdraw") || op.equals("withdrawchest")) method = "withdraw_chest";
-        else if (op.equals("deposit") || op.equals("depositchest")) method = "deposit_chest";
-        else if (op.equals("give") || op.equals("givetoplayer")) method = "give_to_player";
-        else if (op.equals("take") || op.equals("takefromplayer")) method = "take_from_player";
-        else if (op.equals("drop")) method = "drop";
-        else if (op.equals("suck") || op.equals("suckitems")) method = "suck_items";
-        else return error("Unknown transfer op: " + op);
-        return this.inventoryReader.handle(ctrl, player, method, args);
+        return this.manager.getActionRegistry().handle(ctrl, player, "transfer", args);
     }
 
     private JsonObject craft(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
-        return this.inventoryReader.handle(ctrl, player, "craft", args);
+        return this.manager.getActionRegistry().handle(ctrl, player, "craft", args);
     }
 
     private JsonObject effect(DroneController ctrl, EntityPlayerMP player, JsonObject args) {

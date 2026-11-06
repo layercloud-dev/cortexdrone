@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ir.layercloud.cortexdrone.action.ActionRegistry;
 import ir.layercloud.cortexdrone.service.building.impl.BuildingService;
+import ir.layercloud.cortexdrone.service.inventory.impl.InventoryActionService;
 import ir.layercloud.cortexdrone.service.combat.CombatService;
 import ir.layercloud.cortexdrone.codemode.CodeModeRuntime;
 import ir.layercloud.cortexdrone.codemode.LlmAgentService;
@@ -63,6 +64,7 @@ public class AIDroneManager {
     private final MovementService movementService;
     private final EffectService effectService;
     private final InteractionService interactionService;
+    private final InventoryActionService inventoryActionService;
     private final CombatService combatService;
     private final ActionRegistry actionRegistry;
     private final DocLookupService docLookupService;
@@ -88,6 +90,7 @@ public class AIDroneManager {
         this.inventoryService = new InventoryService(this.logger);
         this.effectService = new EffectService(this, this.logger);
         this.interactionService = new InteractionService(this.inventoryService);
+        this.inventoryActionService = new InventoryActionService(this, this.inventoryService);
         this.buildingService = new BuildingService(this, this.logger, this.pathfinder, this.inventoryService);
         this.movementService = new MovementService(this);
         this.combatService = new CombatService(this, this.logger, this.pathfinder);
@@ -95,6 +98,7 @@ public class AIDroneManager {
         this.actionRegistry.register(this.movementService);
         this.actionRegistry.register(this.buildingService);
         this.actionRegistry.register(this.interactionService);
+        this.actionRegistry.register(this.inventoryActionService);
         this.actionRegistry.register(this.effectService);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));

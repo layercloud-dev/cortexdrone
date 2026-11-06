@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.model;
+package ir.layercloud.cortexdrone.service.world;
 
 import lombok.Getter;
 import lombok.ToString;

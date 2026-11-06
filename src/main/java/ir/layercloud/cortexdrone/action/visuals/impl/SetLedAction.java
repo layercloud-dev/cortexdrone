@@ -4,8 +4,8 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
 import ir.layercloud.cortexdrone.context.impl.VisualsContext;
-import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.model.LedEffectEngine;
+import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.service.visuals.LedEffectEngine;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 
@@ -30,7 +30,9 @@ public final class SetLedAction implements Action<VisualsContext> {
                 controller.customLedColor = null;
             } else {
                 controller.ledEffect = normalized;
-                drone.lightColor_$eq(controller.resolveEffectiveLedColor(drone.lightColor()));
+                drone.lightColor_$eq(LedEffectEngine.resolveEffectiveLedColor(
+                        controller.ledEffect, controller.ledEffectTick,
+                        controller.customLedColor, drone.lightColor()));
             }
             context.result(VisualsResult.success(
                     "effect", controller.ledEffect,
@@ -53,7 +55,7 @@ public final class SetLedAction implements Action<VisualsContext> {
         if (request.getHue() != null) {
             float saturation = request.getSaturation() != null ? request.getSaturation() : 1.0f;
             float brightness = request.getBrightness() != null ? request.getBrightness() : 1.0f;
-            int packed = DroneController.hsvToRgbInt(request.getHue(), saturation, brightness);
+            int packed = LedEffectEngine.hsvToRgbInt(request.getHue(), saturation, brightness);
             controller.customLedColor = packed;
             controller.ledEffect = "NONE";
             drone.lightColor_$eq(packed);
@@ -66,7 +68,9 @@ public final class SetLedAction implements Action<VisualsContext> {
             String upper = raw.toUpperCase();
             if (LedEffectEngine.isEffectName(upper)) {
                 controller.ledEffect = upper;
-                drone.lightColor_$eq(controller.resolveEffectiveLedColor(drone.lightColor()));
+                drone.lightColor_$eq(LedEffectEngine.resolveEffectiveLedColor(
+                        controller.ledEffect, controller.ledEffectTick,
+                        controller.customLedColor, drone.lightColor()));
                 context.result(VisualsResult.success(
                         "effect", controller.ledEffect,
                         "color", color(drone)));
@@ -78,7 +82,7 @@ public final class SetLedAction implements Action<VisualsContext> {
                 context.result(VisualsResult.success("effect", "NONE"));
                 return;
             }
-            Integer parsed = DroneController.parseNamedOrHexColor(raw);
+            Integer parsed = LedEffectEngine.parseNamedOrHexColor(raw);
             int packed = parsed != null ? parsed : 0x00FFFF;
             controller.customLedColor = packed;
             controller.ledEffect = "NONE";

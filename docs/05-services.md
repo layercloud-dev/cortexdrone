@@ -246,7 +246,16 @@ server-side physics step, obstruction description, nearby leaf clearing, stable
 follow anchor, mining standoff search, blocking tunnel block search, player-look
 test, headroom.
 
-## 5. Service boundaries and caches
+## 5. Visuals service (`service/visuals`)
+
+### `LedEffectEngine`
+
+Pure functions only: named/hex color parsing, HSV→RGB, effect-name validation,
+and the procedural LED animation resolver (RAINBOW, DISCO, POLICE, PULSE/BREATHE,
+STROBE, FIRE, OCEAN, HEARTBEAT, MATRIX). `SetLedAction` and `TickManager` call it;
+it holds no state.
+
+## 6. Service boundaries and caches
 
 | Service | Cache/state |
 | --- | --- |

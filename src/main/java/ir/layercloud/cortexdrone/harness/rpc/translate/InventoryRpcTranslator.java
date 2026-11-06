@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
 import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
-import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 

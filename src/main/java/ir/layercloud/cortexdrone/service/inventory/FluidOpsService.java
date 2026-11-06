@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.service.inventory;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.RegistryIntrospector;
 import lombok.RequiredArgsConstructor;

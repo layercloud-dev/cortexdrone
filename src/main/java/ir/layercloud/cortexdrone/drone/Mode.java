@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.model;
+package ir.layercloud.cortexdrone.drone;
 
 public enum Mode {
     FOLLOW,

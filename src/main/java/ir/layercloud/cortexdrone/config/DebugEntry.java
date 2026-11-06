@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.model;
+package ir.layercloud.cortexdrone.config;
 
 import com.google.gson.JsonObject;
 import lombok.Value;

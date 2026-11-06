@@ -81,7 +81,7 @@ final class AgentLoopHeuristics {
     }
 
     static void executePreCodeModeStop(
-            ir.layercloud.cortexdrone.model.DroneController ctrl,
+            ir.layercloud.cortexdrone.drone.DroneController ctrl,
             net.minecraft.entity.player.EntityPlayerMP player,
             int myLoopId,
             int turn,

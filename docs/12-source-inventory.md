@@ -106,6 +106,12 @@ not a substitute for the subsystem chapters.
 | `MachineTileInspector` | Machine tile discovery/aliases/description/power/fluid |
 | `FurnaceScanner` | Furnace tile scan |
 
+## `service/visuals/`
+
+| Class | Responsibility |
+| --- | --- |
+| `LedEffectEngine` | Color parsing, HSV→RGB, procedural LED effects |
+
 ## `service/navigation/`
 
 | Class | Responsibility |
@@ -129,6 +135,7 @@ not a substitute for the subsystem chapters.
 | `RoomScanner` | 3D room geometry |
 | `VeinScanner` | Connected ore/block veins |
 | `StructureArchitect` | Build site + blueprint generation |
+| `BuildTask` | Read-only block placement entry in a generated structure plan |
 | `PlayerTargetScanner` | Player look raycast/support block |
 | `EntityAndBiomeClassifier` | Entity type/hostile/passive, biome matching |
 | `ChunkAccess` | Loaded chunk checks |
@@ -141,6 +148,7 @@ not a substitute for the subsystem chapters.
 | Class | Responsibility |
 | --- | --- |
 | `LlmAgentService` | LLM loop, prompt/context, HTTP call, turn handling, self-correction, skill match |
+| `DroneContextBuilder` | Read-only "Initial World State" JSON: player, drone, saved locations, nearby resources |
 | `CodeModeRuntime` | Node.js runner, SDK bundle, temp script, timeout/supersession, JSON parse |
 | `LlmResponseParser` | Tolerant JSON/code salvage, think stripping, prose blocker detection |
 | `PromptCompactor` | Bounded context + continuation digest |
@@ -150,7 +158,6 @@ not a substitute for the subsystem chapters.
 | `TaskCoordinator` | One-session intent handling |
 | `TaskIntent` | Intent enum |
 | `TaskIntentClassifier` | Deterministic intent classifier |
-| `TaskSession` | Session state/notes/age |
 | `SkillLibrary` | Bundled/saved skills, BM25 search, self-corrected skills |
 | `RpcDispatcher` | Main-thread RPC, timeouts, time-sliced large scans, poll_scan |
 | `MasterToolCatalog` | Canonical tool names + removed tools |
@@ -168,22 +175,21 @@ not a substitute for the subsystem chapters.
 | `rpc/translate/RpcArgs` | Safe JSON field helpers |
 | `rpc/translate/RpcJson` | ok/error/merge helpers |
 
-## `command/`, `config/`, `http/`, `model/`, `oc/`
+## `drone/`, `command/`, `config/`, `http/`, `oc/`
 
 | Class | Responsibility |
 | --- | --- |
+| `drone/DroneController` | Per-drone mutable state, task snapshot, loops, LED/path/mining |
+| `drone/Mode` | FOLLOW/STAY/GOTO/MINE/DEPOSIT/DROP |
+| `drone/TaskSession` | One active task/session: prompt, summary, notes, age |
 | `command/BaseCommand` | Command base/compareTo |
 | `command/impl/DroneCommand` | `/drone` management + natural-language fallback |
 | `config/AIConfig` | Env/file defaults, saved drones/bases/locations, persistence |
 | `config/DroneLogger` | Debug/chat rings, subscribers, async file flush/rotation, JSON caps |
+| `config/ChatRecord` | Chat history entry used by `DroneLogger` |
+| `config/DebugEntry` | Debug log entry used by `DroneLogger` |
 | `http/DroneHttpServer` | `/state`, `/debug`, `/rpc`, `/action`, cached snapshots |
 | `http/DroneTelemetrySerializer` | State/debug JSON snapshots, TPS |
-| `model/DroneController` | Per-drone mutable state, task snapshot, loops, LED/path/mining |
-| `model/Mode` | FOLLOW/STAY/GOTO/MINE/DEPOSIT/DROP |
-| `model/LedEffectEngine` | Color parsing, HSV, procedural LED effects |
-| `model/BuildTask` | Build task DTO used by structure plans |
-| `model/ChatRecord` | Chat history entry |
-| `model/DebugEntry` | Debug log entry |
 | `oc/OcHardwareBridge` | OC reflection: network/energy/paused/machine/component control |
 | `oc/impl/InertMachineArchitecture` | No-op architecture for paused ghost machines |
 
@@ -195,4 +201,4 @@ not a substitute for the subsystem chapters.
 | `harness/MasterToolSurfaceTest` | Tool surface and removed-tool rejection |
 | `harness/SkillLibraryTest` | Bundled skill load/search |
 | `harness/TaskIntentClassifierTest` | Intent classification |
-| `harness/TaskSessionTest` | Session lifecycle/notes |
+| `drone/TaskSessionTest` | Session lifecycle/notes |

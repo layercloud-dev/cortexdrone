@@ -3,7 +3,7 @@ package ir.layercloud.cortexdrone.harness;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**

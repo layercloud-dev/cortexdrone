@@ -1,6 +1,6 @@
 package ir.layercloud.cortexdrone.manager.navigation;
 
-import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import lombok.Builder;
 import lombok.Value;
 import net.minecraft.entity.player.EntityPlayerMP;

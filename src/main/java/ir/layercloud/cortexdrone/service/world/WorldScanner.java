@@ -3,7 +3,7 @@ package ir.layercloud.cortexdrone.service.world;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;

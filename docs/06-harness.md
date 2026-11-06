@@ -65,7 +65,8 @@ task, acknowledge).
 
 ## 4. TaskSession
 
-One `TaskSession` per `DroneController`:
+`TaskSession` lives in `drone/` because it is state owned by the controller,
+not part of the LLM loop. One `TaskSession` per `DroneController`:
 
 - active flag, loop ID, prompt, summary, timestamps;
 - notes list (max 8); notes append to the summary as `| note: ...`;
@@ -88,7 +89,8 @@ updates it.
 ### Prompt construction
 
 `SYSTEM_PROMPT_TEMPLATE` is loaded from `/system-prompt.md`.
-`buildDroneContextForLlm` adds:
+`LlmAgentService.buildDroneContextForLlm` delegates to `DroneContextBuilder`,
+which adds:
 
 - player position/facing/yaw/pitch/held item/crosshair/support block;
 - drone position/mode/can-see-sky;

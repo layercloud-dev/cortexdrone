@@ -6,8 +6,9 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
-import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.drone.Mode;
+import ir.layercloud.cortexdrone.service.visuals.LedEffectEngine;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
@@ -109,7 +110,8 @@ public class TickManager {
 
         ctrl.ledEffectTick++;
         if (!ctrl.playerLookHold && (ctrl.customLedColor != null || (ctrl.ledEffect != null && !"NONE".equalsIgnoreCase(ctrl.ledEffect)))) {
-            d.lightColor_$eq(ctrl.resolveEffectiveLedColor(d.lightColor()));
+            d.lightColor_$eq(LedEffectEngine.resolveEffectiveLedColor(
+                    ctrl.ledEffect, ctrl.ledEffectTick, ctrl.customLedColor, d.lightColor()));
             if ("DISCO".equalsIgnoreCase(ctrl.ledEffect) && ctrl.ledEffectTick % 6 == 0 && world instanceof WorldServer) {
                 ((WorldServer) world).func_147487_a("note", d.posX, d.posY + 0.45, d.posZ, 2, 0.25, 0.25, 0.25, 0.5);
             }

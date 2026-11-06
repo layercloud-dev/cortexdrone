@@ -1,8 +1,7 @@
 package ir.layercloud.cortexdrone.service.world;
 
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.model.BuildTask;
-import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;

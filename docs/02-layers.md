@@ -22,8 +22,10 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-`model/`, `config/`, `oc/`, `http/`, `command/` are support packages used by the
-layers; they are not a fifth execution layer.
+`drone/`, `config/`, `oc/`, `http/`, `command/` are support packages used by the
+layers; they are not a fifth execution layer. There is no `model/` package:
+the controller and its modes live in `drone/`, the LED engine is a
+`service/visuals` service, and log/chat records live with `config/DroneLogger`.
 
 ## 2. Hard rules
 

@@ -1,6 +1,5 @@
-package ir.layercloud.cortexdrone.model;
+package ir.layercloud.cortexdrone.drone;
 
-import ir.layercloud.cortexdrone.harness.TaskSession;
 import li.cil.oc.common.entity.Drone;
 
 import java.util.*;
@@ -43,16 +42,9 @@ public class DroneController {
     public String lastStuckReason = "";
     public String lastStuckKey = "";
     public int lastStuckLogTick = -10000;
-    // Separate solid-waypoint throttle: FlightPathfinder and DroneTickCoordinator
-    // share lastStuckKey/lastStuckLogTick, so their keys overwrote each other
-    // and the throttle never held — one STUCK line per tick for minutes.
-    public String lastSolidKey = "";
-    public int lastSolidLogTick = -10000;
-    // Per-waypoint hit counters: an A/B/A/B alternation of two blocked goals used
-    // to defeat the single lastSolidKey throttle, so escalation never fired and
-    // the drone hovered forever. Hits are counted per blocked waypoint instead.
+    // Per-waypoint hit counters: an A/B/A/B alternation of two blocked goals
+    // defeats a single last-key throttle, so hits are counted per waypoint.
     public final Map<Long, Integer> solidWaypointHits = new HashMap<Long, Integer>();
-    public int solidLogTick = -10000;
     public int solidEscalations = 0;
     // A blocked waypoint can force a short self-rescue dig. That dig must not
     // silently end the task the drone was already doing, so the interrupted
@@ -200,18 +192,6 @@ public class DroneController {
         }
         return this.activeScriptCount.get() > 0 || !this.mineQueue.isEmpty()
                 || (this.mode != Mode.FOLLOW && this.mode != Mode.STAY);
-    }
-
-    public static int hsvToRgbInt(float hDeg, float s, float v) {
-        return LedEffectEngine.hsvToRgbInt(hDeg, s, v);
-    }
-
-    public static Integer parseNamedOrHexColor(String raw) {
-        return LedEffectEngine.parseNamedOrHexColor(raw);
-    }
-
-    public int resolveEffectiveLedColor(int fallbackColor) {
-        return LedEffectEngine.resolveEffectiveLedColor(this.ledEffect, this.ledEffectTick, this.customLedColor, fallbackColor);
     }
 
     public void recordThought(int turn, String thought) {

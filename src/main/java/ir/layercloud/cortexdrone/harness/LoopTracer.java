@@ -2,7 +2,7 @@ package ir.layercloud.cortexdrone.harness;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import lombok.experimental.UtilityClass;
 import net.minecraft.entity.player.EntityPlayerMP;
 

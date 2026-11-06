@@ -5,8 +5,8 @@ import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
-import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.drone.Mode;
 import lombok.RequiredArgsConstructor;
 
 /**

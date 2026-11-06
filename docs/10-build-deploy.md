@@ -68,7 +68,7 @@ using a legacy API and the suppression is local.
 | `harness/MasterToolSurfaceTest` | exact master tool list, no removed composite tools, unique names |
 | `harness/SkillLibraryTest` | bundled skill loading/search |
 | `harness/TaskIntentClassifierTest` | deterministic intent classification |
-| `harness/TaskSessionTest` | session lifecycle/notes/age |
+| `drone/TaskSessionTest` | session lifecycle/notes/age |
 
 Run:
 

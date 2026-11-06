@@ -94,13 +94,15 @@ src/main/java/ir/layercloud/cortexdrone/
     navigation/             NavContext, Breadcrumb, TrailPlan,
                             BreadcrumbService, FlightPathfinder,
                             DigPathService, DronePhysicsService
+    visuals/                LedEffectEngine (HSV/LED effects)
     world/                  WorldScanner, ItemClassifier, RegistryIntrospector,
                             LexicalItemMatcher, RoomScanner, VeinScanner,
-                            StructureArchitect, PlayerTargetScanner,
+                            StructureArchitect, BuildTask, PlayerTargetScanner,
                             EntityAndBiomeClassifier, DocLookupService,
                             ChunkAccess, raytrace/*
   harness/                  Code Mode agent + transport
     LlmAgentService.java     LLM loop and prompt assembly
+    DroneContextBuilder.java initial world-state JSON for the system prompt
     CodeModeRuntime.java     Node.js runner and SDK bundle loader
     LlmResponseParser.java   tolerant JSON/code parser
     PromptCompactor.java     bounded context + continuation digest
@@ -110,16 +112,15 @@ src/main/java/ir/layercloud/cortexdrone/
     TaskCoordinator.java     one-session intent handling
     TaskIntent.java          QUESTION/BY_THE_WAY/MODIFY/CANCEL/NEW_TASK
     TaskIntentClassifier.java deterministic classifier
-    TaskSession.java         session state, notes, age
     SkillLibrary.java        bundled + saved skills, BM25 retrieval
     RpcDispatcher.java       main-thread RPC + time-sliced large scans
     MasterToolCatalog.java   canonical tool names
     rpc/                     RpcHandler + handlers + translators
 
+  drone/                    DroneController, Mode, TaskSession
   command/                  /drone command
-  config/                   AIConfig + DroneLogger
+  config/                   AIConfig + DroneLogger + ChatRecord/DebugEntry
   http/                     DroneHttpServer + DroneTelemetrySerializer
-  model/                    DroneController, Mode, LED engine, DTOs
   oc/                       OpenComputers reflection bridge
 ```
 

@@ -3,7 +3,7 @@ package ir.layercloud.cortexdrone.action.navigation.impl;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
-import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.NavContext;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;

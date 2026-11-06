@@ -46,10 +46,10 @@ public final class LoopTracer {
     }
 
     public static void logSuperseded(DroneLogger logger, DroneController ctrl, int loopId, int turnReached,
-                                     String userPrompt) {
+                                     String userPrompt, int supersededByLoopId) {
         logger.log("SUPERSEDED", ctrl,
                 "Superseded loopId=" + loopId + " turnReached=" + turnReached + " userPrompt=\""
-                        + snippet(userPrompt, 120) + "\" supersededByLoopId=" + ctrl.activeLoopId.get(),
+                        + snippet(userPrompt, 120) + "\" supersededByLoopId=" + supersededByLoopId,
                 "loopId=" + loopId + " turnReached=" + turnReached);
     }
 

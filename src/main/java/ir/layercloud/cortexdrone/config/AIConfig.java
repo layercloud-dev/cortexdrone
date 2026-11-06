@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.config;
 
 import com.google.gson.Gson;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,6 +11,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.*;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -82,7 +84,8 @@ public class AIConfig {
         }
     }
 
-    public synchronized void save(File configFile, Gson gson, Collection<DroneController> controllers) {
+    public synchronized void save(File configFile, Gson gson, Collection<DroneController> controllers,
+                                   Function<DroneController, VisualsState> visualsOf) {
         if (configFile == null) return;
         try {
             Map<String, SavedDroneInfo> byUuid = new LinkedHashMap<>();
@@ -101,9 +104,10 @@ public class AIConfig {
                     info.setUuid(c.entityUuid.toString());
                     info.setName(c.name);
                     info.setOwner(c.ownerName);
-                    info.setAutoTorch(c.autoTorch);
-                    info.setLedEffect(c.ledEffect);
-                    info.setCustomLedColor(c.customLedColor);
+                    VisualsState visuals = visualsOf != null ? visualsOf.apply(c) : null;
+                    info.setAutoTorch(visuals != null && visuals.autoTorch);
+                    info.setLedEffect(visuals != null ? visuals.ledEffect : "NONE");
+                    info.setCustomLedColor(visuals != null ? visuals.customLedColor : null);
                     info.setDimension(c.drone.dimension);
                     info.setX(Math.round(c.drone.posX * 10.0) / 10.0);
                     info.setY(Math.round(c.drone.posY * 10.0) / 10.0);

@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -18,8 +19,9 @@ public final class TaskCoordinator {
 
     public void handle(final EntityPlayerMP player, final DroneController ctrl, final String prompt) {
         if (ctrl == null || ctrl.drone == null || ctrl.drone.isDead) return;
+        DroneSession session = session(ctrl);
         String cleanPrompt = prompt != null ? prompt.trim() : "";
-        boolean active = ctrl.task.isActive() || ctrl.hasActiveTaskOrLoop(0);
+        boolean active = session.isActive() || session.hasActiveTaskOrLoop(0);
         TaskIntent intent = TaskIntentClassifier.classify(cleanPrompt, active);
 
         if (active) {
@@ -30,7 +32,7 @@ public final class TaskCoordinator {
                 return;
             }
             if (intent == TaskIntent.BY_THE_WAY) {
-                ctrl.task.addNote(cleanPrompt);
+                session.addNote(cleanPrompt);
                 this.manager.getLogger().log("TASK", ctrl, "Message classified as BY_THE_WAY; attached as note",
                         "prompt=\"" + cleanPrompt + "\"");
                 this.manager.droneSay(player, ctrl, "Noted - keeping the current task. " + shortTask(ctrl));
@@ -42,12 +44,12 @@ public final class TaskCoordinator {
                 return;
             }
             // MODIFY / NEW_TASK: replace the running session immediately.
-            String previous = ctrl.task.getSummary();
+            String previous = session.getSummary();
             this.manager.getLogger().log("TASK", ctrl, "Message classified as " + intent.name() + "; replacing active task",
                     "prompt=\"" + cleanPrompt + "\"");
-            ctrl.cancelOtherLoops(0);
+            session.cancelOtherLoops(0);
             this.manager.clearActionState(ctrl);
-            ctrl.task.cancel();
+            session.cancel();
             if (intent == TaskIntent.MODIFY && previous != null && !previous.isEmpty()) {
                 cleanPrompt = cleanPrompt + "\n\n[Task modification. Previous task: " + previous + "]";
             }
@@ -55,13 +57,13 @@ public final class TaskCoordinator {
             this.manager.droneSay(player, ctrl, "No task is running. Nothing to cancel.");
             return;
         } else if (intent == TaskIntent.BY_THE_WAY) {
-            ctrl.task.addNote(cleanPrompt);
+            session.addNote(cleanPrompt);
             this.manager.droneSay(player, ctrl, "Noted.");
             return;
         }
 
-        final int myLoopId = ctrl.activeLoopId.incrementAndGet();
-        ctrl.task.begin(myLoopId, cleanPrompt);
+        final int myLoopId = session.nextLoopId();
+        session.begin(myLoopId, cleanPrompt);
         String senderName = player != null ? player.getCommandSenderName() : ctrl.ownerName;
         this.manager.getLogger().log("CMD", ctrl,
                 "Master-tool session from " + senderName + " (loopId=" + myLoopId + ", intent=" + intent.name() + ")",
@@ -71,27 +73,33 @@ public final class TaskCoordinator {
         worldContext.addProperty("taskPrompt", cleanPrompt);
         worldContext.addProperty("taskIntent", intent.name());
         worldContext.addProperty("singleSession", true);
-        ctrl.registerLoop(myLoopId);
+        session.registerLoop(myLoopId);
         final String sessionPrompt = cleanPrompt;
         CortexDroneMod.HTTP_POOL.submit(() -> manager.getAgentService().runAgentLoop(player, ctrl, sessionPrompt, worldContext, myLoopId));
     }
 
     private void cancel(DroneController ctrl) {
         this.manager.getLogger().log("TASK", ctrl, "Message classified as CANCEL", "reason=Player cancelled active task");
-        ctrl.cancelOtherLoops(0);
+        DroneSession session = session(ctrl);
+        session.cancelOtherLoops(0);
         this.manager.clearActionState(ctrl);
-        ctrl.task.cancel();
+        session.cancel();
         this.manager.getNavigationManager().stop(ctrl, null, "Player cancelled active task");
     }
 
-    private static String shortTask(DroneController ctrl) {
-        String summary = ctrl.task.getSummary();
-        if (summary == null || summary.isEmpty()) summary = ctrl.task.getPrompt();
+    private DroneSession session(DroneController ctrl) {
+        return this.manager.getSessionManager().session(ctrl);
+    }
+
+    private String shortTask(DroneController ctrl) {
+        DroneSession session = session(ctrl);
+        String summary = session.getSummary();
+        if (summary == null || summary.isEmpty()) summary = session.getPrompt();
         if (summary == null || summary.isEmpty()) return "Task is running.";
         return "Task: " + (summary.length() > 120 ? summary.substring(0, 120) + "..." : summary);
     }
 
-    private static String activeTaskReply(DroneController ctrl) {
+    private String activeTaskReply(DroneController ctrl) {
         StringBuilder sb = new StringBuilder();
         sb.append(shortTask(ctrl));
         if (ctrl.drone != null) {

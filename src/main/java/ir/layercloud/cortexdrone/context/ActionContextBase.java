@@ -9,9 +9,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
 /**
  * Lombok-backed lifecycle base for action contexts.
  *
- * <p>Controller, player, operation and start tick are immutable. Only the
- * active/retained lifecycle flags and any category-specific state change while
- * the action runs.</p>
+ * <p>Controller, player and operation are immutable. Only the active/retained
+ * lifecycle flags and any category-specific state change while the action
+ * runs.</p>
  */
 @Getter
 @Accessors(fluent = true)
@@ -19,7 +19,6 @@ public abstract class ActionContextBase implements ActionContext {
     private final DroneController controller;
     private final EntityPlayerMP player;
     private final String operation;
-    private final long startedTick;
 
     @Getter(AccessLevel.NONE)
     private boolean active = true;
@@ -31,7 +30,6 @@ public abstract class ActionContextBase implements ActionContext {
         this.controller = controller;
         this.player = player;
         this.operation = operation;
-        this.startedTick = controller != null ? controller.tickClock : 0L;
     }
 
     @Override

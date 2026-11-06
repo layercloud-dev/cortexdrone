@@ -9,6 +9,7 @@ import ir.layercloud.cortexdrone.harness.CodeModeRuntime;
 import ir.layercloud.cortexdrone.harness.RpcDispatcher;
 import ir.layercloud.cortexdrone.harness.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.agent.LlmAgentService;
+import ir.layercloud.cortexdrone.harness.session.SessionManager;
 import ir.layercloud.cortexdrone.harness.rpc.translate.ActionRpcTranslator;
 import ir.layercloud.cortexdrone.harness.task.TaskCoordinator;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
@@ -18,6 +19,7 @@ import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
 import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
+import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
@@ -54,6 +56,7 @@ public class AIDroneManager {
     private final AIConfig config = new AIConfig();
 
     private final DroneLogger logger = new DroneLogger();
+    private final SessionManager sessionManager = new SessionManager();
     private final FlightPathfinder pathfinder;
     private final BreadcrumbService breadcrumbService;
     private final NavigationManager navigationManager;
@@ -102,7 +105,7 @@ public class AIDroneManager {
         this.actionRpcTranslator = new ActionRpcTranslator(this);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));
-        this.codeModeRuntime = new CodeModeRuntime(this.logger, this.config);
+        this.codeModeRuntime = new CodeModeRuntime(this.logger, this.config, this.sessionManager);
         this.rpcDispatcher = new RpcDispatcher(this);
         this.agentService = new LlmAgentService(
                 this,
@@ -138,7 +141,7 @@ public class AIDroneManager {
     public void onServerStopping() {
         this.logger.log("SYSTEM", null, "Server stopping; saving AI drone config and stopping HTTP server", "");
         for (DroneController ctrl : this.controllersById.values()) {
-            if (ctrl != null && !ctrl.lightCells.isEmpty()) {
+            if (ctrl != null && !this.visualsManager.state(ctrl).lightCells.isEmpty()) {
                 this.visualsManager.clearLighting(ctrl);
             }
         }
@@ -156,7 +159,8 @@ public class AIDroneManager {
     }
 
     public synchronized void saveConfig() {
-        this.config.save(this.configFile, CortexDroneMod.GSON, this.controllersById.values());
+        this.config.save(this.configFile, CortexDroneMod.GSON, this.controllersById.values(),
+                this.visualsManager::state);
     }
 
     public <T> T callOnMainThread(final Callable<T> callable, long timeoutMs) throws Exception {
@@ -326,9 +330,10 @@ public class AIDroneManager {
                     ensureMachineRunningState(d);
                     d.inventorySize_$eq(8);
                     DroneController ctrl = registerDroneController(d, name, owner);
-                    ctrl.autoTorch = restoredTorch;
-                    ctrl.ledEffect = restoredLedEffect;
-                    ctrl.customLedColor = restoredCustomLed;
+                    VisualsState visuals = this.visualsManager.state(ctrl);
+                    visuals.autoTorch = restoredTorch;
+                    visuals.ledEffect = restoredLedEffect;
+                    visuals.customLedColor = restoredCustomLed;
                     this.visualsManager.restore(ctrl);
                     this.logger.log("LINK", ctrl, "Auto-reconnected world drone",
                             String.format("owner=%s pos=(%.1f,%.1f,%.1f)", owner, d.posX, d.posY, d.posZ));
@@ -484,8 +489,10 @@ public class AIDroneManager {
         double dz = dropTargetPlayer != null ? dropTargetPlayer.posZ : d.posZ;
 
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
-        this.visualsManager.clearLighting(ctrl);
-        this.navigationManager.clear(ctrl);
+        this.visualsManager.forget(ctrl);
+        this.navigationManager.forget(ctrl);
+        this.sessionManager.forget(ctrl);
+        this.interactionManager.forget(ctrl);
         this.breadcrumbService.clear(ctrl);
         UUID duid = d.getUniqueID();
         if (duid != null) {
@@ -542,10 +549,12 @@ public class AIDroneManager {
                         + EnumChatFormatting.YELLOW + " -> Target: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
                         + EnumChatFormatting.GRAY + " [Waypoints: %d/%d]",
                 d.posX, d.posY, d.posZ, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ(),
-                ctrl.pathIndex, ctrl.pathWaypoints.size()));
+                this.navigationManager.state(ctrl).pathIndex,
+                this.navigationManager.state(ctrl).pathWaypoints.size()));
+        VisualsState visuals = this.visualsManager.state(ctrl);
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "LED: " + EnumChatFormatting.AQUA + String.format("#%06X", d.lightColor() & 0xFFFFFF)
-                + EnumChatFormatting.YELLOW + " | Light Aura: " + EnumChatFormatting.WHITE + (ctrl.autoTorch ? "ON" : "OFF")
-                + (ctrl.autoTorch ? " (#" + String.format("%06X", ctrl.lightColor & 0xFFFFFF) + ", r=" + ctrl.lightRadius + ", level=" + ctrl.lightIntensity + ")" : "")
+                + EnumChatFormatting.YELLOW + " | Light Aura: " + EnumChatFormatting.WHITE + (visuals.autoTorch ? "ON" : "OFF")
+                + (visuals.autoTorch ? " (#" + String.format("%06X", visuals.lightColor & 0xFFFFFF) + ", r=" + visuals.lightRadius + ", level=" + visuals.lightIntensity + ")" : "")
                 + EnumChatFormatting.YELLOW + " | Energy: " + EnumChatFormatting.GREEN + d.globalBuffer() + "/" + d.globalBufferSize());
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "Inventory (8 slots): " + EnumChatFormatting.WHITE + InventoryService.formatInventorySummary(d.mainInventory()));
     }

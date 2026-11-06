@@ -106,13 +106,14 @@ src/main/java/ir/layercloud/cortexdrone/
                             LlmResponseParser, PromptCompactor
                             AgentHeartbeat, AgentLoopHeuristics, LoopTracer
     task/                   TaskCoordinator, TaskIntentClassifier, TaskIntent
+    session/                DroneSession, SessionManager (task/loop/thought state)
     CodeModeRuntime.java     Node.js runner and SDK bundle loader
     SkillLibrary.java        bundled + saved skills, BM25 retrieval
     RpcDispatcher.java       main-thread RPC + time-sliced large scans
     ToolRegistry.java         master tool registry (names + descriptions)
     rpc/                     RpcHandler + handlers + translators
 
-  drone/                    DroneController, TaskSession
+  drone/                    DroneController (identity + entity link only)
   command/                  /drone command
   config/                   AIConfig + DroneLogger + ChatRecord/DebugEntry
   http/                     DroneHttpServer + DroneTelemetrySerializer

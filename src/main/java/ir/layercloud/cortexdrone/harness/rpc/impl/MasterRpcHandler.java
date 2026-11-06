@@ -6,9 +6,11 @@ import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.harness.ToolRegistry;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.harness.rpc.translate.BreadcrumbRpcTranslator;
 import ir.layercloud.cortexdrone.harness.rpc.translate.RpcJson;
+import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
@@ -81,24 +83,26 @@ public class MasterRpcHandler implements RpcHandler {
 
     private JsonObject state(DroneController ctrl, JsonObject args) {
         JsonObject res = this.manager.getActionRpcTranslator().status(ctrl, args);
-        String summary = ctrl.task.getSummary();
-        res.addProperty("activeTask", ctrl.task.isActive());
-        res.addProperty("taskPrompt", ctrl.task.getPrompt());
+        DroneSession session = this.manager.getSessionManager().session(ctrl);
+        String summary = session.getSummary();
+        res.addProperty("activeTask", session.isActive());
+        res.addProperty("taskPrompt", session.getPrompt());
         res.addProperty("taskSummary", summary);
-        res.addProperty("taskAgeMs", ctrl.task.getAgeMs());
+        res.addProperty("taskAgeMs", session.getAgeMs());
         JsonArray notes = new JsonArray();
-        for (String note : ctrl.task.getNotes()) notes.add(new JsonPrimitive(note));
+        for (String note : session.getNotes()) notes.add(new JsonPrimitive(note));
         res.add("taskNotes", notes);
-        double distGoal = Double.isNaN(ctrl.goalX) ? -1.0
-                : Math.sqrt((ctrl.drone.posX - ctrl.goalX) * (ctrl.drone.posX - ctrl.goalX)
-                + (ctrl.drone.posY - ctrl.goalY) * (ctrl.drone.posY - ctrl.goalY)
-                + (ctrl.drone.posZ - ctrl.goalZ) * (ctrl.drone.posZ - ctrl.goalZ));
+        NavigationState nav = this.manager.getNavigationManager().state(ctrl);
+        double distGoal = nav == null || Double.isNaN(nav.goalX) ? -1.0
+                : Math.sqrt((ctrl.drone.posX - nav.goalX) * (ctrl.drone.posX - nav.goalX)
+                + (ctrl.drone.posY - nav.goalY) * (ctrl.drone.posY - nav.goalY)
+                + (ctrl.drone.posZ - nav.goalZ) * (ctrl.drone.posZ - nav.goalZ));
         res.addProperty("distanceToGoal", Math.round(distGoal * 100.0) / 100.0);
         NavigationManager.Status navigation = this.manager.getNavigationManager().status(ctrl);
         res.addProperty("navigationActive", navigation.isActive());
         res.addProperty("navigationPhase", navigation.getPhase());
         res.addProperty("navigationReason", navigation.getReason());
-        res.addProperty("navigationError", ctrl.navigationError != null ? ctrl.navigationError : "");
+        res.addProperty("navigationError", nav != null ? nav.error : "");
         res.addProperty("arrived", !navigation.isActive()
                 && distGoal >= 0.0 && distGoal <= 1.0);
         res.addProperty("busy", navigation.isActive()
@@ -368,9 +372,10 @@ public class MasterRpcHandler implements RpcHandler {
 
     private JsonObject cancel(DroneController ctrl, JsonObject args) {
         int callerLoopId = intValue(args, "loopId");
-        int cancelled = ctrl.cancelOtherLoops(callerLoopId);
+        DroneSession session = this.manager.getSessionManager().session(ctrl);
+        int cancelled = session.cancelOtherLoops(callerLoopId);
         this.manager.clearActionState(ctrl);
-        ctrl.task.cancel();
+        session.cancel();
         this.manager.getNavigationManager().stop(ctrl, null, "Master cancel");
         JsonObject res = RpcJson.ok();
         res.addProperty("cancelled", true);

@@ -105,7 +105,7 @@ string is `required-after:OpenComputers;after:layercloudsmp`.
 | **Master tool** | One of the 15 tools exposed to Code Mode (`state`, `inspect`, ...) |
 | **SDK** | `resources/sdk/*.mjs` injected into every Node script as `drone` |
 | **Code Mode** | LLM writes async JavaScript; Node runs it; SDK calls RPC |
-| **Session** | One active task for one drone; owned by `TaskSession` |
+| **Session** | One active task for one drone; owned by `DroneSession` |
 | **Loop** | One LLM/agent execution with a loop ID; cancellable and supersedable |
 | **Action** | One-shot physical command class |
 | **Context** | Mutable state for one action execution |

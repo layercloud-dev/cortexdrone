@@ -7,7 +7,9 @@ import ir.layercloud.cortexdrone.context.impl.VisualsContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.visuals.LightConfig;
 import ir.layercloud.cortexdrone.manager.visuals.LightResult;
+import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
 import ir.layercloud.cortexdrone.manager.visuals.impl.LightingAura;
+import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -19,6 +21,7 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor
 public final class SetLightAction implements Action<VisualsContext> {
+    private final VisualsManager manager;
     private final LightingAura aura;
     private final VisualsRequest request;
 
@@ -31,7 +34,8 @@ public final class SetLightAction implements Action<VisualsContext> {
                 .level(this.request.getLightLevel())
                 .color(this.request.getLightColor())
                 .build();
-        LightResult result = this.aura.configure(context.controller(), config);
+        LightResult result = this.aura.configure(
+                context.controller(), this.manager.state(context.controller()), config);
         if (!result.isOk()) {
             context.result(VisualsResult.failure(result.getError()));
             return;
@@ -50,10 +54,15 @@ public final class SetLightAction implements Action<VisualsContext> {
     @Override
     public void tick(VisualsContext context) {
         DroneController controller = context.controller();
-        if (controller == null || controller.drone == null || !controller.autoTorch) {
+        if (controller == null || controller.drone == null) {
             context.complete();
             return;
         }
-        this.aura.tick(controller);
+        VisualsState state = this.manager.state(controller);
+        if (!state.autoTorch) {
+            context.complete();
+            return;
+        }
+        this.aura.tick(controller, state);
     }
 }

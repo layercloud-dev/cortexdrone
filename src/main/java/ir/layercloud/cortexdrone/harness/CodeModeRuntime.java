@@ -6,6 +6,8 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
+import ir.layercloud.cortexdrone.harness.session.SessionManager;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -22,6 +24,7 @@ public class CodeModeRuntime {
 
     private final DroneLogger logger;
     private final AIConfig config;
+    private final SessionManager sessions;
 
     private static String loadSdkBundle() {
         String[] modules = new String[]{
@@ -67,7 +70,8 @@ public class CodeModeRuntime {
         final JsonObject out = new JsonObject();
         long t0 = System.currentTimeMillis();
         File scriptFile = new File("/tmp/opencode/drone-codemode-" + ctrl.id + "-" + System.nanoTime() + ".mjs");
-        ctrl.activeScriptCount.incrementAndGet();
+        DroneSession session = this.sessions.session(ctrl);
+        session.scriptStarted();
         try {
             String safeJsCode = jsCode != null ? jsCode : "";
             String pName = player != null ? player.getCommandSenderName() : ctrl.ownerName;
@@ -136,7 +140,7 @@ public class CodeModeRuntime {
                 if (proc.waitFor(Math.min(250L, remaining), TimeUnit.MILLISECONDS)) {
                     break;
                 }
-                if ((loopId > 0 && ctrl.isLoopCancelled(loopId)) || ctrl.drone == null || ctrl.drone.isDead) {
+                if ((loopId > 0 && session.isLoopCancelled(loopId)) || ctrl.drone == null || ctrl.drone.isDead) {
                     superseded = true;
                     break;
                 }
@@ -203,7 +207,7 @@ public class CodeModeRuntime {
             out.addProperty("error", e.toString());
             this.logger.log("CODEMODE", ctrl, "JS Code Mode error", e.toString());
         } finally {
-            ctrl.activeScriptCount.decrementAndGet();
+            session.scriptFinished();
             try {
                 if (scriptFile.exists() && !scriptFile.delete()) {
                     LOG.warning("Could not delete temporary script " + scriptFile.getAbsolutePath());

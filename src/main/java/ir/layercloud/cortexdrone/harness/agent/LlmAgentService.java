@@ -11,6 +11,7 @@ import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.harness.CodeModeRuntime;
 import ir.layercloud.cortexdrone.harness.RpcDispatcher;
 import ir.layercloud.cortexdrone.harness.SkillLibrary;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -64,6 +65,10 @@ public class LlmAgentService {
         return DroneContextBuilder.build(this.manager, this.worldScanner, player, ctrl);
     }
 
+    private DroneSession session(DroneController ctrl) {
+        return this.manager.getSessionManager().session(ctrl);
+    }
+
     @SuppressWarnings("DataFlowIssue")
     public void runAgentLoop(final EntityPlayerMP player, final DroneController ctrl, final String userPrompt, final JsonObject worldContext, final int myLoopId) {
         final AgentHeartbeat heartbeat = AgentHeartbeat.begin(this.manager, ctrl, player, userPrompt, myLoopId);
@@ -105,8 +110,9 @@ public class LlmAgentService {
             LoopTracer.traceStart(this.logger, ctrl, myLoopId, userPrompt);
 
             for (int turn = 1; turn <= MAX_AGENT_TURNS; turn++) {
-                if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.isDead) {
-                    LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
+                if (session(ctrl).isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.isDead) {
+                    LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt,
+                            this.manager.getSessionManager().session(ctrl).activeLoopId());
                     return;
                 }
                 if (System.currentTimeMillis() > loopDeadline) {
@@ -114,7 +120,7 @@ public class LlmAgentService {
                             + " loopId=" + myLoopId + " — reporting partial progress", "hadProgress=" + hadProgress);
                     final String deadlineReply = AgentLoopHeuristics.progressReplyFor(
                             "Stopped at the time limit. No further progress was possible without more info.",
-                            hadProgress, ctrl.lastThought);
+                            hadProgress, session(ctrl).lastThought());
                     this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, deadlineReply));
                     return;
                 }
@@ -144,8 +150,9 @@ public class LlmAgentService {
                     this.logger.log("HEARTBEAT", ctrl, "Context overflow -> compacted and retrying loop " + myLoopId, "turn=" + turn);
                     continue;
                 }
-                if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.isDead) {
-                    LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
+                if (session(ctrl).isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.isDead) {
+                    LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt,
+                            this.manager.getSessionManager().session(ctrl).activeLoopId());
                     return;
                 }
                 if (plan == null) {
@@ -161,7 +168,7 @@ public class LlmAgentService {
                             "detail=" + detail + " key=" + maskKey(this.manager.getConfig().getApiKey()));
                     final String partialMsg = AgentLoopHeuristics.progressReplyFor(
                             "AI backend error: " + detail + ". Fix the API key / gateway then re-send your instruction.",
-                            hadProgress, ctrl.lastThought);
+                            hadProgress, session(ctrl).lastThought());
                     this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, partialMsg));
                     return;
                 }
@@ -170,7 +177,7 @@ public class LlmAgentService {
                 String rawReasoning = plan.has("_reasoning") && !plan.get("_reasoning").isJsonNull() ? plan.get("_reasoning").getAsString() : "";
                 final String thought = LlmResponseParser.sanitizeThought(rawThought, rawReasoning);
                 if (!thought.isEmpty()) {
-                    ctrl.recordThought(turn, thought);
+                    session(ctrl).recordThought(turn, thought);
                     this.logger.log("THINK", ctrl, "Turn " + turn + ": " + thought, "");
                     this.manager.getMod().queueMain(() -> {
                         if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl))
@@ -214,7 +221,8 @@ public class LlmAgentService {
                 if (AgentLoopHeuristics.shouldStopBeforeExecute(plan, code, isMalformed) && !stoppedPrevInThisLoop) {
                     stoppedPrevInThisLoop = true;
                     executedAnyAction = true;
-                    AgentLoopHeuristics.executePreCodeModeStop(ctrl, player, myLoopId, turn, this.logger, this.rpcDispatcher);
+                    AgentLoopHeuristics.executePreCodeModeStop(ctrl, player, myLoopId, turn, this.logger,
+                            this.rpcDispatcher, this.manager.getSessionManager().session(ctrl));
                 }
                 if (isMalformed || (code.isEmpty() && !executedAnyAction && AgentLoopHeuristics.promptExpectsPhysicalAction(userPrompt))) {
                     hadSelfCorrection = true;
@@ -242,7 +250,7 @@ public class LlmAgentService {
                         Thread ackThread = new Thread(() -> {
                             try {
                                 Thread.sleep(1200);
-                                if (!jsFinished.get() && !ctrl.isLoopCancelled(myLoopId)) {
+                                if (!jsFinished.get() && !session(ctrl).isLoopCancelled(myLoopId)) {
                                     manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, "Working on it: " + thought));
                                 }
                             } catch (InterruptedException ignored) {
@@ -256,12 +264,14 @@ public class LlmAgentService {
                     jsFinished.set(true);
                     heartbeat.observe(turn, code, execRes);
 
-                    if (ctrl.isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.isDead) {
-                        LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
+                    if (session(ctrl).isLoopCancelled(myLoopId) || ctrl.drone == null || ctrl.drone.isDead) {
+                        LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt,
+                            this.manager.getSessionManager().session(ctrl).activeLoopId());
                         return;
                     }
                     if (execRes.has("superseded") && execRes.get("superseded").getAsBoolean()) {
-                        LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt);
+                        LoopTracer.logSuperseded(this.logger, ctrl, myLoopId, turn, userPrompt,
+                            this.manager.getSessionManager().session(ctrl).activeLoopId());
                         return;
                     }
 
@@ -396,11 +406,11 @@ public class LlmAgentService {
             }
             this.logger.log("LLM", ctrl, "Agent loop hit turn cap (" + MAX_AGENT_TURNS + ") loopId=" + myLoopId
                     + " elapsedMs=" + (System.currentTimeMillis() - loopStartMs)
-                    + " — reporting partial progress", "lastThought=\"" + LoopTracer.snippet(ctrl.lastThought, 200) + "\"");
+                    + " — reporting partial progress", "lastThought=\"" + LoopTracer.snippet(session(ctrl).lastThought(), 200) + "\"");
             final String capReply = AgentLoopHeuristics.progressReplyFor(
                     "Stopped at the turn cap (" + MAX_AGENT_TURNS + "). What stands so far is in the last status/checkpoint above; "
                             + "the blocker (missing item/machine) is named there.",
-                    hadProgress, ctrl.lastThought);
+                    hadProgress, session(ctrl).lastThought());
             this.manager.getMod().queueMain(() -> manager.droneSay(player, ctrl, capReply));
         } catch (Throwable e) {
             // Catch Throwable, not Exception: an Error (OOM/NoClassDefFound/...) on a
@@ -416,7 +426,7 @@ public class LlmAgentService {
             }
         } finally {
             heartbeat.onLoopExit(completedOk);
-            ctrl.unregisterLoop(myLoopId);
+            session(ctrl).unregisterLoop(myLoopId);
         }
     }
 

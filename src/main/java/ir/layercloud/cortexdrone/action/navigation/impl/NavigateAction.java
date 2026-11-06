@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
@@ -24,6 +25,7 @@ import java.util.List;
 public final class NavigateAction implements Action<NavigationContext> {
     private final FlightPathfinder pathfinder;
     private final BreadcrumbService breadcrumbService;
+    private final NavigationState state;
 
     @Override
     public void execute(NavigationContext context) {
@@ -98,50 +100,52 @@ public final class NavigateAction implements Action<NavigationContext> {
             }
         }
 
-        double distGoalMove = Double.isNaN(ctrl.pathGoalX) ? 999.0 : Math.sqrt(
-                (effGx - ctrl.pathGoalX) * (effGx - ctrl.pathGoalX)
-                        + (effGy - ctrl.pathGoalY) * (effGy - ctrl.pathGoalY)
-                        + (effGz - ctrl.pathGoalZ) * (effGz - ctrl.pathGoalZ));
+        double distGoalMove = Double.isNaN(this.state.pathGoalX) ? 999.0 : Math.sqrt(
+                (effGx - this.state.pathGoalX) * (effGx - this.state.pathGoalX)
+                        + (effGy - this.state.pathGoalY) * (effGy - this.state.pathGoalY)
+                        + (effGz - this.state.pathGoalZ) * (effGz - this.state.pathGoalZ));
 
-        boolean needsRepath = ctrl.pathWaypoints.isEmpty()
-                || (ctrl.pathIndex >= ctrl.pathWaypoints.size() && ctrl.repathCooldown <= 0)
-                || (distGoalMove > 0.85 && ctrl.repathCooldown <= 0)
-                || (ctrl.stuckTicks >= 12 && ctrl.repathCooldown <= 0);
+        boolean needsRepath = this.state.pathWaypoints.isEmpty()
+                || (this.state.pathIndex >= this.state.pathWaypoints.size() && this.state.repathCooldown <= 0)
+                || (distGoalMove > 0.85 && this.state.repathCooldown <= 0)
+                || (this.state.stuckTicks >= 12 && this.state.repathCooldown <= 0);
         if (needsRepath) {
             List<double[]> waypoints = this.pathfinder.findFlightPath(
-                    world, ctrl, drone.posX, drone.posY, drone.posZ, effGx, effGy, effGz);
-            ctrl.pathWaypoints.clear();
-            ctrl.pathWaypoints.addAll(waypoints);
-            ctrl.pathIndex = 0;
-            ctrl.pathGoalX = effGx;
-            ctrl.pathGoalY = effGy;
-            ctrl.pathGoalZ = effGz;
-            ctrl.repathCooldown = horizDist > 18.0 ? 8 : 12;
+                    world, ctrl, this.state,
+                    drone.posX, drone.posY, drone.posZ, effGx, effGy, effGz);
+            this.state.pathWaypoints.clear();
+            this.state.pathWaypoints.addAll(waypoints);
+            this.state.pathIndex = 0;
+            this.state.pathGoalX = effGx;
+            this.state.pathGoalY = effGy;
+            this.state.pathGoalZ = effGz;
+            this.state.repathCooldown = horizDist > 18.0 ? 8 : 12;
         }
 
-        while (ctrl.pathIndex < ctrl.pathWaypoints.size()) {
-            double[] waypoint = ctrl.pathWaypoints.get(ctrl.pathIndex);
+        while (this.state.pathIndex < this.state.pathWaypoints.size()) {
+            double[] waypoint = this.state.pathWaypoints.get(this.state.pathIndex);
             double distWp = drone.getDistance(waypoint[0], waypoint[1], waypoint[2]);
-            boolean last = ctrl.pathIndex == ctrl.pathWaypoints.size() - 1;
+            boolean last = this.state.pathIndex == this.state.pathWaypoints.size() - 1;
             double distWpToGoal = Math.sqrt(
                     (waypoint[0] - effGx) * (waypoint[0] - effGx)
                             + (waypoint[1] - effGy) * (waypoint[1] - effGy)
                             + (waypoint[2] - effGz) * (waypoint[2] - effGz));
             if (distWp <= 0.75 && !last) {
-                ctrl.pathIndex++;
+                this.state.pathIndex++;
             } else if (distWp <= 0.75
-                    && (ctrl.lastPathPartial || distWpToGoal > 0.90) && ctrl.repathCooldown <= 0) {
-                ctrl.pathIndex++;
+                    && (this.state.lastPathPartial || distWpToGoal > 0.90)
+                    && this.state.repathCooldown <= 0) {
+                this.state.pathIndex++;
                 break;
             } else {
                 break;
             }
         }
 
-        boolean exhausted = ctrl.pathIndex >= ctrl.pathWaypoints.size();
+        boolean exhausted = this.state.pathIndex >= this.state.pathWaypoints.size();
         double[] activeWp = exhausted
                 ? new double[]{effGx, effGy, effGz}
-                : ctrl.pathWaypoints.get(ctrl.pathIndex);
+                : this.state.pathWaypoints.get(this.state.pathIndex);
         int awx = MathHelper.floor_double(activeWp[0]);
         int away = MathHelper.floor_double(activeWp[1]);
         int awz = MathHelper.floor_double(activeWp[2]);
@@ -151,19 +155,14 @@ public final class NavigateAction implements Action<NavigationContext> {
             drone.motionX *= 0.3;
             drone.motionY *= 0.3;
             drone.motionZ *= 0.3;
-            ctrl.stuckTicks = Math.max(ctrl.stuckTicks, 6);
-            ctrl.pathWaypoints.clear();
-            ctrl.pathIndex = 0;
-            ctrl.pathGoalX = Double.NaN;
-            ctrl.pathGoalY = Double.NaN;
-            ctrl.pathGoalZ = Double.NaN;
-            ctrl.repathCooldown = 0;
-            context.result(NavigateResult.blocked(ctrl.lastPathPartial));
+            this.state.stuckTicks = Math.max(this.state.stuckTicks, 6);
+            this.state.clearPath();
+            context.result(NavigateResult.blocked(this.state.lastPathPartial));
             context.complete();
             return;
         }
 
-        ctrl.solidWaypointHits.remove(FlightPathfinder.packBlockPos(awx, away, awz));
+        this.state.solidWaypointHits.remove(FlightPathfinder.packBlockPos(awx, away, awz));
         FlightPathfinder.setDroneFlightTarget(drone, activeWp[0], activeWp[1], activeWp[2], 0.1f);
         context.countTick();
 
@@ -172,11 +171,11 @@ public final class NavigateAction implements Action<NavigationContext> {
             context.complete();
             return;
         }
-        if (exhausted && ctrl.lastPathPartial) {
+        if (exhausted && this.state.lastPathPartial) {
             context.result(NavigateResult.blocked(true));
             context.complete();
             return;
         }
-        context.result(NavigateResult.moved(ctrl.lastPathPartial));
+        context.result(NavigateResult.moved(this.state.lastPathPartial));
     }
 }

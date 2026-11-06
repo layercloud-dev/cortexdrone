@@ -22,22 +22,22 @@ server thread and then `TaskCoordinator.handle`.
 `TaskCoordinator`:
 
 1. trims the prompt;
-2. determines whether a task is active (`ctrl.task.isActive()` or any live loop);
+2. determines whether a task is active (`DroneSession.isActive()` or any live loop);
 3. classifies intent deterministically;
 4. acts by intent.
 
 | Intent | When active | When idle |
 | --- | --- | --- |
 | `QUESTION` | Reply from live state; task continues | Starts a new task |
-| `BY_THE_WAY` | Attach note to `TaskSession`; task continues | Adds note, replies "Noted." |
+| `BY_THE_WAY` | Attach note to `DroneSession`; task continues | Adds note, replies "Noted." |
 | `MODIFY` | Cancel old loops/actions, start replacement with previous-task note | Starts new task |
 | `CANCEL` | Cancel loops, clear action state, cancel task, stop navigation | Replies "No task is running" |
 | `NEW_TASK` | Replaces the active task | Starts new task |
 
 Starting a task:
 
-1. increments `ctrl.activeLoopId`;
-2. `ctrl.task.begin(loopId, prompt)`;
+1. increments the session loop ID;
+2. `DroneSession.begin(loopId, prompt)`;
 3. builds world context via `LlmAgentService.buildDroneContextForLlm`;
 4. registers the loop ID;
 5. submits `runAgentLoop` to `CortexDroneMod.HTTP_POOL`.
@@ -63,18 +63,21 @@ collapses whitespace) and checks:
 Unknown side comments while a task is active are treated as questions (keep the
 task, acknowledge).
 
-## 4. TaskSession
+## 4. DroneSession / SessionManager
 
-`TaskSession` lives in `drone/` because it is state owned by the controller,
-not part of the LLM loop. One `TaskSession` per `DroneController`:
+`harness/session/DroneSession` owns the per-drone harness state; the controller
+keeps only identity and the entity link. `SessionManager` keeps one session per
+controller and drops it on despawn.
 
-- active flag, loop ID, prompt, summary, timestamps;
-- notes list (max 8); notes append to the summary as `| note: ...`;
-- `complete`/`cancel`;
-- `getAgeMs`.
+Each session owns:
 
-It is synchronized because HTTP/agent threads read it while the server thread
-updates it.
+- task state: active flag, loop ID, prompt, summary, timestamps, notes (max 8);
+- loop state: active loop ID, running/cancelled loop sets, script count;
+- thought state: last thought and a bounded history (max 12).
+
+Task methods (`begin`, `addNote`, `complete`, `cancel`, `getAgeMs`) are
+synchronized because HTTP/agent threads read them while the server thread
+updates them.
 
 ## 5. LlmAgentService
 

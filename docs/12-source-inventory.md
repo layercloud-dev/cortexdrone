@@ -141,7 +141,7 @@ not a substitute for the subsystem chapters.
 | Class | Responsibility |
 | --- | --- |
 | `agent/LlmAgentService` | LLM loop, prompt/context, HTTP call, turn handling, self-correction, skill match |
-| `agent/DroneContextBuilder` | Read-only "Initial World State" JSON: player, drone, saved locations, nearby resources |
+| `agent/DroneContextBuilder` | Read-only "Initial World State" JSON: player, drone, session, nearby resources |
 | `CodeModeRuntime` | Node.js runner, SDK bundle, temp script, timeout/supersession, JSON parse |
 | `agent/LlmResponseParser` | Tolerant JSON/code salvage, think stripping, prose blocker detection |
 | `agent/PromptCompactor` | Bounded context + continuation digest |
@@ -151,6 +151,8 @@ not a substitute for the subsystem chapters.
 | `task/TaskCoordinator` | One-session intent handling |
 | `task/TaskIntent` | Intent enum |
 | `task/TaskIntentClassifier` | Deterministic intent classifier |
+| `session/DroneSession` | Task, loop/script and thought state |
+| `session/SessionManager` | One session per controller, dropped on despawn |
 | `SkillLibrary` | Bundled/saved skills, BM25 search, self-corrected skills |
 | `RpcDispatcher` | Main-thread RPC, timeouts, time-sliced large scans, poll_scan |
 | `ToolRegistry` | Ordered master tool registry: names + descriptions |
@@ -172,11 +174,10 @@ not a substitute for the subsystem chapters.
 
 | Class | Responsibility |
 | --- | --- |
-| `drone/DroneController` | Per-drone mutable state, loops, LED/path |
-| `drone/TaskSession` | One active task/session: prompt, summary, notes, age |
+| `drone/DroneController` | Identity + entity link only |
 | `command/BaseCommand` | Command base/compareTo |
 | `command/impl/DroneCommand` | `/drone` management + natural-language fallback |
-| `config/AIConfig` | Env/file defaults, saved drones/bases/locations, persistence |
+| `config/AIConfig` | Env/file defaults, saved drones, persistence |
 | `config/DroneLogger` | Debug/chat rings, subscribers, async file flush/rotation, JSON caps |
 | `config/ChatRecord` | Chat history entry used by `DroneLogger` |
 | `config/DebugEntry` | Debug log entry used by `DroneLogger` |
@@ -193,4 +194,4 @@ not a substitute for the subsystem chapters.
 | `harness/MasterToolSurfaceTest` | Tool surface and removed-tool rejection |
 | `harness/SkillLibraryTest` | Bundled skill load/search |
 | `harness/task/TaskIntentClassifierTest` | Intent classification |
-| `drone/TaskSessionTest` | Session lifecycle/notes |
+| `harness/session/DroneSessionTest` | Session lifecycle/notes |

@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.visuals.LightConfig;
 import ir.layercloud.cortexdrone.manager.visuals.LightResult;
+import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ import java.util.Map;
 /**
  * Torch-free illumination aura.
  *
- * <p>While {@link DroneController#autoTorch} is enabled the drone raises the block
+ * <p>While {@link VisualsState#autoTorch} is enabled the drone raises the block
  * light around itself, exactly like a moving light source, without consuming a
  * torch or placing any block. The original light values of every touched voxel
  * are remembered so switching the aura off restores the world byte-for-byte.
@@ -43,46 +44,46 @@ public class LightingAura {
     /**
      * Handles {@code torch} / {@code light} RPC: toggle, or set colour/radius/level.
      */
-    public LightResult configure(DroneController ctrl, LightConfig config) {
+    public LightResult configure(DroneController ctrl, VisualsState state, LightConfig config) {
         if (ctrl == null || ctrl.drone == null) {
             return LightResult.failure("No active drone");
         }
-        boolean wasActive = ctrl.autoTorch;
+        boolean wasActive = state.autoTorch;
         if (config.getEnabled() != null) {
-            ctrl.autoTorch = config.getEnabled();
+            state.autoTorch = config.getEnabled();
         } else if (config.isToggle()) {
-            ctrl.autoTorch = !ctrl.autoTorch;
+            state.autoTorch = !state.autoTorch;
         }
         if (config.getRadius() != null) {
-            ctrl.lightRadius = clamp(config.getRadius(), MIN_RADIUS, MAX_RADIUS);
+            state.lightRadius = clamp(config.getRadius(), MIN_RADIUS, MAX_RADIUS);
         }
         if (config.getLevel() != null) {
-            ctrl.lightIntensity = clamp(config.getLevel(), MIN_LEVEL, MAX_LEVEL);
+            state.lightIntensity = clamp(config.getLevel(), MIN_LEVEL, MAX_LEVEL);
         }
         if (config.getColor() != null) {
-            ctrl.lightColor = config.getColor();
+            state.lightColor = config.getColor();
         }
 
-        if (ctrl.autoTorch) {
-            ctrl.lightCooldown = 0;
-            ctrl.lightAnchor = Long.MIN_VALUE;
+        if (state.autoTorch) {
+            state.lightCooldown = 0;
+            state.lightAnchor = Long.MIN_VALUE;
             if (config.getColor() != null && (config.getColor() & 0xFFFFFF) != 0xFFFFFF) {
-                ctrl.customLedColor = config.getColor() & 0xFFFFFF;
-                ctrl.ledEffect = "NONE";
+                state.customLedColor = config.getColor() & 0xFFFFFF;
+                state.ledEffect = "NONE";
                 ctrl.drone.lightColor_$eq(config.getColor() & 0xFFFFFF);
             }
-            applyAura(ctrl);
+            applyAura(ctrl, state);
         } else if (wasActive) {
-            clearAura(ctrl);
+            clearAura(ctrl, state);
         }
 
         return LightResult.builder()
                 .ok(true)
-                .active(ctrl.autoTorch)
-                .radius(ctrl.lightRadius)
-                .level(ctrl.lightIntensity)
-                .color(ctrl.lightColor)
-                .cells(ctrl.lightCells.size())
+                .active(state.autoTorch)
+                .radius(state.lightRadius)
+                .level(state.lightIntensity)
+                .color(state.lightColor)
+                .cells(state.lightCells.size())
                 .torchFree(true)
                 .build();
     }
@@ -90,39 +91,39 @@ public class LightingAura {
     /**
      * Called every server tick by the coordinator for each active controller.
      */
-    public void tick(DroneController ctrl) {
+    public void tick(DroneController ctrl, VisualsState state) {
         if (ctrl == null || ctrl.drone == null) return;
         World world = ctrl.drone.worldObj;
         if (world == null || world.isRemote) return;
-        if (!ctrl.autoTorch) {
-            if (!ctrl.lightCells.isEmpty()) clearAura(ctrl);
+        if (!state.autoTorch) {
+            if (!state.lightCells.isEmpty()) clearAura(ctrl, state);
             return;
         }
-        if (ctrl.lightCooldown > 0) {
-            ctrl.lightCooldown--;
+        if (state.lightCooldown > 0) {
+            state.lightCooldown--;
             return;
         }
-        ctrl.lightCooldown = APPLY_INTERVAL_TICKS;
+        state.lightCooldown = APPLY_INTERVAL_TICKS;
         long anchor = packAnchor(ctrl.drone);
-        if (anchor == ctrl.lightAnchor && !ctrl.lightCells.isEmpty()) {
+        if (anchor == state.lightAnchor && !state.lightCells.isEmpty()) {
             return;
         }
-        applyAura(ctrl);
+        applyAura(ctrl, state);
     }
 
     /**
      * Restores every voxel this aura touched. Safe to call repeatedly.
      */
-    public void clearAura(DroneController ctrl) {
+    public void clearAura(DroneController ctrl, VisualsState state) {
         if (ctrl == null) return;
         if (ctrl.drone == null || ctrl.drone.worldObj == null) {
-            ctrl.lightCells.clear();
-            ctrl.lightAnchor = Long.MIN_VALUE;
+            state.lightCells.clear();
+            state.lightAnchor = Long.MIN_VALUE;
             return;
         }
         World world = ctrl.drone.worldObj;
         Map<Long, Integer> chunkMasks = new HashMap<>();
-        for (Map.Entry<Long, Integer> e : ctrl.lightCells.entrySet()) {
+        for (Map.Entry<Long, Integer> e : state.lightCells.entrySet()) {
             long key = e.getKey();
             int x = unpackX(key);
             int y = unpackY(key);
@@ -130,16 +131,16 @@ public class LightingAura {
             world.setLightValue(EnumSkyBlock.Block, x, y, z, e.getValue());
             addChunkMask(chunkMasks, x, y, z);
         }
-        int restored = ctrl.lightCells.size();
-        ctrl.lightCells.clear();
-        ctrl.lightAnchor = Long.MIN_VALUE;
+        int restored = state.lightCells.size();
+        state.lightCells.clear();
+        state.lightAnchor = Long.MIN_VALUE;
         syncChunks(world, chunkMasks);
         if (restored > 0) {
             this.logger.log("LIGHT", ctrl, "Light aura off, restored " + restored + " voxels", "");
         }
     }
 
-    private void applyAura(DroneController ctrl) {
+    private void applyAura(DroneController ctrl, VisualsState state) {
         Drone d = ctrl.drone;
         World world = d.worldObj;
         if (world == null) return;
@@ -147,11 +148,11 @@ public class LightingAura {
         int cx = MathHelper.floor_double(d.posX);
         int cy = MathHelper.floor_double(d.posY);
         int cz = MathHelper.floor_double(d.posZ);
-        int radius = clamp(ctrl.lightRadius, MIN_RADIUS, MAX_RADIUS);
-        int level = clamp(ctrl.lightIntensity, MIN_LEVEL, MAX_LEVEL);
+        int radius = clamp(state.lightRadius, MIN_RADIUS, MAX_RADIUS);
+        int level = clamp(state.lightIntensity, MIN_LEVEL, MAX_LEVEL);
 
-        Map<Long, Integer> previous = new HashMap<>(ctrl.lightCells);
-        ctrl.lightCells.clear();
+        Map<Long, Integer> previous = new HashMap<>(state.lightCells);
+        state.lightCells.clear();
         Map<Long, Integer> chunkMasks = new HashMap<>();
         int r2 = radius * radius;
 
@@ -171,7 +172,7 @@ public class LightingAura {
                     int before = original != null
                             ? original
                             : world.getSavedLightValue(EnumSkyBlock.Block, x, y, z);
-                    ctrl.lightCells.put(key, before);
+                    state.lightCells.put(key, before);
                     int want = Math.max(1, level - (int) Math.sqrt(d2));
                     if (before < want) {
                         world.setLightValue(EnumSkyBlock.Block, x, y, z, want);
@@ -191,7 +192,7 @@ public class LightingAura {
             addChunkMask(chunkMasks, x, y, z);
         }
 
-        ctrl.lightAnchor = packAnchor(d);
+        state.lightAnchor = packAnchor(d);
         if (!chunkMasks.isEmpty()) {
             syncChunks(world, chunkMasks);
         }

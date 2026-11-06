@@ -9,6 +9,9 @@ import ir.layercloud.cortexdrone.TickProfiler;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
+import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
+import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
@@ -48,11 +51,13 @@ public class DroneTelemetrySerializer {
             Drone d = ctrl.drone;
             if (d == null || d.isDead) continue;
             JsonObject dj = new JsonObject();
+            DroneSession session = this.manager.getSessionManager().session(ctrl);
+            NavigationState nav = this.manager.getNavigationManager().state(ctrl);
             dj.addProperty("id", ctrl.id);
             dj.addProperty("entityId", d.getEntityId());
             dj.addProperty("name", ctrl.name);
             dj.addProperty("owner", ctrl.ownerName);
-            dj.addProperty("lastThought", ctrl.lastThought != null ? ctrl.lastThought : "");
+            dj.addProperty("lastThought", session.lastThought() != null ? session.lastThought() : "");
             dj.addProperty("navigationActive", this.manager.getNavigationManager().isActive(ctrl));
             dj.addProperty("x", Math.round(d.posX * 100.0) / 100.0);
             dj.addProperty("y", Math.round(d.posY * 100.0) / 100.0);
@@ -63,13 +68,13 @@ public class DroneTelemetrySerializer {
             dj.addProperty("targetX", d.targetX());
             dj.addProperty("targetY", d.targetY());
             dj.addProperty("targetZ", d.targetZ());
-            dj.addProperty("stuckTicks", ctrl.stuckTicks);
-            dj.addProperty("lastStuckReason", ctrl.lastStuckReason);
-            dj.addProperty("lastPathNodesExpanded", ctrl.lastPathNodesExpanded);
-            dj.addProperty("pathIndex", ctrl.pathIndex);
+            dj.addProperty("stuckTicks", nav.stuckTicks);
+            dj.addProperty("lastStuckReason", nav.lastStuckReason);
+            dj.addProperty("lastPathNodesExpanded", nav.lastPathNodesExpanded);
+            dj.addProperty("pathIndex", nav.pathIndex);
 
             JsonArray wpArr = new JsonArray();
-            for (double[] wp : ctrl.pathWaypoints) {
+            for (double[] wp : nav.pathWaypoints) {
                 JsonArray pt = new JsonArray();
                 pt.add(new JsonPrimitive(Math.round(wp[0] * 100.0) / 100.0));
                 pt.add(new JsonPrimitive(Math.round(wp[1] * 100.0) / 100.0));
@@ -79,7 +84,7 @@ public class DroneTelemetrySerializer {
             dj.add("pathWaypoints", wpArr);
 
             JsonArray thArr = new JsonArray();
-            for (String th : ctrl.thoughtHistory) {
+            for (String th : session.thoughtHistory()) {
                 thArr.add(new JsonPrimitive(th));
             }
             dj.add("thoughtHistory", thArr);
@@ -127,12 +132,15 @@ public class DroneTelemetrySerializer {
             Drone d = ctrl.drone;
             if (d == null || d.isDead) continue;
             JsonObject dj = new JsonObject();
+            DroneSession session = this.manager.getSessionManager().session(ctrl);
+            NavigationState nav = this.manager.getNavigationManager().state(ctrl);
+            VisualsState visuals = this.manager.getVisualsManager().state(ctrl);
             dj.addProperty("id", ctrl.id);
             dj.addProperty("entityId", d.getEntityId());
             dj.addProperty("uuid", d.getUniqueID() != null ? d.getUniqueID().toString() : "");
             dj.addProperty("name", ctrl.name);
             dj.addProperty("owner", ctrl.ownerName);
-            dj.addProperty("lastThought", ctrl.lastThought != null ? ctrl.lastThought : "");
+            dj.addProperty("lastThought", session.lastThought() != null ? session.lastThought() : "");
             dj.addProperty("dimension", d.dimension);
             dj.addProperty("x", Math.round(d.posX * 100.0) / 100.0);
             dj.addProperty("y", Math.round(d.posY * 100.0) / 100.0);
@@ -146,16 +154,16 @@ public class DroneTelemetrySerializer {
             dj.addProperty("isRunning", d.isRunning());
             dj.addProperty("energy", d.globalBuffer());
             dj.addProperty("maxEnergy", d.globalBufferSize());
-            dj.addProperty("autoTorch", ctrl.autoTorch);
-            dj.addProperty("lightActive", ctrl.autoTorch);
-            dj.addProperty("lightRadius", ctrl.lightRadius);
-            dj.addProperty("lightIntensity", ctrl.lightIntensity);
-            dj.addProperty("auraColor", String.format("0x%06X", ctrl.lightColor & 0xFFFFFF));
-            dj.addProperty("taskActive", ctrl.task.isActive());
-            dj.addProperty("taskSummary", ctrl.task.getSummary());
-            dj.addProperty("taskAgeMs", ctrl.task.getAgeMs());
+            dj.addProperty("autoTorch", visuals.autoTorch);
+            dj.addProperty("lightActive", visuals.autoTorch);
+            dj.addProperty("lightRadius", visuals.lightRadius);
+            dj.addProperty("lightIntensity", visuals.lightIntensity);
+            dj.addProperty("auraColor", String.format("0x%06X", visuals.lightColor & 0xFFFFFF));
+            dj.addProperty("taskActive", session.isActive());
+            dj.addProperty("taskSummary", session.getSummary());
+            dj.addProperty("taskAgeMs", session.getAgeMs());
             dj.addProperty("navigationActive", this.manager.getNavigationManager().isActive(ctrl));
-            dj.addProperty("pathWaypointCount", ctrl.pathWaypoints.size());
+            dj.addProperty("pathWaypointCount", nav.pathWaypoints.size());
 
             JsonArray invArr = new JsonArray();
             IInventory inv = d.mainInventory();

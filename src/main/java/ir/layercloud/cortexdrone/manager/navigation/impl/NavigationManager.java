@@ -12,6 +12,7 @@ import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationResult;
+import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
@@ -24,8 +25,8 @@ import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
-import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Goal-driven movement manager.
@@ -35,6 +36,10 @@ import java.util.Map;
  * Managers never contain flight or waypoint code; actions do. Breadcrumb
  * backtracking is a service query, not an action. Navigation never breaks
  * blocks: digging is composed by the model with {@code break_block}.</p>
+ *
+ * <p>It also owns every per-drone navigation field (goal, error, path, stall
+ * counters, path-cache signature and tick clock). The controller carries none
+ * of them.</p>
  */
 public final class NavigationManager {
     private static final double ARRIVAL_RADIUS = 0.85;
@@ -44,8 +49,8 @@ public final class NavigationManager {
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final BreadcrumbService breadcrumbService;
-    private final Map<DroneController, Session> sessions =
-            new IdentityHashMap<>();
+    private final Map<DroneController, Session> sessions = new ConcurrentHashMap<>();
+    private final Map<DroneController, NavigationState> states = new ConcurrentHashMap<>();
 
     public NavigationManager(AIDroneManager manager, DroneLogger logger,
                              FlightPathfinder pathfinder, BreadcrumbService breadcrumbService) {
@@ -53,6 +58,18 @@ public final class NavigationManager {
         this.logger = logger;
         this.pathfinder = pathfinder;
         this.breadcrumbService = breadcrumbService;
+    }
+
+    /** Per-drone navigation state, created on first use. */
+    public NavigationState state(DroneController controller) {
+        if (controller == null) return null;
+        return this.states.computeIfAbsent(controller, c -> {
+            Drone drone = c.drone;
+            double x = drone != null ? drone.posX : 0.0;
+            double y = drone != null ? drone.posY : 0.0;
+            double z = drone != null ? drone.posZ : 0.0;
+            return new NavigationState(x, y, z);
+        });
     }
 
     public NavigationResult gotoGoal(DroneController controller,
@@ -65,16 +82,17 @@ public final class NavigationManager {
             return NavigationResult.failure("goto requires x/y/z or standoffOf:{x,y,z}");
         }
 
+        NavigationState state = state(controller);
         this.sessions.remove(controller);
-        this.pathfinder.clearNavigation(controller);
-        controller.stuckTicks = 0;
-        controller.lastPathPartial = false;
-        controller.navigationError = "";
-        controller.goalX = target.getX();
-        controller.goalY = target.getY();
-        controller.goalZ = target.getZ();
+        state.clearPath();
+        state.stuckTicks = 0;
+        state.lastPathPartial = false;
+        state.error = "";
+        state.goalX = target.getX();
+        state.goalY = target.getY();
+        state.goalZ = target.getZ();
 
-        Session session = new Session(target.getX(), target.getY(), target.getZ());
+        Session session = new Session();
         this.sessions.put(controller, session);
         return NavigationResult.started(target.getX(), target.getY(), target.getZ(), "planning");
     }
@@ -83,13 +101,14 @@ public final class NavigationManager {
         if (controller == null || controller.drone == null) {
             return NavigationResult.failure("No active drone");
         }
+        NavigationState state = state(controller);
         this.sessions.remove(controller);
-        this.pathfinder.clearNavigation(controller);
-        controller.stuckTicks = 0;
+        state.clearPath();
+        state.stuckTicks = 0;
         NavigationContext context = new NavigationContext(controller, player,
                 NavigationMode.STOP, controller.drone.posX, controller.drone.posY,
                 controller.drone.posZ, reason != null ? reason : "Navigation stop");
-        new StopAction().execute(context);
+        new StopAction(state).execute(context);
         return NavigationResult.stopped(controller.drone.posX, controller.drone.posY,
                 controller.drone.posZ);
     }
@@ -98,11 +117,26 @@ public final class NavigationManager {
      * Called once per server tick from the runtime pipeline.
      */
     public void tick(DroneController controller) {
-        Session session = this.sessions.get(controller);
-        if (session == null || controller == null || controller.drone == null) return;
+        if (controller == null || controller.drone == null) return;
+        NavigationState state = state(controller);
+        state.ticks++;
+        if (state.repathCooldown > 0) state.repathCooldown--;
+
         Drone drone = controller.drone;
         World world = drone.worldObj;
         if (world == null || world.isRemote) return;
+
+        double movedSq = (drone.posX - state.lastX) * (drone.posX - state.lastX)
+                + (drone.posY - state.lastY) * (drone.posY - state.lastY)
+                + (drone.posZ - state.lastZ) * (drone.posZ - state.lastZ);
+        state.lastX = drone.posX;
+        state.lastY = drone.posY;
+        state.lastZ = drone.posZ;
+        state.lastMoveSq = movedSq;
+        trackStalls(controller, state, drone, world, movedSq);
+
+        Session session = this.sessions.get(controller);
+        if (session == null) return;
 
         if (session.leg != null) {
             tickLeg(controller, session);
@@ -115,7 +149,7 @@ public final class NavigationManager {
             return;
         }
 
-        double distance = drone.getDistance(session.goalX, session.goalY, session.goalZ);
+        double distance = drone.getDistance(state.goalX, state.goalY, state.goalZ);
         if (distance <= ARRIVAL_RADIUS) {
             arrive(controller, session);
             return;
@@ -136,7 +170,8 @@ public final class NavigationManager {
         }
         NavigationContext context = new NavigationContext(controller, null,
                 NavigationMode.FLIGHT, x, y, z, label);
-        NavigateAction action = new NavigateAction(this.pathfinder, this.breadcrumbService);
+        NavigateAction action = new NavigateAction(this.pathfinder, this.breadcrumbService,
+                state(controller));
         try {
             action.tick(context);
         } finally {
@@ -151,8 +186,9 @@ public final class NavigationManager {
     public Status status(DroneController controller) {
         Session session = this.sessions.get(controller);
         if (session == null) return Status.idle();
+        NavigationState state = state(controller);
         return new Status(true, session.phase.name().toLowerCase(), session.reason,
-                session.goalX, session.goalY, session.goalZ);
+                state.goalX, state.goalY, state.goalZ);
     }
 
     public void clear(DroneController controller) {
@@ -163,12 +199,19 @@ public final class NavigationManager {
         this.sessions.remove(controller);
     }
 
+    /** Drops all per-drone navigation state when the controller goes away. */
+    public void forget(DroneController controller) {
+        clear(controller);
+        this.states.remove(controller);
+    }
+
     private void decide(DroneController controller, Session session) {
         if (session.replanCooldown > 0) return;
 
         if (!session.trailRejected) {
+            NavigationState state = state(controller);
             TrailPlan trail = this.breadcrumbService.planBacktrack(controller,
-                    session.goalX, session.goalY, session.goalZ);
+                    state.goalX, state.goalY, state.goalZ);
             if (trail != null && trail.isUseful()) {
                 Breadcrumb endpoint = trail.getEndpoint();
                 session.usingTrail = true;
@@ -182,10 +225,11 @@ public final class NavigationManager {
             }
         }
 
+        NavigationState state = state(controller);
         session.usingTrail = false;
         session.reason = "flight";
         startLeg(controller, session,
-                session.goalX, session.goalY, session.goalZ, "Flight");
+                state.goalX, state.goalY, state.goalZ, "Flight");
     }
 
     private void startLeg(DroneController controller, Session session,
@@ -193,7 +237,8 @@ public final class NavigationManager {
         session.phase = Phase.FLIGHT;
         NavigationContext context = new NavigationContext(controller, null, NavigationMode.FLIGHT,
                 targetX, targetY, targetZ, label);
-        Action<NavigationContext> action = new NavigateAction(this.pathfinder, this.breadcrumbService);
+        Action<NavigationContext> action = new NavigateAction(this.pathfinder,
+                this.breadcrumbService, state(controller));
         action.execute(context);
         if (context.isActive()) {
             context.retain();
@@ -277,17 +322,20 @@ public final class NavigationManager {
     }
 
     private void arrive(DroneController controller, Session session) {
+        NavigationState state = state(controller);
         this.sessions.remove(controller);
-        controller.stuckTicks = 0;
-        this.pathfinder.clearNavigation(controller);
+        state.stuckTicks = 0;
+        state.lastPathPartial = false;
+        state.clearPath();
         controller.drone.lightColor_$eq(0x00FFAA);
         controller.drone.statusText_$eq("Arrived\n"
-                + (int) Math.floor(session.goalX) + "," + (int) Math.floor(session.goalZ));
-        if (!controller.isScriptRunning()) {
+                + (int) Math.floor(state.goalX) + "," + (int) Math.floor(state.goalZ));
+        if (!this.manager.getSessionManager().session(controller).isScriptRunning()) {
             EntityPlayerMP owner = CortexDroneMod.findPlayer(controller.ownerName);
             if (owner != null) {
                 this.manager.droneSay(owner, controller, String.format(
-                        "Arrived at (%.1f, %.1f, %.1f).", session.goalX, session.goalY, session.goalZ));
+                        "Arrived at (%.1f, %.1f, %.1f).",
+                        state.goalX, state.goalY, state.goalZ));
             }
         }
     }
@@ -295,13 +343,45 @@ public final class NavigationManager {
     private void fail(DroneController controller, String reason) {
         this.sessions.remove(controller);
         if (controller == null) return;
-        controller.navigationError = reason;
-        this.pathfinder.clearNavigation(controller);
-        controller.stuckTicks = 0;
+        NavigationState state = state(controller);
+        state.error = reason;
+        state.clearPath();
+        state.stuckTicks = 0;
         if (controller.drone != null) {
             controller.drone.statusText_$eq("Route failed\n" + reason);
         }
         this.logger.log("NAV", controller, "Navigation failed", reason);
+    }
+
+    private void trackStalls(DroneController controller, NavigationState state, Drone drone,
+                             World world, double movedSq) {
+        double distToTarget = drone.getDistance(drone.targetX(), drone.targetY(), drone.targetZ());
+        if (distToTarget <= 0.70 || movedSq >= 0.0002) {
+            state.stuckTicks = 0;
+            return;
+        }
+        state.stuckTicks++;
+        if (state.stuckTicks != 18 && state.stuckTicks % 30 != 0) return;
+        state.lastStuckReason = FlightPathfinder.describeNearestObstruction(
+                world, drone.posX, drone.posY, drone.posZ);
+        // Throttle identical STUCK spam: same obstruction + same waypoint = log once per 240 ticks (12s).
+        String stuckKey = controller.id + "|" + state.lastStuckReason
+                + "|" + (drone.posX * 4) + "," + (drone.posY * 4) + "," + (drone.posZ * 4)
+                + "->" + (int) ((double) drone.targetX() * 4) + ","
+                + (int) ((double) drone.targetY() * 4) + ","
+                + (int) ((double) drone.targetZ() * 4);
+        if (!stuckKey.equals(state.lastStuckKey)
+                || state.ticks - state.lastStuckLogTick >= 240) {
+            this.logger.log("STUCK", controller,
+                    String.format("Velocity blocked at (%.2f,%.2f,%.2f) -> wp(%.2f,%.2f,%.2f)",
+                            drone.posX, drone.posY, drone.posZ,
+                            (double) drone.targetX(), (double) drone.targetY(),
+                            (double) drone.targetZ()),
+                    "obstruction=" + state.lastStuckReason);
+            state.lastStuckKey = stuckKey;
+            state.lastStuckLogTick = state.ticks;
+        }
+        FlightPathfinder.clearNearbyLeafObstruction(world, controller);
     }
 
     private NavigationTarget resolveTarget(NavigationRequest request) {
@@ -344,9 +424,6 @@ public final class NavigationManager {
     }
 
     private static final class Session {
-        private final double goalX;
-        private final double goalY;
-        private final double goalZ;
         private Phase phase = Phase.PLAN;
         private Leg leg;
         private boolean trailRejected;
@@ -354,12 +431,6 @@ public final class NavigationManager {
         private int ticks;
         private int replanCooldown;
         private String reason = "planning";
-
-        private Session(double goalX, double goalY, double goalZ) {
-            this.goalX = goalX;
-            this.goalY = goalY;
-            this.goalZ = goalZ;
-        }
     }
 
     @Getter

@@ -377,7 +377,7 @@ public class DroneHttpServer {
             String prompt = req.has("prompt") ? req.get("prompt").getAsString() : "";
             this.manager.handleNaturalInstruction(player, ctrl, prompt);
             res.addProperty("ok", true);
-            res.addProperty("loopId", ctrl.activeLoopId.get());
+            res.addProperty("loopId", this.manager.getSessionManager().session(ctrl).activeLoopId());
             return res;
         }
 

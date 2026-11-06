@@ -4,12 +4,17 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
+import lombok.RequiredArgsConstructor;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 
 /**
  * Executes the stop request: clears the path and holds position.
  */
+@RequiredArgsConstructor
 public final class StopAction implements Action<NavigationContext> {
+    private final NavigationState state;
+
     @Override
     public void execute(NavigationContext context) {
         DroneController ctrl = context.controller();
@@ -18,16 +23,11 @@ public final class StopAction implements Action<NavigationContext> {
             context.complete();
             return;
         }
-        ctrl.pathWaypoints.clear();
-        ctrl.pathIndex = 0;
-        ctrl.pathGoalX = Double.NaN;
-        ctrl.pathGoalY = Double.NaN;
-        ctrl.pathGoalZ = Double.NaN;
-        ctrl.repathCooldown = 0;
-        ctrl.stuckTicks = 0;
-        ctrl.goalX = ctrl.drone.posX;
-        ctrl.goalY = ctrl.drone.posY;
-        ctrl.goalZ = ctrl.drone.posZ;
+        if (this.state != null) {
+            this.state.clearPath();
+            this.state.stuckTicks = 0;
+            this.state.hold(ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ);
+        }
         FlightPathfinder.setDroneFlightTarget(ctrl.drone,
                 ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ, 0.06f);
         ctrl.drone.motionX *= 0.25;

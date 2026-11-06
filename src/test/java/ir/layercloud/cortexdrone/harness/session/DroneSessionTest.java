@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.drone;
+package ir.layercloud.cortexdrone.harness.session;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -6,10 +6,10 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-public class TaskSessionTest {
+public class DroneSessionTest {
     @Test
     public void beginAndCompleteOneSession() {
-        TaskSession session = new TaskSession();
+        DroneSession session = new DroneSession();
         assertFalse(session.isActive());
         session.begin(7, "mine 8 iron");
         assertTrue(session.isActive());
@@ -21,7 +21,7 @@ public class TaskSessionTest {
 
     @Test
     public void notesAttachToRunningTaskWithoutQueueingInstructions() {
-        TaskSession session = new TaskSession();
+        DroneSession session = new DroneSession();
         session.begin(1, "build a wall");
         session.addNote("by the way, there is a chest nearby");
         session.addNote("btw keep away from lava");
@@ -33,7 +33,7 @@ public class TaskSessionTest {
 
     @Test
     public void cancelClearsNotesAndDeactivates() {
-        TaskSession session = new TaskSession();
+        DroneSession session = new DroneSession();
         session.begin(2, "mine stone");
         session.addNote("side note");
         session.cancel();

@@ -6,6 +6,8 @@ import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.action.interact.InteractionSupport;
 import ir.layercloud.cortexdrone.context.impl.InteractionContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.manager.interact.InteractionState;
+import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
 import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
@@ -23,6 +25,7 @@ import net.minecraft.world.World;
  */
 @RequiredArgsConstructor
 public final class AttackEntityAction implements Action<InteractionContext> {
+    private final InteractionManager manager;
     private final InteractionRequest request;
 
     @Override
@@ -64,9 +67,10 @@ public final class AttackEntityAction implements Action<InteractionContext> {
                     "distance", Math.round(distance * 100.0) / 100.0));
             return;
         }
-        if (controller.attackCooldown > 0) {
+        InteractionState state = this.manager.state(controller);
+        if (state.attackCooldown > 0) {
             context.result(InteractionResult.failure(
-                    "Attack cooling down", "retryTicks", controller.attackCooldown));
+                    "Attack cooling down", "retryTicks", state.attackCooldown));
             return;
         }
 
@@ -115,7 +119,7 @@ public final class AttackEntityAction implements Action<InteractionContext> {
             return;
         }
 
-        controller.attackCooldown = 4;
+        state.attackCooldown = 4;
         float after = living.getHealth();
         context.result(InteractionResult.success(
                 "attacked", true,

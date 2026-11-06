@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 import javax.annotation.Nonnull;
@@ -100,7 +101,7 @@ final class AgentHeartbeat {
     boolean rejectIncompleteDone(String reply) {
         if (this.forcedDoneChecks >= 2) return false;
         if (!AgentLoopHeuristics.promptExpectsPhysicalAction(this.userPrompt)) return false;
-        if (looksBlocked(reply) || looksBlocked(this.ctrl.lastThought)) return false;
+        if (looksBlocked(reply) || looksBlocked(session().lastThought())) return false;
         boolean concrete = AgentLoopHeuristics.hasConcreteProgress(this.lastExec, this.lastCode) || deliveredEvidence(this.lastExec);
         boolean active = hasActiveWork();
         boolean deliveryPending = promptMentionsDelivery(this.userPrompt)
@@ -136,11 +137,11 @@ final class AgentHeartbeat {
             return;
         }
         if (this.ctrl == null || this.ctrl.drone == null || this.ctrl.drone.isDead) return;
-        if (this.ctrl.isLoopCancelled(this.loopId)) {
+        if (session().isLoopCancelled(this.loopId)) {
             this.logger.log("HEARTBEAT", this.ctrl, "Loop " + this.loopId + " was cancelled; no resurrection", "");
             return;
         }
-        if (this.ctrl.activeLoopId.get() != this.loopId) {
+        if (session().activeLoopId() != this.loopId) {
             this.logger.log("HEARTBEAT", this.ctrl, "Loop " + this.loopId + " superseded by a newer instruction; no resurrection", "");
             return;
         }
@@ -162,13 +163,17 @@ final class AgentHeartbeat {
             return;
         }
 
-        final int expectedGeneration = this.ctrl.activeLoopId.get();
+        final int expectedGeneration = session().activeLoopId();
         final String resumePrompt = buildResumePrompt();
         this.logger.log("HEARTBEAT", this.ctrl, "Scheduling resurrection of loop " + this.loopId,
                 "active=" + active + " hadProgress=" + this.hadProgress + " deliveryPending=" + deliveryPending
                         + " emptyResponses=" + this.emptyResponses);
         Thread t = getThread(expectedGeneration, resumePrompt);
         t.start();
+    }
+
+    private DroneSession session() {
+        return this.manager.getSessionManager().session(this.ctrl);
     }
 
     @Nonnull
@@ -180,7 +185,7 @@ final class AgentHeartbeat {
                 return;
             }
             if (ctrl.drone == null || ctrl.drone.isDead) return;
-            if (ctrl.activeLoopId.get() != expectedGeneration) return;
+            if (session().activeLoopId() != expectedGeneration) return;
             logger.log("HEARTBEAT", ctrl, "Resurrecting abandoned job as a compacted continuation loop",
                     "fromLoop=" + loopId);
             try {

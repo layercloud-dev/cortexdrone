@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.RpcDispatcher;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -81,9 +82,10 @@ final class AgentLoopHeuristics {
             int myLoopId,
             int turn,
             ir.layercloud.cortexdrone.config.DroneLogger logger,
-            RpcDispatcher rpcDispatcher
+            RpcDispatcher rpcDispatcher,
+            DroneSession session
     ) {
-        int cancelledLoops = ctrl.cancelOtherLoops(myLoopId);
+        int cancelledLoops = session.cancelOtherLoops(myLoopId);
         JsonObject stopArgs = new JsonObject();
         stopArgs.addProperty("loopId", myLoopId);
         rpcDispatcher.executeOnMainThread(ctrl, player, "cancel", stopArgs);
@@ -91,7 +93,7 @@ final class AgentLoopHeuristics {
                 "loopId=" + myLoopId + " cancelledLoops=" + cancelledLoops);
         if (cancelledLoops > 0) {
             long waitUntil = System.currentTimeMillis() + 350L;
-            while (ctrl.activeScriptCount.get() > 0 && System.currentTimeMillis() < waitUntil) {
+            while (session.activeScriptCount() > 0 && System.currentTimeMillis() < waitUntil) {
                 try {
                     Thread.sleep(50L);
                 } catch (InterruptedException ignored) {

@@ -6,6 +6,9 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
+import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
+import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
 import ir.layercloud.cortexdrone.harness.SkillLibrary;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
@@ -102,25 +105,27 @@ public final class VisualsRpcTranslator {
         }
         JsonObject response = RpcJson.ok();
         Drone drone = controller.drone;
+        DroneSession session = this.manager.getSessionManager().session(controller);
+        NavigationState nav = this.manager.getNavigationManager().state(controller);
+        VisualsState visuals = this.service.state(controller);
         if (RpcArgs.has(args, "loopId") && args.get("loopId").getAsInt() > 0
-                && controller.isLoopCancelled(args.get("loopId").getAsInt())) {
+                && session.isLoopCancelled(args.get("loopId").getAsInt())) {
             response.addProperty("aborted", true);
         }
         response.addProperty("id", controller.id);
         response.addProperty("name", controller.name);
         response.addProperty("owner", controller.ownerName);
-        response.addProperty("lastThought", controller.lastThought != null ? controller.lastThought : "");
+        response.addProperty("lastThought", session.lastThought() != null ? session.lastThought() : "");
         response.addProperty("x", drone.posX);
         response.addProperty("y", drone.posY);
         response.addProperty("z", drone.posZ);
         response.addProperty("navigationActive",
                 this.manager.getNavigationManager().isActive(controller));
-        response.addProperty("lightActive", controller.autoTorch);
-        response.addProperty("lightRadius", controller.lightRadius);
-        response.addProperty("lightLevel", controller.lightIntensity);
-        response.addProperty("lightColor", String.format("0x%06X", controller.lightColor & 0xFFFFFF));
-        response.addProperty("solidEscalations", controller.solidEscalations);
-        response.addProperty("blockedWaypoints", controller.solidWaypointHits.size());
+        response.addProperty("lightActive", visuals.autoTorch);
+        response.addProperty("lightRadius", visuals.lightRadius);
+        response.addProperty("lightLevel", visuals.lightIntensity);
+        response.addProperty("lightColor", String.format("0x%06X", visuals.lightColor & 0xFFFFFF));
+        response.addProperty("blockedWaypoints", nav.solidWaypointHits.size());
 
         JsonArray inventory = new JsonArray();
         IInventory inv = drone.mainInventory();

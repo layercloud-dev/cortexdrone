@@ -54,18 +54,18 @@ They are separate so a hung agent cannot starve telemetry/RPC and vice versa.
 
 ### Per-controller tick (`TickManager`)
 
-1. increment `tickClock`, decrement attack/pickup/repath cooldowns;
+1. decrement the interaction attack cooldown;
 2. every 40 ticks refresh OC machine state; otherwise use `drone.isRunning()`;
-3. compute movement delta and update last position;
-4. `BreadcrumbService.observe` (service throttles to every 4 ticks);
-5. stall detection/logging and leaf-obstruction clearing;
-6. `NavigationManager.tick` (only when a goal session exists);
-7. `ActionRegistry.tick` (deposit, delivery, LED animation, light aura);
-8. idle hold: when no session and no retained action, cancel leftover velocity
+3. `BreadcrumbService.observe` (service throttles to every 4 ticks);
+4. `NavigationManager.tick` — advances the nav tick clock and path cooldown,
+   samples movement, detects/logs stalls, clears leaf obstructions, then runs
+   the active goal session;
+5. `ActionRegistry.tick` (deposit, delivery, LED animation, light aura);
+6. idle hold: when no session and no retained action, cancel leftover velocity
    and pin the flight target to the current position;
-9. complete task session if no loop/script/task work;
-10. server-side physics step when needed (blocked, long-range, machine not
-    running).
+7. complete the session task if no loop/script/task work;
+8. server-side physics step when needed (blocked, long-range, machine not
+   running).
 
 ## 4. Work state (no modes)
 
@@ -233,7 +233,7 @@ cleanly.
 - radius 2–12, light level 4–15;
 - applies every 10 ticks when moved/anchor changed;
 - only air blocks are lit;
-- remembers original block-light values in `ctrl.lightCells`;
+- remembers original block-light values in `VisualsState.lightCells`;
 - restores exactly on disable/despawn/shutdown;
 - syncs affected chunk sections via `S21PacketChunkData` to players within 96
   blocks;
@@ -248,26 +248,22 @@ cleanly.
 - `resolveEffectiveLedColor` uses tick + custom color + fallback;
 - the retained action advances `ledEffectTick` and emits disco note particles.
 
-## 12. Model state (`DroneController`)
+## 12. State ownership
 
-Key fields:
+`DroneController` keeps only identity and the entity link: `id`, `drone`,
+`entityUuid`, `name`, `ownerName`. Everything else is owned by the manager for
+its domain and keyed by the controller:
 
-- identity/goal/owner/name/UUID;
-- navigation generation/error;
-- task session;
-- 3D path waypoints/index/goal/cooldown/partial/nodes;
-- stuck logs and solid waypoint hits;
-- lighting/autoTorch/cells;
-- active loop ID/script count/running/cancelled loop sets;
-- thought history;
-- cooldowns (attack/pickup/stuck);
-- velocity/predictive braking;
-- path cache signature/tick;
-- LED custom color/effect/tick;
-- last position/despawn flag.
+| State | Owner |
+| --- | --- |
+| goal/error, path, stall counters, path cache, nav tick clock | `NavigationManager` (`NavigationState`) |
+| aura radius/level/cells, LED effect/color/tick | `VisualsManager` (`VisualsState`) |
+| attack cooldown | `InteractionManager` (`InteractionState`) |
+| task, loop generation, script count, thoughts | `SessionManager` (`DroneSession`) |
 
-Work state is derived (`NavigationManager.isActive`, retained action count),
-never stored as an enum. Long-running action state lives in the action context.
+Managers drop their per-controller entries on despawn. Work state is derived
+(`NavigationManager.isActive`, retained action count), never stored as an enum.
+Long-running action state lives in the action context.
 
 ## 13. Server shutdown
 

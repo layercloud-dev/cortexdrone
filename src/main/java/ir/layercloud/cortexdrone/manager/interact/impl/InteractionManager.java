@@ -7,8 +7,12 @@ import ir.layercloud.cortexdrone.action.interact.impl.*;
 import ir.layercloud.cortexdrone.context.impl.InteractionContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.ActionManager;
+import ir.layercloud.cortexdrone.manager.interact.InteractionState;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import net.minecraft.entity.player.EntityPlayerMP;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Long-lived interaction manager. It only parses requests, creates the matching
@@ -16,10 +20,27 @@ import net.minecraft.entity.player.EntityPlayerMP;
  */
 public final class InteractionManager extends ActionManager<InteractionContext, InteractionRequest, InteractionResult> {
     private final InventoryService inventoryService;
+    private final Map<DroneController, InteractionState> states = new ConcurrentHashMap<>();
 
     public InteractionManager(InventoryService inventoryService) {
         super("interact", "interact_block", "use_item", "pick_entity", "unpick_entity");
         this.inventoryService = inventoryService;
+    }
+
+    /** Per-drone interaction state, created on first use. */
+    public InteractionState state(DroneController controller) {
+        if (controller == null) return null;
+        return this.states.computeIfAbsent(controller, ignored -> new InteractionState());
+    }
+
+    /** Per-tick cooldown maintenance. */
+    public void tickCooldown(DroneController controller) {
+        InteractionState state = state(controller);
+        if (state != null && state.attackCooldown > 0) state.attackCooldown--;
+    }
+
+    public void forget(DroneController controller) {
+        if (controller != null) this.states.remove(controller);
     }
 
     @Override
@@ -40,7 +61,7 @@ public final class InteractionManager extends ActionManager<InteractionContext, 
         }
         if ("use_item".equals(operation)) {
             return request.hasEntity()
-                    ? new AttackEntityAction(request)
+                    ? new AttackEntityAction(this, request)
                     : new UseItemAction(request);
         }
         if ("pick_entity".equals(operation)) {

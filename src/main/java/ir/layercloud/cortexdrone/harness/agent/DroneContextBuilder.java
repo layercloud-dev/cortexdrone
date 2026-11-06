@@ -3,6 +3,8 @@ package ir.layercloud.cortexdrone.harness.agent;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
+import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -68,14 +70,16 @@ final class DroneContextBuilder {
 
         ctx.addProperty("distToPlayerM", Math.round(Math.hypot(
                 ctrl.drone.posX - refX, ctrl.drone.posY - refY) * 10.0) / 10.0);
-        ctx.addProperty("activeTaskRunning", ctrl.task.isActive() || ctrl.hasActiveTaskOrLoop(0));
-        ctx.addProperty("activeScriptCount", ctrl.activeScriptCount.get());
-        ctx.addProperty("taskPrompt", ctrl.task.getPrompt());
-        ctx.addProperty("taskSummary", ctrl.task.getSummary());
+        DroneSession session = manager.getSessionManager().session(ctrl);
+        NavigationState nav = manager.getNavigationManager().state(ctrl);
+        ctx.addProperty("activeTaskRunning", session.isActive() || session.hasActiveTaskOrLoop(0));
+        ctx.addProperty("activeScriptCount", session.activeScriptCount());
+        ctx.addProperty("taskPrompt", session.getPrompt());
+        ctx.addProperty("taskSummary", session.getSummary());
         ctx.addProperty("singleSession", true);
-        ctx.addProperty("lastPathPartial", ctrl.lastPathPartial);
-        ctx.addProperty("pathNodesExpanded", ctrl.lastPathNodesExpanded);
-        if (!ctrl.lastThought.isEmpty()) ctx.addProperty("lastThought", ctrl.lastThought);
+        ctx.addProperty("lastPathPartial", nav.lastPathPartial);
+        ctx.addProperty("pathNodesExpanded", nav.lastPathNodesExpanded);
+        if (!session.lastThought().isEmpty()) ctx.addProperty("lastThought", session.lastThought());
         JsonObject taskState = new JsonObject();
         taskState.addProperty("navigationActive", manager.getNavigationManager().isActive(ctrl));
         taskState.addProperty("activeActions", manager.getActionRegistry().activeContextCount(ctrl));

@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
@@ -42,14 +43,9 @@ public class FlightPathfinder {
         this.logger = logger;
     }
 
-    public void clearNavigation(DroneController controller) {
-        if (controller == null) return;
-        controller.pathWaypoints.clear();
-        controller.pathIndex = 0;
-        controller.pathGoalX = Double.NaN;
-        controller.pathGoalY = Double.NaN;
-        controller.pathGoalZ = Double.NaN;
-        controller.repathCooldown = 0;
+    public void clearNavigation(NavigationState state) {
+        if (state == null) return;
+        state.clearPath();
     }
 
     public static long packBlockPos(int x, int y, int z) {
@@ -109,24 +105,26 @@ public class FlightPathfinder {
         return h;
     }
 
-    public List<double[]> findFlightPath(World world, DroneController ctrl, double sx, double sy, double sz, double gx, double gy, double gz) {
+    public List<double[]> findFlightPath(World world, DroneController ctrl, NavigationState nav,
+                                          double sx, double sy, double sz,
+                                          double gx, double gy, double gz) {
         List<double[]> result = new ArrayList<>(4);
         if (isFlightLineClear(world, sx, sy, sz, gx, gy, gz)) {
             result.add(new double[]{gx, gy, gz});
-            if (ctrl != null) {
-                ctrl.lastPathNodesExpanded = 1;
-                ctrl.lastPathPartial = false;
+            if (nav != null) {
+                nav.lastPathNodesExpanded = 1;
+                nav.lastPathPartial = false;
             }
             return result;
         }
 
         // Path-cache reuse: if the pilot re-planned against a goal bucket we already solved
         // within the last 60 ticks and the runner is still near the previous start cell, skip A*.
-        if (ctrl != null && ctrl.cachedPathSignature != Long.MIN_VALUE && ctrl.pathWaypoints.size() > 1) {
+        if (nav != null && nav.cachedPathSignature != Long.MIN_VALUE && nav.pathWaypoints.size() > 1) {
             long sig = pathSignature(sx, sy, sz, gx, gy, gz);
-            if (sig == ctrl.cachedPathSignature && ctrl.tickClock - ctrl.cachedPathCreatedTick < 60) {
-                ctrl.lastPathNodesExpanded = 0; // cache hit: zero expansion cost
-                return new ArrayList<>(ctrl.pathWaypoints);
+            if (sig == nav.cachedPathSignature && nav.ticks - nav.cachedPathCreatedTick < 60) {
+                nav.lastPathNodesExpanded = 0; // cache hit: zero expansion cost
+                return new ArrayList<>(nav.pathWaypoints);
             }
         }
 
@@ -272,9 +270,9 @@ public class FlightPathfinder {
             }
         }
 
-        if (ctrl != null) {
-            ctrl.lastPathNodesExpanded = expanded;
-            ctrl.lastPathPartial = (reached == null);
+        if (nav != null) {
+            nav.lastPathNodesExpanded = expanded;
+            nav.lastPathPartial = (reached == null);
         }
 
         AStarNode targetNode = reached;
@@ -330,21 +328,21 @@ public class FlightPathfinder {
         if (result.isEmpty()) {
             result.add(new double[]{gx, gy, gz});
         }
-        if (expanded > 3 && ctrl != null) {
+        if (expanded > 3 && ctrl != null && nav != null) {
             // Throttle PATH spam like STUCK: same start/goal/outcome = once per 240 ticks.
             String pathLogKey = ctrl.id + "|path:" + startX + "," + startY + "," + startZ + "->" + goalX + "," + goalY + "," + goalZ + "|" + (reached != null ? "C" : "P");
-            if (!pathLogKey.equals(ctrl.lastPathLogKey) || ctrl.tickClock - ctrl.lastPathLogTick >= 240) {
+            if (!pathLogKey.equals(nav.lastPathLogKey) || nav.ticks - nav.lastPathLogTick >= 240) {
                 this.logger.log("PATH", ctrl,
                         String.format("3D A* (%d,%d,%d)->(%d,%d,%d) %s",
                                 startX, startY, startZ, goalX, goalY, goalZ, reached != null ? "COMPLETE" : "PARTIAL"),
                         "expanded=" + expanded + " waypoints=" + result.size());
-                ctrl.lastPathLogKey = pathLogKey;
-                ctrl.lastPathLogTick = ctrl.tickClock;
+                nav.lastPathLogKey = pathLogKey;
+                nav.lastPathLogTick = nav.ticks;
             }
         }
-        if (ctrl != null) {
-            ctrl.cachedPathSignature = pathSignature(sx, sy, sz, gx, gy, gz);
-            ctrl.cachedPathCreatedTick = ctrl.tickClock;
+        if (nav != null) {
+            nav.cachedPathSignature = pathSignature(sx, sy, sz, gx, gy, gz);
+            nav.cachedPathCreatedTick = nav.ticks;
         }
         return result;
     }

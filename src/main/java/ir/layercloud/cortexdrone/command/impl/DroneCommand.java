@@ -7,6 +7,8 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.command.BaseCommand;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
+import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.config.DebugEntry;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
@@ -31,7 +33,7 @@ public class DroneCommand extends BaseCommand {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/" + this.cmdName + " <spawn|link|despawn|list|status|debug|config|js|help>";
+        return "/" + this.cmdName + " <spawn|link|despawn|list|status|debug|config|memory|js|help>";
     }
 
     @Override
@@ -50,7 +52,7 @@ public class DroneCommand extends BaseCommand {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
                     "spawn", "link", "despawn", "list", "status",
-                    "debug", "config", "js", "help");
+                    "debug", "config", "memory", "js", "help");
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
@@ -59,6 +61,10 @@ public class DroneCommand extends BaseCommand {
             }
             if (sub.equals("config")) {
                 return getListOfStringsMatchingLastWord(args, "url", "model", "key");
+            }
+            if (sub.equals("memory")) {
+                return getListOfStringsMatchingLastWord(args,
+                        "list", "search", "remember", "here", "forget");
             }
         }
         return null;
@@ -80,6 +86,7 @@ public class DroneCommand extends BaseCommand {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v2.0.0 (Tool Harness) Commands ===");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear] | config");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
             return;
         }
@@ -136,6 +143,9 @@ public class DroneCommand extends BaseCommand {
                     ));
                 }
                 return;
+            case "memory":
+                handleMemory(sender, player, args);
+                return;
             case "config":
                 boolean isOp = player == null || player.canCommandSenderUseCommand(2, "drone");
                 if (!isOp) {
@@ -175,7 +185,7 @@ public class DroneCommand extends BaseCommand {
         }
 
         if (player == null) {
-            CortexDroneMod.sendMsg(sender, "Use /drone list, /drone debug tail, or /drone config from console, or HTTP API on 127.0.0.1:25580.");
+            CortexDroneMod.sendMsg(sender, "Use /drone list, /drone memory list, /drone debug tail, or /drone config from console.");
             return;
         }
 
@@ -246,6 +256,87 @@ public class DroneCommand extends BaseCommand {
 
         String fullPrompt = joinArgs(args, 0);
         this.manager.handleNaturalInstruction(player, fullPrompt);
+    }
+
+    private void handleMemory(ICommandSender sender, EntityPlayerMP player, String[] args) {
+        MemoryStore memory = this.manager.getHarness() != null
+                ? this.manager.getHarness().memory() : null;
+        if (memory == null) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "[Drone] Memory is not initialized yet.");
+            return;
+        }
+        String action = args.length >= 2 ? args[1].toLowerCase() : "list";
+        if (action.equals("list")) {
+            java.util.List<MemoryEntry> entries = memory.list(null, 12);
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Drone Memory ("
+                    + memory.count() + " stored) ===");
+            if (entries.isEmpty()) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "Nothing stored yet.");
+                return;
+            }
+            for (MemoryEntry entry : entries) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "[" + entry.getKind() + "] "
+                        + EnumChatFormatting.WHITE + entry.getName()
+                        + (entry.isHasPosition() ? EnumChatFormatting.GRAY + " " + entry.positionSummary() : "")
+                        + EnumChatFormatting.GRAY + " - " + entry.getText());
+            }
+            return;
+        }
+        if (action.equals("search")) {
+            String query = args.length >= 3 ? joinArgs(args, 2) : "";
+            java.util.List<MemoryEntry> entries = memory.search(query, null, 12);
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Memory search: "
+                    + (query.isEmpty() ? "(all)" : query) + " ===");
+            for (MemoryEntry entry : entries) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "[" + entry.getKind() + "] "
+                        + EnumChatFormatting.WHITE + entry.getName()
+                        + (entry.isHasPosition() ? EnumChatFormatting.GRAY + " " + entry.positionSummary() : "")
+                        + EnumChatFormatting.GRAY + " - " + entry.getText());
+            }
+            if (entries.isEmpty()) CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "No matches.");
+            return;
+        }
+        if (action.equals("forget")) {
+            String key = args.length >= 3 ? joinArgs(args, 2) : "";
+            boolean removed = memory.forget(key);
+            CortexDroneMod.sendMsg(sender, removed
+                    ? EnumChatFormatting.GREEN + "[Drone] Forgot '" + key + "'."
+                    : EnumChatFormatting.RED + "[Drone] No memory matched '" + key + "'.");
+            return;
+        }
+        if (action.equals("here") || action.equals("remember")) {
+            if (player == null) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                        + "[Drone] Use memory here/remember in-game so the position is known.");
+                return;
+            }
+            String text = args.length >= 3 ? joinArgs(args, 2) : "";
+            if (text.isEmpty()) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                        + "[Drone] Usage: /drone memory " + action + " <text|name>");
+                return;
+            }
+            MemoryEntry entry;
+            if (action.equals("here")) {
+                entry = memory.remember("location", text, "Location set by " + player.getCommandSenderName(),
+                        true, player.posX, player.posY, player.posZ, player.dimension,
+                        java.util.Collections.singletonList("player"), true,
+                        "player:" + player.getCommandSenderName());
+            } else {
+                entry = memory.captureFromChat(player.getCommandSenderName(), player.dimension,
+                        player.posX, player.posY, player.posZ, text);
+            }
+            if (entry == null) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "[Drone] Could not store that memory.");
+                return;
+            }
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] Remembered "
+                    + entry.getKind() + " '" + entry.getName() + "'"
+                    + (entry.isHasPosition() ? " at " + entry.positionSummary() : "") + ".");
+            return;
+        }
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                + "Usage: /drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]");
     }
 
     private static String joinArgs(String[] args, int start) {

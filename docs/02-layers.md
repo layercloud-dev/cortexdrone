@@ -3,7 +3,7 @@
 ## Layer direction
 
 ```text
-command/http
+command
      |
      v
 harness (task, agent, tool, js, skill)
@@ -28,7 +28,7 @@ Rules:
   primitives that a manager explicitly invokes; never starts work.
 - **harness**: decides and translates. JSON boundary is `harness/tools/view`;
   `ToolInvoker` validates and dispatches. `JsEngine` runs model code in-JVM.
-- **command/http**: thin entry points; delegate to the manager/harness.
+- **command**: thin chat/command entry point; delegates to the manager/harness.
 
 No lower layer imports a higher layer. `service` never imports `manager` or
 `action` (apart from DTO-free helper calls), and `action` never imports `harness`.
@@ -51,6 +51,7 @@ ir.layercloud.cortexdrone
     Harness              composition root
     agent/               AgentService, LlmClient, Conversation, ContextRenderer
     js/                  JsEngine, JsSource, TypeScriptEraser
+    memory/              MemoryEntry, MemoryCapture, MemoryStore
     tool/                ToolSpec, ToolRegistry, ToolInvoker, ScanJobs, ToolSchema
     tools/               providers + view/ JSON boundaries
     skill/               Skill, SkillLibrary, SkillSearch, SkillRefiner
@@ -59,7 +60,6 @@ ir.layercloud.cortexdrone
 
   command/               /drone
   config/                ModConfig, ModPaths, ConfigMigrator, DroneLogger
-  http/                  telemetry + /tool + /action
   oc/                    OpenComputers reflection bridge
 ```
 
@@ -77,4 +77,4 @@ ir.layercloud.cortexdrone
 Typed requests/results inside `action`, `context`, `manager` and `service` are
 plain Java objects. `harness/tools/view/*` parses `JsonObject` into those typed
 objects and serializes results. `ToolInvoker` adds the common error envelope.
-The LLM and HTTP protocols are JSON by definition.
+The LLM protocol is JSON by definition.

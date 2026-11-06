@@ -21,7 +21,7 @@ The registry generates:
 - the OpenAI `tools[]` array (`toOpenAiTools`);
 - the compact prompt catalog (`toPromptCatalog` / `Harness.registryCatalog`);
 - the JavaScript `drone` methods;
-- the `/tool` endpoint surface.
+- the JavaScript `drone` methods.
 
 ## Providers
 
@@ -35,6 +35,7 @@ The registry generates:
 | `InventoryQueryTools` | `get_player`, `get_player_inventory`, `get_chest`, `scan_chests`, `find_item_in_chests`, `find_item`, `get_recipes`, `scan_furnaces`, `get_machine_recipes`, `get_machine_recipe`, `scan_machines`, `machine_ingredients` |
 | `VisualsTools` | `set_led`, `set_light`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` |
 | `WorldTools` | `get_block`, `get_blocks_in_box`, `get_top_y`, `scan_room`, `scan_blocks`, `scan_veins`, `find_distant`, `get_entities`, `get_drops`, `raycast_player`, `doc_lookup`, `find_build_site`, `plan_structure` |
+| `MemoryTools` | `memory` (remember/search/recall/list/forget) |
 | `SkillTools` | `skill`, `skill_refine` |
 | `WebTools` | `web_search`, `web_fetch`, `wiki_lookup` |
 | `CodeTools` | `execute` |
@@ -48,6 +49,10 @@ The registry generates:
 - `filter` accepts item/block names, registry names, ore dictionary tags, and
   category words (`ores`, `logs`, `liquid`, `all`, ...).
 - Coordinates are block coordinates unless documented as decimals.
+- Block and interaction targets must be within 4.5 blocks **and** have a clear
+  voxel line of sight. `BlockSight` rejects mining/placing/activating through a
+  wall even when the centre is close, returning `block_occluded` with the
+  covering block or `needsMovement` with a visible standoff.
 - `count=0` on transfers means "as much as fits/possible".
 - Radius/limit values are clamped by the tool.
 
@@ -95,17 +100,3 @@ return drone.giveToPlayer({ filter: 'iron_ore', count: 512 });
 
 `drone.breakBlock` retries after moving to the returned standoff; `goto` waits
 for arrival; `scanBlocks` polls large jobs.
-
-## HTTP API
-
-The local server on `127.0.0.1:25580` exposes:
-
-- `GET /state` — cached live state.
-- `GET /debug` — cached diagnostics + recent log entries.
-- `POST /tool` — `{tool, args?, droneId?, player?}`; returns the same envelope as
-  the model. (Replaces the old `/rpc` endpoint.)
-- `POST /action` — `spawn`, `despawn`, `say`, `instruct`, and
-  `{action:"js", code}` for direct execution.
-
-Internal tool names (`internal`) are callable from `/tool` and JS but omitted
-from the model tool list.

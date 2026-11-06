@@ -5,6 +5,9 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.harness.agent.AgentService;
+import ir.layercloud.cortexdrone.harness.memory.MemoryCapture;
+import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
+import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -25,6 +28,14 @@ public final class TaskCoordinator {
         boolean active = session.isActive() || session.hasActiveTaskOrLoop(0);
         TaskIntent intent = TaskIntentClassifier.classify(cleanPrompt, active);
 
+        // Explicit "remember ..." / "this is my base" messages are persisted
+        // immediately. They never start or replace a task, and while a task is
+        // running they also become a note for the model.
+        if (MemoryCapture.isMemoryMessage(cleanPrompt)) {
+            captureMemory(player, ctrl, cleanPrompt, active, session);
+            return;
+        }
+
         if (active) {
             if (intent == TaskIntent.QUESTION) {
                 this.manager.getLogger().log("TASK", ctrl, "Message classified as QUESTION while a task is active",
@@ -34,9 +45,13 @@ public final class TaskCoordinator {
             }
             if (intent == TaskIntent.BY_THE_WAY) {
                 session.addNote(cleanPrompt);
+                boolean remembered = MemoryCapture.containsMemoryCue(cleanPrompt)
+                        && captureMemory(player, ctrl, cleanPrompt, true, session);
                 this.manager.getLogger().log("TASK", ctrl, "Message classified as BY_THE_WAY; attached as note",
-                        "prompt=\"" + cleanPrompt + "\"");
-                this.manager.droneSay(player, ctrl, "Noted - keeping the current task. " + shortTask(ctrl));
+                        "prompt=\"" + cleanPrompt + "\" remembered=" + remembered);
+                if (!remembered) {
+                    this.manager.droneSay(player, ctrl, "Noted - keeping the current task. " + shortTask(ctrl));
+                }
                 return;
             }
             if (intent == TaskIntent.CANCEL) {
@@ -59,7 +74,11 @@ public final class TaskCoordinator {
             return;
         } else if (intent == TaskIntent.BY_THE_WAY) {
             session.addNote(cleanPrompt);
-            this.manager.droneSay(player, ctrl, "Noted.");
+            if (MemoryCapture.containsMemoryCue(cleanPrompt)) {
+                captureMemory(player, ctrl, cleanPrompt, false, session);
+            } else {
+                this.manager.droneSay(player, ctrl, "Noted.");
+            }
             return;
         }
 
@@ -76,6 +95,36 @@ public final class TaskCoordinator {
         final String sessionPrompt = cleanPrompt;
         final int loopId = myLoopId;
         CortexDroneMod.AGENT_POOL.submit(() -> agent.runAgentLoop(player, ctrl, sessionPrompt, contextMessage, loopId));
+    }
+
+    /**
+     * Persists a player memory statement with the player's (or drone's) current
+     * position, then confirms it in chat. Returns false when nothing was saved.
+     */
+    private boolean captureMemory(EntityPlayerMP player, DroneController ctrl, String prompt,
+                                  boolean active, DroneSession session) {
+        MemoryStore memory = this.manager.getHarness() != null
+                ? this.manager.getHarness().memory() : null;
+        if (memory == null) return false;
+        double x = player != null ? player.posX : ctrl.drone.posX;
+        double y = player != null ? player.posY : ctrl.drone.posY;
+        double z = player != null ? player.posZ : ctrl.drone.posZ;
+        int dimension = player != null ? player.dimension : ctrl.drone.dimension;
+        String owner = player != null ? player.getCommandSenderName() : ctrl.ownerName;
+        MemoryEntry entry = memory.captureFromChat(owner, dimension, x, y, z, prompt);
+        if (entry == null) return false;
+        if (active && session != null) {
+            session.addNote("Memory: [" + entry.getKind() + "] " + entry.getName()
+                    + (entry.isHasPosition() ? " " + entry.positionSummary() : ""));
+        }
+        this.manager.getLogger().log("MEMORY", ctrl, "Remembered " + entry.getKind() + " '" + entry.getName() + "'",
+                entry.getText() + (entry.isHasPosition() ? " @ " + entry.positionSummary() : ""));
+        StringBuilder reply = new StringBuilder("Remembered ");
+        reply.append(entry.getKind()).append(" '").append(entry.getName()).append('\'');
+        if (entry.isHasPosition()) reply.append(" at ").append(entry.positionSummary());
+        reply.append(active ? ". I'll keep working on the current task." : ".");
+        this.manager.droneSay(player, ctrl, reply.toString());
+        return true;
     }
 
     private void cancel(DroneController ctrl) {

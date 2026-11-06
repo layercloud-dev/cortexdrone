@@ -12,6 +12,7 @@ import ir.layercloud.cortexdrone.context.impl.BlockContext;
 import ir.layercloud.cortexdrone.manager.ActionManager;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
+import ir.layercloud.cortexdrone.service.world.BlockSight;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
@@ -75,6 +76,10 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
     /**
      * Breaks exactly one block immediately and inserts its drops into the drone
      * inventory; anything that does not fit is dropped in the world.
+     *
+     * <p>Enforces the same physical rules as a player: the block must be within
+     * reach and visible from the drone. This guard is repeated here so no
+     * caller (tool, view or action) can mine through a wall.</p>
      */
     public String breakBlock(DroneController controller, int x, int y, int z) {
         if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
@@ -83,6 +88,16 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         Drone drone = controller.drone;
         World world = drone.worldObj;
         if (!ItemClassifier.isMineableBlock(world, x, y, z)) return null;
+        BlockSight.Result sight = BlockSight.check(world,
+                drone.posX, BlockSight.eyeY(drone), drone.posZ, x, y, z);
+        if (!sight.isVisible() || sight.getDistance() > BlockSight.REACH) {
+            this.logger.log("MINE", controller,
+                    String.format("Refused unreachable block at (%d,%d,%d)", x, y, z),
+                    sight.getDistance() > BlockSight.REACH
+                            ? "distance=" + Math.round(sight.getDistance() * 100.0) / 100.0
+                            : "occluded by " + sight.getOccluderName());
+            return null;
+        }
 
         Block block = world.getBlock(x, y, z);
         if (block == null || block == Blocks.air) return null;

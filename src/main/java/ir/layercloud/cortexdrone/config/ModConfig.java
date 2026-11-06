@@ -39,7 +39,6 @@ public class ModConfig {
     private String apiKey = env("CORTEXDRONE_API_KEY", "");
 
     // --- harness -----------------------------------------------------------
-    private int httpPort = 25580;
     private int maxTurns = 60;
     private int taskDeadlineSeconds = 480;
     private int maxTokens = 2048;
@@ -96,7 +95,6 @@ public class ModConfig {
             this.model = env("CORTEXDRONE_MODEL", "deepseek/deepseek-v4.1-flash");
         }
         if (this.apiKey == null) this.apiKey = "";
-        if (this.httpPort <= 0) this.httpPort = 25580;
         if (this.maxTurns <= 0) this.maxTurns = 60;
         if (this.taskDeadlineSeconds <= 0) this.taskDeadlineSeconds = 480;
         if (this.maxTokens <= 0) this.maxTokens = 2048;

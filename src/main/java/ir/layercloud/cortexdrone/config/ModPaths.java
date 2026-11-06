@@ -9,6 +9,7 @@ import java.io.File;
  * config/cortexdrone/
  *   config.json   LLM gateway, agent limits, saved drone bindings
  *   skills.json   learned + bundled skill overrides
+ *   memory.json   player facts and named locations
  *   logs/         debug log
  * </pre>
  */
@@ -27,6 +28,10 @@ public final class ModPaths {
 
     public static File skillsFile(File root) {
         return new File(root, "skills.json");
+    }
+
+    public static File memoryFile(File root) {
+        return new File(root, "memory.json");
     }
 
     public static File logFile(File root) {

@@ -18,7 +18,7 @@ Detailed chapters live in `docs/`:
 - [docs/04-navigation.md](docs/04-navigation.md) — goal navigation and movement
 - [docs/05-services.md](docs/05-services.md) — inventory, machine, world, web services
 - [docs/06-harness.md](docs/06-harness.md) — agent loop, LLM client, runtime, skills
-- [docs/07-tools.md](docs/07-tools.md) — tool registry, schemas, JavaScript surface, HTTP API
+- [docs/07-tools.md](docs/07-tools.md) — tool registry, schemas, JavaScript surface
 - [docs/08-runtime.md](docs/08-runtime.md) — lifecycle, tick pipeline, config, logging
 - [docs/09-resources.md](docs/09-resources.md) — prompts, JavaScript bootstrap, skills
 - [docs/10-build-deploy.md](docs/10-build-deploy.md) — Gradle, tests, validation, deploy
@@ -29,7 +29,7 @@ Detailed chapters live in `docs/`:
 ## 1. System at a glance
 
 ```text
-Minecraft chat / command / HTTP
+Minecraft chat / command
         |
         v
 TaskCoordinator          one task, intent classification, no queue
@@ -81,6 +81,7 @@ src/main/java/ir/layercloud/cortexdrone/
     Harness.java            composition root (registry, invoker, js, llm, agent)
     agent/                  AgentService, LlmClient, Conversation, ContextRenderer
     js/                     JsEngine (Rhino), JsSource, TypeScriptEraser
+    memory/                 MemoryEntry, MemoryCapture, MemoryStore
     tool/                   ToolSpec, ToolRegistry, ToolInvoker, ScanJobs, schemas
     tools/                  one provider per domain + view/ JSON boundaries
     skill/                  Skill, SkillLibrary, SkillSearch, SkillRefiner
@@ -89,12 +90,11 @@ src/main/java/ir/layercloud/cortexdrone/
 
   command/                  /drone command
   config/                   ModConfig, ModPaths, ConfigMigrator, DroneLogger
-  http/                     DroneHttpServer + telemetry serializer
   oc/                       OpenComputers reflection bridge
 ```
 
-JSON is confined to the tool boundary (`harness/tools/view`) and the LLM/HTTP
-protocols. Actions, managers and services work with typed request/result classes.
+JSON is confined to the tool boundary (`harness/tools/view`) and the LLM
+protocol. Actions, managers and services work with typed request/result classes.
 
 ## 3. The four execution layers
 
@@ -189,8 +189,14 @@ and erases common TypeScript annotations. Tool failures are catchable JS errors.
 
 `ToolRegistry` is the single source of truth: it declares name, description,
 JSON schema, thread affinity, timeout and internal visibility. The OpenAI tool
-array, the JavaScript `drone` object, the `/tool` endpoint and the prompt catalog
-are all generated from it.
+array, the JavaScript `drone` object and the prompt catalog are all generated
+from it.
+
+`MemoryStore` keeps durable player facts and named locations in
+`config/cortexdrone/memory.json`. Explicit "remember ..." messages and place
+definitions are captured deterministically, and the model can use the `memory`
+tool to remember/search/forget. Relevant and pinned memories are injected into
+the task context.
 
 ## 7. Tool surface
 
@@ -207,6 +213,7 @@ inventory    move_item give_to_player take_from_player withdraw_chest
 visuals      set_led set_light spawn_particles play_sound play_note say
              set_status_text
 code         execute
+memory       memory
 skills       skill skill_refine
 world        get_block get_blocks_in_box get_top_y scan_room scan_blocks
              scan_veins find_distant get_entities get_drops raycast_player
@@ -228,12 +235,11 @@ coming back as hidden paths. See `docs/removed-tasks.md`.
    `AIDroneManager`, registers events.
 2. `serverStarting` migrates legacy world files, loads `config.json`, creates the
    skill library, builds the `Harness`, registers `/drone`, starts HTTP on
-   `127.0.0.1:25580`.
+   `config/cortexdrone/`.
 3. START tick: ensure OC machine state, start tick profiler.
 4. END tick: drain main-thread queue, drain scan jobs, tick every controller,
-   reconnect unlinked world drones every 40 ticks, snapshot HTTP state every 100
-   ticks.
-5. `serverStopping` restores light auras, saves config, stops HTTP.
+   reconnect unlinked world drones every 40 ticks.
+5. `serverStopping` restores light auras, saves config.
 
 Per-controller tick: breadcrumbs, stall detection, lighting aura, active
 navigation, retained actions, idle hold, physics.
@@ -246,6 +252,7 @@ Everything AI-related lives in the mod config directory, **not** the world save:
 config/cortexdrone/
   config.json   gateway, model/key, agent limits, saved drone bindings
   skills.json   learned/refined skill overrides
+  memory.json   player facts and named locations
   logs/         debug log
 ```
 

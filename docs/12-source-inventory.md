@@ -4,7 +4,7 @@
 
 | Class | Role |
 | --- | --- |
-| `CortexDroneMod` | Forge entry point, tick events, chat, agent/HTTP pools |
+| `CortexDroneMod` | Forge entry point, tick events, chat, agent pool |
 | `AIDroneManager` | Lifecycle, spawn/link/despawn, controller registry, config |
 | `DroneController` | Per-drone identity + entity link |
 | `TickProfiler` | Server tick timing diagnostics |
@@ -34,6 +34,9 @@
 | `harness.tool.ToolCatalog` | Merges provider declarations |
 | `harness.tool.ToolContext` | Per-call services/controller/loop |
 | `harness.tool.ToolJson` / `ToolArgs` | JSON helpers and camel aliases |
+| `harness.memory.MemoryEntry` | Persistent fact/location model |
+| `harness.memory.MemoryCapture` | Deterministic remember/location extraction |
+| `harness.memory.MemoryStore` | Memory storage, dedupe, search, context selection |
 | `harness.skill.Skill` | Skill model and version/usage metadata |
 | `harness.skill.SkillLibrary` | Bundled + saved skills, versioned storage |
 | `harness.skill.SkillSearch` | BM25 + fuzzy retrieval |
@@ -55,6 +58,7 @@
 | `harness.tools.InventoryQueryTools` | player/chest/recipe/machine inspection |
 | `harness.tools.VisualsTools` | LED/light/particles/sound/chat/status |
 | `harness.tools.WorldTools` | block/room/vein/entity/build/doc tools |
+| `harness.tools.MemoryTools` | `memory` |
 | `harness.tools.SkillTools` | `skill`, `skill_refine` |
 | `harness.tools.WebTools` | `web_search`, `web_fetch`, `wiki_lookup` |
 | `harness.tools.CodeTools` | `execute` |
@@ -97,9 +101,9 @@
 | `service.inventory` | `InventoryService`, `ContainerSearchService`, `CraftingService`, `PlayerInventoryOps`, `FluidOpsService`, `ToolInspector`, `CraftResult` |
 | `service.machine` | `MachineRecipeService`, hooks/parser/ranker/reflection, `MachineTileInspector`, `FurnaceScanner` |
 | `service.navigation` | `Breadcrumb`, `TrailPlan`, `BreadcrumbService`, `FlightPathfinder`, `DronePhysicsService` |
-| `service.world` | `WorldScanner`, `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `ChunkAccess`, `StructureArchitect`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`, `LexicalItemMatcher`, `EntityAndBiomeClassifier`, `DocLookupService`, `WebLookupService`, `raytrace/*` |
+| `service.world` | `WorldScanner`, `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `BlockSight`, `ChunkAccess`, `StructureArchitect`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`, `LexicalItemMatcher`, `EntityAndBiomeClassifier`, `DocLookupService`, `WebLookupService`, `raytrace/*` |
 
-## Config, command, HTTP, OC
+## Config, command, OC
 
 | Class | Role |
 | --- | --- |
@@ -109,13 +113,13 @@
 | `config.DroneLogger` | Structured in-memory + file log |
 | `config.ChatRecord` / `DebugEntry` | Log records |
 | `command.BaseCommand` / `command.impl.DroneCommand` | `/drone` |
-| `http.DroneHttpServer` | `/state`, `/debug`, `/tool`, `/action` |
-| `http.DroneTelemetrySerializer` | State/debug snapshots |
 | `oc.OcHardwareBridge` / `oc.impl.InertMachineArchitecture` | OC machine state bridge |
 
 ## Tests
 
 `harness/tool/ToolRegistryTest`, `harness/tool/ToolValidatorTest`,
 `harness/js/JsSourceTest`, `harness/js/JsEngineTest`,
+`harness/memory/MemoryStoreTest`, `harness/memory/MemoryCaptureTest`,
+`service/world/BlockSightTest`,
 `harness/skill/SkillLibraryTest`, `harness/session/DroneSessionTest`,
 `harness/task/TaskIntentClassifierTest`, `action/ActionRegistryTest`.

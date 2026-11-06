@@ -11,7 +11,7 @@ composes many tool calls.
 ## Runtime pipeline
 
 ```text
-player chat / @drone / /drone / HTTP
+player chat / @drone / /drone
   -> TaskCoordinator          intent: question, note, modify, cancel, new task
   -> AgentService             system prompt + live context + user request
   -> LlmClient                OpenAI-compatible chat with native tools
@@ -32,8 +32,7 @@ Key properties:
 - **In-process code mode.** `execute` runs in the server JVM on Rhino. Tool calls
   are synchronous; `await` is accepted but unnecessary.
 - **Registry-driven surface.** The OpenAI tool list, the JavaScript `drone`
-  object, the `/tool` endpoint and the prompt catalog come from one
-  `ToolRegistry`.
+  object and the prompt catalog come from one `ToolRegistry`.
 - **Config lives outside the world.** `config/cortexdrone/` holds the gateway
   settings, skills and saved drone bindings.
 
@@ -53,6 +52,8 @@ Key properties:
 - Move items, give/take, withdraw/deposit, suck drops, craft.
 - Look up local registries, machine recipes, wiki pages and the public web.
 - Search, load and refine reusable skills.
+- Remember durable player facts and named locations (bases, farms, mines) across
+  sessions in `config/cortexdrone/memory.json`.
 - Run JavaScript for loops, plans, bulk scans and conditional workflows.
 
 ## What it deliberately cannot do

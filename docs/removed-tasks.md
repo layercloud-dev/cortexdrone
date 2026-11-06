@@ -10,6 +10,7 @@ them as hidden paths.
 | `CodeModeRuntime` writing `/tmp/... .mjs` and spawning Node.js | `harness.js.JsEngine` (in-JVM Rhino) |
 | `sdk/core-rpc.mjs`, `sdk/drone-actions.mjs` | registry-generated `drone` object |
 | HTTP `/rpc` transport between JS and the server | direct `ToolInvoker` calls |
+| Local HTTP API (`/state`, `/debug`, `/tool`, `/action`, port 25580) | `/drone` command and `@drone` chat; no unused server |
 | `RpcDispatcher`, `RpcHandler`, `harness/rpc/**` | `ToolInvoker`, `ToolProvider`, `harness/tool/**` |
 | `ToolRegistry` name/description-only catalog | schema-carrying `ToolSpec` + binding registry |
 | `system-prompt.md` with a debug JSON dump | `prompts/system.md` + `ContextRenderer` Markdown |

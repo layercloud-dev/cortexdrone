@@ -5,7 +5,7 @@
 ```text
 preInit
   resolve config/cortexdrone/ (ModPaths.ensure)
-  create AIDroneManager (services, managers, HTTP server object)
+  create AIDroneManager (services, managers, harness placeholders)
   register Forge/FML events
 
 serverStarting
@@ -15,7 +15,6 @@ serverStarting
   logger.debugLogFile = config/cortexdrone/logs/cortexdrone.log
   reconnect saved world drones
   register /drone
-  start HTTP on 127.0.0.1:<httpPort>
 
 server tick START
   ensure OC machine running state per drone
@@ -26,13 +25,11 @@ server tick END
   drain time-sliced scan jobs
   tick every controller
   reconnect unlinked drones every 40 ticks
-  snapshot HTTP state every 100 ticks
   tick profiler end
 
 serverStopping
   restore light auras
   save config (including saved drone bindings)
-  stop HTTP
 ```
 
 ## Per-controller tick
@@ -57,7 +54,6 @@ serverStopping
   "apiUrl": "http://127.0.0.1:7002/v1/chat/completions",
   "model": "deepseek/deepseek-v4.1-flash",
   "apiKey": "...",
-  "httpPort": 25580,
   "maxTurns": 60,
   "taskDeadlineSeconds": 480,
   "maxTokens": 2048,
@@ -75,7 +71,16 @@ Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
 `CORTEXDRONE_API_KEY`.
 
 `/drone config <url|model|key> <value>` updates the live object and saves the
-file. `config/cortexdrone/skills.json` holds learned/refined skills.
+file. `config/cortexdrone/skills.json` holds learned/refined skills;
+`config/cortexdrone/memory.json` holds player facts and named locations.
+
+Memory chat capture:
+
+- `@drone remember this is my base`
+- `@drone keep in mind the iron farm is at 120 64 -40`
+- `@drone by the way remember the portal is in the nether`
+
+Commands: `/drone memory list|search <q>|remember <text>|here <name>|forget <id|name>`.
 
 ## Legacy migration
 
@@ -96,7 +101,7 @@ the file rotates at 64 MB. `/drone debug on` streams entries to a player;
 
 Categories: `SYSTEM`, `SPAWN`, `LINK`, `DESPAWN`, `NAV`, `BUILD`, `INV`, `LIGHT`,
 `LLM`, `AGENT`, `TOOL`, `CODEMODE`, `TRACE`, `TASK`, `CMD`, `SKILL`, `SUPERSEDED`,
-`HTTP`, `WARN`, `ERROR`.
+`WARN`, `ERROR`.
 
 ## Task cancellation and supersession
 

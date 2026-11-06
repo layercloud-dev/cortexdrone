@@ -14,7 +14,6 @@ import ir.layercloud.cortexdrone.harness.session.SessionManager;
 import ir.layercloud.cortexdrone.harness.task.TaskCoordinator;
 import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.manager.ActionRegistry;
 import ir.layercloud.cortexdrone.manager.TickManager;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
@@ -74,7 +73,6 @@ public class AIDroneManager {
     private Harness harness;
     private final TickManager tickManager;
     private final TickProfiler tickProfiler;
-    private final DroneHttpServer httpServer;
     private final TaskCoordinator taskCoordinator;
 
     private final AtomicInteger nextDroneId = new AtomicInteger(1);
@@ -110,7 +108,6 @@ public class AIDroneManager {
                 this.breadcrumbService
         );
         this.tickProfiler = new TickProfiler(this.logger);
-        this.httpServer = new DroneHttpServer(this, this.logger);
         this.taskCoordinator = new TaskCoordinator(this);
     }
 
@@ -128,19 +125,16 @@ public class AIDroneManager {
                         + " tools=" + this.harness.registry().modelTools().size());
 
         event.registerServerCommand(new DroneCommand("drone", this));
-
-        this.httpServer.start();
     }
 
     public void onServerStopping() {
-        this.logger.log("SYSTEM", null, "Server stopping; saving AI drone config and stopping HTTP server", "");
+        this.logger.log("SYSTEM", null, "Server stopping; saving AI drone config", "");
         for (DroneController ctrl : this.controllersById.values()) {
             if (ctrl != null && !this.visualsManager.state(ctrl).lightCells.isEmpty()) {
                 this.visualsManager.clearLighting(ctrl);
             }
         }
         saveConfig();
-        this.httpServer.stop();
     }
 
     public synchronized void reloadConfig() {
@@ -272,13 +266,6 @@ public class AIDroneManager {
         }
 
         this.tickProfiler.onTickEnd(this.tickCounter);
-
-        // Snapshot cadence: every 100 ticks (5 s). /state & /debug serve from this cache directly
-        // instead of rebuilding on demand - the rebuild was serializing the whole state JSON on
-        // the server thread every 500 ms and on every /state HTTP hit, starving 20 TPS.
-        if (this.tickCounter % 100 == 0) {
-            this.httpServer.updateCachedSnapshots();
-        }
     }
 
     private void reconnectUnlinkedWorldDrones() {
@@ -516,7 +503,6 @@ public class AIDroneManager {
         }
         d.setDead();
         this.controllersById.remove(ctrl.id);
-        this.httpServer.updateCachedSnapshots();
         if (ctrl.ownerName != null) {
             String key = CortexDroneMod.normKey(ctrl.ownerName);
             this.controllersByOwner.remove(key, ctrl);

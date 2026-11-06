@@ -6,6 +6,8 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
+import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
@@ -40,11 +42,12 @@ public final class AgentService {
     private final ToolInvoker invoker;
     private final ToolRegistry registry;
     private final SkillLibrary skills;
+    private final MemoryStore memory;
     private final ModConfig config;
 
     public AgentService(AIDroneManager manager, DroneLogger logger, WorldScanner worldScanner,
                         LlmClient llm, ToolInvoker invoker, ToolRegistry registry,
-                        SkillLibrary skills, ModConfig config) {
+                        SkillLibrary skills, MemoryStore memory, ModConfig config) {
         this.manager = manager;
         this.logger = logger;
         this.worldScanner = worldScanner;
@@ -52,14 +55,17 @@ public final class AgentService {
         this.invoker = invoker;
         this.registry = registry;
         this.skills = skills;
+        this.memory = memory;
         this.config = config;
     }
 
     public String buildContext(EntityPlayerMP player, DroneController controller,
                                String prompt, String intent) {
         List<Skill> suggested = this.skills.search(prompt, 3);
+        List<MemoryEntry> memories = this.memory != null
+                ? this.memory.forContext(prompt, 10) : java.util.Collections.emptyList();
         return ContextRenderer.render(this.manager, this.worldScanner, player, controller,
-                prompt, intent, suggested);
+                prompt, intent, suggested, memories);
     }
 
     public void runAgentLoop(final EntityPlayerMP player, final DroneController controller,

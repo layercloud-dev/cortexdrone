@@ -193,9 +193,9 @@ public class DroneLogger {
         return arr;
     }
 
-    // Cap what the HTTP endpoints emit: JavaScript tool-result dumps (chest scans, inventories) can be
-    // 100+ KB per debug line, and /state polls would re-serialize them every second.
-    // Full entries still land in the debug log FILE (toLogLine) for forensics.
+    // Cap what the debug JSON emits: JavaScript tool-result dumps (chest scans,
+    // inventories) can be 100+ KB per line. Full entries still land in the debug
+    // log FILE (toLogLine) for forensics.
     private static JsonObject truncatedJson(DebugEntry entry, int maxMessageChars, int maxDetailsChars) {
         JsonObject o = new JsonObject();
         o.addProperty("timestamp", entry.getTimestamp());

@@ -102,10 +102,8 @@ public final class InteractionTools implements ToolProvider {
         int x = args.get("x").getAsInt();
         int y = args.get("y").getAsInt();
         int z = args.get("z").getAsInt();
-        double distance = controller.drone.getDistance(x + 0.5D, y + 0.5D, z + 0.5D);
-        if (distance > ReachSupport.REACH) {
-            return ReachSupport.needsMovement(controller, x, y, z, "interact", distance);
-        }
+        JsonObject unreachable = ReachSupport.unreachable(controller, x, y, z, "interact");
+        if (unreachable != null) return unreachable;
         return this.interaction.handle(controller, player, "interact_block", args);
     }
 
@@ -114,10 +112,8 @@ public final class InteractionTools implements ToolProvider {
             int x = args.get("x").getAsInt();
             int y = args.get("y").getAsInt();
             int z = args.get("z").getAsInt();
-            double distance = controller.drone.getDistance(x + 0.5D, y + 0.5D, z + 0.5D);
-            if (distance > ReachSupport.REACH) {
-                return ReachSupport.needsMovement(controller, x, y, z, "use", distance);
-            }
+            JsonObject unreachable = ReachSupport.unreachable(controller, x, y, z, "use");
+            if (unreachable != null) return unreachable;
         }
         return this.interaction.handle(controller, player, "use_item", args);
     }

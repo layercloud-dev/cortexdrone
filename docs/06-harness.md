@@ -12,6 +12,7 @@ ContextRenderer          readable live state + tool catalog
 ToolInvoker              schema validation + MAIN/ASYNC dispatch + envelopes
 ToolRegistry             the single tool surface
 JsEngine                 in-process Rhino runtime
+MemoryStore              persistent facts + named locations
 SkillLibrary / Refiner   memory + recursive skill compiler
 ```
 
@@ -95,6 +96,33 @@ Behavior:
 - Tool failures are JavaScript errors with `message`, `tool` and `toolResult`.
 - Instruction observer + wall clock enforce the budget; cancellation is checked
   between instructions and before/after each tool call.
+
+## Memory
+
+`MemoryStore` is separate from the conversation transcript and survives
+restarts. It stores:
+
+- `fact` / `preference` / `task` / `person` entries with a text body;
+- `location` entries with a dimension and `x/y/z` coordinates;
+- optional tags and a `pinned` flag.
+
+Explicit chat messages such as "remember ...", "keep in mind ...",
+"don't forget ...", "this is my base" or "call this the iron farm" are captured
+deterministically by `TaskCoordinator` + `MemoryCapture`, even while another
+task is running. They become a session note and are confirmed in chat.
+
+The model also gets a `memory` tool:
+
+```text
+memory action=remember kind=location name=base use_current_position=true
+memory action=remember text="prefers torches over glowstone"
+memory action=search query="iron farm"
+memory action=forget id=mem_...
+```
+
+`AgentService` injects relevant memories plus pinned locations into the context.
+Storage is `config/cortexdrone/memory.json`; entries are deduplicated by
+`kind + name` and updated in place.
 
 ## Skills
 

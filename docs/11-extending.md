@@ -32,7 +32,7 @@ registry.bind("my_tool", getClass().getSimpleName(), (context, args) -> {
 6. Implement world access in a service or manager, not in the provider.
 
 The tool automatically appears in the OpenAI tool list, the JS `drone` object,
-the prompt catalog and `/tool`.
+the prompt catalog and the JS `drone` object.
 
 ## Add an action
 
@@ -58,6 +58,12 @@ through a tool. A service must not start actions, retain work, or import
 
 Skill code is a function body: use synchronous `drone.*` calls and `return` a
 small result.
+
+## Add a memory-backed tool
+
+Use `Harness.memory()` / `MemoryStore` instead of inventing a new file. Call
+`remember(...)`, `search(...)`, `forget(...)` or `captureFromChat(...)`.
+Locations must include `dimension` and `x/y/z`; reuse `kind + name` to update.
 
 ## Add a web source
 

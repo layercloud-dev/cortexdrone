@@ -80,11 +80,11 @@ public final class BlockTools implements ToolProvider {
         int y = args.get("y").getAsInt();
         int z = args.get("z").getAsInt();
         World world = controller.drone.worldObj;
-        double distance = controller.drone.getDistance(x + 0.5D, y + 0.5D, z + 0.5D);
-        if (distance > ReachSupport.REACH) {
-            return ReachSupport.needsMovement(controller, x, y, z,
-                    "break_block".equals(method) ? "break" : "place", distance);
-        }
+        // Reach is distance AND line of sight: a block behind a wall is not
+        // interactable even when its centre is within 4.5 blocks.
+        JsonObject unreachable = ReachSupport.unreachable(controller, x, y, z,
+                "break_block".equals(method) ? "break" : "place");
+        if (unreachable != null) return unreachable;
         if ("break_block".equals(method) && !ItemClassifier.isMineableBlock(world, x, y, z)) {
             return ToolJson.error("not_mineable", "Block at (" + x + "," + y + "," + z
                     + ") is air, unbreakable or protected.", "Inspect it with get_block and pick another target.", true);

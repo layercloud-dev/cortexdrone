@@ -5,6 +5,7 @@ import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.harness.agent.AgentService;
 import ir.layercloud.cortexdrone.harness.agent.LlmClient;
 import ir.layercloud.cortexdrone.harness.js.JsEngine;
+import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.skill.SkillRefiner;
 import ir.layercloud.cortexdrone.harness.tool.ScanJobs;
@@ -18,6 +19,7 @@ import ir.layercloud.cortexdrone.harness.tools.CodeTools;
 import ir.layercloud.cortexdrone.harness.tools.InteractionTools;
 import ir.layercloud.cortexdrone.harness.tools.InventoryActionTools;
 import ir.layercloud.cortexdrone.harness.tools.InventoryQueryTools;
+import ir.layercloud.cortexdrone.harness.tools.MemoryTools;
 import ir.layercloud.cortexdrone.harness.tools.NavigationTools;
 import ir.layercloud.cortexdrone.harness.tools.ScanTools;
 import ir.layercloud.cortexdrone.harness.tools.SessionTools;
@@ -44,6 +46,7 @@ public final class Harness {
     private final AIDroneManager manager;
     private final ModConfig config;
     private final SkillLibrary skills;
+    private final MemoryStore memory;
     private final ToolRegistry registry;
     private final ScanJobs scans;
     private final ToolInvoker invoker;
@@ -57,6 +60,7 @@ public final class Harness {
         this.manager = manager;
         this.config = config;
         this.skills = skills;
+        this.memory = new MemoryStore(manager.getConfigRoot());
         this.registry = new ToolRegistry();
         this.registry.declareAll(ToolCatalog.standard());
         this.scans = new ScanJobs(manager);
@@ -65,7 +69,7 @@ public final class Harness {
         this.llm = new LlmClient(config, manager.getLogger());
         this.refiner = new SkillRefiner(llm, skills, manager.getLogger());
         this.agent = new AgentService(manager, manager.getLogger(), manager.getWorldScanner(),
-                llm, invoker, registry, skills, config);
+                llm, invoker, registry, skills, memory, config);
 
         this.providers.addAll(Arrays.asList(
                 new SessionTools(manager),
@@ -74,6 +78,7 @@ public final class Harness {
                 new InteractionTools(manager),
                 new InventoryActionTools(manager),
                 new InventoryQueryTools(manager.getInventoryService()),
+                new MemoryTools(manager, memory),
                 new VisualsTools(manager),
                 new WorldTools(manager, manager.getWorldScanner()),
                 new SkillTools(manager, skills, refiner),
@@ -100,6 +105,10 @@ public final class Harness {
 
     public SkillLibrary skills() {
         return this.skills;
+    }
+
+    public MemoryStore memory() {
+        return this.memory;
     }
 
     public ToolRegistry registry() {

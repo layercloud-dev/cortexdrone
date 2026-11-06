@@ -14,7 +14,7 @@ Reading order:
 | [04-navigation.md](04-navigation.md) | Goal navigation, trail/flight, digging policy |
 | [05-services.md](05-services.md) | Inventory, machine, world, navigation and web services |
 | [06-harness.md](06-harness.md) | Task loop, LLM client, tool calling, JS runtime, skills |
-| [07-tools.md](07-tools.md) | Tool registry, schemas, JS surface, HTTP API |
+| [07-tools.md](07-tools.md) | Tool registry, schemas, JavaScript surface |
 | [08-runtime.md](08-runtime.md) | Lifecycle, tick pipeline, config, logging, persistence |
 | [09-resources.md](09-resources.md) | Prompts, JS bootstrap, bundled skills, config files |
 | [10-build-deploy.md](10-build-deploy.md) | Gradle, tests, validation, deploy, operations |

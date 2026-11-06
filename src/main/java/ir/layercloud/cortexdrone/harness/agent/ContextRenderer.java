@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.harness.agent;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
@@ -29,7 +30,8 @@ public final class ContextRenderer {
 
     public static String render(AIDroneManager manager, WorldScanner worldScanner,
                                 EntityPlayerMP player, DroneController controller,
-                                String taskPrompt, String taskIntent, List<Skill> suggestedSkills) {
+                                String taskPrompt, String taskIntent, List<Skill> suggestedSkills,
+                                List<MemoryEntry> memories) {
         StringBuilder out = new StringBuilder(4096);
         World world = controller.drone.worldObj;
         double refX = player != null ? player.posX : controller.drone.posX;
@@ -94,6 +96,15 @@ public final class ContextRenderer {
         if (session != null && !session.getNotes().isEmpty()) {
             out.append("- notes:\n");
             for (String note : session.getNotes()) out.append("  - ").append(oneLine(note, 240)).append('\n');
+        }
+        out.append('\n');
+
+        out.append("## Memory\n");
+        if (memories == null || memories.isEmpty()) {
+            out.append("- none stored yet; use `memory` action=remember for facts and named locations.\n");
+        } else {
+            out.append(manager.getHarness().memory().formatForPrompt(memories));
+            out.append("Use `memory` action=search/remember to refine these entries.\n");
         }
         out.append('\n');
 

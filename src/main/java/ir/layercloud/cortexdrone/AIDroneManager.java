@@ -2,7 +2,7 @@ package ir.layercloud.cortexdrone;
 
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ir.layercloud.cortexdrone.action.ActionRegistry;
-import ir.layercloud.cortexdrone.service.building.BuildingService;
+import ir.layercloud.cortexdrone.service.building.impl.BuildingService;
 import ir.layercloud.cortexdrone.service.combat.CombatService;
 import ir.layercloud.cortexdrone.codemode.CodeModeRuntime;
 import ir.layercloud.cortexdrone.codemode.LlmAgentService;
@@ -19,7 +19,6 @@ import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.TickService;
-import ir.layercloud.cortexdrone.service.block.impl.BlockService;
 import ir.layercloud.cortexdrone.service.effect.impl.EffectService;
 import ir.layercloud.cortexdrone.service.interact.impl.InteractionService;
 import ir.layercloud.cortexdrone.service.movement.impl.MovementService;
@@ -62,7 +61,6 @@ public class AIDroneManager {
     private final InventoryService inventoryService;
     private final BuildingService buildingService;
     private final MovementService movementService;
-    private final BlockService blockService;
     private final EffectService effectService;
     private final InteractionService interactionService;
     private final CombatService combatService;
@@ -92,11 +90,10 @@ public class AIDroneManager {
         this.interactionService = new InteractionService(this.inventoryService);
         this.buildingService = new BuildingService(this, this.logger, this.pathfinder, this.inventoryService);
         this.movementService = new MovementService(this);
-        this.blockService = new BlockService(this.buildingService);
         this.combatService = new CombatService(this, this.logger, this.pathfinder);
         this.actionRegistry = new ActionRegistry();
         this.actionRegistry.register(this.movementService);
-        this.actionRegistry.register(this.blockService);
+        this.actionRegistry.register(this.buildingService);
         this.actionRegistry.register(this.interactionService);
         this.actionRegistry.register(this.effectService);
         this.docLookupService = new DocLookupService(this.inventoryService);

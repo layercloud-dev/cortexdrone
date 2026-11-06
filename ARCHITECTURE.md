@@ -32,7 +32,7 @@ implement `Action` and contain no operation logic; they manage the action
 lifecycle. Each category owns one service and one context type:
 
 - `service.movement.impl.MovementService` + `context.movement.impl.MovementContext` — route selection and breadcrumbs
-- `service.block.impl.BlockService` + `context.block.impl.BlockContext` — one-block break and one-block place
+- `service.building.impl.BuildingService` + `context.block.impl.BlockContext` — one-block break, one-block place and the mining loop
 - `service.interact.impl.InteractionService` + `context.interact.impl.InteractionContext` — block interaction, item use and attack
 - `service.effect.impl.EffectService` + `context.effect.impl.EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
 - `service.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
@@ -43,7 +43,7 @@ For example, `InteractBlockAction` owns liquid scooping and block activation,
 `UseItemAction` owns held-item use, `AttackEntityAction` owns melee combat,
 `BreakBlockAction` starts one block break and `PlaceBlockAction` performs the
 complete placement. Block break/place behavior and the long-running mining loop
-live in the domain service `service/building/BuildingService`; the AI composes
+live in the domain service `service/building/impl/BuildingService`; the AI composes
 mining as an `inspect -> moveTo -> breakBlock` skill (see
 `docs/skills/mining.md`).
 

@@ -2,7 +2,7 @@ package ir.layercloud.cortexdrone.service;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.service.building.BuildingService;
+import ir.layercloud.cortexdrone.service.building.impl.BuildingService;
 import ir.layercloud.cortexdrone.service.combat.CombatService;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.inventory.InventoryService;

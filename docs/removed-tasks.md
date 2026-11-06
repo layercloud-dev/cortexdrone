@@ -35,7 +35,7 @@ See `docs/skills/entity-transport.md` for the JavaScript skill.
 ## Mining
 
 `MiningEngine` was removed. Block break/place behavior and the mining loop now
-live in `service/building/BuildingService`. Mining itself is a skill composed by
+live in `service/building/impl/BuildingService`. Mining itself is a skill composed by
 the AI from `inspect -> moveTo -> breakBlock`; see
 `docs/skills/mining.md`.
 

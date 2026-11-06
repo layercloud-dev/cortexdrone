@@ -6,7 +6,7 @@ import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.context.block.impl.BlockContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.service.building.BuildingService;
+import ir.layercloud.cortexdrone.service.building.impl.BuildingService;
 import lombok.RequiredArgsConstructor;
 
 /** Single-use command: break exactly one explicit block. */

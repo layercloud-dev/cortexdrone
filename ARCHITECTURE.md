@@ -112,7 +112,7 @@ follow/drop/deposit and mining standoffs through
 
 ```text
 action/<category>/impl/      one-shot actions
-context/<category>/impl/     action contexts
+context/impl/                action contexts
 ```
 
 An action is active while it runs and is released when the call returns unless

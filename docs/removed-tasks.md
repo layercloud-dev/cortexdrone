@@ -46,7 +46,7 @@ When these tasks return:
 
 - put operation logic in the action class, not in a service;
 - keep the service as the action lifecycle manager;
-- put long-running state in a context under `context/<category>/impl/`;
+- put long-running state in a context under `context/impl/`;
 - prefer composing existing primitives over adding another monolithic task;
 - if a task is AI-composed, save it through the skill library instead of
   hard-coding it in Java.

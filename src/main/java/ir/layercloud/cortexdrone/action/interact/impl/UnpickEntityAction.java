@@ -1,5 +1,5 @@
 package ir.layercloud.cortexdrone.action.interact.impl;
-import ir.layercloud.cortexdrone.context.interact.impl.InteractionContext;
+import ir.layercloud.cortexdrone.context.impl.InteractionContext;
 
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.interact.InteractionRequest;

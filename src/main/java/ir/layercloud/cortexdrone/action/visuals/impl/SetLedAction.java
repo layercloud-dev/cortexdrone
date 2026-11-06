@@ -3,7 +3,7 @@ package ir.layercloud.cortexdrone.action.visuals.impl;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
-import ir.layercloud.cortexdrone.context.visuals.impl.VisualsContext;
+import ir.layercloud.cortexdrone.context.impl.VisualsContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.LedEffectEngine;
 import li.cil.oc.common.entity.Drone;

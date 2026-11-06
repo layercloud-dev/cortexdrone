@@ -11,7 +11,7 @@ import ir.layercloud.cortexdrone.action.visuals.impl.SetLedAction;
 import ir.layercloud.cortexdrone.action.visuals.impl.SetStatusTextAction;
 import ir.layercloud.cortexdrone.action.visuals.impl.SpawnParticlesAction;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.context.visuals.impl.VisualsContext;
+import ir.layercloud.cortexdrone.context.impl.VisualsContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.ActionManager;
 import net.minecraft.entity.player.EntityPlayerMP;

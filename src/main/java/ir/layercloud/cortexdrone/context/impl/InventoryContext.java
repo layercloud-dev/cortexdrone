@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.context.inventory.impl;
+package ir.layercloud.cortexdrone.context.impl;
 
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
 import ir.layercloud.cortexdrone.context.ActionContextBase;

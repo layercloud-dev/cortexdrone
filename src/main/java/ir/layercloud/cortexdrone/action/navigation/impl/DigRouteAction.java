@@ -2,7 +2,7 @@ package ir.layercloud.cortexdrone.action.navigation.impl;
 
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
-import ir.layercloud.cortexdrone.context.navigation.impl.NavigationContext;
+import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import lombok.RequiredArgsConstructor;
 

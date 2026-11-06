@@ -13,6 +13,12 @@ import ir.layercloud.cortexdrone.action.movement.MovementPlan;
 import ir.layercloud.cortexdrone.action.movement.MovementRequest;
 import ir.layercloud.cortexdrone.action.movement.MovementResult;
 import ir.layercloud.cortexdrone.action.movement.MovementRoute;
+import ir.layercloud.cortexdrone.action.movement.impl.StopAction;
+import ir.layercloud.cortexdrone.action.movement.impl.StayAction;
+import ir.layercloud.cortexdrone.action.movement.impl.GotoAction;
+import ir.layercloud.cortexdrone.action.movement.impl.FollowAction;
+import ir.layercloud.cortexdrone.action.movement.impl.CarryAction;
+import ir.layercloud.cortexdrone.action.movement.impl.ComeAction;
 import ir.layercloud.cortexdrone.action.movement.MovementTarget;
 import ir.layercloud.cortexdrone.action.movement.impl.NavigateAction;
 import ir.layercloud.cortexdrone.action.movement.impl.TunnelAction;
@@ -33,10 +39,12 @@ import net.minecraft.util.MathHelper;
  */
 public final class MovementService extends ActionService<MovementContext> {
     private final AIDroneManager manager;
+    private final FlightPathfinder pathfinder;
 
-    public MovementService(AIDroneManager manager) {
+    public MovementService(AIDroneManager manager, FlightPathfinder pathfinder) {
         super("movement", "navigate", "tunnel", "digup", "digdown", "get_breadcrumbs");
         this.manager = manager;
+        this.pathfinder = pathfinder;
     }
 
     @Override
@@ -122,19 +130,23 @@ public final class MovementService extends ActionService<MovementContext> {
 
     /** Core navigation start shared by every movement action. */
     public MovementResult startNavigation(MovementRequest request, MovementPlan plan, String label) {
-        DroneController controller = request.getController();
+        return startNavigation(request.getController(), plan.getTarget(), plan.getRoute(),
+            plan.getFinalTarget(), plan.isViaSurface(), label);
+    }
+
+    public MovementResult startNavigation(DroneController controller, MovementTarget target,
+                                          MovementRoute route, MovementTarget finalTarget,
+                                          boolean viaSurface, String label) {
         if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
             return MovementResult.failure("No active drone");
         }
-        MovementTarget target = plan.getTarget();
-        MovementRoute route = plan.getRoute();
 
         controller.navigationGeneration++;
         controller.navigationRoute = route.getId();
-        controller.navViaSurface = plan.isViaSurface();
-        controller.navFinalX = plan.getFinalTarget() != null ? plan.getFinalTarget().getX() : Double.NaN;
-        controller.navFinalY = plan.getFinalTarget() != null ? plan.getFinalTarget().getY() : Double.NaN;
-        controller.navFinalZ = plan.getFinalTarget() != null ? plan.getFinalTarget().getZ() : Double.NaN;
+        controller.navViaSurface = viaSurface;
+        controller.navFinalX = finalTarget != null ? finalTarget.getX() : Double.NaN;
+        controller.navFinalY = finalTarget != null ? finalTarget.getY() : Double.NaN;
+        controller.navFinalZ = finalTarget != null ? finalTarget.getZ() : Double.NaN;
 
         NavContext navigation = NavContext.of(controller,
             target.getX(), target.getY(), target.getZ(), route.getId());
@@ -143,7 +155,72 @@ public final class MovementService extends ActionService<MovementContext> {
             label + " " + route.getId()
                 + String.format(" (%.1f,%.1f,%.1f)", target.getX(), target.getY(), target.getZ()));
         return MovementResult.started(route.getId(),
-            target.getX(), target.getY(), target.getZ(), plan.isViaSurface());
+            target.getX(), target.getY(), target.getZ(), viaSurface);
+    }
+
+    /** Core stop behavior shared by stay/stop actions and command cancellation. */
+    public void stop(DroneController controller, String label) {
+        if (controller == null || controller.drone == null) return;
+        controller.navigationGeneration++;
+        controller.navigationRoute = MovementRoute.AUTO.getId();
+        controller.navViaSurface = false;
+        controller.navFinalX = Double.NaN;
+        controller.navFinalY = Double.NaN;
+        controller.navFinalZ = Double.NaN;
+        controller.goalX = controller.drone.posX;
+        controller.goalY = controller.drone.posY;
+        controller.goalZ = controller.drone.posZ;
+        this.manager.setDroneMode(controller, Mode.STAY, label);
+    }
+
+    /** Core follow behavior. */
+    public void follow(DroneController controller, String targetName, String label) {
+        if (controller == null || controller.drone == null) return;
+        controller.targetPlayerName = targetName;
+        controller.navigationGeneration++;
+        controller.navigationRoute = MovementRoute.AUTO.getId();
+        controller.navViaSurface = false;
+        controller.navFinalX = Double.NaN;
+        controller.navFinalY = Double.NaN;
+        controller.navFinalZ = Double.NaN;
+        this.manager.setDroneMode(controller, Mode.FOLLOW, label);
+    }
+
+    public void gotoPoint(DroneController controller, EntityPlayerMP player,
+                          double x, double y, double z, MovementRoute route, String label) {
+        MovementContext context = new MovementContext(controller, player, "goto");
+        run(controller, player, "goto", context,
+            new GotoAction(this, new MovementTarget(x, y, z), route, label));
+    }
+
+    public void stay(DroneController controller, EntityPlayerMP player, String label) {
+        MovementContext context = new MovementContext(controller, player, "stay");
+        run(controller, player, "stay", context, new StayAction(this, label));
+    }
+
+    public void stop(DroneController controller, EntityPlayerMP player, String label) {
+        MovementContext context = new MovementContext(controller, player, "stop");
+        run(controller, player, "stop", context, new StopAction(this, label));
+    }
+
+    public void follow(DroneController controller, EntityPlayerMP player,
+                       String targetName, String label) {
+        MovementContext context = new MovementContext(controller, player, "follow");
+        run(controller, player, "follow", context,
+            new FollowAction(this, targetName, label));
+    }
+
+    public void come(DroneController controller, EntityPlayerMP player,
+                     EntityPlayerMP target, String label) {
+        MovementContext context = new MovementContext(controller, player, "come");
+        run(controller, player, "come", context, new ComeAction(this, target, label));
+    }
+
+    public void carry(DroneController controller, EntityPlayerMP player,
+                      double x, double y, double z, String label) {
+        MovementContext context = new MovementContext(controller, player, "carry");
+        run(controller, player, "carry", context,
+            new CarryAction(this.pathfinder, x, y, z, label));
     }
 
     @Override

@@ -246,14 +246,7 @@ public class MasterRpcHandler implements RpcHandler {
         int cancelled = ctrl.cancelOtherLoops(callerLoopId);
         this.manager.clearActionState(ctrl);
         ctrl.task.cancel();
-        ctrl.navViaSurface = false;
-        ctrl.navFinalX = Double.NaN;
-        ctrl.navFinalY = Double.NaN;
-        ctrl.navFinalZ = Double.NaN;
-        ctrl.goalX = ctrl.drone.posX;
-        ctrl.goalY = ctrl.drone.posY;
-        ctrl.goalZ = ctrl.drone.posZ;
-        this.manager.setDroneMode(ctrl, Mode.STAY, "Master cancel");
+        this.manager.getMovementService().stop(ctrl, "Master cancel");
         JsonObject res = ok();
         res.addProperty("cancelled", true);
         res.addProperty("cancelledLoops", cancelled);

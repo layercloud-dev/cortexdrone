@@ -3,7 +3,6 @@ package ir.layercloud.cortexdrone.context.movement.impl;
 import ir.layercloud.cortexdrone.action.movement.MovementResult;
 import ir.layercloud.cortexdrone.context.ActionContextBase;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.model.Mode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -13,7 +12,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * Mutable state for one point-to-point navigation action.
  *
  * <p>The action is retained when the navigator accepts the route and is
- * released when the drone arrives, leaves {@link Mode#GOTO}, despawns or a
+ * released when the drone arrives, leaves {@code GOTO}, despawns or a
  * newer navigation generation replaces it.</p>
  */
 @Getter

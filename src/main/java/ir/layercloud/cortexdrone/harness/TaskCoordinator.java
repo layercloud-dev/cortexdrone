@@ -4,7 +4,6 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.model.Mode;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
@@ -89,14 +88,7 @@ public final class TaskCoordinator {
         ctrl.cancelOtherLoops(0);
         this.manager.clearActionState(ctrl);
         ctrl.task.cancel();
-        ctrl.navViaSurface = false;
-        ctrl.navFinalX = Double.NaN;
-        ctrl.navFinalY = Double.NaN;
-        ctrl.navFinalZ = Double.NaN;
-        ctrl.goalX = ctrl.drone.posX;
-        ctrl.goalY = ctrl.drone.posY;
-        ctrl.goalZ = ctrl.drone.posZ;
-        this.manager.setDroneMode(ctrl, Mode.STAY, reason);
+        this.manager.getMovementService().stop(ctrl, reason);
     }
 
     private static String shortTask(DroneController ctrl) {

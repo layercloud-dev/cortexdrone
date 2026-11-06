@@ -9,7 +9,6 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.codemode.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ChunkAccess;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import ir.layercloud.cortexdrone.world.StructureArchitect;

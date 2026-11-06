@@ -79,6 +79,23 @@ public abstract class ActionService<C extends ActionContext> {
         }
     }
 
+    /** Executes a typed action without a JSON response (command/internal entry points). */
+    protected final void run(DroneController controller, EntityPlayerMP player,
+                             String operation, C context, Action<C> action) {
+        try {
+            action.execute(context);
+            if (context.isRetained()) {
+                retain(controller, operation, new Execution<C>(action, context));
+            } else {
+                context.complete();
+            }
+        } catch (Throwable failure) {
+            action.cancel(context);
+            context.cancel();
+            throw failure;
+        }
+    }
+
     public final void tick(DroneController controller) {
         Map<String, Execution<C>> executions = this.active.get(controller);
         if (executions == null) return;

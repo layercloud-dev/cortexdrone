@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.command.impl;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.action.movement.MovementRoute;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.command.BaseCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
@@ -281,9 +282,9 @@ public class DroneCommand extends BaseCommand {
 
         if (sub.equals("follow")) {
             String targetName = args.length >= 2 ? args[1] : player.getCommandSenderName();
-            ctrl.targetPlayerName = targetName;
             this.manager.clearActionState(ctrl);
-            this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Command /drone follow " + targetName);
+            this.manager.getMovementService().follow(ctrl, player, targetName,
+                "Command /drone follow " + targetName);
             this.manager.saveConfig();
             this.manager.droneSay(player, ctrl, "Now following " + targetName + " (look at me within 4.5m to hold still for right-click!).");
             return;
@@ -291,11 +292,8 @@ public class DroneCommand extends BaseCommand {
 
         if (sub.equals("stay") || sub.equals("stop") || sub.equals("hover")) {
             ctrl.cancelOtherLoops(0);
-            ctrl.goalX = ctrl.drone.posX;
-            ctrl.goalY = ctrl.drone.posY;
-            ctrl.goalZ = ctrl.drone.posZ;
             this.manager.clearActionState(ctrl);
-            this.manager.setDroneMode(ctrl, Mode.STAY, "Command /drone stay");
+            this.manager.getMovementService().stay(ctrl, player, "Command /drone stay");
             this.manager.saveConfig();
             this.manager.droneSay(player, ctrl, String.format("Hovering in place at (%.1f, %.1f, %.1f).", ctrl.goalX, ctrl.goalY, ctrl.goalZ));
             return;
@@ -310,11 +308,10 @@ public class DroneCommand extends BaseCommand {
                 double gx = parseCoord(player.posX, args[1]);
                 double gy = parseCoord(player.posY, args[2]);
                 double gz = parseCoord(player.posZ, args[3]);
-                ctrl.goalX = gx;
-                ctrl.goalY = gy;
-                ctrl.goalZ = gz;
                 this.manager.clearActionState(ctrl);
-                this.manager.setDroneMode(ctrl, Mode.GOTO, String.format("Command /drone goto (%.1f,%.1f,%.1f)", gx, gy, gz));
+                this.manager.getMovementService().gotoPoint(ctrl, player, gx, gy, gz,
+                    MovementRoute.AUTO,
+                    String.format("Command /drone goto (%.1f,%.1f,%.1f)", gx, gy, gz));
                 this.manager.droneSay(player, ctrl, String.format("Pathfinding to (%.1f, %.1f, %.1f)...", gx, gy, gz));
             } catch (NumberFormatException e) {
                 CortexDroneMod.sendMsg(player, EnumChatFormatting.RED + "Invalid coordinates. Usage: /drone goto <x> <y> <z>");
@@ -362,7 +359,9 @@ public class DroneCommand extends BaseCommand {
                 } catch (NumberFormatException ignored) {
                 }
             }
-            this.manager.getPathfinder().startCarryPlayerTask(ctrl, player, dest[0], dest[1], dest[2]);
+            this.manager.getMovementService().carry(ctrl, player, dest[0], dest[1], dest[2],
+                String.format("Carrying %s to (%.1f,%.1f,%.1f)",
+                    player.getCommandSenderName(), dest[0], dest[1], dest[2]));
             this.manager.droneSay(player, ctrl, String.format("Airlifting you to (%.0f, %.0f, %.0f)!", dest[0], dest[1], dest[2]));
             return;
         }

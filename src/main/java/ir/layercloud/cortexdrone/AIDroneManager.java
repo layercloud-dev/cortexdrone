@@ -61,6 +61,7 @@ public class AIDroneManager {
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
     private final MiningEngine miningEngine;
+    private final MovementService movementService;
     private final BlockService blockService;
     private final EffectService effectService;
     private final InteractionService interactionService;
@@ -90,10 +91,11 @@ public class AIDroneManager {
         this.effectService = new EffectService(this, this.logger);
         this.interactionService = new InteractionService(this.inventoryService);
         this.miningEngine = new MiningEngine(this, this.logger, this.pathfinder, this.inventoryService);
+        this.movementService = new MovementService(this, this.pathfinder);
         this.blockService = new BlockService(this, this.inventoryService, this.logger);
         this.combatService = new CombatService(this, this.logger, this.pathfinder);
         this.actionRegistry = new ActionRegistry();
-        this.actionRegistry.register(new MovementService(this));
+        this.actionRegistry.register(this.movementService);
         this.actionRegistry.register(this.blockService);
         this.actionRegistry.register(this.interactionService);
         this.actionRegistry.register(this.effectService);
@@ -590,26 +592,8 @@ public class AIDroneManager {
 
     public void commandComeToPlayer(EntityPlayerMP player, DroneController ctrl) {
         if (player == null || ctrl == null || ctrl.drone == null) return;
-        World world = player.worldObj;
-        double yawRad = Math.toRadians(player.rotationYaw);
-        double fx = -Math.sin(yawRad) * 2.0;
-        double fz = Math.cos(yawRad) * 2.0;
-        double gx = player.posX + fx;
-        double gy = player.posY + 1.15;
-        double gz = player.posZ + fz;
-        if (!ItemClassifier.isPassableVoxel(world, MathHelper.floor_double(gx), MathHelper.floor_double(gy), MathHelper.floor_double(gz))) {
-            int[] open = FlightPathfinder.findNearestPassableVoxel(world, MathHelper.floor_double(gx), MathHelper.floor_double(gy), MathHelper.floor_double(gz), 2);
-            if (open != null) {
-                gx = open[0] + 0.5;
-                gy = open[1] + 0.35;
-                gz = open[2] + 0.5;
-            }
-        }
-        ctrl.goalX = gx;
-        ctrl.goalY = gy;
-        ctrl.goalZ = gz;
         clearActionState(ctrl);
-        setDroneMode(ctrl, Mode.GOTO, "Come in front of player for interaction");
+        this.movementService.come(ctrl, player, player, "Come in front of player for interaction");
         droneSay(player, ctrl, "Coming right in front of you and holding position so you can access my inventory!");
     }
 

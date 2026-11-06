@@ -15,7 +15,7 @@ inspect -> goto -> breakBlock / placeBlock / interactBlock / useItem / transfer
 ```
 
 Only navigation is goal-driven inside Java: the model says "go to X/Y/Z" and the
-navigation manager chooses trail/flight/tunnel/dig routes itself.
+navigation manager chooses trail/flight routes itself.
 
 ## 2. Runtime topology
 
@@ -87,10 +87,9 @@ string is `required-after:OpenComputers;after:layercloudsmp`.
 - Master tools for status, inspection, navigation, block break/place,
   interaction/item use, entity pick/unpick, inventory transfer, crafting,
   visuals, skill memory and cancellation.
-- Goal navigation: breadcrumb backtracking, no-dig flight A*, weighted dig A*,
-  tunnel/dig-up/dig-down fallback.
-- Mining work used by `break_block`/dig routes, including tool-aware break time,
-  block drops, fortune and inventory-full stop.
+- Goal navigation: breadcrumb backtracking and 3D flight A*.
+- `break_block` destroys exactly the block you name, yields its drops (Fortune
+  aware) and reports; there is no mining queue, target selection or dig planner.
 - Inventory/chest/furnace/machine inspection, item search, crafting, fluid
   scooping and machine recipe introspection.
 - Torch-free illumination aura that restores original light values.
@@ -115,7 +114,6 @@ string is `required-after:OpenComputers;after:layercloudsmp`.
 | **Leg** | One navigation action execution inside a goal session |
 | **Trail** | Breadcrumb history recorded by `BreadcrumbService` |
 | **Standoff** | Safe reachable position beside a block |
-| **Self-rescue** | Internal dig route used to escape a blocked navigation path |
 
 ## 7. What is deliberately absent
 

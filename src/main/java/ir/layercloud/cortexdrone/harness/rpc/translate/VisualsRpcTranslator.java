@@ -127,15 +127,12 @@ public final class VisualsRpcTranslator {
         response.addProperty("z", drone.posZ);
         response.addProperty("navigationActive",
                 this.manager.getNavigationManager().isActive(controller));
-        response.addProperty("mining", controller.isMining());
         response.addProperty("lightActive", controller.autoTorch);
         response.addProperty("lightRadius", controller.lightRadius);
         response.addProperty("lightLevel", controller.lightIntensity);
         response.addProperty("lightColor", String.format("0x%06X", controller.lightColor & 0xFFFFFF));
         response.addProperty("solidEscalations", controller.solidEscalations);
         response.addProperty("blockedWaypoints", controller.solidWaypointHits.size());
-        response.addProperty("mineQueueSize", controller.mineQueue.size());
-        response.addProperty("minedCount", controller.minedCount);
         response.addProperty("builtCount", controller.builtCount);
         response.addProperty("scoopedCount", controller.scoopedCount);
 

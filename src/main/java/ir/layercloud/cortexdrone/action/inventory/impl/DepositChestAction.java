@@ -72,7 +72,7 @@ public final class DepositChestAction implements Action<InventoryContext> {
             deposit(context, drone, world, chest);
             return;
         }
-        double[] standoff = FlightPathfinder.findMiningStandoff(
+        double[] standoff = FlightPathfinder.findBlockStandoff(
                 world, drone, chest.xCoord, chest.yCoord, chest.zCoord);
         double cx = standoff != null ? standoff[0] : chest.xCoord + 0.5;
         double cy = standoff != null ? standoff[1] : chest.yCoord + 1.2;

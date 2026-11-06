@@ -4,13 +4,12 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Single-use command: break exactly one explicit block and tick it to
- * completion. No mode, no queue: the action itself advances the break.
+ * Single-use command: break exactly one block. The block is gone when the call
+ * returns; there is no retained break and no progress to tick.
  */
 @RequiredArgsConstructor
 public final class BreakBlockAction implements Action<BlockContext> {
@@ -19,27 +18,12 @@ public final class BreakBlockAction implements Action<BlockContext> {
 
     @Override
     public void execute(BlockContext context) {
-        boolean started = this.buildingManager.startBreak(
+        String broken = this.buildingManager.breakBlock(
                 context.controller(), this.request.getX(), this.request.getY(), this.request.getZ());
-        context.result(BlockResult.breakStarted(started,
-                this.request.getX(), this.request.getY(), this.request.getZ()));
-        if (started) {
-            context.trackBreak(this.request.getX(), this.request.getY(), this.request.getZ());
-        }
-    }
-
-    @Override
-    public void tick(BlockContext context) {
-        DroneController controller = context.controller();
-        if (!context.breakOperation() || controller == null || controller.drone == null
-                || controller.drone.isDead
-                || !context.matchesTarget(controller.currentMineTarget)) {
-            context.complete();
-            return;
-        }
-        this.buildingManager.tickMining(controller);
-        if (!context.matchesTarget(controller.currentMineTarget)) {
-            context.complete();
-        }
+        context.result(broken != null
+                ? BlockResult.broken(broken, this.request.getX(), this.request.getY(), this.request.getZ())
+                : BlockResult.failure("Cannot break block at "
+                        + this.request.getX() + "," + this.request.getY() + "," + this.request.getZ()
+                        + " (not mineable, already air, or no drone)"));
     }
 }

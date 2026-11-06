@@ -182,7 +182,7 @@ public final class DronePhysicsService {
                 && ItemClassifier.isPassableVoxel(world, x, y + 1, z);
     }
 
-    public static double[] findMiningStandoff(World world, Drone d, int bx, int by, int bz) {
+    public static double[] findBlockStandoff(World world, Drone d, int bx, int by, int bz) {
         if (world == null || d == null) return null;
         double tx = bx + 0.5;
         double ty = by + 0.5;
@@ -238,73 +238,6 @@ public final class DronePhysicsService {
                 }
             }
             if (best != null) return best;
-        }
-        return null;
-    }
-
-    public static int[] findBlockingTunnelBlock(World world, Drone d, int targetX, int targetY, int targetZ) {
-        if (world == null || d == null) return null;
-        int cx = MathHelper.floor_double(d.posX);
-        int cy = MathHelper.floor_double(d.posY);
-        int cz = MathHelper.floor_double(d.posZ);
-
-        int maxSteps = 96;
-        for (int step = 0; step < maxSteps; step++) {
-            int remX = targetX - cx;
-            int remY = targetY - cy;
-            int remZ = targetZ - cz;
-            if (Math.abs(remX) + Math.abs(remY) + Math.abs(remZ) <= 1) {
-                break;
-            }
-            int[][] cands = new int[][]{
-                    {remX > 0 ? 1 : (remX < 0 ? -1 : 0), 0, 0, Math.abs(remX)},
-                    {0, remY > 0 ? 1 : (remY < 0 ? -1 : 0), 0, Math.abs(remY)},
-                    {0, 0, remZ > 0 ? 1 : (remZ < 0 ? -1 : 0), Math.abs(remZ)}
-            };
-            for (int i = 0; i < 2; i++) {
-                for (int j = i + 1; j < 3; j++) {
-                    if (cands[j][3] > cands[i][3]) {
-                        int[] tmp = cands[i];
-                        cands[i] = cands[j];
-                        cands[j] = tmp;
-                    }
-                }
-            }
-            boolean steppedAir = false;
-            for (int i = 0; i < 3; i++) {
-                if (cands[i][3] == 0) continue;
-                int nx = cx + cands[i][0];
-                int ny = cy + cands[i][1];
-                int nz = cz + cands[i][2];
-                if (ItemClassifier.isPassableVoxel(world, nx, ny, nz)) {
-                    cx = nx;
-                    cy = ny;
-                    cz = nz;
-                    steppedAir = true;
-                    break;
-                }
-            }
-            if (steppedAir) continue;
-
-            for (int i = 0; i < 3; i++) {
-                if (cands[i][3] == 0) continue;
-                int nx = cx + cands[i][0];
-                int ny = cy + cands[i][1];
-                int nz = cz + cands[i][2];
-                if (nx == targetX && ny == targetY && nz == targetZ) return null;
-                if (ItemClassifier.isMineableBlock(world, nx, ny, nz)) {
-                    return new int[]{nx, ny, nz};
-                }
-            }
-            break;
-        }
-
-        for (int y = Math.min(253, targetY + 14); y > targetY; y--) {
-            if (!ItemClassifier.isPassableVoxel(world, targetX, y, targetZ) && ItemClassifier.isMineableBlock(world, targetX, y, targetZ)) {
-                if (findMiningStandoff(world, d, targetX, y, targetZ) != null) {
-                    return new int[]{targetX, y, targetZ};
-                }
-            }
         }
         return null;
     }

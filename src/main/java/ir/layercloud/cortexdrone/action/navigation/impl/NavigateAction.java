@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Executes one no-dig flight leg. It only plans and follows safe waypoints; it
- * reports {@code needsDig} when the flight path is blocked or partial so the
+ * reports {@code blocked} when the flight path is blocked or partial so the
  * navigation manager can choose the next action.
  */
 public final class NavigateAction implements Action<NavigationContext> {
@@ -155,7 +155,7 @@ public final class NavigateAction implements Action<NavigationContext> {
             ctrl.stuckTicks = Math.max(ctrl.stuckTicks, 6);
             nav.clearPath();
             ctrl.repathCooldown = 0;
-            context.result(NavigateResult.needsDig(true, ctrl.lastPathPartial));
+            context.result(NavigateResult.blocked(ctrl.lastPathPartial));
             context.complete();
             return;
         }
@@ -170,7 +170,7 @@ public final class NavigateAction implements Action<NavigationContext> {
             return;
         }
         if (exhausted && ctrl.lastPathPartial) {
-            context.result(NavigateResult.needsDig(true, true));
+            context.result(NavigateResult.blocked(true));
             context.complete();
             return;
         }

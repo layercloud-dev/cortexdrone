@@ -46,11 +46,10 @@ the controller and its modes live in `drone/`, the LED engine is a
 - Own a category's operation names and lifecycle.
 - Parse only typed requests, never JSON.
 - Create one context/action per operation and retain/tick/cancel it.
-- May coordinate another manager to complete a larger goal (navigation asks
-  building to dig).
+- May call the mechanics of another manager when an action needs them (inventory
+  delivery uses the navigation helpers to fly).
 - Must not contain flight/waypoint algorithms; those belong to actions/services.
-- Must not call another manager's action class directly unless the action is the
-  explicit executor for a leg (navigation uses `DigRouteAction`).
+- Must not call another manager's action class directly.
 
 ### Actions
 
@@ -112,10 +111,10 @@ Example: `drone.breakBlock(10, 64, -3)`.
 4. If in reach, `ActionRpcTranslator` routes to `BuildingRpcTranslator`.
 5. Translator builds `BlockRequest` and calls `BuildingManager.handle`.
 6. `ActionManager` creates `BlockContext`, then `BreakBlockAction`.
-7. Action calls `BuildingManager.startBreak`, which sets the mining target.
-8. Context is retained; result `BlockResult.breakStarted` is serialized.
-9. Each tick, `ActionRegistry.tick` ticks `BreakBlockAction`.
-10. When the target is gone, the action completes and is reaped.
+7. Action calls `BuildingManager.breakBlock`, which removes the block immediately
+   and inserts its drops.
+8. Result `BlockResult.broken` is serialized; the context completes at once.
+9. `ActionRegistry` reaps it on the same tick — no state survives on the drone.
 
 Example: `drone.goto(100, 70, -40)`.
 
@@ -123,7 +122,7 @@ Example: `drone.goto(100, 70, -40)`.
 2. `NavigationManager.gotoGoal` resolves target and creates a session.
 3. `TickManager` calls `navigationManager.tick` every tick.
 4. Manager picks a leg and creates `NavigationContext`.
-5. `NavigateAction` or `DigRouteAction` executes/tick.
+5. `NavigateAction` executes and ticks the flight leg.
 6. `NavigateResult` drives next decision until arrival/failure.
 7. SDK polls `state.navigationActive` until false, then returns.
 

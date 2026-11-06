@@ -632,6 +632,7 @@ public class LlmAgentService {
 
     /** True when no action owns the status text, so the loop may show progress. */
     private boolean idleForStatus(DroneController ctrl) {
-        return !ctrl.isMining() && !this.manager.getNavigationManager().isActive(ctrl);
+        return !this.manager.getNavigationManager().isActive(ctrl)
+                && this.manager.getActionRegistry().activeContextCount(ctrl) == 0;
     }
 }

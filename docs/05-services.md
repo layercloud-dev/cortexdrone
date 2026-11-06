@@ -46,7 +46,7 @@ It constructs and owns:
   fuzzy item matching, distance sorting.
 - `PlayerInventoryOps` — take/give/move between drone and player inventories.
 - `MachineRecipeService` — machine recipe introspection (also exposed here).
-- `ToolInspector` — fortune level, mining ticks, attack damage, fire aspect.
+- `ToolInspector` — fortune level, attack damage, fire aspect.
 
 `CraftResult` is the crafting result DTO.
 
@@ -228,22 +228,15 @@ goalward endpoints.
 
 ### `FlightPathfinder`
 
-No-dig 3D A*/Theta* pathfinding and geometry:
-`findFlightPath`, path cache, nearest passable voxel, line clear, standoff,
-blocking tunnel block, obstruction description, leaf clearing, set drone flight
-target, server physics step, player look detection, stable follow anchor,
-`clearNavigation`.
-
-### `DigPathService`
-
-Weighted 6-neighbor dig A*; returns `int[]{x,y,z,dig}` steps only. No queues
-and no drone state.
+3D A*/Theta* pathfinding and geometry: `findFlightPath`, path cache, nearest
+passable voxel, line clear, block standoff, obstruction description, leaf
+clearing, set drone flight target, server physics step, player look detection,
+stable follow anchor, `clearNavigation`.
 
 ### `DronePhysicsService`
 
-Low-level motion/physics:
-server-side physics step, obstruction description, nearby leaf clearing, stable
-follow anchor, mining standoff search, blocking tunnel block search, player-look
+Low-level motion/physics: server-side physics step, obstruction description,
+nearby leaf clearing, stable follow anchor, block standoff search, player-look
 test, headroom.
 
 ## 5. Visuals service (`service/visuals`)

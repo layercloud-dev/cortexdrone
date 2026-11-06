@@ -55,7 +55,6 @@ public class DroneTelemetrySerializer {
             dj.addProperty("owner", ctrl.ownerName);
             dj.addProperty("lastThought", ctrl.lastThought != null ? ctrl.lastThought : "");
             dj.addProperty("navigationActive", this.manager.getNavigationManager().isActive(ctrl));
-            dj.addProperty("mining", ctrl.isMining());
             dj.addProperty("x", Math.round(d.posX * 100.0) / 100.0);
             dj.addProperty("y", Math.round(d.posY * 100.0) / 100.0);
             dj.addProperty("z", Math.round(d.posZ * 100.0) / 100.0);
@@ -80,26 +79,6 @@ public class DroneTelemetrySerializer {
             }
             dj.add("pathWaypoints", wpArr);
 
-            if (ctrl.currentMineTarget != null) {
-                JsonObject mt = new JsonObject();
-                mt.addProperty("x", ctrl.currentMineTarget[0]);
-                mt.addProperty("y", ctrl.currentMineTarget[1]);
-                mt.addProperty("z", ctrl.currentMineTarget[2]);
-                Block b = d.worldObj.getBlock(ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2]);
-                mt.addProperty("block", b != null ? b.getLocalizedName() : "air");
-                dj.add("currentMineTarget", mt);
-            }
-            if (ctrl.currentMineStandoff != null) {
-                JsonObject ms = new JsonObject();
-                ms.addProperty("x", Math.round(ctrl.currentMineStandoff[0] * 100.0) / 100.0);
-                ms.addProperty("y", Math.round(ctrl.currentMineStandoff[1] * 100.0) / 100.0);
-                ms.addProperty("z", Math.round(ctrl.currentMineStandoff[2] * 100.0) / 100.0);
-                dj.add("mineStandoff", ms);
-            }
-            dj.addProperty("miningProgressTicks", ctrl.mineProgressTicks);
-            dj.addProperty("miningRequiredTicks", ctrl.miningRequiredTicks);
-            dj.addProperty("mineQueueSize", ctrl.mineQueue.size());
-            dj.addProperty("minedCount", ctrl.minedCount);
             JsonArray thArr = new JsonArray();
             for (String th : ctrl.thoughtHistory) {
                 thArr.add(new JsonPrimitive(th));
@@ -163,7 +142,6 @@ public class DroneTelemetrySerializer {
             dj.addProperty("targetY", d.targetY());
             dj.addProperty("targetZ", d.targetZ());
             dj.addProperty("navigationActive", this.manager.getNavigationManager().isActive(ctrl));
-            dj.addProperty("mining", ctrl.isMining());
             dj.addProperty("statusText", d.statusText());
             dj.addProperty("lightColor", String.format("0x%06X", d.lightColor() & 0xFFFFFF));
             dj.addProperty("isRunning", d.isRunning());
@@ -174,7 +152,6 @@ public class DroneTelemetrySerializer {
             dj.addProperty("lightRadius", ctrl.lightRadius);
             dj.addProperty("lightIntensity", ctrl.lightIntensity);
             dj.addProperty("auraColor", String.format("0x%06X", ctrl.lightColor & 0xFFFFFF));
-            dj.addProperty("mineQueueSize", ctrl.mineQueue.size());
             dj.addProperty("taskActive", ctrl.task.isActive());
             dj.addProperty("taskSummary", ctrl.task.getSummary());
             dj.addProperty("taskAgeMs", ctrl.task.getAgeMs());

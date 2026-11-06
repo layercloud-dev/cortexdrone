@@ -191,11 +191,6 @@ public class AIDroneManager {
         if (ctrl == null) return;
         this.actionRegistry.cancelAll(ctrl);
         this.navigationManager.clear(ctrl);
-        if (ctrl.drone != null && ctrl.drone.worldObj != null && ctrl.currentMineTarget != null) {
-            ctrl.drone.worldObj.destroyBlockInWorldPartially(
-                    ctrl.drone.getEntityId(),
-                    ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2], -1);
-        }
         ctrl.clearActionState();
     }
 
@@ -546,7 +541,8 @@ public class AIDroneManager {
                 + EnumChatFormatting.YELLOW + " | Owner: " + EnumChatFormatting.WHITE + ctrl.ownerName
                 + EnumChatFormatting.YELLOW + " | Navigating: " + EnumChatFormatting.GREEN
                 + this.navigationManager.isActive(ctrl)
-                + EnumChatFormatting.YELLOW + " | Mining: " + EnumChatFormatting.GREEN + ctrl.isMining());
+                + EnumChatFormatting.YELLOW + " | Actions: " + EnumChatFormatting.GREEN
+                + this.actionRegistry.activeContextCount(ctrl));
         CortexDroneMod.sendMsg(sender, String.format(EnumChatFormatting.YELLOW + "Pos: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
                         + EnumChatFormatting.YELLOW + " -> Target: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
                         + EnumChatFormatting.GRAY + " [Waypoints: %d/%d]",

@@ -93,16 +93,8 @@ public class MasterRpcHandler implements RpcHandler {
         res.addProperty("navigationError", ctrl.navigationError != null ? ctrl.navigationError : "");
         res.addProperty("arrived", !navigation.isActive()
                 && distGoal >= 0.0 && distGoal <= 1.0);
-        res.addProperty("mining", ctrl.isMining());
-        res.addProperty("busy", navigation.isActive() || ctrl.isMining()
+        res.addProperty("busy", navigation.isActive()
                 || this.manager.getActionRegistry().activeContextCount(ctrl) > 0);
-        if (ctrl.currentMineTarget != null) {
-            JsonObject target = new JsonObject();
-            target.addProperty("x", ctrl.currentMineTarget[0]);
-            target.addProperty("y", ctrl.currentMineTarget[1]);
-            target.addProperty("z", ctrl.currentMineTarget[2]);
-            res.add("activeBreakTarget", target);
-        }
         return res;
     }
 
@@ -313,7 +305,7 @@ public class MasterRpcHandler implements RpcHandler {
 
     private JsonObject needsMovement(DroneController ctrl, int x, int y, int z, String action, double dist) {
         World world = ctrl.drone.worldObj;
-        double[] st = FlightPathfinder.findMiningStandoff(world, ctrl.drone, x, y, z);
+        double[] st = FlightPathfinder.findBlockStandoff(world, ctrl.drone, x, y, z);
         if (st == null) {
             int[] open = FlightPathfinder.findNearestPassableVoxel(world, x, y + 1, z, 3);
             if (open == null) return error("No reachable standoff near (" + x + "," + y + "," + z + ")");

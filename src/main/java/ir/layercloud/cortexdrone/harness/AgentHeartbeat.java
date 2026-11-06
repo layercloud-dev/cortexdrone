@@ -203,11 +203,9 @@ final class AgentHeartbeat {
     private String statusSummary() {
         if (this.ctrl == null || this.ctrl.drone == null) return "drone unavailable";
         StringBuilder sb = new StringBuilder();
-        sb.append("mining=").append(this.ctrl.isMining());
         sb.append(" pos=(").append(Math.round(this.ctrl.drone.posX)).append(',')
                 .append(Math.round(this.ctrl.drone.posY)).append(',')
                 .append(Math.round(this.ctrl.drone.posZ)).append(')');
-        sb.append(" mineQueue=").append(this.ctrl.mineQueue.size());
         sb.append(" inventory=").append(countInventory()).append(" items");
         if (this.lastExec != null) {
             sb.append(" lastResult=").append(LoopTracer.snippet(this.lastExec.toString(), 320));
@@ -217,7 +215,8 @@ final class AgentHeartbeat {
 
     private boolean hasActiveWork() {
         if (this.ctrl == null) return false;
-        return this.ctrl.isMining();
+        return this.manager.getNavigationManager().isActive(this.ctrl)
+                || this.manager.getActionRegistry().activeContextCount(this.ctrl) > 0;
     }
 
     private int countInventory() {

@@ -90,9 +90,8 @@ drone.cancel()
 ```
 
 Movement awaits `state.navigationActive === false`. Block/interaction helpers
-retry with `goto(standoff)` when `needsMovement` is returned, and the break
-helper tunnels to the target if no standoff exists. Transfer waits for idle when
-the result reports a flight in progress.
+retry with `goto(standoff)` when `needsMovement` is returned. `breakBlock` is
+immediate. Transfer waits for idle when the result reports a flight in progress.
 
 There are no `world`, `player`, `kb`, `harness`, `say`, `setStatusText`, `mine`,
 `tunnel`, `digUp`, or `digDown` globals.

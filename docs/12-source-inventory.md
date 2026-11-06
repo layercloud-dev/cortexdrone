@@ -38,11 +38,10 @@ not a substitute for the subsystem chapters.
 | `inventory/impl/SuckItemsAction` | Vacuum nearby dropped items |
 | `inventory/impl/TakeFromPlayerAction` | Take filtered items from player |
 | `inventory/impl/WithdrawChestAction` | Withdraw from chest/container |
-| `navigation/NavigateResult` | One navigation leg result (`moved/legDone/blocked/partial/needsDig/error`) |
-| `navigation/NavigationMode` | Flight/hold/tunnel/dig-up/dig-down/stop modes |
-| `navigation/impl/DigRouteAction` | Queues a dig route and ticks it to completion |
+| `navigation/NavigateResult` | One navigation leg result (`moved/legDone/blocked/partial/error`) |
+| `navigation/NavigationMode` | Flight/hold/stop legs |
 | `navigation/impl/HoldAction` | Applies hold target/motion damping |
-| `navigation/impl/NavigateAction` | No-dig flight leg execution (A*, waypoints, blocked detection) |
+| `navigation/impl/NavigateAction` | Flight leg execution (A*, waypoints, blocked detection) |
 | `navigation/impl/StopAction` | Clears path and stops/hovers |
 | `visuals/VisualsRequest` | Visuals request DTO |
 | `visuals/VisualsResult` | Visuals result DTO |
@@ -61,7 +60,7 @@ not a substitute for the subsystem chapters.
 | `impl/BlockContext` | Block result/target/break tracking |
 | `impl/InteractionContext` | Interaction result/target data |
 | `impl/InventoryContext` | Inventory result, chest target, filter, moved count |
-| `impl/NavigationContext` | Action kind/target/dig path/result/ticks |
+| `impl/NavigationContext` | Action kind/target/label/result/ticks |
 | `impl/VisualsContext` | Visuals result |
 
 ## `manager/`
@@ -71,13 +70,13 @@ not a substitute for the subsystem chapters.
 | `ActionManager` | Typed action lifecycle base (create/execute/retain/tick/cancel) |
 | `ActionRegistry` | Operation→manager map, tick/cancel all, duplicate detection |
 | `TickManager` | 20-Hz pipeline: breadcrumbs, stalls, aura, navigation, retained actions, idle hold, LED, physics |
-| `building/impl/BuildingManager` | Block break/place mechanics, target selection, tunneling, drops, dig queues, inventory-full stop |
+| `building/impl/BuildingManager` | One immediate break (drops, Fortune) and one place |
 | `interact/impl/InteractionManager` | Interaction/attack/pick/unpick action dispatch |
 | `inventory/impl/InventoryManager` | Transfer/craft action dispatch |
 | `navigation/NavigationRequest` | Goto request DTO |
 | `navigation/NavigationResult` | Goto/stop acknowledgement DTO |
 | `navigation/NavigationTarget` | Resolved goal position |
-| `navigation/impl/NavigationManager` | Goal session, trail/flight/dig decision, action legs, arrival/failure, internal fly/hold |
+| `navigation/impl/NavigationManager` | Goal session, trail/flight decision, action legs, arrival/failure, internal fly/hold |
 | `visuals/LightConfig` | Light aura configuration DTO |
 | `visuals/LightResult` | Light aura result DTO |
 | `visuals/impl/LightingAura` | Torch-free light application/restore, chunk sync |
@@ -93,7 +92,7 @@ not a substitute for the subsystem chapters.
 | `FluidOpsService` | Bucket/container discovery, liquid scooping |
 | `ContainerSearchService` | Chest/item search and fuzzy matching |
 | `PlayerInventoryOps` | Take/give/move between drone and player inventories |
-| `ToolInspector` | Fortune/mining ticks/attack damage/fire aspect |
+| `ToolInspector` | Fortune/attack damage/fire aspect |
 
 ## `service/machine/`
 
@@ -120,9 +119,8 @@ not a substitute for the subsystem chapters.
 | `Breadcrumb` | Trail point DTO |
 | `TrailPlan` | Trail suggestion DTO |
 | `impl/BreadcrumbService` | Trail recording/dedupe/pruning/surface anchor/backtrack suggestion |
-| `impl/DigPathService` | Weighted 6-neighbor dig A* |
-| `impl/DronePhysicsService` | Physics step, obstruction, standoff, follow anchor, tunnel blocker |
-| `impl/FlightPathfinder` | No-dig 3D A*/Theta*, path cache, geometry/standoff helpers |
+| `impl/DronePhysicsService` | Physics step, obstruction, block standoff, follow anchor |
+| `impl/FlightPathfinder` | 3D A*/Theta*, path cache, geometry/standoff helpers |
 
 ## `service/world/`
 
@@ -179,7 +177,7 @@ not a substitute for the subsystem chapters.
 
 | Class | Responsibility |
 | --- | --- |
-| `drone/DroneController` | Per-drone mutable state, loops, LED/path/mining |
+| `drone/DroneController` | Per-drone mutable state, loops, LED/path |
 | `drone/TaskSession` | One active task/session: prompt, summary, notes, age |
 | `command/BaseCommand` | Command base/compareTo |
 | `command/impl/DroneCommand` | `/drone` management + natural-language fallback |

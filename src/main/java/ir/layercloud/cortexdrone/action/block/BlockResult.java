@@ -11,7 +11,7 @@ import lombok.Value;
 public class BlockResult {
     boolean ok;
     String error;
-    boolean started;
+    boolean broken;
     boolean placed;
     String block;
     int x;
@@ -22,14 +22,14 @@ public class BlockResult {
         return builder().ok(false).error(error).build();
     }
 
-    public static BlockResult breakStarted(boolean started, int x, int y, int z) {
+    public static BlockResult broken(String block, int x, int y, int z) {
         return builder()
-                .ok(started)
-                .started(started)
+                .ok(true)
+                .broken(true)
+                .block(block)
                 .x(x)
                 .y(y)
                 .z(z)
-                .error(started ? null : "Could not start single-block break")
                 .build();
     }
 

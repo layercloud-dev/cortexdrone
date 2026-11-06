@@ -61,7 +61,7 @@ They are separate so a hung agent cannot starve telemetry/RPC and vice versa.
 5. stall detection/logging and leaf-obstruction clearing;
 6. lighting aura tick;
 7. `NavigationManager.tick` (only when a goal session exists);
-8. `ActionRegistry.tick` (all retained actions: break, dig, deposit, delivery);
+8. `ActionRegistry.tick` (all retained actions: deposit and delivery);
 9. idle hold: when no session and no retained action, cancel leftover velocity
    and pin the flight target to the current position;
 10. complete task session if no loop/script/task work;
@@ -76,15 +76,15 @@ There is no `Mode` enum and no `setDroneMode`. A drone is doing exactly one of:
 | Work | Owner | How it is represented |
 | --- | --- | --- |
 | navigation | `NavigationManager` | an entry in its `sessions` map |
-| mining / digging | a retained block action | `currentMineTarget` and/or `mineQueue` |
 | deposit / delivery | a retained inventory action | the action context itself |
 | idle | nobody | none of the above: hold position |
 
 Every operation is started by a tool call and finishes on its own. A new tool
 call replaces the previous work through the normal `ActionManager` retention
 rule (one execution per operation) or through `goto`/`stop` for navigation.
-`cancel` clears every retained context and the navigation session, and cancels
-the partial break animation.
+`cancel` clears every retained context and the navigation session. There is no
+mining queue or break progress to cancel: `break_block` completes inside the
+call.
 
 ## 5. Spawn, link, despawn, reconnect
 
@@ -269,7 +269,6 @@ Key fields:
 - 3D path waypoints/index/goal/cooldown/partial/nodes;
 - stuck logs and solid waypoint hits;
 - lighting/autoTorch/cells;
-- mining queue/current target/standoff/progress/required ticks/counts;
 - active loop ID/script count/running/cancelled loop sets;
 - thought history;
 - cooldowns (attack/pickup/stuck);
@@ -278,8 +277,8 @@ Key fields:
 - LED custom color/effect/tick;
 - last position/despawn flag.
 
-Work state is derived (`isMining()`, `NavigationManager.isActive`), never stored
-as an enum. Long-running action state lives in the action context.
+Work state is derived (`NavigationManager.isActive`, retained action count),
+never stored as an enum. Long-running action state lives in the action context.
 
 ## 13. Server shutdown
 

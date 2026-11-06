@@ -1,7 +1,6 @@
 package ir.layercloud.cortexdrone.service.inventory;
 
 import lombok.experimental.UtilityClass;
-import net.minecraft.block.Block;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.EntityLivingBase;
@@ -11,8 +10,8 @@ import net.minecraft.item.ItemSword;
 import net.minecraft.item.ItemTool;
 
 /**
- * Dynamically inspects tools and weapons in the drone's inventory for dig speed,
- * Efficiency, Fortune, Silk Touch, Sharpness/Smite, and Fire Aspect enchantments.
+ * Dynamically inspects tools and weapons in the drone inventory for Fortune,
+ * Sharpness/Smite and Fire Aspect enchantments.
  */
 @UtilityClass
 public final class ToolInspector {
@@ -28,33 +27,6 @@ public final class ToolInspector {
             if (lvl > best) best = lvl;
         }
         return Math.min(5, best);
-    }
-
-    public static int computeRequiredMiningTicks(IInventory inv, Block block, float hardness) {
-        float baseTicks = Math.max(4.0f, Math.min(16.0f, (float) Math.ceil(hardness * 3.0f)));
-        if (inv == null || block == null) return (int) baseTicks;
-
-        float bestSpeedBonus = 1.0f;
-        int effId = Enchantment.efficiency != null ? Enchantment.efficiency.effectId : 32;
-        for (int i = 0; i < inv.getSizeInventory(); i++) {
-            ItemStack st = inv.getStackInSlot(i);
-            if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
-            try {
-                float digSpeed = st.func_150997_a(block);
-                int effLvl = EnchantmentHelper.getEnchantmentLevel(effId, st);
-                if (effLvl > 0) {
-                    digSpeed += effLvl * effLvl + 1.0f;
-                }
-                if (digSpeed > bestSpeedBonus) {
-                    bestSpeedBonus = digSpeed;
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-        if (bestSpeedBonus > 1.5f) {
-            return Math.max(2, Math.round(baseTicks / Math.min(4.0f, (float) Math.sqrt(bestSpeedBonus))));
-        }
-        return (int) baseTicks;
     }
 
     public static float computeAttackDamage(IInventory inv, EntityLivingBase target, float baseDamage) {

@@ -106,7 +106,7 @@ public class TickManager {
      * by the previous action. This is a safety reset, not a behavior mode.
      */
     private void holdWhenIdle(DroneController ctrl, Drone d) {
-        if (this.navigationManager.isActive(ctrl) || ctrl.isMining()
+        if (this.navigationManager.isActive(ctrl)
                 || this.manager.getActionRegistry().activeContextCount(ctrl) > 0) {
             return;
         }

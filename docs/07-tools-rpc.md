@@ -33,9 +33,8 @@ Returns live status. Important fields:
 - task: `activeTask`, `taskPrompt`, `taskSummary`, `taskAgeMs`, `taskNotes`;
 - navigation: `navigationActive`, `navigationPhase`, `navigationReason`,
   `navigationError`, `distanceToGoal`, `arrived`;
-- work: `mining`, `busy` (navigation, mining or any retained action);
-- mining: `activeBreakTarget`, `mineQueueSize`, `minedCount`, `builtCount`,
-  `scoopedCount`;
+- work: `busy` (navigation or any retained action);
+- counters: `builtCount`, `scoopedCount`;
 - lighting: `lightActive`, `lightRadius`, `lightLevel`, `lightColor`;
 - inventory: `inventory`, `freeSlots`, `totalItems`, `isFull`;
 - loop: `aborted` when the calling loop ID was cancelled.
@@ -94,7 +93,7 @@ calls.
 
 ### `drone.goto(x,y,z,opts)`
 
-- Goal-driven; manager chooses trail/flight/dig.
+- Goal-driven; manager chooses trail/flight.
 - `standoffOf`/`nearBlock` resolves a safe position beside a block.
 - Waits for `navigationActive === false`.
 - Returns `{started,arrived,phase,goal,...state}`.
@@ -114,9 +113,9 @@ No `tunnel`, `digUp`, `digDown`, or `navigate` tools exist.
 - Exactly one explicit block.
 - If out of reach: `{needsMovement:true,standoff,action:"break",distance,target}`.
 - SDK goto standoff then retries.
-- If no standoff: SDK goto the block coordinates (navigation may tunnel).
-- Retains a break action that ticks the block; waits until `activeBreakTarget` is gone.
-- Returns `{started,broken,...}`.
+- If no standoff: SDK goto the block coordinates, then retries.
+- Breaks the block immediately; the call returns after it is gone.
+- Returns `{broken:true, block}` or `{ok:false, error}`.
 
 ### `drone.placeBlock(x,y,z,block,meta,opts)`
 
@@ -207,7 +206,7 @@ Cached snapshot (rebuilt every 100 ticks / 5 s, on demand if empty). Includes:
 - mod identity/version/timestamp;
 - players (name/dimension/position/yaw/pitch/health/auth);
 - drones (id/entity/uuid/name/owner/thought/target player/dimension/position/
-  target/status/LED/energy/light aura/queue/task/navigation/path/mining/
+  target/status/LED/energy/light aura/task/navigation/path/
   inventory/nearby blocks/entities);
 - recent chat (50);
 - recent debug (25, capped);
@@ -219,7 +218,7 @@ Cached snapshot (rebuilt every 100 ticks / 5 s, on demand if empty). Includes:
 Diagnostic snapshot:
 
 - drone positions/velocity/targets/anchors/lookHold/stuck/path/nodes;
-- current mine target/standoff/progress/queue/mined;
+- active navigation path and retained actions;
 - thought history;
 - inventory summary;
 - debug log (150 entries, capped to 1600 chars each).

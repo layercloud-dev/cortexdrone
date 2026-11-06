@@ -13,7 +13,7 @@ await drone.goto({ x, y, z, standoffOf: { x, y, z }, maxWaitMs })
 ```
 
 - Explicit coordinates or a block standoff.
-- `standoffOf`/`nearBlock` calls `FlightPathfinder.findMiningStandoff`, with a
+- `standoffOf`/`nearBlock` calls `FlightPathfinder.findBlockStandoff`, with a
   nearest-passable fallback.
 - Returns immediately with `{started:true, phase:"planning", goal:{x,y,z}}`.
 - The SDK polls `state` until `navigationActive === false`, then reports
@@ -38,34 +38,30 @@ await drone.stop()
 | Field | Purpose |
 | --- | --- |
 | `goalX/Y/Z` | final goal |
-| `phase` | `PLAN`, `FLIGHT`, `DIG` |
+| `phase` | `PLAN`, `FLIGHT` |
 | `leg` | current retained action + context |
 | `trailRejected` | trail suggestion failed and must not be retried |
 | `usingTrail` | current flight leg targets a trail endpoint |
 | `ticks` | total session ticks |
 | `replanCooldown` | delay before next decision |
-| `digAttempts` | escalation count (max 12) |
 | `reason` | human-readable status reason |
 
 Constants:
 
 - arrival radius `0.85`;
 - stuck escalation `12` ticks;
-- max session duration `12000` ticks (10 minutes);
-- max dig attempts `12`.
+- max session duration `12000` ticks (10 minutes).
 
-While a dig leg is running, the manager waits until `controller.isMining()` is
-false, then replans. There is no mode to be interrupted: the session exists
-until it arrives, is stopped, or fails.
+The session exists until it arrives, is stopped, or fails. Nothing else can
+interrupt it; there is no mode and no hidden work to wait for.
 
 ## 3. Decision pipeline
 
 `tick(controller)`:
 
 1. If a leg exists, tick it.
-2. If a dig leg just finished, return to `PLAN`.
-3. If within `0.85` of goal, arrive.
-4. If `PLAN`, decide the next leg.
+2. If within `0.85` of goal, arrive.
+3. If `PLAN`, decide the next leg.
 
 `decide`:
 
@@ -73,19 +69,19 @@ until it arrives, is stopped, or fails.
 2. If a useful suggestion exists, set the leg target to its endpoint and start a
    normal `FLIGHT` leg. This is **not** a trail action.
 3. Otherwise start a `FLIGHT` leg to the final goal.
-4. If the flight leg reports blocked/partial exhaustion, escalate to dig.
+4. If the flight leg reports blocked/partial exhaustion, navigation fails with
+   `navigationError`. It never digs on its own.
 
 `handleProgress`:
 
-- `needsDig`/`blocked` on a trail leg: mark trail rejected and replan without
-  immediately digging.
-- `needsDig`/`blocked` otherwise: escalate to a dig route.
+- `needsDig`/`blocked` on a trail leg: mark trail rejected and replan on the
+  normal flight path.
+- `needsDig`/`blocked` otherwise: fail the session.
 - `legDone`: return to `PLAN` after a short cooldown.
 
 `handleResult`:
 
 - `STOP` removes the session.
-- `DIG_*`/`TUNNEL` sets phase `DIG` and waits for building.
 - `FLIGHT` handles blocked/done as above.
 
 ## 4. Breadcrumb service
@@ -130,7 +126,7 @@ internal scoring data.
 
 ### `FlightPathfinder` (`service/navigation/impl`)
 
-Read-only no-dig planner plus geometry helpers:
+Read-only planner plus geometry helpers:
 
 - `findFlightPath(world, ctrl, start, goal)` — 3D A* / Theta* over passable
   voxels; rejects body-clipping (checks feet + head), liquid costs, corner
@@ -138,8 +134,8 @@ Read-only no-dig planner plus geometry helpers:
   waypoints and sets `lastPathPartial`/`lastPathNodesExpanded` on the controller.
 - Path cache: signature of start/goal buckets + tick freshness reuses the
   previous path for up to 60 ticks.
-- `findNearestPassableVoxel`, `isFlightLineClear`, `findMiningStandoff`,
-  `findBlockingTunnelBlock`, `describeNearestObstruction`,
+- `findNearestPassableVoxel`, `isFlightLineClear`, `findBlockStandoff`,
+  `describeNearestObstruction`,
   `clearNearbyLeafObstruction`, `setDroneFlightTarget`,
   `runServerSidePhysicsStep`, `isPlayerLookingAtDrone`,
   `computeStableFollowAnchor`.
@@ -169,47 +165,27 @@ the tick when needed (blocked, long-range, or machine not running).
 - nearest obstruction description;
 - clear nearby leaf obstruction;
 - stable follow anchor computation;
-- mining standoff search;
-- blocking tunnel block search;
+- block standoff search;
 - player-look detection;
 - headroom checks.
 
-## 6. Dig planning
+## 6. Blocked routes
 
-`DigPathService.findPath(world, sx,sy,sz, gx,gy,gz, toOpenSky)`:
+Navigation never breaks blocks. When `NavigateAction` reports a blocked
+waypoint or a partial path that cannot continue, the session ends with
+`navigationError` and the drone holds position. To get through, the model
+composes the work itself:
 
-- weighted A* over a 6-connected grid;
-- 450 expansion cap;
-- passable step cost 1.0;
-- solid mineable step cost `4.0 + hardness * 2.5`;
-- rejects non-mineable blocks and blocks adjacent to liquid;
-- Y bounds 2..253;
-- target: open sky (when `toOpenSky`) or Manhattan distance ≤1 to goal;
-- returns ordered `int[]{x,y,z,dig}` steps; `dig=1` means the block must be
-  broken;
-- if no full path, returns the best partial route.
+1. `inspect('block')` / `inspect('blocks')` to find the obstruction;
+2. `breakBlock(x,y,z)` for each block, one call per block;
+3. `goto(...)` again once the path is open.
 
-`NavigationManager.escalate` chooses:
-
-- `DIG_UP` when underground, goal is at/above surface, and vertical gain >4;
-- `DIG_DOWN` when the goal is >6 below and vertical dominates horizontal;
-- `TUNNEL` otherwise;
-- retries as `TUNNEL` if the chosen route is empty.
-
-`DigRouteAction` calls `BuildingManager.startDigRoute`, which:
-
-- queues only `dig=1` steps in path order (front insertion with duplicate guard);
-- clears any current target and path state.
-
-The action then retains itself and ticks `BuildingManager.tickMining` each tick.
-When the queue and current target are empty it completes, and the navigation
-session replans. Nothing is snapshotted or restored: the queued blocks are the
-whole state. If the inventory fills up, mining stops and the session continues
-with a flight leg; the model can deposit and ask for the route again.
+The same applies to vertical shafts: the model picks the blocks and breaks
+them; `goto` only flies.
 
 ## 7. Non-harness callers
 
-Deposit, delivery and mining standoffs call:
+Deposit, delivery and block standoffs call:
 
 - `NavigationManager.flyToward(ctrl, x,y,z, label)` — runs one `NavigateAction`
   tick (no session), returns `NavigateResult`.
@@ -236,17 +212,16 @@ and holds position.
 `state` exposes:
 
 - `navigationActive`, `navigationPhase`, `navigationReason`, `navigationError`;
-- `distanceToGoal`, `arrived`, `mining`, `busy`;
+- `distanceToGoal`, `arrived`, `busy`;
 - path waypoints, current target, stuck counters via `/debug`.
 
 Relevant debug categories: `NAV`, `PATH`, `STUCK`, `ESCAPE`.
 
 ## 10. Failure behavior
 
-- A blocked/partial flight → dig escalation.
-- A failed trail leg → trail rejected, normal flight/dig continues.
-- No dig route → navigation fails with `navigationError`.
-- 12 dig attempts exhausted → failure.
+- A blocked/partial flight → session fails with `navigationError`.
+- A failed trail leg → trail rejected, normal flight continues.
+- No route to the goal → failure; the model may break blocks and retry.
 - 12000 ticks → timeout failure.
 - Explicit `stop`/`cancel` → session removed, drone idle.
 - The drone is never "interrupted by a mode change": only `goto`, `stop`, or a

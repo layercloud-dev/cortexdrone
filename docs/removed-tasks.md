@@ -50,11 +50,11 @@ Unknown `/drone` subcommands fall through to natural-language task handling.
 | `action/movement/` + `context/movement/` | `action/navigation/` + `context/impl/NavigationContext` |
 | `MovementService` / `MovementRpcTranslator` | `NavigationManager` / `NavigationRpcTranslator` |
 | `BreadcrumbsAction` / `TrailAction` | `BreadcrumbService` (service data, not an action) |
-| `CaveEscapeService` | `DigPathService` + `NavigationManager` escalation |
+| `CaveEscapeService`, `DigPathService`, `DigRouteAction` | `break_block` composed by the model, then `goto` again |
 | `FlightPilot` | `NavigateAction` executor |
 | `CombatService`, `Mode.HUNT` | interaction attack primitive + AI composition |
 | `Mode` enum + `setDroneMode` | derived work state: navigation session, mining target/queue, retained action |
-| `TaskSnapshot` / `escapeResume` self-rescue restore | the dig action ticks its own queued blocks |
+| `TaskSnapshot` / `escapeResume` self-rescue restore | no internal dig work exists |
 | `mineUntilFull`, `returnToOwnerAfterMine`, `mineFilter`, `mineExactQueueOnly` | explicit tool calls composed by the model |
 | `FOLLOW` / `STAY` / `GOTO` / `MINE` / `DEPOSIT` / `DROP` behavior switch | actions + navigation session |
 | per-category context packages | `context/impl/` |
@@ -73,14 +73,13 @@ See `src/main/resources/skills/transport_entity.json`.
 
 ## Mining
 
-`MiningEngine` was removed. Block break/place behavior and the mining loop now
-live in `manager/building/impl/BuildingManager`. Mining itself is a skill composed
-by the AI from `inspect -> goto -> breakBlock`; see
+`MiningEngine`, the mining queue, target selection, standoff search and the dig
+planner were removed. `break_block` now removes exactly one block and returns;
+the model composes mining from `inspect -> goto -> breakBlock`; see
 `src/main/resources/skills/mine_blocks.json`.
 
-The only remaining internal queue (`DroneController.mineQueue`) is the transient
-dig/mining route used by `BuildingManager`; it is never an AI-facing instruction
-queue.
+There is no `mineQueue`, no `currentMineTarget`, no break progress and no
+navigation digging left in Java.
 
 ## Future re-implementation rules
 

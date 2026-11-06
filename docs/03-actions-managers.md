@@ -37,7 +37,7 @@ Concrete contexts live in `context/impl/`:
 - `BlockContext` — result, target, breakOperation, tick count.
 - `InteractionContext` — result, target/entity/slot data as needed.
 - `InventoryContext` — result, operation options.
-- `NavigationContext` — action kind, target, dig path, label, result, tick count.
+- `NavigationContext` — action kind, target, label, result, tick count.
 - `VisualsContext` — result.
 
 ## 3. Manager base
@@ -82,11 +82,11 @@ single retained operation; its `goto`/`stop` are routed directly by
 Operations: `goto`, `stop` only.
 
 - Resolves explicit coordinates or `standoffOf`/`nearBlock`.
-- Creates a `Session` (goal, phase, current leg, trail state, dig attempts).
+- Creates a `Session` (goal, phase, current leg, trail state, attempts).
 - Keeps the session until arrival, explicit stop, or proven failure.
-- Uses `BreadcrumbService` suggestion, `FlightPathfinder`, `DigPathService`.
-- Delegates to `NavigateAction`, `DigRouteAction`, `HoldAction`, `StopAction`.
-- `flyToward`/`hold` are internal helpers for deposit/delivery/mining
+- Uses the `BreadcrumbService` suggestion and `FlightPathfinder`.
+- Delegates to `NavigateAction`, `HoldAction`, `StopAction`.
+- `flyToward`/`hold` are internal helpers for deposit/delivery and block
   standoffs; they still execute through actions.
 
 Full detail: [04-navigation.md](04-navigation.md).
@@ -95,24 +95,19 @@ Full detail: [04-navigation.md](04-navigation.md).
 
 Operations: `break_block`, `place_block`.
 
-Responsibilities:
+Responsibilities, and nothing more:
 
-- one-block break with tool-aware mining ticks and crack particles;
-- block-drop calculation (reflection `Block.getDrops`, fallback
-  `quantityDropped`/`getItemDropped`);
-- the mining loop over `mineQueue`:
-  - unloaded chunk targets are kept, not purged;
-  - exposed target selection with distance/line-of-sight/layer scoring;
-  - buried target handling via `findBlockingTunnelBlock`;
-  - standoff selection, headroom checks, entombed-target fallback;
-  - inventory-full handling: stop mining and report it (no hidden deposit trip);
-  - block break progress, fortune, drops into inventory, leftover entity drops;
-- `startDigRoute(ctrl, blocks, label)` for navigation-created dig routes;
-- one-block placement from drone/chest/player inventory, with withdrawal/take
-  fallback and metadata selection.
+- `break_block` removes exactly one block immediately, computes its drops
+  (reflection `Block.getDrops`, fallback `quantityDropped`/`getItemDropped`,
+  Fortune aware), inserts them into the drone inventory and spills the rest;
+- `place_block` places one block from drone/chest/player inventory, with
+  withdrawal/take fallback and metadata selection.
 
-Actions: `BreakBlockAction` (retained; ticks the target until it is gone),
-`PlaceBlockAction` (one-shot).
+There is no mining queue, no target selection, no standoff search, no dig
+planner and no break-progress state. The model chooses each block and calls the
+primitive once per block. Both actions are one-shot.
+
+Actions: `BreakBlockAction`, `PlaceBlockAction`.
 
 ### InteractionManager (`manager/interact/impl`)
 
@@ -195,7 +190,7 @@ item use/attack. DTOs: `InteractionRequest`, `InteractionResult`.
 
 ### Navigation
 
-`NavigateAction`, `DigRouteAction`, `HoldAction`, `StopAction`.
+`NavigateAction`, `HoldAction`, `StopAction`.
 DTOs: `NavigationMode`, `NavigateResult`, `NavigationContext`.
 
 ### Visuals
@@ -205,15 +200,11 @@ DTOs: `NavigationMode`, `NavigateResult`, `NavigationContext`.
 
 ## 7. Action retention examples
 
-- `BreakBlockAction` calls `context.trackBreak(x,y,z)` and retains. Each tick it
-  advances the block through `BuildingManager.tickMining` and completes when the
-  target is gone, the drone is dead, or `currentMineTarget` no longer matches.
+- `BreakBlockAction` is one-shot: the block is already gone when it returns.
 - `NavigateAction` retains while the flight leg is active. It completes on
   arrival, blocked waypoint, partial-path exhaustion, or failure.
 - Inventory/visual/interaction actions are one-shot unless they must travel:
   `give`, `deposit` and `drop` retain while they fly and complete on delivery.
-- `DigRouteAction` queues the route, retains, and ticks the blocks itself until
-  the queue and current target are empty.
 
 ## 8. Adding a category
 

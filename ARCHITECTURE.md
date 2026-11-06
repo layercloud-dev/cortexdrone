@@ -65,7 +65,7 @@ src/main/java/ir/layercloud/cortexdrone/
     block/                  break/place actions + request/result
     interact/               block use, item use, attack, pick/unpick
     inventory/              transfer/craft actions
-    navigation/             flight/dig/hold/stop actions
+    navigation/             flight/hold/stop actions
     visuals/                LED/particles/sound/chat actions
 
   context/                  mutable state for one action execution
@@ -93,7 +93,7 @@ src/main/java/ir/layercloud/cortexdrone/
                             MachineTileInspector, FurnaceScanner
     navigation/             NavContext, Breadcrumb, TrailPlan,
                             BreadcrumbService, FlightPathfinder,
-                            DigPathService, DronePhysicsService
+                            DronePhysicsService
     visuals/                LedEffectEngine (HSV/LED effects)
     world/                  WorldScanner, ItemClassifier, RegistryIntrospector,
                             LexicalItemMatcher, RoomScanner, VeinScanner,
@@ -168,15 +168,16 @@ Current managers:
 
 | Manager | Operations | Notes |
 | --- | --- | --- |
-| `NavigationManager` | `goto`, `stop` | Goal loop; chooses flight/trail/dig |
-| `BuildingManager` | `break_block`, `place_block` | Mining loop + dig routes |
+| `NavigationManager` | `goto`, `stop` | Goal loop; chooses trail/flight |
+| `BuildingManager` | `break_block`, `place_block` | One immediate break or place |
 | `InteractionManager` | `interact_block`, `use_item`, `pick_entity`, `unpick_entity` | One interaction/attack/use |
 | `InventoryManager` | `transfer`, `craft` | transfer ops: move/give/take/withdraw/deposit/drop/suck |
 | `VisualsManager` | `set_led`, `led_effect`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` | Owns lighting aura |
 
-Action classes are solo: they never call another action. Cross-category work is
-coordinated by managers. `BuildingManager.startDigRoute` is called by
-`NavigationManager` through `DigRouteAction` for tunnel/dig legs.
+Action classes are solo: they never call another action. Block work is one
+immediate break or one place; there is no mining queue, target selection, dig
+planner or progress state in Java. The model decides which blocks to touch and
+calls the primitive for each one.
 
 ## 5. Navigation summary
 
@@ -186,9 +187,8 @@ The harness exposes only `drone.goto(...)` and `drone.stop()`.
 stop, or proven failure. It never contains flight/waypoint code; it delegates to
 actions:
 
-- `NavigateAction` — no-dig 3D A* flight, long-range stepping, surface anchor,
+- `NavigateAction` — 3D A* flight, long-range stepping, surface anchor,
   blocked-waypoint detection.
-- `DigRouteAction` — hands a dig route to `BuildingManager`.
 - `HoldAction` — hold current position.
 - `StopAction` — clear navigation and hover.
 
@@ -200,12 +200,11 @@ Decision order:
    the trail. The manager uses that endpoint as a normal flight target.
 2. **Flight** — `FlightPathfinder` computes a safe no-dig A*/Theta* route. The
    manager follows while it is complete or progressing.
-3. **Dig escalation** — if flight is blocked, partial, or exhausted, the manager
-   chooses `TUNNEL`, `DIG_UP`, or `DIG_DOWN`, asks `DigPathService` for a weighted
-   dig route, and sends the blocking blocks to `BuildingManager`. The session
-   stays parked while that block queue drains, then replans.
+3. **No route** — if flight is blocked, partial, or exhausted, the session fails
+   with `navigationError`. Navigation never breaks blocks. The model can dig its
+   own tunnel with `break_block` and call `goto` again.
 
-Deposit, delivery and mining standoffs reuse `NavigationManager.flyToward` /
+Deposit, delivery and block standoffs reuse `NavigationManager.flyToward` /
 `hold`, so all motion still goes through action executors.
 
 ## 6. Harness summary

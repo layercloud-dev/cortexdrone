@@ -129,7 +129,7 @@ final class AgentLoopHeuristics {
         if (execRes == null || !execRes.has("result") || !execRes.get("result").isJsonObject()) return false;
         JsonObject res = execRes.getAsJsonObject("result");
         String[] counters = new String[]{"started", "placed", "used", "activated", "broken",
-                "transferred", "moved", "withdrawn", "deposited", "crafted", "builtCount", "minedCount"};
+                "transferred", "moved", "withdrawn", "deposited", "crafted", "builtCount"};
         for (String k : counters) {
             if (res.has(k) && !res.get(k).isJsonNull()) {
                 JsonElement v = res.get(k);

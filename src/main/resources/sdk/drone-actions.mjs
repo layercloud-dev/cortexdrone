@@ -61,10 +61,6 @@ const drone = {
         if (!mv || mv.ok === false) return { ...r, movement: mv };
         continue;
       }
-      if (r && r.started) {
-        const st = await _waitUntil((s) => !s.mining && !s.activeBreakTarget, maxWaitMs);
-        return { ...r, ...st, broken: !st.activeBreakTarget };
-      }
       return r;
     }
     return { ok: false, error: 'Could not reach break target after navigation attempts' };

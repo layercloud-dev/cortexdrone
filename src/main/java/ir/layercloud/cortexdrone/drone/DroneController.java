@@ -63,14 +63,8 @@ public class DroneController {
     // packed world position -> original block-light level, for exact restore
     public final Map<Long, Integer> lightCells = new HashMap<Long, Integer>();
 
-    // Mining work: an explicit target plus the dig-route queue owned by the
-    // building manager. No filter, no "mine until full", no premade task flags.
-    public final Deque<int[]> mineQueue = new ConcurrentLinkedDeque<int[]>();
-    public int[] currentMineTarget = null;
-    public double[] currentMineStandoff = null;
-    public int mineProgressTicks = 0;
-    public int miningRequiredTicks = 8;
-    public int minedCount = 0;
+    // Counters for the two block/interaction primitives. No mining queue, no
+    // target, no progress: break_block is a single immediate operation.
     public int builtCount = 0;
     public int scoopedCount = 0;
 
@@ -114,11 +108,6 @@ public class DroneController {
         this.lastZ = drone.posZ;
     }
 
-    /** True while a block target or a dig queue is being worked. */
-    public boolean isMining() {
-        return this.currentMineTarget != null || !this.mineQueue.isEmpty();
-    }
-
     public boolean isScriptRunning() {
         return this.activeScriptCount.get() > 0;
     }
@@ -154,7 +143,7 @@ public class DroneController {
                 return true;
             }
         }
-        return this.activeScriptCount.get() > 0 || isMining();
+        return this.activeScriptCount.get() > 0;
     }
 
     public void recordThought(int turn, String thought) {
@@ -168,8 +157,5 @@ public class DroneController {
     }
 
     public void clearActionState() {
-        this.mineQueue.clear();
-        this.currentMineTarget = null;
-        this.currentMineStandoff = null;
     }
 }

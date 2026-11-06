@@ -46,7 +46,8 @@ public final class BuildingRpcTranslator {
         JsonObject response = RpcJson.ok();
         response.add("target", RpcJson.point(result.getX(), result.getY(), result.getZ()));
         if ("break_block".equals(operation)) {
-            response.addProperty("started", result.isStarted());
+            response.addProperty("broken", result.isBroken());
+            if (result.getBlock() != null) response.addProperty("block", result.getBlock());
         } else {
             response.addProperty("placed", result.isPlaced());
             if (result.getBlock() != null) response.addProperty("block", result.getBlock());

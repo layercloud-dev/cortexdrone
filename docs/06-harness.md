@@ -93,7 +93,7 @@ updates it.
 which adds:
 
 - player position/facing/yaw/pitch/held item/crosshair/support block;
-- drone position/mining/navigation/can-see-sky;
+- drone position/navigation/active actions/can-see-sky;
 - breadcrumb count;
 - drone and player inventory summaries;
 - distance to player, task state, script count;
@@ -176,8 +176,8 @@ Watchdog/resurrector for three failure modes:
 
 Limits: max 3 continuations per drone per 10-minute window, 2.5 s delay.
 
-`rejectIncompleteDone` checks concrete progress, active work (a mining target
-or dig queue), and delivery pending. `onLoopExit` builds a compact
+`rejectIncompleteDone` checks concrete progress, active work (a navigation
+session or a retained action), and delivery pending. `onLoopExit` builds a compact
 `[HEARTBEAT RESUME]` prompt and re-enters `handleNaturalInstruction` if the loop
 was not cancelled/superseded and budget remains.
 
@@ -192,7 +192,7 @@ Deterministic anti-loop helpers:
 - physical action detection (`goto`, `stop`, `breakBlock`, `placeBlock`,
   `interactBlock`, `useItem`, `transfer`, `craft`);
 - concrete progress detection (`started/placed/used/activated/broken/
-  transferred/moved/withdrawn/deposited/crafted/builtCount/minedCount/arrived`);
+  transferred/moved/withdrawn/deposited/crafted/builtCount/arrived`);
 - repeated-result detection;
 - machine-config/empty-search fast final;
 - query fingerprinting for repeated `inspect/state` targets;

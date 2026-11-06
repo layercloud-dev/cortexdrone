@@ -70,7 +70,6 @@ final class DroneContextBuilder {
 
         ctx.addProperty("distToPlayerM", Math.round(Math.hypot(
                 ctrl.drone.posX - refX, ctrl.drone.posY - refY) * 10.0) / 10.0);
-        ctx.addProperty("mining", ctrl.isMining());
         ctx.addProperty("activeTaskRunning", ctrl.task.isActive() || ctrl.hasActiveTaskOrLoop(0));
         ctx.addProperty("activeScriptCount", ctrl.activeScriptCount.get());
         ctx.addProperty("taskPrompt", ctrl.task.getPrompt());
@@ -80,10 +79,8 @@ final class DroneContextBuilder {
         ctx.addProperty("pathNodesExpanded", ctrl.lastPathNodesExpanded);
         if (!ctrl.lastThought.isEmpty()) ctx.addProperty("lastThought", ctrl.lastThought);
         JsonObject taskState = new JsonObject();
-        taskState.addProperty("mining", ctrl.isMining());
         taskState.addProperty("navigationActive", manager.getNavigationManager().isActive(ctrl));
-        taskState.addProperty("activeBreakTarget", ctrl.currentMineTarget != null
-                ? (ctrl.currentMineTarget[0] + "," + ctrl.currentMineTarget[1] + "," + ctrl.currentMineTarget[2]) : "");
+        taskState.addProperty("activeActions", manager.getActionRegistry().activeContextCount(ctrl));
         ctx.add("task", taskState);
 
         String ownerKey = player != null ? player.getCommandSenderName() : ctrl.ownerName;

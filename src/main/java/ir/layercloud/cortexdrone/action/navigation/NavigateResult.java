@@ -13,7 +13,6 @@ public class NavigateResult {
     boolean legDone;
     boolean blocked;
     boolean partial;
-    boolean needsDig;
     String error;
 
     public static NavigateResult moved(boolean partial) {
@@ -24,8 +23,8 @@ public class NavigateResult {
         return builder().legDone(true).build();
     }
 
-    public static NavigateResult needsDig(boolean blocked, boolean partial) {
-        return builder().blocked(blocked).partial(partial).needsDig(true).build();
+    public static NavigateResult blocked(boolean partial) {
+        return builder().blocked(true).partial(partial).build();
     }
 
     public static NavigateResult done() {

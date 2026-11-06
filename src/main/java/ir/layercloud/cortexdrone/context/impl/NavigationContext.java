@@ -9,8 +9,6 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-import java.util.List;
-
 /**
  * Mutable state for one navigation leg.
  */
@@ -21,7 +19,6 @@ public final class NavigationContext extends ActionContextBase {
     private final double targetX;
     private final double targetY;
     private final double targetZ;
-    private final List<int[]> digPath;
     private final String label;
 
     @Setter
@@ -31,13 +28,12 @@ public final class NavigationContext extends ActionContextBase {
 
     public NavigationContext(DroneController controller, EntityPlayerMP player,
                              NavigationMode mode, double targetX, double targetY, double targetZ,
-                             List<int[]> digPath, String label) {
+                             String label) {
         super(controller, player, mode.name().toLowerCase());
         this.mode = mode;
         this.targetX = targetX;
         this.targetY = targetY;
         this.targetZ = targetZ;
-        this.digPath = digPath;
         this.label = label;
     }
 

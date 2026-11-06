@@ -381,12 +381,9 @@ public class FlightPathfinder {
         return DronePhysicsService.computeStableFollowAnchor(world, target, d);
     }
 
-    public static double[] findMiningStandoff(World world, Drone d, int bx, int by, int bz) {
-        return DronePhysicsService.findMiningStandoff(world, d, bx, by, bz);
+    public static double[] findBlockStandoff(World world, Drone d, int bx, int by, int bz) {
+        return DronePhysicsService.findBlockStandoff(world, d, bx, by, bz);
     }
 
-    public static int[] findBlockingTunnelBlock(World world, Drone d, int targetX, int targetY, int targetZ) {
-        return DronePhysicsService.findBlockingTunnelBlock(world, d, targetX, targetY, targetZ);
-    }
 
 }

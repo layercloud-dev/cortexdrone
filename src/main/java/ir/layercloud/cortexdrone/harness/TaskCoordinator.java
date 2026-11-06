@@ -94,7 +94,7 @@ public final class TaskCoordinator {
     private static String shortTask(DroneController ctrl) {
         String summary = ctrl.task.getSummary();
         if (summary == null || summary.isEmpty()) summary = ctrl.task.getPrompt();
-        if (summary == null || summary.length() == 0) return "Task is running (" + (ctrl.isMining() ? "mining" : "navigating") + ").";
+        if (summary == null || summary.length() == 0) return "Task is running.";
         return "Task: " + (summary.length() > 120 ? summary.substring(0, 120) + "..." : summary);
     }
 
@@ -104,10 +104,6 @@ public final class TaskCoordinator {
         if (ctrl.drone != null) {
             sb.append(String.format(" Position: (%.1f, %.1f, %.1f).",
                     ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ));
-        }
-        if (ctrl.currentMineTarget != null) {
-            sb.append(" Breaking block (").append(ctrl.currentMineTarget[0]).append(',')
-                    .append(ctrl.currentMineTarget[1]).append(',').append(ctrl.currentMineTarget[2]).append("). ");
         }
         sb.append(" I keep working on it; ask again for status, say 'by the way ...' to note something, or say 'stop' to cancel.");
         return sb.toString();

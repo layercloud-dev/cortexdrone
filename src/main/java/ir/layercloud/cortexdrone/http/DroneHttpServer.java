@@ -3,7 +3,6 @@ package ir.layercloud.cortexdrone.http;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
@@ -72,8 +71,8 @@ public class DroneHttpServer {
                             latch.countDown();
                         }
                     });
-                    latch.await(1500, TimeUnit.MILLISECONDS);
-                    JsonObject out = ref.get() != null ? ref.get() : cachedStateJson;
+                    boolean completed = latch.await(1500, TimeUnit.MILLISECONDS);
+                    JsonObject out = completed || ref.get() != null ? ref.get() : cachedStateJson;
                     sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(out));
                 } catch (Exception e) {
                     sendJsonResponse(exchange, 500, "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
@@ -102,8 +101,8 @@ public class DroneHttpServer {
                             latch.countDown();
                         }
                     });
-                    latch.await(1500, TimeUnit.MILLISECONDS);
-                    JsonObject out = ref.get() != null ? ref.get() : cachedDebugJson;
+                    boolean completed = latch.await(1500, TimeUnit.MILLISECONDS);
+                    JsonObject out = completed || ref.get() != null ? ref.get() : cachedDebugJson;
                     sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(out));
                 } catch (Exception e) {
                     sendJsonResponse(exchange, 500, "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
@@ -217,8 +216,8 @@ public class DroneHttpServer {
                             latch.countDown();
                         }
                     });
-                    latch.await(2500, TimeUnit.MILLISECONDS);
-                    JsonObject res = respRef.get();
+                    boolean completed = latch.await(2500, TimeUnit.MILLISECONDS);
+                    JsonObject res = completed ? respRef.get() : null;
                     if (res == null) {
                         res = new JsonObject();
                         res.addProperty("ok", true);
@@ -234,7 +233,7 @@ public class DroneHttpServer {
             this.httpServer.start();
             updateCachedSnapshots();
         } catch (Exception e) {
-            e.printStackTrace();
+            this.logger.log("HTTP", null, "Failed to start HTTP server", e.toString());
         }
     }
 
@@ -289,7 +288,7 @@ public class DroneHttpServer {
 
         if (player == null) {
             MinecraftServer srv = MinecraftServer.getServer();
-            if (srv != null && srv.getConfigurationManager() != null && srv.getConfigurationManager().playerEntityList != null
+            if (srv != null && srv.getConfigurationManager() != null
                     && !srv.getConfigurationManager().playerEntityList.isEmpty()) {
                 Object first = srv.getConfigurationManager().playerEntityList.get(0);
                 if (first instanceof EntityPlayerMP) {

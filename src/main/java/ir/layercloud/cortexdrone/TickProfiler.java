@@ -1,9 +1,11 @@
 package ir.layercloud.cortexdrone;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import lombok.AccessLevel;
 import lombok.Getter;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Lightweight server-tick profiler for CortexDrone TPS diagnosis.
@@ -27,10 +29,10 @@ public final class TickProfiler {
     private int sampleCount = 0;
     private int sampleIndex = 0;
     private volatile long lastDurationNanos = 0L;
-    @Getter
-    private volatile long ticksMeasured = 0L;
-    @Getter
-    private volatile long overThresholdCount = 0L;
+    @Getter(AccessLevel.NONE)
+    private final AtomicLong ticksMeasured = new AtomicLong();
+    @Getter(AccessLevel.NONE)
+    private final AtomicLong overThresholdCount = new AtomicLong();
     @Getter
     private volatile long lastWarnWallMs = 0L;
     @Getter
@@ -55,7 +57,7 @@ public final class TickProfiler {
         }
         long durationNanos = System.nanoTime() - start;
         this.lastDurationNanos = durationNanos;
-        this.ticksMeasured++;
+        this.ticksMeasured.incrementAndGet();
         synchronized (this) {
             this.sampleNanos[this.sampleIndex] = durationNanos;
             this.sampleIndex = (this.sampleIndex + 1) % SAMPLE_CAPACITY;
@@ -65,7 +67,7 @@ public final class TickProfiler {
         }
         double durationMs = durationNanos / 1000000.0;
         if (durationMs > this.warnThresholdMs) {
-            this.overThresholdCount++;
+            this.overThresholdCount.incrementAndGet();
             long nowWall = System.currentTimeMillis();
             if (nowWall - this.lastWarnWallMs >= this.warnCooldownMs) {
                 this.lastWarnWallMs = nowWall;
@@ -74,15 +76,23 @@ public final class TickProfiler {
                             String.format("Slow server tick: %.1f ms exceeds %.1f ms budget (tick=%d)",
                                     durationMs, this.warnThresholdMs, tickCounter),
                             String.format("avgMs=%.1f p95Ms=%.1f maxMs=%.1f samples=%d over=%d",
-                                    getAvgMs(), getP95Ms(), getMaxMs(), getSampleCount(), this.overThresholdCount));
+                                    getAvgMs(), getP95Ms(), getMaxMs(), getSampleCount(), this.overThresholdCount.get()));
                 }
             }
         }
     }
 
+    public long getTicksMeasured() {
+        return this.ticksMeasured.get();
+    }
+
+    public long getOverThresholdCount() {
+        return this.overThresholdCount.get();
+    }
+
     public void refreshFromEnv() {
-        this.warnThresholdMs = envDouble(ENV_WARN_MS, DEFAULT_WARN_MS);
-        this.warnCooldownMs = envLong(ENV_COOLDOWN_MS, DEFAULT_COOLDOWN_MS);
+        this.warnThresholdMs = envWarnMs();
+        this.warnCooldownMs = envCooldownMs();
     }
 
     public double getLastMs() {
@@ -138,25 +148,25 @@ public final class TickProfiler {
         }
     }
 
-    private static double envDouble(String key, double fallback) {
-        String val = envValue(key);
-        if (val == null) return fallback;
+    private static double envWarnMs() {
+        String val = envValue(ENV_WARN_MS);
+        if (val == null) return DEFAULT_WARN_MS;
         try {
             double parsed = Double.parseDouble(val);
-            return parsed > 0.0 && !Double.isNaN(parsed) ? parsed : fallback;
+            return parsed > 0.0 ? parsed : DEFAULT_WARN_MS;
         } catch (NumberFormatException ignored) {
-            return fallback;
+            return DEFAULT_WARN_MS;
         }
     }
 
-    private static long envLong(String key, long fallback) {
-        String val = envValue(key);
-        if (val == null) return fallback;
+    private static long envCooldownMs() {
+        String val = envValue(ENV_COOLDOWN_MS);
+        if (val == null) return DEFAULT_COOLDOWN_MS;
         try {
             long parsed = Long.parseLong(val);
-            return parsed > 0L ? parsed : fallback;
+            return parsed > 0L ? parsed : DEFAULT_COOLDOWN_MS;
         } catch (NumberFormatException ignored) {
-            return fallback;
+            return DEFAULT_COOLDOWN_MS;
         }
     }
 

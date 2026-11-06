@@ -12,7 +12,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -45,11 +44,7 @@ final class MachineRecipeRanker {
         int droneZ = player != null ? (int) player.posZ : 0;
         int dimId = 0;
         if (world != null && world.provider != null) {
-            try {
-                dimId = world.provider.dimensionId;
-            } catch (Throwable ignored) {
-                dimId = 0;
-            }
+            dimId = world.provider.dimensionId;
         }
         String key = dimId + "|" + droneX / 16 + "|" + droneZ / 16 + "|" + bucket + "|" + (player != null ? player.getCommandSenderName() : "null");
         java.util.Map<String, Integer> hitCache = COUNT_CACHE.get(key);
@@ -59,7 +54,7 @@ final class MachineRecipeRanker {
         }
         java.util.Map<String, Integer> totals = countAllNearbyUncached(inventoryService, world, player, radius);
         COUNT_CACHE.put(key, new java.util.LinkedHashMap<>(totals));
-        COUNT_CACHE_EXPIRY.put(key, Long.valueOf(now + COUNT_CACHE_TTL_MS));
+        COUNT_CACHE_EXPIRY.put(key, now + COUNT_CACHE_TTL_MS);
         if (COUNT_CACHE.size() > 16) {
             java.util.Iterator<String> it = COUNT_CACHE_EXPIRY.keySet().iterator();
             while (it.hasNext()) {
@@ -132,9 +127,12 @@ final class MachineRecipeRanker {
     }
 
     static String totalsKey(ItemStack st) {
-        String reg = Item.itemRegistry.getNameForObject(st.getItem());
+        Item item = st.getItem();
+        String reg = item != null ? Item.itemRegistry.getNameForObject(item) : null;
         int meta = st.getItemDamage();
-        return (reg != null ? reg.toLowerCase() : st.getItem().getClass().getName().toLowerCase()) + ":" + meta;
+        String name = reg != null ? reg.toLowerCase()
+                : (item != null ? item.getClass().getName().toLowerCase() : "");
+        return name + ":" + meta;
     }
 
     static BlockLike toBlockLike(ItemStack st) {
@@ -156,7 +154,6 @@ final class MachineRecipeRanker {
     static IInventory findDroneInventory(World world, EntityPlayerMP player) {
         try {
             if (player != null && world != null) {
-                String owner = player.getCommandSenderName();
                 for (Object o : world.loadedTileEntityList) {
                     if (o == null) continue;
                     String cn = o.getClass().getName();

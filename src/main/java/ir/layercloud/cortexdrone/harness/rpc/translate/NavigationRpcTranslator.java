@@ -19,7 +19,7 @@ public final class NavigationRpcTranslator {
                              String operation, JsonObject args) {
         NavigationResult result;
         if ("goto".equals(operation)) {
-            result = this.manager.gotoGoal(controller, player, parseRequest(controller, player, args));
+            result = this.manager.gotoGoal(controller, parseRequest(controller, player, args));
         } else if ("stop".equals(operation)) {
             result = this.manager.stop(controller, player, "RPC stop");
         } else {

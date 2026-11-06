@@ -53,17 +53,13 @@ public final class DronePhysicsService {
         }
     }
 
-    public static void runServerSidePhysicsStep(Drone d, double maxVelOverride) {
-        runServerSidePhysicsStep(d, maxVelOverride, null);
-    }
-
     /**
      * Allocation-free velocity integration with predictive braking & cruise-speed profile.
      * - Avoids Vec3 allocation (zero-pressure tick path).
      * - Distance-dependent max velocity: full cruise far away, ease-in near the target so the
      * drone arrives without oscillation and never walks into the floor (target is 3D, not ground-hugging).
      */
-    public static void runServerSidePhysicsStep(Drone d, double maxVelOverride, DroneController ctrl) {
+    public static void runServerSidePhysicsStep(Drone d, double maxVelOverride) {
         World w = d.worldObj;
         boolean inLiquid = d.isInWater() || d.handleLavaMovement() || (w != null && ItemClassifier.isLiquidBlock(w.getBlock(
                 MathHelper.floor_double(d.posX),
@@ -161,9 +157,9 @@ public final class DronePhysicsService {
                         int ay = by + dy;
                         int az = bz + dz;
                         if (!hasHeadroom(world, ax, ay, az)) continue;
-                        int stepX = bx + (dx > 0 ? 1 : (dx < 0 ? -1 : 0));
-                        int stepY = by + (dy > 0 ? 1 : (dy < 0 ? -1 : 0));
-                        int stepZ = bz + (dz > 0 ? 1 : (dz < 0 ? -1 : 0));
+                        int stepX = bx + Integer.compare(dx, 0);
+                        int stepY = by + Integer.compare(dy, 0);
+                        int stepZ = bz + Integer.compare(dz, 0);
                         if (!ItemClassifier.isPassableVoxel(world, stepX, stepY, stepZ)) continue;
 
                         double cx = ax + 0.5;

@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.harness.rpc.translate.RpcJson;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -124,10 +125,7 @@ public class ContainerSearchService {
             String bReg = b != null ? Block.blockRegistry.getNameForObject(b) : "";
             double dist = Math.round(d.getDistance(bx + 0.5, by + 0.5, bz + 0.5) * 10.0) / 10.0;
 
-            JsonObject co = new JsonObject();
-            co.addProperty("x", bx);
-            co.addProperty("y", by);
-            co.addProperty("z", bz);
+            JsonObject co = RpcJson.point(bx, by, bz);
             co.addProperty("blockName", bName);
             co.addProperty("registryName", bReg != null ? bReg : "");
             co.addProperty("dist", dist);

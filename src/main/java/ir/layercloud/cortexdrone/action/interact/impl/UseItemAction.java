@@ -71,7 +71,7 @@ public final class UseItemAction implements Action<InteractionContext> {
         int beforeCount = stack.stackSize;
         int beforeDamage = stack.getItemDamage();
         boolean used = false;
-        String method = "none";
+        String method;
         if (request.isCoordinates()) {
             try {
                 used = item.onItemUse(stack, fakePlayer, world, x, y, z,

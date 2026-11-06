@@ -2,9 +2,7 @@ package ir.layercloud.cortexdrone.service.world;
 
 import lombok.experimental.UtilityClass;
 import net.minecraft.entity.*;
-import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.monster.IMob;
-import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.passive.EntityTameable;
 import net.minecraft.entity.passive.IAnimals;
 import net.minecraft.entity.player.EntityPlayer;
@@ -48,7 +46,7 @@ public final class EntityAndBiomeClassifier {
     public static boolean isHostileEntity(EntityLivingBase el) {
         if (el == null || el.isDead || el.getHealth() <= 0.0f) return false;
         if (el instanceof EntityPlayer) return false;
-        if (el instanceof IMob || el instanceof EntityMob) return true;
+        if (el instanceof IMob) return true;
         if (isCreatureOfType(el, EnumCreatureType.monster)) return true;
 
         if (el instanceof EntityTameable && ((EntityTameable) el).isTamed()) {
@@ -60,7 +58,7 @@ public final class EntityAndBiomeClassifier {
                 return true;
             }
         }
-        if (!(el instanceof EntityAnimal) && !(el instanceof IAnimals)) {
+        if (!(el instanceof IAnimals)) {
             try {
                 if (el.getAttributeMap() != null && el.getAttributeMap().getAttributeInstance(SharedMonsterAttributes.attackDamage) != null) {
                     return true;
@@ -74,8 +72,7 @@ public final class EntityAndBiomeClassifier {
     public static boolean isPassiveEntity(EntityLivingBase el) {
         if (el == null || el.isDead || el.getHealth() <= 0.0f) return false;
         if (el instanceof EntityPlayer || isHostileEntity(el)) return false;
-        return (el instanceof EntityAnimal)
-                || (el instanceof IAnimals)
+        return (el instanceof IAnimals)
                 || isCreatureOfType(el, EnumCreatureType.creature)
                 || isCreatureOfType(el, EnumCreatureType.waterCreature)
                 || isCreatureOfType(el, EnumCreatureType.ambient);
@@ -109,11 +106,9 @@ public final class EntityAndBiomeClassifier {
         List<String> biomeTokens = new ArrayList<>(LexicalItemMatcher.tokenize(bName));
         try {
             BiomeDictionary.Type[] types = BiomeDictionary.getTypesForBiome(biome);
-            if (types != null) {
-                for (BiomeDictionary.Type t : types) {
-                    if (t != null) {
-                        biomeTokens.add(t.name().toLowerCase());
-                    }
+            for (BiomeDictionary.Type t : types) {
+                if (t != null) {
+                    biomeTokens.add(t.name().toLowerCase());
                 }
             }
         } catch (Throwable ignored) {

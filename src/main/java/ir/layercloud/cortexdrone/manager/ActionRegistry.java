@@ -44,10 +44,6 @@ public final class ActionRegistry {
         }
     }
 
-    public ActionManager<?, ?, ?> find(String operation) {
-        return operation != null ? this.byOperation.get(operation) : null;
-    }
-
     public int activeContextCount(DroneController controller) {
         int count = 0;
         for (ActionManager<?, ?, ?> manager : this.managers) {

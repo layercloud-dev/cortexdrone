@@ -44,7 +44,6 @@ public abstract class ActionContextBase implements ActionContext {
         return this.active && this.retained;
     }
 
-    @Override
     public final void retain() {
         if (this.active) this.retained = true;
     }

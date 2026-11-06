@@ -18,7 +18,7 @@ public final class LedEffects {
         float c = v * s;
         float x = c * (1.0f - Math.abs(((h / 60.0f) % 2.0f) - 1.0f));
         float m = v - c;
-        float r1 = 0, g1 = 0, b1 = 0;
+        float r1, g1, b1;
         if (h < 60) {
             r1 = c;
             g1 = x;

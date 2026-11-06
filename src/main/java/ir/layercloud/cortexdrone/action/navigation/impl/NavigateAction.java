@@ -129,7 +129,7 @@ public final class NavigateAction implements Action<NavigationContext> {
                             + (waypoint[2] - effGz) * (waypoint[2] - effGz));
             if (distWp <= 0.75 && !last) {
                 ctrl.pathIndex++;
-            } else if (distWp <= 0.75 && last
+            } else if (distWp <= 0.75
                     && (ctrl.lastPathPartial || distWpToGoal > 0.90) && ctrl.repathCooldown <= 0) {
                 ctrl.pathIndex++;
                 break;
@@ -163,7 +163,7 @@ public final class NavigateAction implements Action<NavigationContext> {
             return;
         }
 
-        ctrl.solidWaypointHits.remove(Long.valueOf(FlightPathfinder.packBlockPos(awx, away, awz)));
+        ctrl.solidWaypointHits.remove(FlightPathfinder.packBlockPos(awx, away, awz));
         FlightPathfinder.setDroneFlightTarget(drone, activeWp[0], activeWp[1], activeWp[2], 0.1f);
         context.countTick();
 

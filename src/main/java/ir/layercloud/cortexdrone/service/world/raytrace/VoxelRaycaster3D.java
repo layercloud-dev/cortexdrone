@@ -34,9 +34,9 @@ public final class VoxelRaycaster3D {
         double dy = y1 - y0;
         double dz = z1 - z0;
 
-        int stepX = dx > 0.0 ? 1 : (dx < 0.0 ? -1 : 0);
-        int stepY = dy > 0.0 ? 1 : (dy < 0.0 ? -1 : 0);
-        int stepZ = dz > 0.0 ? 1 : (dz < 0.0 ? -1 : 0);
+        int stepX = Double.compare(dx, 0.0);
+        int stepY = Double.compare(dy, 0.0);
+        int stepZ = Double.compare(dz, 0.0);
 
         double tDeltaX = stepX != 0 ? Math.abs(1.0 / dx) : Double.MAX_VALUE;
         double tDeltaY = stepY != 0 ? Math.abs(1.0 / dy) : Double.MAX_VALUE;
@@ -116,9 +116,9 @@ public final class VoxelRaycaster3D {
         double dy = y1 - y0;
         double dz = z1 - z0;
 
-        int stepX = dx > 0.0 ? 1 : (dx < 0.0 ? -1 : 0);
-        int stepY = dy > 0.0 ? 1 : (dy < 0.0 ? -1 : 0);
-        int stepZ = dz > 0.0 ? 1 : (dz < 0.0 ? -1 : 0);
+        int stepX = Double.compare(dx, 0.0);
+        int stepY = Double.compare(dy, 0.0);
+        int stepZ = Double.compare(dz, 0.0);
 
         double tDeltaX = stepX != 0 ? Math.abs(1.0 / dx) : Double.MAX_VALUE;
         double tDeltaY = stepY != 0 ? Math.abs(1.0 / dy) : Double.MAX_VALUE;
@@ -160,9 +160,9 @@ public final class VoxelRaycaster3D {
         int y = MathHelper.floor_double(eyeY);
         int z = MathHelper.floor_double(eyeZ);
 
-        int stepX = dirX > 0.0 ? 1 : (dirX < 0.0 ? -1 : 0);
-        int stepY = dirY > 0.0 ? 1 : (dirY < 0.0 ? -1 : 0);
-        int stepZ = dirZ > 0.0 ? 1 : (dirZ < 0.0 ? -1 : 0);
+        int stepX = Double.compare(dirX, 0.0);
+        int stepY = Double.compare(dirY, 0.0);
+        int stepZ = Double.compare(dirZ, 0.0);
 
         double tDeltaX = stepX != 0 ? Math.abs(1.0 / dirX) : Double.MAX_VALUE;
         double tDeltaY = stepY != 0 ? Math.abs(1.0 / dirY) : Double.MAX_VALUE;

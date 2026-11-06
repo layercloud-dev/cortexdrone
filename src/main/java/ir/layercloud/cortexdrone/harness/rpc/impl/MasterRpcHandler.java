@@ -8,6 +8,7 @@ import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.harness.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.harness.rpc.translate.BreadcrumbRpcTranslator;
+import ir.layercloud.cortexdrone.harness.rpc.translate.RpcJson;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
@@ -58,7 +59,7 @@ public class MasterRpcHandler implements RpcHandler {
         if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) {
             return error("No active drone or world");
         }
-        if ("state".equals(m)) return state(ctrl, player, args);
+        if ("state".equals(m)) return state(ctrl, args);
         if ("inspect".equals(m)) return inspect(ctrl, player, args);
         if ("goto".equals(m) || "stop".equals(m)) {
             return this.manager.getActionRpcTranslator().handle(ctrl, player, m, args);
@@ -73,13 +74,13 @@ public class MasterRpcHandler implements RpcHandler {
         if ("transfer".equals(m)) return transfer(ctrl, player, args);
         if ("craft".equals(m)) return craft(ctrl, player, args);
         if ("visuals".equals(m)) return visuals(ctrl, player, args);
-        if ("skills".equals(m)) return skills(ctrl, player, args);
+        if ("skills".equals(m)) return skills(ctrl, args);
         if ("cancel".equals(m)) return cancel(ctrl, args);
         return error("Unknown master tool: " + m);
     }
 
-    private JsonObject state(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
-        JsonObject res = this.manager.getActionRpcTranslator().status(ctrl, player, args);
+    private JsonObject state(DroneController ctrl, JsonObject args) {
+        JsonObject res = this.manager.getActionRpcTranslator().status(ctrl, args);
         String summary = ctrl.task.getSummary();
         res.addProperty("activeTask", ctrl.task.isActive());
         res.addProperty("taskPrompt", ctrl.task.getPrompt());
@@ -240,17 +241,16 @@ public class MasterRpcHandler implements RpcHandler {
 
     private JsonObject breakBlock(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         if (!args.has("x") || !args.has("y") || !args.has("z")) return error("break_block requires x/y/z");
-        int x = intValue(args, "x", 0);
-        int y = intValue(args, "y", 0);
-        int z = intValue(args, "z", 0);
+        int x = intValue(args, "x");
+        int y = intValue(args, "y");
+        int z = intValue(args, "z");
         World world = ctrl.drone.worldObj;
         if (!ItemClassifier.isMineableBlock(world, x, y, z)) {
             return error("Block at (" + x + "," + y + "," + z + ") is not mineable/air");
         }
         double dist = ctrl.drone.getDistance(x + 0.5, y + 0.5, z + 0.5);
         if (dist > REACH) {
-            JsonObject res = needsMovement(ctrl, x, y, z, "break", dist);
-            if (res != null) return res;
+            return needsMovement(ctrl, x, y, z, "break", dist);
         }
         JsonObject res = this.manager.getActionRpcTranslator().handle(ctrl, player, "break_block", args);
         res.add("target", point(x, y, z));
@@ -259,17 +259,16 @@ public class MasterRpcHandler implements RpcHandler {
 
     private JsonObject placeBlock(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         if (!args.has("x") || !args.has("y") || !args.has("z")) return error("place_block requires x/y/z");
-        int x = intValue(args, "x", 0);
-        int y = intValue(args, "y", 0);
-        int z = intValue(args, "z", 0);
+        int x = intValue(args, "x");
+        int y = intValue(args, "y");
+        int z = intValue(args, "z");
         World world = ctrl.drone.worldObj;
         if (!ItemClassifier.isReplaceableBlock(world, x, y, z)) {
             return error("Target (" + x + "," + y + "," + z + ") is already occupied/protected");
         }
         double dist = ctrl.drone.getDistance(x + 0.5, y + 0.5, z + 0.5);
         if (dist > REACH) {
-            JsonObject res = needsMovement(ctrl, x, y, z, "place", dist);
-            if (res != null) return res;
+            return needsMovement(ctrl, x, y, z, "place", dist);
         }
         String filter = args.has("block") ? str(args, "block", "any")
                 : (args.has("with") ? str(args, "with", "any") : str(args, "item", "any"));
@@ -281,26 +280,24 @@ public class MasterRpcHandler implements RpcHandler {
 
     private JsonObject interactBlock(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         if (!args.has("x") || !args.has("y") || !args.has("z")) return error("interact_block requires x/y/z");
-        int x = intValue(args, "x", 0);
-        int y = intValue(args, "y", 0);
-        int z = intValue(args, "z", 0);
+        int x = intValue(args, "x");
+        int y = intValue(args, "y");
+        int z = intValue(args, "z");
         double dist = ctrl.drone.getDistance(x + 0.5, y + 0.5, z + 0.5);
         if (dist > REACH) {
-            JsonObject res = needsMovement(ctrl, x, y, z, "interact", dist);
-            if (res != null) return res;
+            return needsMovement(ctrl, x, y, z, "interact", dist);
         }
         return this.manager.getActionRpcTranslator().handle(ctrl, player, "interact_block", args);
     }
 
     private JsonObject useItem(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         if (args.has("x") && args.has("y") && args.has("z")) {
-            int x = intValue(args, "x", 0);
-            int y = intValue(args, "y", 0);
-            int z = intValue(args, "z", 0);
+            int x = intValue(args, "x");
+            int y = intValue(args, "y");
+            int z = intValue(args, "z");
             double dist = ctrl.drone.getDistance(x + 0.5, y + 0.5, z + 0.5);
             if (dist > REACH) {
-                JsonObject res = needsMovement(ctrl, x, y, z, "use", dist);
-                if (res != null) return res;
+                return needsMovement(ctrl, x, y, z, "use", dist);
             }
         }
         return this.manager.getActionRpcTranslator().handle(ctrl, player, "use_item", args);
@@ -350,7 +347,7 @@ public class MasterRpcHandler implements RpcHandler {
         return this.manager.getActionRpcTranslator().handle(ctrl, player, method, args);
     }
 
-    private JsonObject skills(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
+    private JsonObject skills(DroneController ctrl, JsonObject args) {
         String op = str(args, "op", "search").trim().toLowerCase();
         String method;
         switch (op) {
@@ -366,16 +363,16 @@ public class MasterRpcHandler implements RpcHandler {
             default:
                 return error("Unknown skills op: " + op);
         }
-        return this.manager.getActionRpcTranslator().skills(ctrl, player, method, args);
+        return this.manager.getActionRpcTranslator().skills(ctrl, method, args);
     }
 
     private JsonObject cancel(DroneController ctrl, JsonObject args) {
-        int callerLoopId = intValue(args, "loopId", 0);
+        int callerLoopId = intValue(args, "loopId");
         int cancelled = ctrl.cancelOtherLoops(callerLoopId);
         this.manager.clearActionState(ctrl);
         ctrl.task.cancel();
         this.manager.getNavigationManager().stop(ctrl, null, "Master cancel");
-        JsonObject res = ok();
+        JsonObject res = RpcJson.ok();
         res.addProperty("cancelled", true);
         res.addProperty("cancelledLoops", cancelled);
         return res;
@@ -389,7 +386,7 @@ public class MasterRpcHandler implements RpcHandler {
             if (open == null) return error("No reachable standoff near (" + x + "," + y + "," + z + ")");
             st = new double[]{open[0] + 0.5, open[1] + 0.35, open[2] + 0.5};
         }
-        JsonObject res = ok();
+        JsonObject res = RpcJson.ok();
         res.addProperty("needsMovement", true);
         res.addProperty("action", action);
         res.addProperty("distance", Math.round(dist * 100.0) / 100.0);
@@ -404,12 +401,6 @@ public class MasterRpcHandler implements RpcHandler {
         p.addProperty("y", Math.round(y * 100.0) / 100.0);
         p.addProperty("z", Math.round(z * 100.0) / 100.0);
         return p;
-    }
-
-    private static JsonObject ok() {
-        JsonObject res = new JsonObject();
-        res.addProperty("ok", true);
-        return res;
     }
 
     private static JsonObject error(String message) {
@@ -428,12 +419,12 @@ public class MasterRpcHandler implements RpcHandler {
         }
     }
 
-    private static int intValue(JsonObject args, String key, int fallback) {
-        if (args == null || !args.has(key) || args.get(key).isJsonNull()) return fallback;
+    private static int intValue(JsonObject args, String key) {
+        if (args == null || !args.has(key) || args.get(key).isJsonNull()) return 0;
         try {
             return args.get(key).getAsInt();
         } catch (Exception e) {
-            return fallback;
+            return 0;
         }
     }
 }

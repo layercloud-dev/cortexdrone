@@ -1,6 +1,5 @@
 package ir.layercloud.cortexdrone.config;
 
-import com.google.gson.JsonObject;
 import lombok.Value;
 
 import java.text.SimpleDateFormat;
@@ -24,20 +23,6 @@ public class DebugEntry {
         this.droneName = droneName != null ? droneName : "-";
         this.message = message != null ? message : "";
         this.details = details != null ? details : "";
-    }
-
-    public JsonObject toJson() {
-        JsonObject o = new JsonObject();
-        o.addProperty("timestamp", this.timestamp);
-        o.addProperty("time", this.time);
-        o.addProperty("category", this.category);
-        o.addProperty("droneId", this.droneId);
-        o.addProperty("droneName", this.droneName);
-        o.addProperty("message", this.message);
-        if (!this.details.isEmpty()) {
-            o.addProperty("details", this.details);
-        }
-        return o;
     }
 
     public String toLogLine() {

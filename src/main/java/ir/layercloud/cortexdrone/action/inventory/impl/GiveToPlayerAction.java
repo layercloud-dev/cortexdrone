@@ -36,7 +36,7 @@ public final class GiveToPlayerAction implements Action<InventoryContext> {
         }
         String filter = filter();
         context.filter(filter);
-        if (inReach(controller, drone, player)) {
+        if (inReach(drone, player)) {
             int given = this.inventoryService.giveToPlayerInventory(controller, player, filter, count());
             context.movedCount(given);
             context.result(InventoryResult.success("transferred", given));
@@ -60,7 +60,7 @@ public final class GiveToPlayerAction implements Action<InventoryContext> {
             context.complete();
             return;
         }
-        if (inReach(controller, drone, player)) {
+        if (inReach(drone, player)) {
             String filter = context.filter() != null ? context.filter() : filter();
             int given = this.inventoryService.giveToPlayerInventory(controller, player, filter, count());
             context.movedCount(given);
@@ -80,7 +80,7 @@ public final class GiveToPlayerAction implements Action<InventoryContext> {
         return player != null ? player : CortexDroneMod.findPlayer(controller.ownerName);
     }
 
-    private static boolean inReach(DroneController controller, Drone drone, EntityPlayerMP player) {
+    private static boolean inReach(Drone drone, EntityPlayerMP player) {
         World world = drone.worldObj;
         return player.worldObj == world && drone.getDistanceToEntity(player) <= REACH;
     }

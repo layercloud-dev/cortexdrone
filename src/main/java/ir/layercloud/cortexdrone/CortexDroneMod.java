@@ -25,6 +25,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Mod(
         modid = CortexDroneMod.MODID,
@@ -37,6 +39,7 @@ public class CortexDroneMod {
     public static final String MODID = "cortexdrone";
     public static final String NAME = "CortexDrone";
     public static final String VERSION = "1.4.0";
+    private static final Logger LOG = Logger.getLogger("CortexDrone");
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     /**
@@ -73,8 +76,8 @@ public class CortexDroneMod {
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
         File worldDir = event.getServer().getFile("world");
-        if (!worldDir.exists()) {
-            worldDir.mkdirs();
+        if (!worldDir.exists() && !worldDir.mkdirs()) {
+            LOG.warning("Could not create world directory " + worldDir.getAbsolutePath());
         }
         if (this.aiDroneManager != null) {
             this.aiDroneManager.onServerStarting(event, worldDir);
@@ -103,7 +106,7 @@ public class CortexDroneMod {
                 try {
                     this.mainThreadTasks.remove(0).run();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.log(Level.WARNING, "Main-thread task failed", e);
                 }
             }
         }
@@ -112,7 +115,7 @@ public class CortexDroneMod {
             try {
                 this.aiDroneManager.onServerTickEnd();
             } catch (Throwable t) {
-                t.printStackTrace();
+                LOG.log(Level.SEVERE, "Server tick pipeline failed", t);
             }
         }
     }

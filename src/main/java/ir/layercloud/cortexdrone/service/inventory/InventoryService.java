@@ -18,12 +18,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityChest;
 import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -178,9 +175,6 @@ public class InventoryService {
     }
 
     public List<TileEntity> findAllInventoryTiles(final World world, final double x, final double y, final double z, int radius) {
-        int cx = MathHelper.floor_double(x);
-        int cy = MathHelper.floor_double(y);
-        int cz = MathHelper.floor_double(z);
         List<TileEntity> tiles = new ArrayList<>();
         double r2 = (double) radius * radius;
 

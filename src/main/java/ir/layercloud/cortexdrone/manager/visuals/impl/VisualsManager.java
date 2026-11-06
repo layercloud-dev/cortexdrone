@@ -65,12 +65,12 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
         if (controller.autoTorch) {
             VisualsContext context = createContext(controller, null, "set_light");
             VisualsRequest request = VisualsRequest.builder().lightEnabled(Boolean.TRUE).build();
-            run(controller, null, "set_light", context, new SetLightAction(this.lightingAura, request));
+            run(controller, "set_light", context, new SetLightAction(this.lightingAura, request));
         }
         if (LedEffects.isAnimated(controller.ledEffect)) {
             VisualsContext context = createContext(controller, null, "set_led");
             VisualsRequest request = VisualsRequest.builder().effect(controller.ledEffect).build();
-            run(controller, null, "set_led", context, new SetLedAction(request));
+            run(controller, "set_led", context, new SetLedAction(request));
         }
     }
 

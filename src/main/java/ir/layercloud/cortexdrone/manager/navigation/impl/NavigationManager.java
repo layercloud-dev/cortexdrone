@@ -38,7 +38,6 @@ import java.util.Map;
  */
 public final class NavigationManager {
     private static final double ARRIVAL_RADIUS = 0.85;
-    private static final int STUCK_ESCALATION_TICKS = 12;
     private static final int MAX_FLIGHT_TICKS = 12000;
 
     private final AIDroneManager manager;
@@ -56,7 +55,7 @@ public final class NavigationManager {
         this.breadcrumbService = breadcrumbService;
     }
 
-    public NavigationResult gotoGoal(DroneController controller, EntityPlayerMP player,
+    public NavigationResult gotoGoal(DroneController controller,
                                      NavigationRequest request) {
         if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
             return NavigationResult.failure("No active drone");
@@ -112,7 +111,7 @@ public final class NavigationManager {
         session.ticks++;
         if (session.replanCooldown > 0) session.replanCooldown--;
         if (session.ticks > MAX_FLIGHT_TICKS) {
-            fail(controller, session, "Navigation timed out");
+            fail(controller, "Navigation timed out");
             return;
         }
 
@@ -130,18 +129,16 @@ public final class NavigationManager {
      * Runs one flight action tick for non-session callers (follow/drop/deposit
      * and mining standoffs). Still executed by {@link NavigateAction}.
      */
-    public NavigateResult flyToward(DroneController controller, double x, double y, double z,
-                                    String label) {
+    public void flyToward(DroneController controller, double x, double y, double z,
+                          String label) {
         if (controller == null || controller.drone == null) {
-            return NavigateResult.failure("No active drone");
+            return;
         }
         NavigationContext context = new NavigationContext(controller, null,
                 NavigationMode.FLIGHT, x, y, z, label);
         NavigateAction action = new NavigateAction(this.pathfinder, this.breadcrumbService);
         try {
             action.tick(context);
-            return context.result() != null
-                    ? context.result() : NavigateResult.failure("No flight result");
         } finally {
             context.complete();
         }
@@ -176,7 +173,7 @@ public final class NavigationManager {
                 Breadcrumb endpoint = trail.getEndpoint();
                 session.usingTrail = true;
                 session.reason = "trail-" + trail.getReason();
-                startLeg(controller, session, NavigationMode.FLIGHT,
+                startLeg(controller, session,
                         endpoint.getX() + 0.5, endpoint.getY() + 0.65, endpoint.getZ() + 0.5,
                         "Trail endpoint (" + trail.getReason() + ")");
                 this.logger.log("NAV", controller, "Flying to trail endpoint (" + trail.getReason() + ")",
@@ -187,23 +184,23 @@ public final class NavigationManager {
 
         session.usingTrail = false;
         session.reason = "flight";
-        startLeg(controller, session, NavigationMode.FLIGHT,
+        startLeg(controller, session,
                 session.goalX, session.goalY, session.goalZ, "Flight");
     }
 
-    private void startLeg(DroneController controller, Session session, NavigationMode mode,
+    private void startLeg(DroneController controller, Session session,
                           double targetX, double targetY, double targetZ, String label) {
         session.phase = Phase.FLIGHT;
-        NavigationContext context = new NavigationContext(controller, null, mode,
+        NavigationContext context = new NavigationContext(controller, null, NavigationMode.FLIGHT,
                 targetX, targetY, targetZ, label);
-        Action<NavigationContext> action = actionFor(mode);
+        Action<NavigationContext> action = new NavigateAction(this.pathfinder, this.breadcrumbService);
         action.execute(context);
         if (context.isActive()) {
             context.retain();
             session.leg = new Leg(action, context);
         } else {
             session.leg = null;
-            handleResult(controller, session, action, context, context.result());
+            handleResult(controller, session, context, context.result());
         }
     }
 
@@ -211,14 +208,14 @@ public final class NavigationManager {
         Leg leg = session.leg;
         if (!leg.context.isActive()) {
             session.leg = null;
-            handleResult(controller, session, leg.action, leg.context, leg.context.result());
+            handleResult(controller, session, leg.context, leg.context.result());
             return;
         }
         leg.action.tick(leg.context);
         NavigateResult result = leg.context.result();
         if (!leg.context.isActive()) {
             session.leg = null;
-            handleResult(controller, session, leg.action, leg.context, result);
+            handleResult(controller, session, leg.context, result);
         } else if (result != null) {
             handleProgress(controller, session, result);
         }
@@ -235,7 +232,7 @@ public final class NavigationManager {
                 session.phase = Phase.PLAN;
                 session.replanCooldown = 0;
             } else {
-                fail(controller, session, result.getError() != null
+                fail(controller, result.getError() != null
                         ? result.getError() : "Flight path is blocked");
             }
         } else if (result.isLegDone()) {
@@ -247,14 +244,14 @@ public final class NavigationManager {
         }
     }
 
-    private void handleResult(DroneController controller, Session session, Action<NavigationContext> action,
+    private void handleResult(DroneController controller, Session session,
                               NavigationContext context, NavigateResult result) {
         if (result == null) {
-            fail(controller, session, "Navigation action produced no result");
+            fail(controller, "Navigation action produced no result");
             return;
         }
         if (result.getError() != null) {
-            fail(controller, session, result.getError());
+            fail(controller, result.getError());
             return;
         }
         switch (context.mode()) {
@@ -270,7 +267,7 @@ public final class NavigationManager {
                         session.phase = Phase.PLAN;
                         session.replanCooldown = 0;
                     } else {
-                        fail(controller, session, "Flight path is blocked");
+                        fail(controller, "Flight path is blocked");
                     }
                 } else if (result.isLegDone()) {
                     session.phase = Phase.PLAN;
@@ -295,7 +292,7 @@ public final class NavigationManager {
         }
     }
 
-    private void fail(DroneController controller, Session session, String reason) {
+    private void fail(DroneController controller, String reason) {
         this.sessions.remove(controller);
         if (controller == null) return;
         controller.navigationError = reason;
@@ -305,16 +302,6 @@ public final class NavigationManager {
             controller.drone.statusText_$eq("Route failed\n" + reason);
         }
         this.logger.log("NAV", controller, "Navigation failed", reason);
-    }
-
-    private Action<NavigationContext> actionFor(NavigationMode mode) {
-        switch (mode) {
-            case STOP:
-                return new StopAction();
-            case FLIGHT:
-            default:
-                return new NavigateAction(this.pathfinder, this.breadcrumbService);
-        }
     }
 
     private NavigationTarget resolveTarget(NavigationRequest request) {

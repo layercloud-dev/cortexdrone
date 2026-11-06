@@ -45,10 +45,10 @@ public class LlmAgentService {
         return LoopTracer.maskKey(key);
     }
 
-    static void logKeyDiagnostics(DroneController ctrl, DroneLogger logger, String reason) {
+    static void logKeyDiagnostics(DroneController ctrl, DroneLogger logger) {
         try {
             String envKey = System.getenv("CORTEXDRONE_API_KEY");
-            logger.log("LLM", ctrl, "API-key diagnostics (" + reason + "): env=" + (envKey == null || envKey.isEmpty() ? "<unset>" : maskKey(envKey)) + " key=" + maskKey((new AIConfig()).getApiKey()), "reason=" + reason);
+            logger.log("LLM", ctrl, "API-key diagnostics (once): env=" + (envKey == null || envKey.isEmpty() ? "<unset>" : maskKey(envKey)) + " key=" + maskKey((new AIConfig()).getApiKey()), "reason=once");
         } catch (Throwable t) {
             logger.log("LLM", ctrl, "API-key diagnostics failed: " + t, "");
         }
@@ -57,13 +57,14 @@ public class LlmAgentService {
     private static void logKeyDiagnosticsOnce(DroneController ctrl, DroneLogger logger) {
         if (llmKeyLogged) return;
         llmKeyLogged = true;
-        logKeyDiagnostics(ctrl, logger, "once");
+        logKeyDiagnostics(ctrl, logger);
     }
 
     public JsonObject buildDroneContextForLlm(EntityPlayerMP player, DroneController ctrl) {
         return DroneContextBuilder.build(this.manager, this.worldScanner, player, ctrl);
     }
 
+    @SuppressWarnings("DataFlowIssue")
     public void runAgentLoop(final EntityPlayerMP player, final DroneController ctrl, final String userPrompt, final JsonObject worldContext, final int myLoopId) {
         final AgentHeartbeat heartbeat = AgentHeartbeat.begin(this.manager, ctrl, player, userPrompt, myLoopId);
         boolean completedOk = false;
@@ -150,7 +151,7 @@ public class LlmAgentService {
                 if (plan == null) {
                     long elapsedMs = System.currentTimeMillis() - turnStartMs;
                     LoopTracer.traceTurn(this.logger, ctrl, myLoopId, turn, elapsedMs, true, false, "", "");
-                    if (heartbeat.retryAfterBackendFailure(messages, turn)) {
+                    if (heartbeat.retryAfterBackendFailure(turn)) {
                         continue;
                     }
                     String detail = lastLlmError != null ? lastLlmError : "no response from LLM gateway";
@@ -282,7 +283,6 @@ public class LlmAgentService {
                         }
                     }
                     if (!ok) {
-                        done = false;
                         hadSelfCorrection = true;
                         this.logger.log("CODEMODE", ctrl, "Turn " + turn + " JS Error -> Self-Correcting", execRes.toString());
                         AgentLoopHeuristics.appendTurnFeedback(
@@ -293,7 +293,6 @@ public class LlmAgentService {
                     }
 
                     if (done && turn < 24 && AgentLoopHeuristics.promptExpectsPhysicalAction(userPrompt) && AgentLoopHeuristics.attemptHadNoEffect(execRes)) {
-                        done = false;
                         hadSelfCorrection = true;
                         this.logger.log("CODEMODE", ctrl, "Turn " + turn + " suspicious 0-queued result -> prompting self-correction", execRes.toString());
                         AgentLoopHeuristics.appendTurnFeedback(
@@ -434,6 +433,7 @@ public class LlmAgentService {
                 Thread.sleep(Math.min(waitMs, 5000));
             }
         }
+        //noinspection ConstantValue
         for (int attempt = 1; attempt <= 3; attempt++) {
             final long attemptT0 = System.currentTimeMillis();
             URL url = new URL(cfg.getApiUrl());
@@ -543,7 +543,7 @@ public class LlmAgentService {
                     consecutiveConnectFailures++;
                     lastConnectFailureAtMs = System.currentTimeMillis();
                 }
-                if (attempt >= 3) throw ex instanceof Exception ? (Exception) ex : new RuntimeException(ex);
+                if (attempt == 3) throw ex instanceof Exception ? (Exception) ex : new RuntimeException(ex);
             } finally {
                 try {
                     conn.disconnect();

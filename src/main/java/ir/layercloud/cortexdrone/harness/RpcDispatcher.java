@@ -13,7 +13,6 @@ import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -93,14 +92,14 @@ public class RpcDispatcher {
             this.finishJob(job);
             return;
         }
-        this.drainActiveJobWithBudget(job, MAX_SLICE_MS);
+        this.drainActiveJobWithBudget(job);
     }
 
-    private void drainActiveJobWithBudget(ScanJob job, long budgetMs) {
+    private void drainActiveJobWithBudget(ScanJob job) {
         // Check the clock before each step so the budget is actually honoured;
         // the old loop checked the clock after the slice and could iterate
         // 90k single-voxel iterator steps per tick even past one tick budget.
-        long deadline = System.currentTimeMillis() + Math.max(1L, budgetMs);
+        long deadline = System.currentTimeMillis() + MAX_SLICE_MS;
         long voxelsThisSlice = 0;
         while (!job.done && voxelsThisSlice < MAX_SLICE_VOXELS) {
             voxelsThisSlice += job.stepSlice();
@@ -124,7 +123,7 @@ public class RpcDispatcher {
         String m = method != null ? method.trim().toLowerCase() : "";
         JsonObject workArgs = args != null ? args : new JsonObject();
         if (isLargeScan(m, workArgs) && !isAlreadyOnServerThread()) {
-            return this.submitLargeScan(ctrl, defaultPlayer, m, workArgs);
+            return this.submitLargeScan(ctrl, defaultPlayer, workArgs);
         }
         // A scan already running on the server thread must never be re-entered
         // from the tick queue (deadlock / reentrancy on 1.7.10 world state).
@@ -213,7 +212,7 @@ public class RpcDispatcher {
         String op = args != null && args.has("op") && !args.get("op").isJsonNull()
                 ? args.get("op").getAsString().trim().toLowerCase() : "";
         if (!"blocks".equals(op) && !"scanblocks".equals(op)) return false;
-        int radius = parseIntField(args, "radius", -1);
+        int radius = parseIntField(args, -1);
         // Radius > default cap counts as large. The WorldRpcHandler also
         // confirms the capped radius; here we only route.
         return radius > LARGE_RADIUS_THRESHOLD;
@@ -237,10 +236,10 @@ public class RpcDispatcher {
         return 8000L;
     }
 
-    private static int parseIntField(JsonObject args, String key, int fallback) {
-        if (args == null || !args.has(key) || args.get(key).isJsonNull()) return fallback;
+    private static int parseIntField(JsonObject args, int fallback) {
+        if (args == null || !args.has("radius") || args.get("radius").isJsonNull()) return fallback;
         try {
-            JsonElement el = args.get(key);
+            JsonElement el = args.get("radius");
             if (el.isJsonPrimitive()) {
                 JsonPrimitive prim = el.getAsJsonPrimitive();
                 if (prim.isNumber()) return prim.getAsInt();
@@ -255,12 +254,12 @@ public class RpcDispatcher {
         return fallback;
     }
 
-    private JsonObject submitLargeScan(DroneController ctrl, EntityPlayerMP player, String method, JsonObject args) {
+    private JsonObject submitLargeScan(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         // Large scans must remain on the server thread for 1.7.10 safety, so
         // they are executed as ONE time-sliced job on the tick queue instead of
         // a single monolithic block scan. Only one job runs at a time; later
         // requests get busy + jobId to poll rather than queueing unboundedly.
-        ScanJob queued = new ScanJob(ctrl, player, method, args);
+        ScanJob queued = new ScanJob(ctrl, player, args);
         if (!this.scanLock.tryAcquire()) {
             JsonObject busy = new JsonObject();
             busy.addProperty("ok", false);
@@ -276,8 +275,7 @@ public class RpcDispatcher {
         // gets partial confirmation quickly; the rest drains from onServerTickEnd.
         this.manager.getMod().queueMain(() -> {
             try {
-                ScanJob job = queued;
-                drainActiveJobWithBudget(job, MAX_SLICE_MS);
+                drainActiveJobWithBudget(queued);
             } catch (Throwable t) {
                 JsonObject err = new JsonObject();
                 err.addProperty("ok", false);
@@ -323,7 +321,7 @@ public class RpcDispatcher {
 
     private static final class CollectionsSortHelper {
         static void sortByDistanceSq(List<int[]> list) {
-            list.sort((a, b) -> Integer.compare(a[4], b[4]));
+            list.sort(Comparator.comparingInt(a -> a[4]));
         }
     }
 
@@ -356,8 +354,6 @@ public class RpcDispatcher {
         final String id;
         final long createdAtMs;
         final DroneController ctrl;
-        final EntityPlayerMP player;
-        final String method;
         final String filter;
         int cx;
         int cy;
@@ -378,10 +374,8 @@ public class RpcDispatcher {
         final List<int[]> results = new ArrayList<>();
         final Set<Long> seen = new HashSet<>();
 
-        ScanJob(DroneController ctrl, EntityPlayerMP player, String method, JsonObject args) {
+        ScanJob(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
             this.ctrl = ctrl;
-            this.player = player;
-            this.method = method;
             this.id = "scan-" + System.nanoTime();
             this.createdAtMs = System.currentTimeMillis();
             this.filter = args.has("filter") && !args.get("filter").isJsonNull()
@@ -405,11 +399,10 @@ public class RpcDispatcher {
                 this.cz = (int) Math.floor(az);
             }
             boolean underground = !hasExplicitCenter && ItemClassifier.isLikelyUndergroundQuery(this.filter);
-            int requestedRadius = parseIntField(args, "radius", 24);
-            int cap = DEFAULT_SCAN_RADIUS_CAP;
+            int requestedRadius = parseIntField(args, 24);
             int r = Math.min(ABSOLUTE_SCAN_RADIUS_CAP, Math.max(1, requestedRadius));
             // Confirm cap at submit time: the partial result already reports it.
-            this.radius = Math.min(cap, r);
+            this.radius = Math.min(DEFAULT_SCAN_RADIUS_CAP, r);
             // Y window mirrors WorldRpcHandler semantics.
             this.minY = args.has("minY") ? Math.max(1, args.get("minY").getAsInt()) : Math.max(1, this.cy - this.radius);
             this.maxY = args.has("maxY") ? Math.min(254, args.get("maxY").getAsInt()) : Math.min(254, this.cy + this.radius);
@@ -517,10 +510,14 @@ public class RpcDispatcher {
         }
     }
 
+    private static String normalizeMethod(String method) {
+        return method != null ? method.trim().toLowerCase() : "";
+    }
+
     public JsonObject executeSync(DroneController ctrl, EntityPlayerMP player, String method, JsonObject args) {
         // Direct poll endpoint for time-sliced large scans, so JS callers can
         // retrieve partial results without re-issuing the scan.
-        String pre = method != null ? method.trim().toLowerCase() : "";
+        String pre = normalizeMethod(method);
         if (pre.equals("poll_scan")) {
             String jobId = args != null && args.has("jobId") && !args.get("jobId").isJsonNull()
                     ? args.get("jobId").getAsString() : null;
@@ -532,7 +529,7 @@ public class RpcDispatcher {
             res.addProperty("error", "No active drone");
             return res;
         }
-        String m = method != null ? method.trim().toLowerCase() : "";
+        String m = normalizeMethod(method);
         RpcHandler handler = this.handlerRegistry.get(m);
         if (handler != null) {
             return handler.handle(ctrl, player, m, args != null ? args : new JsonObject());

@@ -13,13 +13,6 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 final class AgentLoopHeuristics {
-    // Wall-clock deadline for one agent loop. The 100-turn cap alone does not stop
-    // log-spam loops (meteor hunt burned 85 turns over ~45 min of kb.lookup/scan
-    // re-queries with zero progress). At the deadline we exit deterministically with a
-    // partial reply (done:true) instead of chasing another re-query.
-    static final long AGENT_DEADLINE_MS = 8L * 60L * 1000L; // 8 minutes
-
-
     static String truncateForPrompt(String s, int maxLen) {
         if (s == null || s.length() <= maxLen) return s != null ? s : "";
         return s.substring(0, maxLen) + "...(truncated " + (s.length() - maxLen) + " chars)";
@@ -81,6 +74,7 @@ final class AgentLoopHeuristics {
         return codeCallsStop(code);
     }
 
+    @SuppressWarnings("BusyWait")
     static void executePreCodeModeStop(
             ir.layercloud.cortexdrone.drone.DroneController ctrl,
             net.minecraft.entity.player.EntityPlayerMP player,
@@ -156,23 +150,6 @@ final class AgentLoopHeuristics {
 
     static String nudgeForRepeat(String originalPrompt) {
         return "REPETITION WARNING: you just re-queried the same block/chest/recipe data with no progress. Do NOT call drone.inspect for the same target again. Act on what you already know: move to the target and use breakBlock/placeBlock/transfer, or report the exact blocker as your final reply (done=true). Original task: " + truncateForPrompt(originalPrompt, 300);
-    }
-
-    static String fingerprintAndAction(String code) {
-        return fingerprintCode(code) + "|" + codeMentionsPhysicalAction(code);
-    }
-
-    static boolean isMachineConfigOnlyResult(JsonObject result) {
-        if (result == null || !result.has("result") || !result.get("result").isJsonObject()) return false;
-        JsonObject r = result.getAsJsonObject("result");
-        String s = r.toString().toLowerCase();
-        boolean hasMachine = s.contains("machine_config") || s.contains("machine config")
-                || s.contains("assembly machine") || s.contains("chemical plant")
-                || s.contains("blast furnace") || s.contains("assemblymachine");
-        boolean noCrafting = !r.has("craftingRecipes") && !s.contains("craftingrecipes");
-        // Machine-only signal: machine config found but no crafting-table source
-        // in this tool result. Exact recipe shapes vary; this is heuristic.
-        return hasMachine && (noCrafting || r.has("blocker") || s.contains("gui_only") || s.contains("gui only"));
     }
 
     static boolean shouldForceFinal(JsonObject plan, JsonArray messages) {

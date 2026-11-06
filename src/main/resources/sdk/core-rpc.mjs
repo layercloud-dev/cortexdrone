@@ -1,3 +1,5 @@
+//noinspection JSUnresolvedReference
+/* global DRONE_ID, LOOP_ID, PLAYER_NAME, HTTP_PORT, process */
 const logs = [];
 console.log = (...a) => logs.push(a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' '));
 globalThis.log = console.log;
@@ -31,6 +33,9 @@ function _capSize(value, depth = 0) {
 
 function _jsonLen(v) { try { return JSON.stringify(v).length; } catch (e) { return Infinity; } }
 
+/**
+ * @returns {Promise<any>}
+ */
 async function rpc(method, args = {}, opts = {}) {
   let r;
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -61,6 +66,9 @@ async function rpc(method, args = {}, opts = {}) {
 // Low-level RPC stays private to the SDK. Code Mode only gets the `drone`
 // master-tool surface, so arbitrary legacy RPC names cannot be called directly.
 
+/**
+ * @returns {Promise<any>}
+ */
 async function _state() {
   return await rpc('state', { loopId: typeof LOOP_ID === 'number' ? LOOP_ID : 0 });
 }
@@ -148,6 +156,7 @@ async function _awaitScanJob(jobId, fallbackRadius, timeoutMs = _SCAN_POLL_TIMEO
 
 // All master primitives await their own physical completion. Kept as a stable
 // hook for the runtime wrapper; intentionally does not drain an instruction queue.
+//noinspection JSUnusedGlobalSymbols
 async function _finalizeScript() {
 
 }

@@ -39,15 +39,14 @@ public class MachineRecipeService {
     private final InventoryService inventoryService;
     private final List<MachineRecipeHook> hooks = new ArrayList<>();
 
-    static class NormalizedRecipe {
+    public static class NormalizedRecipe {
         String machine;
-        String file;
         String name;
         String displayName;
-        List<JsonObject> inputs;
-        List<JsonObject> outputs;
-        List<JsonObject> inputFluids;
-        List<JsonObject> outputFluids;
+        final List<JsonObject> inputs;
+        final List<JsonObject> outputs;
+        final List<JsonObject> inputFluids;
+        final List<JsonObject> outputFluids;
         int duration;
         long power;
         int tierLower;

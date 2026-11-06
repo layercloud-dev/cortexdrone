@@ -210,7 +210,7 @@ public final class LlmResponseParser {
             return null;
         }
         String hay = ((s != null ? s : "") + "\n" + (reasoning != null ? reasoning : "")).trim();
-        if (hay.isEmpty() || hay.length() < 40) {
+        if (hay.length() < 40) {
             return null;
         }
         Matcher mMachine = BLOCKER_MACHINE_PATTERN.matcher(hay);
@@ -223,7 +223,7 @@ public final class LlmResponseParser {
         // Generic (machine-less) blocker: only fires on long essay-like prose
         // with no fenced code — a short "need blast furnace" note is handled by
         // the machine path above. This keeps pure planning essays out of the loop.
-        String machine = hasMachine ? mMachine.group(0).trim() : "";
+        String machine = mMachine.group(0).trim();
         String safeMachine = machine.isEmpty() ? "HBM machine" : machine;
         String thought = "Machine-config blocker detected (" + safeMachine + "). "
                 + "Finished with an explicit blocker instead of re-querying.";
@@ -257,7 +257,7 @@ public final class LlmResponseParser {
             return null;
         }
         String hay = ((s != null ? s : "") + "\n" + (reasoning != null ? reasoning : "")).trim();
-        if (hay.isEmpty() || hay.length() < 180) {
+        if (hay.length() < 180) {
             return null;
         }
         if (hay.contains("```")) {
@@ -381,7 +381,7 @@ public final class LlmResponseParser {
                     depth++;
                 } else if (c == '}') {
                     depth--;
-                    if (depth == 0 && startIdx >= 0) {
+                    if (depth == 0) {
                         balancedBlocks.add(s.substring(startIdx, i + 1));
                         startIdx = -1;
                     } else if (depth < 0) {
@@ -422,7 +422,7 @@ public final class LlmResponseParser {
                 if (body.isEmpty()) continue;
                 if (body.contains("await ") || body.contains("return ") || body.contains("function") || body.contains("const ")) {
                     JsonObject o = new JsonObject();
-                    o.addProperty("thought", sanitizeThought(s != null ? s : "", combinedReasoning));
+                    o.addProperty("thought", sanitizeThought(s, combinedReasoning));
                     o.addProperty("code", body);
                     o.addProperty("done", true);
                     o.addProperty("reply", "");

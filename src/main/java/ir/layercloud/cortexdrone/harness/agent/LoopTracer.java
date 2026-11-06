@@ -16,8 +16,9 @@ public final class LoopTracer {
 
     public static String maskKey(String key) {
         if (key == null || key.isEmpty()) return "<empty>";
-        if (key.length() <= 12) return key.substring(0, 3) + "..." + key.substring(key.length() - 2);
-        return key.substring(0, 8) + "..." + key.substring(key.length() - 2) + " (len=" + key.length() + ")";
+        String tail = key.substring(key.length() - 2);
+        if (key.length() <= 12) return key.substring(0, 3) + "..." + tail;
+        return key.substring(0, 8) + "..." + tail + " (len=" + key.length() + ")";
     }
 
     public static String snippet(String value, int max) {
@@ -50,13 +51,6 @@ public final class LoopTracer {
                 "Superseded loopId=" + loopId + " turnReached=" + turnReached + " userPrompt=\""
                         + snippet(userPrompt, 120) + "\" supersededByLoopId=" + ctrl.activeLoopId.get(),
                 "loopId=" + loopId + " turnReached=" + turnReached);
-    }
-
-    public static void saySuperseded(final AIDroneManager manager, final EntityPlayerMP player,
-                                     final DroneController ctrl, final String userPrompt) {
-        final String msg = "previous task superseded by your new command (\" " + snippet(userPrompt, 80)
-                + " \") — starting the new one.";
-        say(manager, player, ctrl, msg);
     }
 
     public static void say(final AIDroneManager manager, final EntityPlayerMP player,

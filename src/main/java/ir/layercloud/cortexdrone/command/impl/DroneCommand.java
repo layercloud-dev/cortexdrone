@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 
 @RequiredArgsConstructor
+@SuppressWarnings({"unused", "SameReturnValue"})
 public class DroneCommand extends BaseCommand {
     private final String cmdName;
     private final AIDroneManager manager;
@@ -135,7 +136,7 @@ public class DroneCommand extends BaseCommand {
                 }
                 return;
             case "config":
-                boolean isOp = !(sender instanceof EntityPlayerMP) || sender.canCommandSenderUseCommand(2, "drone");
+                boolean isOp = player == null || player.canCommandSenderUseCommand(2, "drone");
                 if (!isOp) {
                     CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "[Drone] Only server operators can change AI config.");
                     return;
@@ -241,14 +242,6 @@ public class DroneCommand extends BaseCommand {
 
         String fullPrompt = joinArgs(args, 0);
         this.manager.handleNaturalInstruction(player, fullPrompt);
-    }
-
-    private static double parseCoord(double base, String raw) {
-        if (raw.startsWith("~")) {
-            if (raw.length() == 1) return base;
-            return base + Double.parseDouble(raw.substring(1));
-        }
-        return Double.parseDouble(raw);
     }
 
     private static String joinArgs(String[] args, int start) {

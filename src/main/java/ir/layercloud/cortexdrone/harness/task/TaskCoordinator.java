@@ -37,7 +37,7 @@ public final class TaskCoordinator {
                 return;
             }
             if (intent == TaskIntent.CANCEL) {
-                cancel(ctrl, "Player cancelled active task");
+                cancel(ctrl);
                 this.manager.droneSay(player, ctrl, "Task cancelled. Hovering in place - give me a new instruction when ready.");
                 return;
             }
@@ -76,18 +76,18 @@ public final class TaskCoordinator {
         CortexDroneMod.HTTP_POOL.submit(() -> manager.getAgentService().runAgentLoop(player, ctrl, sessionPrompt, worldContext, myLoopId));
     }
 
-    private void cancel(DroneController ctrl, String reason) {
-        this.manager.getLogger().log("TASK", ctrl, "Message classified as CANCEL", "reason=" + reason);
+    private void cancel(DroneController ctrl) {
+        this.manager.getLogger().log("TASK", ctrl, "Message classified as CANCEL", "reason=Player cancelled active task");
         ctrl.cancelOtherLoops(0);
         this.manager.clearActionState(ctrl);
         ctrl.task.cancel();
-        this.manager.getNavigationManager().stop(ctrl, null, reason);
+        this.manager.getNavigationManager().stop(ctrl, null, "Player cancelled active task");
     }
 
     private static String shortTask(DroneController ctrl) {
         String summary = ctrl.task.getSummary();
         if (summary == null || summary.isEmpty()) summary = ctrl.task.getPrompt();
-        if (summary == null || summary.length() == 0) return "Task is running.";
+        if (summary == null || summary.isEmpty()) return "Task is running.";
         return "Task: " + (summary.length() > 120 ? summary.substring(0, 120) + "..." : summary);
     }
 

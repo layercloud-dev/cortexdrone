@@ -14,8 +14,10 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 public class DroneLogger {
+    private static final Logger LOG = Logger.getLogger("CortexDrone");
     private static final int MAX_DEBUG_ENTRIES = 400;
     private static final int MAX_CHAT_RECORDS = 50;
     private static final int MAX_DEBUG_FILE_LINE_CHARS = 4096;
@@ -84,15 +86,13 @@ public class DroneLogger {
             }
         }
         if (needSchedule) {
-            CortexDroneMod.HTTP_POOL.submit(() -> flushPendingLog(600L));
+            CortexDroneMod.HTTP_POOL.submit(this::flushPendingLog);
         }
     }
 
-    private void flushPendingLog(long delayMs) {
+    private void flushPendingLog() {
         try {
-            if (delayMs > 0L) {
-                Thread.sleep(delayMs);
-            }
+            Thread.sleep(600L);
         } catch (InterruptedException ignored) {
         }
         String snapshot;
@@ -120,7 +120,7 @@ public class DroneLogger {
             // If more lines arrived while writing, schedule another coalesced flush.
             if (this.pendingLogText.length() > 0 && !this.logFlushScheduled) {
                 this.logFlushScheduled = true;
-                CortexDroneMod.HTTP_POOL.submit(() -> flushPendingLog(600L));
+                CortexDroneMod.HTTP_POOL.submit(this::flushPendingLog);
             }
         }
     }
@@ -134,10 +134,12 @@ public class DroneLogger {
         try {
             if (f.length() > MAX_DEBUG_LOG_BYTES) {
                 File old = new File(f.getAbsolutePath() + ".1");
-                if (old.exists()) {
-                    old.delete();
+                if (old.exists() && !old.delete()) {
+                    return;
                 }
-                f.renameTo(old);
+                if (!f.renameTo(old)) {
+                    LOG.warning("Could not rotate debug log " + f.getAbsolutePath());
+                }
             }
         } catch (Exception ignored) {
         }
@@ -166,9 +168,9 @@ public class DroneLogger {
     }
 
     public List<DebugEntry> getRecentDebugEntries(int maxCount) {
-        List<DebugEntry> snap = new ArrayList<>();
+        List<DebugEntry> snap;
         synchronized (this.debugLog) {
-            snap.addAll(this.debugLog);
+            snap = new ArrayList<>(this.debugLog);
         }
         int start = Math.max(0, snap.size() - maxCount);
         return snap.subList(start, snap.size());

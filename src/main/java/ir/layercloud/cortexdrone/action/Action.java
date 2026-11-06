@@ -11,6 +11,7 @@ import ir.layercloud.cortexdrone.context.ActionContext;
  *
  * @param <C> mutable state for this execution
  */
+@SuppressWarnings("EmptyMethod")
 public interface Action<C extends ActionContext> {
     void execute(C context);
 

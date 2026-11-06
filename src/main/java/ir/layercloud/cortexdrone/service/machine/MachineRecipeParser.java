@@ -25,7 +25,6 @@ final class MachineRecipeParser {
         try {
             MachineRecipeService.NormalizedRecipe r = new MachineRecipeService.NormalizedRecipe();
             r.machine = machine;
-            r.file = fileName;
             r.name = o.has("name") ? o.get("name").getAsString() : fileName.replace(".json", "") + "." + r.inputs.size();
             r.displayName = o.has("nameWrapper") ? o.get("nameWrapper").getAsString() : r.name;
             if (o.has("duration")) r.duration = o.get("duration").getAsInt();
@@ -54,10 +53,9 @@ final class MachineRecipeParser {
                     r.outputFluids.clear();
                 }
             }
-            List<JsonObject> nested = null;
             if (o.has("recipes") && o.get("recipes").isJsonArray()) {
                 JsonArray nestedArr = o.getAsJsonArray("recipes");
-                nested = new ArrayList<>();
+                List<JsonObject> nested = new ArrayList<>();
                 for (JsonElement e : nestedArr) {
                     if (e.isJsonObject()) nested.add(e.getAsJsonObject());
                 }
@@ -69,9 +67,7 @@ final class MachineRecipeParser {
                     base.add("recipes", inner);
                     java.util.List<MachineRecipeService.NormalizedRecipe> expanded = new ArrayList<>();
                     for (JsonObject n : nested) {
-                        JsonObject wrapper = new JsonObject();
-                        wrapper.add("recipe", n);
-                        MachineRecipeService.NormalizedRecipe nr = normalizeSingleRecipe(n, machine, fileName, wrapper);
+                        MachineRecipeService.NormalizedRecipe nr = normalizeSingleRecipe(n, machine, fileName);
                         if (nr != null) {
                             String fluidName = o.has("outputType") ? o.get("outputType").getAsString() : "";
                             int outAmt = n.has("outputAmount") ? n.get("outputAmount").getAsInt() : 0;
@@ -324,10 +320,6 @@ final class MachineRecipeParser {
                     if (io != null) r.inputFluids.add(io);
                 }
             }
-            if (o.has("pedestal") || o.has("extra")) {
-                // Pedestal extra is biome selector, not input; ignore.
-            }
-            // Pedestal 9-slot shaped input: [null, [dict...], null...] — parseInputEntry with null elements
             if (o.has("input") && o.get("input").isJsonArray()) {
                 JsonArray arr = o.getAsJsonArray("input");
                 for (int idx = 0; idx < arr.size(); idx++) {
@@ -339,8 +331,7 @@ final class MachineRecipeParser {
                             String kind = cell.get(0).getAsString();
                             if (kind.equals("dict") || kind.equals("item") || kind.equals("dictframe")) {
                                 JsonObject io = parseInputEntry(e);
-                                if (io != null && io.has("dict") && io.get("dict").getAsString().equals(kind)) {
-                                } else if (io != null) {
+                                if (io != null && !(io.has("dict") && io.get("dict").getAsString().equals(kind))) {
                                     boolean dup = false;
                                     for (JsonObject ex : r.inputs) {
                                         if (ex.has("dict") && io.has("dict") && ex.get("dict").getAsString().equals(io.get("dict").getAsString())
@@ -367,7 +358,7 @@ final class MachineRecipeParser {
         }
     }
 
-    static MachineRecipeService.NormalizedRecipe normalizeSingleRecipe(JsonObject o, String machine, String fileName, JsonObject wrapper) {
+    static MachineRecipeService.NormalizedRecipe normalizeSingleRecipe(JsonObject o, String machine, String fileName) {
         return normalizeJsonRecipe(o, machine, fileName);
     }
 
@@ -377,7 +368,7 @@ final class MachineRecipeParser {
         // names appear both ALL-CAPS (REDMUD, CHEMICAL) and Capitalized
         // (Uranium, Steel, KMnO4, Thorium232), so any alphanumeric token with
         // underscores counts as fluid-shaped.
-        if (s == null || s.isEmpty() || s.length() <= 2) return false;
+        if (s == null || s.length() <= 2) return false;
         if (s.contains(":") || s.contains(".") || s.contains(" ")) return false;
         if (!Character.isLetter(s.charAt(0))) return false;
         for (int i = 0; i < s.length(); i++) {
@@ -429,9 +420,7 @@ final class MachineRecipeParser {
             JsonArray a = el.getAsJsonArray();
             if (a.size() == 0) return null;
             if (a.get(0).isJsonArray()) {
-                JsonElement inner = a.get(0);
-                JsonObject io = parseInputEntry(inner);
-                return io;
+                return parseInputEntry(a.get(0));
             }
             String kind = a.get(0).isJsonPrimitive() ? a.get(0).getAsString() : "";
             JsonObject o = new JsonObject();
@@ -465,7 +454,7 @@ final class MachineRecipeParser {
                 o.addProperty("amount", 1);
                 return o;
             }
-            if (kind.isEmpty() || kind.equals("")) {
+            if (kind.isEmpty()) {
                 String reg = a.get(0).getAsString();
                 int amt = (a.size() > 1) ? a.get(1).getAsInt() : 1;
                 int meta = (a.size() > 2) ? a.get(2).getAsInt() : 0;
@@ -487,7 +476,6 @@ final class MachineRecipeParser {
             if (!el.isJsonArray()) return null;
             JsonArray a = el.getAsJsonArray();
             if (a.size() == 0) return null;
-            JsonObject o = new JsonObject();
             if (a.get(0).isJsonPrimitive() && "single".equals(a.get(0).getAsString())) {
                 JsonArray inner = a.get(1).getAsJsonArray();
                 return parseItemStackForOutput(inner, a.size() > 2 ? a.get(2).getAsFloat() : 1.0f);
@@ -514,6 +502,7 @@ final class MachineRecipeParser {
         }
     }
 
+    @SuppressWarnings("CatchMayIgnoreException")
     static JsonObject parseItemStackForOutput(JsonArray a, float chance) {
         try {
             String reg = a.get(0).getAsString();

@@ -17,8 +17,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import net.minecraft.command.CommandBase;
-import net.minecraft.command.ICommand;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -170,15 +168,5 @@ public class CortexDroneMod {
         MinecraftServer srv = MinecraftServer.getServer();
         if (srv == null || srv.getConfigurationManager() == null || name == null) return null;
         return srv.getConfigurationManager().func_152612_a(name);
-    }
-
-    public abstract static class BaseCmd extends CommandBase {
-        @Override
-        public int compareTo(Object o) {
-            if (o instanceof ICommand) {
-                return this.getCommandName().compareTo(((ICommand) o).getCommandName());
-            }
-            return 0;
-        }
     }
 }

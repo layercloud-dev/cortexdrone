@@ -30,12 +30,17 @@ categorized `action` package. The base is deliberately split in three parts:
 implement `Action`; they manage actions. Each category owns one service and one
 context type:
 
-- `action.movement.MovementService` + `MovementContext` — route selection and breadcrumbs
-- `action.block.BlockService` + `BlockContext` — one-block break and one-block place
-- `action.interact.InteractionService` + `InteractionContext` — block interaction, item use and attack
-- `action.effect.EffectService` + `EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
+- `action.movement.impl.MovementService` + `MovementContext` — route selection and breadcrumbs
+- `action.block.impl.BlockService` + `BlockContext` — one-block break and one-block place
+- `action.interact.impl.InteractionService` + `InteractionContext` — block interaction, item use and attack
+- `action.effect.impl.EffectService` + `EffectContext` — LED, lighting aura, particles, sounds, notes, chat/status
 - `action.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
+
+Project convention: interfaces and abstract bases live at the package root;
+concrete implementations live under an `impl` subpackage. Action
+implementations therefore live in `action/<category>/impl/`, while request and
+result DTOs stay in `action/<category>/`.
 
 A context is active while its action runs and is discarded when the call
 returns unless the action calls `retain()`. Retained contexts are ticked by their

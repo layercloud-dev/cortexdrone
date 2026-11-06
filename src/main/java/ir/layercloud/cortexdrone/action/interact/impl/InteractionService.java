@@ -1,10 +1,12 @@
-package ir.layercloud.cortexdrone.action.interact;
+package ir.layercloud.cortexdrone.action.interact.impl;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.ActionArgs;
 import ir.layercloud.cortexdrone.action.ActionJson;
 import ir.layercloud.cortexdrone.action.ActionService;
+import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
+import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.model.DroneController;

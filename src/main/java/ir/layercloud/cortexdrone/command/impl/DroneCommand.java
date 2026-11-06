@@ -1,8 +1,9 @@
-package ir.layercloud.cortexdrone.command;
+package ir.layercloud.cortexdrone.command.impl;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.command.BaseCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
@@ -19,7 +20,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.EnumChatFormatting;
 
 @RequiredArgsConstructor
-public class DroneCommand extends CortexDroneMod.BaseCmd {
+public class DroneCommand extends BaseCommand {
     private final String cmdName;
     private final AIDroneManager manager;
 

@@ -1,11 +1,11 @@
-package ir.layercloud.cortexdrone.oc;
+package ir.layercloud.cortexdrone.oc.impl;
 
 import li.cil.oc.api.machine.Architecture;
 import li.cil.oc.api.machine.ExecutionResult;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 
 /**
  * Inert no-op machine architecture for OC Drones spawned by this mod.

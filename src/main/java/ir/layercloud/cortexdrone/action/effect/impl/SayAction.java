@@ -1,7 +1,9 @@
-package ir.layercloud.cortexdrone.action.effect;
+package ir.layercloud.cortexdrone.action.effect.impl;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
+import ir.layercloud.cortexdrone.action.effect.EffectRequest;
+import ir.layercloud.cortexdrone.action.effect.EffectResult;
 import lombok.RequiredArgsConstructor;
 
 /** Single-use command: say one chat message. */

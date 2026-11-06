@@ -1,6 +1,8 @@
-package ir.layercloud.cortexdrone.action.effect;
+package ir.layercloud.cortexdrone.action.effect.impl;
 
 import ir.layercloud.cortexdrone.action.Action;
+import ir.layercloud.cortexdrone.action.effect.EffectRequest;
+import ir.layercloud.cortexdrone.action.effect.EffectResult;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.world.World;

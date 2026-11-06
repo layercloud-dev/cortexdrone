@@ -1,6 +1,7 @@
-package ir.layercloud.cortexdrone.action.effect;
+package ir.layercloud.cortexdrone.action.effect.impl;
 
 import ir.layercloud.cortexdrone.action.ActionContextBase;
+import ir.layercloud.cortexdrone.action.effect.EffectResult;
 import ir.layercloud.cortexdrone.model.DroneController;
 import lombok.Getter;
 import lombok.Setter;

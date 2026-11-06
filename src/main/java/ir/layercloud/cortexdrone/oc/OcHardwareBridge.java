@@ -5,6 +5,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import li.cil.oc.api.network.Connector;
+import ir.layercloud.cortexdrone.oc.impl.InertMachineArchitecture;
 import li.cil.oc.common.entity.Drone;
 import scala.Enumeration;
 import scala.collection.mutable.Stack;

@@ -1,6 +1,8 @@
-package ir.layercloud.cortexdrone.action.effect;
+package ir.layercloud.cortexdrone.action.effect.impl;
 
 import ir.layercloud.cortexdrone.action.Action;
+import ir.layercloud.cortexdrone.action.effect.EffectRequest;
+import ir.layercloud.cortexdrone.action.effect.EffectResult;
 import lombok.RequiredArgsConstructor;
 
 /** Single-use command: set the drone status text. */

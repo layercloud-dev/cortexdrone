@@ -1,0 +1,6 @@
+{
+  "name": "return_to_player",
+  "description": "Navigate back to the owner using the auto route (the navigator flies, tunnels, or digs up as needed) and wait for arrival",
+  "tags": "return come back player escape cave underground tunnel navigate",
+  "code": "const p = await drone.inspect('player', {});\nreturn await drone.moveTo(p.blockX, p.blockY + 2, p.blockZ, { route: 'auto' });"
+}

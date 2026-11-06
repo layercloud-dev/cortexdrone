@@ -1,0 +1,6 @@
+{
+  "name": "place_double_chest",
+  "description": "Craft chests then place two adjacent chest blocks using the single-block placement primitive",
+  "tags": "craft place double chest planks wood",
+  "code": "const p = await drone.inspect('player', {});\nawait drone.craft('chest', 2);\nawait drone.placeBlock(p.blockX + 1, p.blockY, p.blockZ, 'chest');\nawait drone.placeBlock(p.blockX + 2, p.blockY, p.blockZ, 'chest');\nreturn { placed: 2 };"
+}

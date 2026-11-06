@@ -1,0 +1,6 @@
+{
+  "name": "store_items",
+  "description": "Fly to a chest and deposit the drone inventory with the generic transfer primitive",
+  "tags": "chest deposit store items inventory storage",
+  "code": "const c = await drone.inspect('chests', { radius: 24 });\nif (!c.chests || !c.chests.length) return { blocker: 'no chest within 24m' };\nconst t = c.chests[0];\nawait drone.moveTo({ standoffOf: t, route: 'auto' });\nreturn await drone.transfer('deposit', { x: t.x, y: t.y, z: t.z });"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "transport_entity",
+  "description": "Pick up an entity, fly to a location, then unpick it using interaction primitives",
+  "tags": "entity transport pick unpick player carry move",
+  "code": "async function transportEntity(entityId, x, y, z) {\n  const picked = await drone.pickEntity(entityId);\n  if (!picked || picked.ok === false || picked.picked !== true) return picked;\n  const moved = await drone.moveTo(x, y, z, { route: 'auto' });\n  if (!moved || moved.ok === false || moved.arrived !== true) return moved;\n  return await drone.unpickEntity({ entityId });\n}"
+}

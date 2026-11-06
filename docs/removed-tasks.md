@@ -30,14 +30,14 @@ composed from interaction primitives:
 3. `moveTo(destination)` to fly there,
 4. `unpickEntity()` to dismount.
 
-See `docs/skills/entity-transport.md` for the JavaScript skill.
+See `src/main/resources/skills/transport_entity.json` for the JavaScript skill.
 
 ## Mining
 
 `MiningEngine` was removed. Block break/place behavior and the mining loop now
 live in `service/building/impl/BuildingService`. Mining itself is a skill composed by
 the AI from `inspect -> moveTo -> breakBlock`; see
-`docs/skills/mining.md`.
+`src/main/resources/skills/mine_blocks.json`.
 
 ## Future re-implementation rules
 

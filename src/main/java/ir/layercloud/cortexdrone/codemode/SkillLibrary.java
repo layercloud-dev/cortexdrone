@@ -8,6 +8,8 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -33,81 +35,41 @@ public class SkillLibrary {
     public SkillLibrary(File worldDir) {
         File dir = worldDir != null ? worldDir : new File(".");
         this.storageFile = new File(dir, "layercloud-drone-skills-v2.json");
+        loadBundledSkills();
         loadFromDisk();
-        seedDefaultsIfMissing();
     }
 
-    private synchronized void seedDefaultsIfMissing() {
-        boolean changed = false;
-        if (!this.skills.containsKey("mine_and_deliver")) {
-            putInternal(
-                "mine_and_deliver",
-                "Inspect matching blocks, move to each one, break it with the single-block primitive, then deliver to the player",
-                "const f = await drone.inspect('blocks', { filter: 'iron_ore', radius: 24 });\nfor (const b of (f.blocks || []).slice(0, 8)) {\n  await drone.breakBlock(b.x, b.y, b.z, { route: 'auto' });\n}\nconst p = await drone.inspect('player', {});\nawait drone.moveTo(p.blockX, p.blockY + 2, p.blockZ);\nreturn await drone.transfer('give', { filter: 'all', count: 512 });",
-                "mine ore break block deliver player iron stone"
-            );
-            changed = true;
+    /**
+     * Loads built-in skills shipped in {@code resources/skills/}. The index is
+     * a JSON array of filenames; saved world skills are loaded afterwards and
+     * override built-ins with the same name.
+     */
+    private synchronized void loadBundledSkills() {
+        InputStream indexStream = SkillLibrary.class.getResourceAsStream("/skills/index.json");
+        if (indexStream == null) return;
+        try (InputStreamReader indexReader = new InputStreamReader(indexStream, "UTF-8")) {
+            JsonElement index = new JsonParser().parse(indexReader);
+            if (index == null || !index.isJsonArray()) return;
+            for (JsonElement item : index.getAsJsonArray()) {
+                if (!item.isJsonPrimitive() || !item.getAsJsonPrimitive().isString()) continue;
+                String file = item.getAsString();
+                InputStream skillStream = SkillLibrary.class.getResourceAsStream("/skills/" + file);
+                if (skillStream == null) continue;
+                try (InputStreamReader skillReader = new InputStreamReader(skillStream, "UTF-8")) {
+                    SkillEntry skill = CortexDroneMod.GSON.fromJson(skillReader, SkillEntry.class);
+                    if (skill == null || skill.getName() == null || skill.getName().trim().isEmpty()) continue;
+                    String key = skill.getName().trim().toLowerCase().replace(' ', '_');
+                    skill.setName(key);
+                    if (skill.getDescription() == null) skill.setDescription("");
+                    if (skill.getCode() == null) skill.setCode("");
+                    if (skill.getTags() == null) skill.setTags("");
+                    if (skill.getUses() <= 0) skill.setUses(1);
+                    if (skill.getUpdatedAt() <= 0) skill.setUpdatedAt(System.currentTimeMillis());
+                    this.skills.put(key, skill);
+                }
+            }
+        } catch (Exception ignored) {
         }
-        if (!this.skills.containsKey("store_items")) {
-            putInternal(
-                "store_items",
-                "Fly to a chest and deposit the drone inventory with the generic transfer primitive",
-                "const c = await drone.inspect('chests', { radius: 24 });\nif (!c.chests || !c.chests.length) return { blocker: 'no chest within 24m' };\nconst t = c.chests[0];\nawait drone.moveTo({ standoffOf: t, route: 'auto' });\nreturn await drone.transfer('deposit', { x: t.x, y: t.y, z: t.z });",
-                "chest deposit store items inventory storage"
-            );
-            changed = true;
-        }
-        if (!this.skills.containsKey("place_double_chest")) {
-            putInternal(
-                "place_double_chest",
-                "Craft chests then place two adjacent chest blocks using the single-block placement primitive",
-                "const p = await drone.inspect('player', {});\nawait drone.craft('chest', 2);\nawait drone.placeBlock(p.blockX + 1, p.blockY, p.blockZ, 'chest');\nawait drone.placeBlock(p.blockX + 2, p.blockY, p.blockZ, 'chest');\nreturn { placed: 2 };",
-                "craft place double chest planks wood"
-            );
-            changed = true;
-        }
-        if (!this.skills.containsKey("return_to_player")) {
-            putInternal(
-                "return_to_player",
-                "Navigate back to the owner using the auto route (the navigator flies, tunnels, or digs up as needed) and wait for arrival",
-                "const p = await drone.inspect('player', {});\nreturn await drone.moveTo(p.blockX, p.blockY + 2, p.blockZ, { route: 'auto' });",
-                "return come back player escape cave underground tunnel navigate"
-            );
-            changed = true;
-        }
-        if (!this.skills.containsKey("rainbow_show")) {
-            putInternal(
-                "rainbow_show",
-                "Generate a rainbow LED loop in Code Mode instead of using a pre-made dance tool",
-                "for (let i = 0; i < 40; i++) {\n  await drone.effect('led', { color: hsvToRgb((i * 18) % 360, 1, 1) });\n  await sleep(100);\n}\nreturn { ok: true, colors: 40 };",
-                "rainbow led color light fun music show"
-            );
-            changed = true;
-        }
-        if (!this.skills.containsKey("build_wall")) {
-            putInternal(
-                "build_wall",
-                "Inspect a line of target coordinates and place blocks one at a time with the placement primitive",
-                "const p = await drone.inspect('player', {});\nlet placed = 0;\nfor (let dx = 0; dx < 5; dx++) {\n  const r = await drone.placeBlock(p.blockX + dx, p.blockY, p.blockZ + 2, 'cobblestone');\n  if (r.placed) placed++;\n}\nreturn { placed };",
-                "build wall place cobblestone shelter home"
-            );
-            changed = true;
-        }
-        if (changed) {
-            saveToDisk();
-        }
-    }
-
-    private void putInternal(String name, String description, String code, String tags) {
-        String key = name.trim().toLowerCase().replace(' ', '_');
-        SkillEntry s = new SkillEntry();
-        s.setName(key);
-        s.setDescription(description != null ? description.trim() : "");
-        s.setCode(code != null ? code.trim() : "");
-        s.setTags(tags != null ? tags.trim() : "");
-        s.setUses(1);
-        s.setUpdatedAt(System.currentTimeMillis());
-        this.skills.put(key, s);
     }
 
     public synchronized SkillEntry saveSkill(String name, String description, String code, String tags) {

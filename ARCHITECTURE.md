@@ -45,7 +45,7 @@ For example, `InteractBlockAction` owns liquid scooping and block activation,
 complete placement. Block break/place behavior and the long-running mining loop
 live in the domain service `service/building/impl/BuildingService`; the AI composes
 mining as an `inspect -> moveTo -> breakBlock` skill (see
-`docs/skills/mining.md`).
+`src/main/resources/skills/mine_blocks.json`).
 
 Project convention: interfaces and abstract bases live at the package root;
 concrete implementations live under an `impl` subpackage. Defaults and concrete
@@ -86,7 +86,7 @@ decides between actions.
 Premade follow/stay/guard/patrol/goto/come/carry tasks were removed. Entity
 transport is now a composition skill using `pick_entity` -> `moveTo` ->
 `unpick_entity`; see `docs/removed-tasks.md` and
-`docs/skills/entity-transport.md`.
+`src/main/resources/skills/transport_entity.json`.
 
 The legacy one-shot executors (`AnvilService`, `MachineCraftExecutor`,
 `SmeltingService`, `ChestSorter`) and their batch queues (fluid scoop/place,

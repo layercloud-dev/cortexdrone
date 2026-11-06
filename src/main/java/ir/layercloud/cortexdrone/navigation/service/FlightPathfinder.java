@@ -48,13 +48,11 @@ public class FlightPathfinder {
 
     private final AIDroneManager manager;
     private final DroneLogger logger;
-    private final PlayerTransportService transportService;
     private final CaveEscapeService caveEscapeService;
 
     public FlightPathfinder(AIDroneManager manager, DroneLogger logger) {
         this.manager = manager;
         this.logger = logger;
-        this.transportService = new PlayerTransportService(manager, this);
         this.caveEscapeService = new CaveEscapeService(manager, logger);
     }
 
@@ -574,13 +572,4 @@ public class FlightPathfinder {
         return DronePhysicsService.findBlockingTunnelBlock(world, d, targetX, targetY, targetZ);
     }
 
-    // ==================== Delegated Player Airlift ====================
-
-    public void startCarryPlayerTask(DroneController ctrl, EntityPlayerMP player, double gx, double gy, double gz) {
-        this.transportService.startCarryPlayerTask(ctrl, player, gx, gy, gz);
-    }
-
-    public void tickCarryBehavior(DroneController ctrl, EntityPlayerMP owner) {
-        this.transportService.tickCarryBehavior(ctrl, owner);
-    }
 }

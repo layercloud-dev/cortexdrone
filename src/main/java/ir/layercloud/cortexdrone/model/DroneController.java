@@ -34,9 +34,6 @@ public class DroneController {
     public double navFinalZ = Double.NaN;
     // Single task / single session state. The harness never queues instructions.
     public final TaskSession task = new TaskSession();
-    public double carryGoalX;
-    public double carryGoalY;
-    public double carryGoalZ;
 
     // Follow anchor & look-to-interact state
     public double anchorX;
@@ -136,8 +133,6 @@ public class DroneController {
     public int huntedCount = 0;
     public int targetAttackEntityId = -1;
     public final Map<Integer, Long> unreachableEntities = new HashMap<Integer, Long>();
-    public String guardFilter = "hostile|mutant";
-    public int patrolRadius = 36;
 
     // Active Code Mode loop generation ID & running script counter
     public final AtomicInteger activeLoopId = new AtomicInteger(0);
@@ -224,7 +219,7 @@ public class DroneController {
             }
         }
         return this.activeScriptCount.get() > 0 || !this.mineQueue.isEmpty()
-            || (this.mode != Mode.FOLLOW && this.mode != Mode.STAY && this.mode != Mode.GUARD && this.mode != Mode.PATROL);
+            || (this.mode != Mode.FOLLOW && this.mode != Mode.STAY);
     }
 
     public static int hsvToRgbInt(float hDeg, float s, float v) {

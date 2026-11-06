@@ -161,6 +161,31 @@ const drone = {
     return { ok: false, error: 'Could not reach item-use target' };
   },
 
+  // Mount one entity (including a player) onto the drone. Moves into reach
+  // first when the entity is out of range. Compose transport as:
+  // pickEntity -> moveTo -> unpickEntity.
+  pickEntity: async (entityId, opts = {}) => {
+    const target = _isObj(entityId)
+      ? { ...entityId }
+      : { entityId: Number(entityId) };
+    if (opts && _isObj(opts)) Object.assign(target, opts);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = await rpc('pick_entity', target);
+      if (r && r.needsMovement && r.standoff) {
+        const mv = await drone.moveTo(r.standoff, { route: target.route || 'auto' });
+        if (!mv || mv.ok === false) return mv || r;
+        continue;
+      }
+      return r;
+    }
+    return { ok: false, error: 'Could not reach pick target' };
+  },
+
+  // Dismount the current rider, or the explicit entityId when provided.
+  unpickEntity: async (opts = {}) => {
+    return await rpc('unpick_entity', _isObj(opts) ? opts : { entityId: Number(opts) });
+  },
+
   // Generic inventory primitive. op: move | give | take | drop | withdraw | deposit | suck
   transfer: async (opOrOpts, args = {}) => {
     const r = _isObj(opOrOpts)

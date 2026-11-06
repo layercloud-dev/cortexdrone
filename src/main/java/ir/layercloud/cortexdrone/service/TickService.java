@@ -258,18 +258,11 @@ public class TickService {
                 }
                 break;
             }
-            case GUARD:
-            case PATROL:
-                this.combatService.tickGuardOrPatrolBehavior(ctrl);
-                break;
             case HUNT:
                 this.combatService.tickHuntBehavior(ctrl, owner);
                 break;
             case MINE:
                 this.miningEngine.tick(ctrl, owner);
-                break;
-            case CARRY:
-                this.pathfinder.tickCarryBehavior(ctrl, owner);
                 break;
             case DROP:
                 tickDropBehavior(ctrl, d, world, owner);

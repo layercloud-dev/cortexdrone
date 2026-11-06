@@ -14,11 +14,6 @@ import ir.layercloud.cortexdrone.action.movement.MovementRequest;
 import ir.layercloud.cortexdrone.action.movement.MovementResult;
 import ir.layercloud.cortexdrone.action.movement.MovementRoute;
 import ir.layercloud.cortexdrone.action.movement.impl.StopAction;
-import ir.layercloud.cortexdrone.action.movement.impl.StayAction;
-import ir.layercloud.cortexdrone.action.movement.impl.GotoAction;
-import ir.layercloud.cortexdrone.action.movement.impl.FollowAction;
-import ir.layercloud.cortexdrone.action.movement.impl.CarryAction;
-import ir.layercloud.cortexdrone.action.movement.impl.ComeAction;
 import ir.layercloud.cortexdrone.action.movement.MovementTarget;
 import ir.layercloud.cortexdrone.action.movement.impl.NavigateAction;
 import ir.layercloud.cortexdrone.action.movement.impl.TunnelAction;
@@ -39,12 +34,10 @@ import net.minecraft.util.MathHelper;
  */
 public final class MovementService extends ActionService<MovementContext> {
     private final AIDroneManager manager;
-    private final FlightPathfinder pathfinder;
 
-    public MovementService(AIDroneManager manager, FlightPathfinder pathfinder) {
+    public MovementService(AIDroneManager manager) {
         super("movement", "navigate", "tunnel", "digup", "digdown", "get_breadcrumbs");
         this.manager = manager;
-        this.pathfinder = pathfinder;
     }
 
     @Override
@@ -173,54 +166,9 @@ public final class MovementService extends ActionService<MovementContext> {
         this.manager.setDroneMode(controller, Mode.STAY, label);
     }
 
-    /** Core follow behavior. */
-    public void follow(DroneController controller, String targetName, String label) {
-        if (controller == null || controller.drone == null) return;
-        controller.targetPlayerName = targetName;
-        controller.navigationGeneration++;
-        controller.navigationRoute = MovementRoute.AUTO.getId();
-        controller.navViaSurface = false;
-        controller.navFinalX = Double.NaN;
-        controller.navFinalY = Double.NaN;
-        controller.navFinalZ = Double.NaN;
-        this.manager.setDroneMode(controller, Mode.FOLLOW, label);
-    }
-
-    public void gotoPoint(DroneController controller, EntityPlayerMP player,
-                          double x, double y, double z, MovementRoute route, String label) {
-        MovementContext context = new MovementContext(controller, player, "goto");
-        run(controller, player, "goto", context,
-            new GotoAction(this, new MovementTarget(x, y, z), route, label));
-    }
-
-    public void stay(DroneController controller, EntityPlayerMP player, String label) {
-        MovementContext context = new MovementContext(controller, player, "stay");
-        run(controller, player, "stay", context, new StayAction(this, label));
-    }
-
     public void stop(DroneController controller, EntityPlayerMP player, String label) {
         MovementContext context = new MovementContext(controller, player, "stop");
         run(controller, player, "stop", context, new StopAction(this, label));
-    }
-
-    public void follow(DroneController controller, EntityPlayerMP player,
-                       String targetName, String label) {
-        MovementContext context = new MovementContext(controller, player, "follow");
-        run(controller, player, "follow", context,
-            new FollowAction(this, targetName, label));
-    }
-
-    public void come(DroneController controller, EntityPlayerMP player,
-                     EntityPlayerMP target, String label) {
-        MovementContext context = new MovementContext(controller, player, "come");
-        run(controller, player, "come", context, new ComeAction(this, target, label));
-    }
-
-    public void carry(DroneController controller, EntityPlayerMP player,
-                      double x, double y, double z, String label) {
-        MovementContext context = new MovementContext(controller, player, "carry");
-        run(controller, player, "carry", context,
-            new CarryAction(this.pathfinder, x, y, z, label));
     }
 
     @Override

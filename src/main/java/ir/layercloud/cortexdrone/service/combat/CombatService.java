@@ -1,7 +1,6 @@
 package ir.layercloud.cortexdrone.service.combat;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.inventory.ToolInspector;
@@ -17,7 +16,6 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemFood;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -76,43 +74,6 @@ public class CombatService {
                         continue;
                     }
                     double score = dist + (dy > 12.0 && !los ? dy * 2.0 : 0.0) - (los ? 15.0 : 0.0);
-                    if (score < bestScore) {
-                        bestScore = score;
-                        best = el;
-                    }
-                }
-            }
-        }
-        return best;
-    }
-
-    public EntityLivingBase findNearestReachableHostileMob(World world, DroneController ctrl, EntityPlayerMP guarded, double x, double y, double z, double radius) {
-        if (world == null || radius <= 0.0) return null;
-        AxisAlignedBB box = AxisAlignedBB.getBoundingBox(
-            x - radius, Math.max(1.0, y - 8.0), z - radius,
-            x + radius, Math.min(254.0, y + 10.0), z + radius
-        );
-        List<?> entities = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
-        EntityLivingBase best = null;
-        double bestScore = Double.MAX_VALUE;
-        String filter = (ctrl != null && ctrl.guardFilter != null && !ctrl.guardFilter.isEmpty()) ? ctrl.guardFilter : "hostile|mutant";
-        if (entities != null) {
-            for (Object o : entities) {
-                if (o instanceof EntityLivingBase) {
-                    EntityLivingBase el = (EntityLivingBase) o;
-                    if (el.isDead || el.getHealth() <= 0.0f) continue;
-                    if (!ItemClassifier.isHostileOrMutantEntity(el) && !ItemClassifier.matchesEntityFilter(el, filter)) continue;
-                    double dSq = el.getDistanceSq(x, y, z);
-                    if (dSq > radius * radius) continue;
-                    double dist = Math.sqrt(dSq);
-                    double dy = Math.abs(el.posY - y);
-                    boolean playerSees = guarded != null && guarded.canEntityBeSeen(el);
-                    boolean droneSees = ctrl != null && ctrl.drone != null
-                        && FlightPathfinder.isFlightLineClear(world, ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ, el.posX, el.posY + 0.7, el.posZ);
-                    boolean clearLine = playerSees || droneSees
-                        || FlightPathfinder.isFlightLineClear(world, x, y + 1.2, z, el.posX, el.posY + 0.7, el.posZ);
-                    if (!clearLine && dy > 4.5) continue;
-                    double score = dist - (clearLine ? 12.0 : 0.0);
                     if (score < bestScore) {
                         bestScore = score;
                         best = el;
@@ -234,74 +195,5 @@ public class CombatService {
         }
     }
 
-    public void tickGuardOrPatrolBehavior(DroneController ctrl) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) return;
-        Drone d = ctrl.drone;
-        World world = d.worldObj;
-        EntityPlayerMP guarded = CortexDroneMod.findPlayer(
-            ctrl.targetPlayerName != null ? ctrl.targetPlayerName : ctrl.ownerName
-        );
-        double cx = (guarded != null && guarded.worldObj == world) ? guarded.posX : d.posX;
-        double cy = (guarded != null && guarded.worldObj == world) ? guarded.posY : d.posY;
-        double cz = (guarded != null && guarded.worldObj == world) ? guarded.posZ : d.posZ;
 
-        double scanRange = ctrl.mode == Mode.PATROL ? Math.max(24.0, (double) ctrl.patrolRadius) : 24.0;
-        EntityLivingBase hostile = findNearestReachableHostileMob(world, ctrl, guarded, cx, cy, cz, scanRange);
-        if (hostile != null) {
-            double mx = hostile.posX;
-            double my = hostile.posY + Math.max(0.6, hostile.height * 0.65);
-            double mz = hostile.posZ;
-            this.pathfinder.navigateToward(ctrl, mx, my, mz, 0.12f);
-            d.lightColor_$eq(0xFF2222);
-            d.statusText_$eq("Attacking\n" + AIDroneManager.trimStatus(hostile.getCommandSenderName()));
-
-            double distMob = d.getDistance(mx, my, mz);
-            if (distMob > 2.0 && FlightPathfinder.isFlightLineClear(world, d.posX, d.posY, d.posZ, mx, my, mz)) {
-                d.motionX += (mx - d.posX) / distMob * 0.08;
-                d.motionY += (my - d.posY) / distMob * 0.08;
-                d.motionZ += (mz - d.posZ) / distMob * 0.08;
-            }
-            if (distMob <= 3.5 && ctrl.attackCooldown <= 0) {
-                ctrl.attackCooldown = 6;
-                DamageSource ds = (guarded != null) ? DamageSource.causePlayerDamage(guarded) : DamageSource.generic;
-                int fireSec = ToolInspector.getFireAspectSeconds(d.mainInventory());
-                if (fireSec > 0) hostile.setFire(fireSec);
-                hostile.attackEntityFrom(ds, resolveEffectiveAttackDamage(d.mainInventory(), hostile, 10.0f));
-                world.playSoundAtEntity(d, "mob.irongolem.hit", 0.6f, 1.6f);
-                if (world instanceof WorldServer) {
-                    ((WorldServer) world).func_147487_a("crit", mx, my, mz, 6, 0.25, 0.25, 0.25, 0.1);
-                }
-                if (hostile.getHealth() <= 0.0f) {
-                    ctrl.huntedCount++;
-                    InventoryService.suckNearbyItems(d, mx, hostile.posY, mz, 5.0);
-                }
-            }
-        } else {
-            if (guarded != null && FlightPathfinder.isPlayerLookingAtDrone(guarded, d)) {
-                ctrl.playerLookHold = true;
-                FlightPathfinder.setDroneFlightTarget(d, d.posX, d.posY, d.posZ, 0.1f);
-                d.motionX *= 0.25;
-                d.motionY *= 0.25;
-                d.motionZ *= 0.25;
-                d.statusText_$eq("Ready\n[Right-Click]");
-                return;
-            }
-            ctrl.playerLookHold = false;
-            if (guarded == null || guarded.worldObj != world) {
-                FlightPathfinder.setDroneFlightTarget(d, d.posX, d.posY, d.posZ, 0.05f);
-                ctrl.stuckTicks = 0;
-                return;
-            }
-            double orbitR = ctrl.mode == Mode.PATROL ? 5.5 : 2.5;
-            double ox = cx + Math.cos(ctrl.orbitAngle * 0.9f) * orbitR;
-            double oy = cy + (ctrl.mode == Mode.PATROL ? 2.4 : 1.6);
-            double oz = cz + Math.sin(ctrl.orbitAngle * 0.9f) * orbitR;
-            if (ItemClassifier.isPassableVoxel(world, MathHelper.floor_double(ox), MathHelper.floor_double(oy), MathHelper.floor_double(oz))) {
-                this.pathfinder.navigateToward(ctrl, ox, oy, oz, 0.1f);
-            }
-            d.lightColor_$eq(ctrl.mode == Mode.PATROL ? 0xFF6600 : 0xFFAA00);
-            d.statusText_$eq((ctrl.mode == Mode.PATROL ? "Patrolling\n" : "Guarding\n")
-                + AIDroneManager.trimStatus(guarded.getCommandSenderName()));
-        }
-    }
 }

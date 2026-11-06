@@ -215,7 +215,7 @@ final class AgentHeartbeat {
         if (this.ctrl == null) return false;
         if (!this.ctrl.mineQueue.isEmpty()) return true;
         Mode m = this.ctrl.mode;
-        return m == Mode.MINE || m == Mode.CARRY || m == Mode.DROP || m == Mode.DEPOSIT;
+        return m == Mode.MINE || m == Mode.DROP || m == Mode.DEPOSIT;
     }
 
     private int countInventory() {

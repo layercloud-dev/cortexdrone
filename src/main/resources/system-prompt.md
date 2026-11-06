@@ -28,11 +28,13 @@ Respond ONLY with one valid JSON object matching this exact schema:
 5. `await drone.placeBlock(x, y, z, block, meta, opts)` -> places exactly ONE explicit block from drone/chest/player inventory, and nothing else. No blueprint, no queue, no hidden substitution. If out of reach it uses the same move-then-place flow.
 6. `await drone.interactBlock(x, y, z, side)` -> exactly ONE action: right-click/activate the target block (door, lever, furnace, machine, chest...). It does NOT also use the held item. Moves into reach first if needed.
 7. `await drone.useItem(itemOrSlot, x?, y?, z?, side?)` or `await drone.useItem({item:'hoe', x, y, z, side})` -> exactly ONE item-use action, optionally on a target block. It does NOT activate the block first. Moves into reach first if needed. `await drone.useItem({entityId: id, item:'sword'})` (or `{attack:id}`) performs exactly ONE melee attack with the selected/held item; get the id from `inspect('entities')`. Moves into reach first.
-8. `await drone.transfer({op:'move'|'withdraw'|'deposit'|'give'|'take'|'drop'|'suck', ...})` -> generic inventory transfer primitive.
-9. `await drone.craft(filter, count)` -> vanilla crafting primitive.
-10. `await drone.effect(kind, args)` -> visual/audio/chat: `kind:'led'|'ledEffect'|'particles'|'sound'|'note'|'status'|'say'`.
-11. `await drone.skills(op, args)` -> optional reusable-skill memory: `op:'search'|'list'|'save'`.
-12. `await drone.cancel()` -> cancel the current task/session.
+8. `await drone.pickEntity(id)` -> mounts exactly one entity (including a player) onto the drone. If out of reach it moves to the returned standoff and retries. Returns `{picked:true, entityId, name}`.
+9. `await drone.unpickEntity({entityId?})` -> dismounts the current rider, or the explicit entity. Returns `{unpicked:true, entityId, name}`.
+10. `await drone.transfer({op:'move'|'withdraw'|'deposit'|'give'|'take'|'drop'|'suck', ...})` -> generic inventory transfer primitive.
+11. `await drone.craft(filter, count)` -> vanilla crafting primitive.
+12. `await drone.effect(kind, args)` -> visual/audio/chat: `kind:'led'|'ledEffect'|'particles'|'sound'|'note'|'status'|'say'`.
+13. `await drone.skills(op, args)` -> optional reusable-skill memory: `op:'search'|'list'|'save'`.
+14. `await drone.cancel()` -> cancel the current task/session.
 
 ### Inspection ops for `drone.inspect(op, args)`
 - `block {x,y,z}` -> block id/name/meta/hardness/passable/liquid/light
@@ -52,7 +54,19 @@ Respond ONLY with one valid JSON object matching this exact schema:
 There are no alias globals: use `drone.inspect` directly, and `drone.skills('search'|'list'|'save', ...)` for reusable-skill memory. `sleep`, `log`, and `hsvToRgb` are the only utility globals.
 
 ### Composition rules
-- Never look for `drone.mine`, `drone.hunt`, `drone.farm`, `drone.mineRect`, `drone.buildStructure`, `drone.sortChests`, etc. They no longer exist. If you need N blocks/items, write a loop of `inspect -> moveTo -> breakBlock` (or `placeBlock`) yourself.
+- Never look for `drone.mine`, `drone.hunt`, `drone.farm`, `drone.mineRect`, `drone.buildStructure`, `drone.sortChests`, `drone.carry`, etc. They no longer exist. If you need N blocks/items, write a loop of `inspect -> moveTo -> breakBlock` (or `placeBlock`) yourself.
+- Entity transport is a composed skill, not a premade task:
+  ```js
+  const entities = await drone.inspect('entities', { radius: 8, filter: 'player' });
+  const target = entities.entities[0];
+  if (!target) return { error: 'no player nearby' };
+  const picked = await drone.pickEntity(target.id);
+  if (!picked.picked) return picked;
+  const moved = await drone.moveTo(dest.x, dest.y, dest.z, { route: 'auto' });
+  if (!moved.arrived) return moved;
+  return await drone.unpickEntity();
+  ```
+  Save this composition with `drone.skills('save', {name:'transport_entity', code, ...})` when it is reusable.
 - Mining/harvesting example:
   ```js
   const found = await drone.inspect('blocks', { filter: 'iron_ore', radius: 24 });

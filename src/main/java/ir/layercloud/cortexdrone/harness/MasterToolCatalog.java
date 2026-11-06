@@ -9,6 +9,7 @@ public final class MasterToolCatalog {
     public static final String[] METHODS = new String[]{
         "state", "inspect", "navigate", "tunnel", "digup", "digdown",
         "break_block", "place_block", "interact_block", "use_item",
+        "pick_entity", "unpick_entity",
         "transfer", "craft", "effect", "skills", "cancel"
     };
 

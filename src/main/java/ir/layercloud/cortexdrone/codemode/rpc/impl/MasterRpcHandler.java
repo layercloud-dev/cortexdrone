@@ -58,6 +58,9 @@ public class MasterRpcHandler implements RpcHandler {
         if ("place_block".equals(m)) return placeBlock(ctrl, player, args);
         if ("interact_block".equals(m)) return interactBlock(ctrl, player, args);
         if ("use_item".equals(m)) return useItem(ctrl, player, args);
+        if ("pick_entity".equals(m) || "unpick_entity".equals(m)) {
+            return this.manager.getActionRegistry().handle(ctrl, player, m, args);
+        }
         if ("transfer".equals(m)) return transfer(ctrl, player, args);
         if ("craft".equals(m)) return craft(ctrl, player, args);
         if ("effect".equals(m)) return effect(ctrl, player, args);

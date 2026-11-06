@@ -8,6 +8,8 @@ import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
 import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.action.interact.impl.AttackEntityAction;
 import ir.layercloud.cortexdrone.action.interact.impl.InteractBlockAction;
+import ir.layercloud.cortexdrone.action.interact.impl.UnpickEntityAction;
+import ir.layercloud.cortexdrone.action.interact.impl.PickEntityAction;
 import ir.layercloud.cortexdrone.action.interact.impl.UseItemAction;
 import ir.layercloud.cortexdrone.context.interact.impl.InteractionContext;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
@@ -23,7 +25,7 @@ public final class InteractionService extends ActionService<InteractionContext> 
     private final InventoryService inventoryService;
 
     public InteractionService(InventoryService inventoryService) {
-        super("interact", "interact_block", "use_item");
+        super("interact", "interact_block", "use_item", "pick_entity", "unpick_entity");
         this.inventoryService = inventoryService;
     }
 
@@ -49,6 +51,14 @@ public final class InteractionService extends ActionService<InteractionContext> 
                 ? new AttackEntityAction(request)
                 : new UseItemAction(request);
         }
+        if ("pick_entity".equals(operation)) {
+            if (!request.hasEntity()) {
+                return ignored -> context.result(InteractionResult.failure(
+                    "pick_entity requires entityId", "picked", false));
+            }
+            return new PickEntityAction(request);
+        }
+        if ("unpick_entity".equals(operation)) return new UnpickEntityAction(request);
         throw new IllegalArgumentException("Unsupported interaction action: " + operation);
     }
 

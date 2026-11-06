@@ -36,8 +36,6 @@ public class AIConfig {
         private boolean autoTorch;
         private String ledEffect;
         private Integer customLedColor;
-        private String guardFilter;
-        private int patrolRadius;
         private int dimension;
         private Double x;
         private Double y;
@@ -124,14 +122,12 @@ public class AIConfig {
                     info.setUuid(c.entityUuid.toString());
                     info.setName(c.name);
                     info.setOwner(c.ownerName);
-                    info.setMode((c.mode == Mode.MINE || c.mode == Mode.CARRY || c.mode == Mode.DROP || c.mode == Mode.DEPOSIT)
+                    info.setMode((c.mode == Mode.MINE || c.mode == Mode.DROP || c.mode == Mode.DEPOSIT)
                         ? Mode.FOLLOW.name()
                         : c.mode.name());
                     info.setAutoTorch(c.autoTorch);
                     info.setLedEffect(c.ledEffect);
                     info.setCustomLedColor(c.customLedColor);
-                    info.setGuardFilter(c.guardFilter);
-                    info.setPatrolRadius(c.patrolRadius);
                     info.setDimension(c.drone.dimension);
                     info.setX(Math.round(c.drone.posX * 10.0) / 10.0);
                     info.setY(Math.round(c.drone.posY * 10.0) / 10.0);

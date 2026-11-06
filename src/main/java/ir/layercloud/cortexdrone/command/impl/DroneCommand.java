@@ -2,7 +2,6 @@ package ir.layercloud.cortexdrone.command.impl;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.action.movement.MovementRoute;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.command.BaseCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
@@ -17,7 +16,6 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.EnumChatFormatting;
 
 @RequiredArgsConstructor
@@ -32,7 +30,7 @@ public class DroneCommand extends BaseCommand {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/" + this.cmdName + " <spawn|link|despawn|list|status|follow|come|stay|goto|guard|cover|patrol|setbase|carry|take|give|torch|drop|chest|debug|config|js|mine|farm|cook|smelt|sort|scoop|plug|replace...>";
+        return "/" + this.cmdName + " <spawn|link|despawn|list|status|setbase|take|give|torch|drop|chest|debug|config|js|mine|farm|cook|smelt|sort|scoop|plug|replace...>";
     }
 
     @Override
@@ -50,9 +48,8 @@ public class DroneCommand extends BaseCommand {
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                "spawn", "link", "despawn", "list", "status", "follow", "come", "stay", "goto",
-                "guard", "cover", "patrol", "mine", "farm", "cook", "smelt", "sort", "carry", "setbase",
-                "scoop", "plug", "replace", "take", "give", "torch", "drop", "chest", "scan", "js", "debug", "config", "help");
+                "spawn", "link", "despawn", "list", "status", "setbase",
+                "take", "give", "torch", "drop", "chest", "scan", "js", "debug", "config", "help");
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
@@ -80,12 +77,6 @@ public class DroneCommand extends BaseCommand {
             if (sub.equals("cook") || sub.equals("smelt")) {
                 return getListOfStringsMatchingLastWord(args, "meat", "ores", "food", "all");
             }
-            if (sub.equals("follow")) {
-                MinecraftServer srv = MinecraftServer.getServer();
-                if (srv != null && srv.getAllUsernames() != null) {
-                    return getListOfStringsMatchingLastWord(args, srv.getAllUsernames());
-                }
-            }
         }
         return null;
     }
@@ -105,10 +96,9 @@ public class DroneCommand extends BaseCommand {
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v1.4.0 (Master-Tool Harness) Commands ===");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone follow [player] | come | stay | goto <x> <y> <z> | carry [x y z] | setbase");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone guard [player] | cover [player] | patrol [radius] | take | give | drop | chest");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone setbase | take | give | drop | chest | torch | js <code>");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear] | config");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone mine|farm|cook|smelt|sort|scoop|plug|replace ..." + EnumChatFormatting.GRAY + " (composed by the AI)");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone torch | js <code> | debug [on|off|tail|clear]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
             return;
         }
@@ -257,11 +247,6 @@ public class DroneCommand extends BaseCommand {
             return;
         }
 
-        if (sub.equals("come") || sub.equals("here")) {
-            this.manager.commandComeToPlayer(player, ctrl);
-            return;
-        }
-
         if (sub.equals("setbase")) {
             double bx = player.posX;
             double by = player.posY;
@@ -280,89 +265,10 @@ public class DroneCommand extends BaseCommand {
             return;
         }
 
-        if (sub.equals("follow")) {
-            String targetName = args.length >= 2 ? args[1] : player.getCommandSenderName();
-            this.manager.clearActionState(ctrl);
-            this.manager.getMovementService().follow(ctrl, player, targetName,
-                "Command /drone follow " + targetName);
-            this.manager.saveConfig();
-            this.manager.droneSay(player, ctrl, "Now following " + targetName + " (look at me within 4.5m to hold still for right-click!).");
-            return;
-        }
-
-        if (sub.equals("stay") || sub.equals("stop") || sub.equals("hover")) {
-            ctrl.cancelOtherLoops(0);
-            this.manager.clearActionState(ctrl);
-            this.manager.getMovementService().stay(ctrl, player, "Command /drone stay");
-            this.manager.saveConfig();
-            this.manager.droneSay(player, ctrl, String.format("Hovering in place at (%.1f, %.1f, %.1f).", ctrl.goalX, ctrl.goalY, ctrl.goalZ));
-            return;
-        }
-
-        if (sub.equals("goto") || sub.equals("move")) {
-            if (args.length < 4) {
-                CortexDroneMod.sendMsg(player, EnumChatFormatting.RED + "Usage: /drone goto <x> <y> <z>");
-                return;
-            }
-            try {
-                double gx = parseCoord(player.posX, args[1]);
-                double gy = parseCoord(player.posY, args[2]);
-                double gz = parseCoord(player.posZ, args[3]);
-                this.manager.clearActionState(ctrl);
-                this.manager.getMovementService().gotoPoint(ctrl, player, gx, gy, gz,
-                    MovementRoute.AUTO,
-                    String.format("Command /drone goto (%.1f,%.1f,%.1f)", gx, gy, gz));
-                this.manager.droneSay(player, ctrl, String.format("Pathfinding to (%.1f, %.1f, %.1f)...", gx, gy, gz));
-            } catch (NumberFormatException e) {
-                CortexDroneMod.sendMsg(player, EnumChatFormatting.RED + "Invalid coordinates. Usage: /drone goto <x> <y> <z>");
-            }
-            return;
-        }
-
-        if (sub.equals("guard") || sub.equals("cover") || sub.equals("defend") || sub.equals("protect")) {
-            ctrl.targetPlayerName = args.length >= 2 ? args[1] : player.getCommandSenderName();
-            ctrl.guardFilter = "hostile|mutant";
-            this.manager.clearActionState(ctrl);
-            this.manager.setDroneMode(ctrl, Mode.GUARD, "Command /drone " + sub + " " + ctrl.targetPlayerName);
-            this.manager.saveConfig();
-            this.manager.droneSay(player, ctrl, "Guard/Combat service engaged for " + ctrl.targetPlayerName + ".");
-            return;
-        }
-
-        if (sub.equals("patrol")) {
-            int rad = 36;
-            if (args.length >= 2) {
-                try { rad = Integer.parseInt(args[1]); } catch (NumberFormatException ignored) { }
-            }
-            ctrl.targetPlayerName = player.getCommandSenderName();
-            ctrl.patrolRadius = Math.max(16, rad);
-            ctrl.guardFilter = "hostile|mutant";
-            this.manager.setDroneMode(ctrl, Mode.PATROL, "Command /drone patrol " + ctrl.patrolRadius + "m");
-            this.manager.droneSay(player, ctrl, "Patrolling " + ctrl.patrolRadius + "m with CombatService.");
-            return;
-        }
-
         // All composite physical commands are natural-language tasks now. The
         // agent composes them from the master primitives; no pre-made tool path.
         if (isMasterComposedCommand(sub)) {
             this.manager.handleNaturalInstruction(player, ctrl, joinArgs(args, 0));
-            return;
-        }
-
-        if (sub.equals("carry") || sub.equals("airlift") || sub.equals("transport")) {
-            double[] dest = this.manager.getWorldScanner().findBaseLocation(ctrl.drone.worldObj, player);
-            if (args.length >= 4) {
-                try {
-                    dest[0] = parseCoord(player.posX, args[1]);
-                    dest[1] = parseCoord(player.posY, args[2]);
-                    dest[2] = parseCoord(player.posZ, args[3]);
-                } catch (NumberFormatException ignored) {
-                }
-            }
-            this.manager.getMovementService().carry(ctrl, player, dest[0], dest[1], dest[2],
-                String.format("Carrying %s to (%.1f,%.1f,%.1f)",
-                    player.getCommandSenderName(), dest[0], dest[1], dest[2]));
-            this.manager.droneSay(player, ctrl, String.format("Airlifting you to (%.0f, %.0f, %.0f)!", dest[0], dest[1], dest[2]));
             return;
         }
 

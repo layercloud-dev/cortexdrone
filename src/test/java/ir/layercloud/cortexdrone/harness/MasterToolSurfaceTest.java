@@ -16,6 +16,7 @@ public class MasterToolSurfaceTest {
         Set<String> expected = new HashSet<String>(Arrays.asList(
             "state", "inspect", "navigate", "tunnel", "digup", "digdown",
             "break_block", "place_block", "interact_block", "use_item",
+            "pick_entity", "unpick_entity",
             "transfer", "craft", "effect", "skills", "cancel"
         ));
         assertEquals(expected, actual);

@@ -91,7 +91,7 @@ public class AIDroneManager {
         this.effectService = new EffectService(this, this.logger);
         this.interactionService = new InteractionService(this.inventoryService);
         this.miningEngine = new MiningEngine(this, this.logger, this.pathfinder, this.inventoryService);
-        this.movementService = new MovementService(this, this.pathfinder);
+        this.movementService = new MovementService(this);
         this.blockService = new BlockService(this, this.inventoryService, this.logger);
         this.combatService = new CombatService(this, this.logger, this.pathfinder);
         this.actionRegistry = new ActionRegistry();
@@ -231,7 +231,7 @@ public class AIDroneManager {
         }
         if (old != newMode) {
             this.logger.log("MODE", ctrl, old.name() + " -> " + newMode.name(), reason != null ? reason : "");
-            if (newMode == Mode.FOLLOW || newMode == Mode.STAY || newMode == Mode.GUARD || newMode == Mode.PATROL) {
+            if (newMode == Mode.FOLLOW || newMode == Mode.STAY) {
                 saveConfig();
             }
         }
@@ -331,8 +331,6 @@ public class AIDroneManager {
                     boolean restoredTorch = false;
                     String restoredLedEffect = "NONE";
                     Integer restoredCustomLed = null;
-                    String restoredGuardFilter = "hostile|mutant";
-                    int restoredPatrolRadius = 36;
 
                     if (this.config.getSavedDrones() != null) {
                         AIConfig.SavedDroneInfo matchedSaved = null;
@@ -362,8 +360,6 @@ public class AIDroneManager {
                             restoredTorch = matchedSaved.isAutoTorch();
                             if (matchedSaved.getLedEffect() != null) restoredLedEffect = matchedSaved.getLedEffect();
                             restoredCustomLed = matchedSaved.getCustomLedColor();
-                            if (matchedSaved.getGuardFilter() != null) restoredGuardFilter = matchedSaved.getGuardFilter();
-                            if (matchedSaved.getPatrolRadius() > 0) restoredPatrolRadius = matchedSaved.getPatrolRadius();
                         }
                     }
 
@@ -386,8 +382,6 @@ public class AIDroneManager {
                     ctrl.autoTorch = restoredTorch;
                     ctrl.ledEffect = restoredLedEffect;
                     ctrl.customLedColor = restoredCustomLed;
-                    ctrl.guardFilter = restoredGuardFilter;
-                    ctrl.patrolRadius = restoredPatrolRadius;
                     this.logger.log("LINK", ctrl, "Auto-reconnected world drone",
                         String.format("owner=%s pos=(%.1f,%.1f,%.1f) mode=%s", owner, d.posX, d.posY, d.posZ, restoredMode.name()));
                 }
@@ -588,13 +582,6 @@ public class AIDroneManager {
         } else {
             CortexDroneMod.broadcast(formatted);
         }
-    }
-
-    public void commandComeToPlayer(EntityPlayerMP player, DroneController ctrl) {
-        if (player == null || ctrl == null || ctrl.drone == null) return;
-        clearActionState(ctrl);
-        this.movementService.come(ctrl, player, player, "Come in front of player for interaction");
-        droneSay(player, ctrl, "Coming right in front of you and holding position so you can access my inventory!");
     }
 
     public void sendDroneStatus(ICommandSender sender, DroneController ctrl) {

@@ -74,14 +74,17 @@ use Lombok accessors, and actions/services use constructor injection from
 `navigation/service`, `navigation/raytrace` and the immutable
 `navigation/NavContext` request snapshot. Movement actions live in
 `action/movement/impl/`: `NavigateAction`, `TunnelAction`, `DigUpAction`,
-`DigDownAction`, `BreadcrumbsAction`, `GotoAction`, `StayAction`, `StopAction`,
-`FollowAction`, `ComeAction` and `CarryAction`. `MovementService` is the only
-movement JSON boundary and the decision point: it selects the action from the
-explicit operation and requested route. Commands and internal entry points use
-the same typed service methods instead of mutating controller goal/mode fields
-directly. Each action owns its target/route/plan; shared target resolution and
-the common navigation start live in the service. There is no separate movement
-planner/helper that decides between actions.
+`DigDownAction`, `BreadcrumbsAction` and the internal `StopAction`.
+`MovementService` is the only movement JSON boundary and the decision point: it
+selects the action from the explicit operation and requested route. Each action
+owns its target/route/plan; shared target resolution and the common navigation
+start live in the service. There is no separate movement planner/helper that
+decides between actions.
+
+Premade follow/stay/guard/patrol/goto/come/carry tasks were removed. Entity
+transport is now a composition skill using `pick_entity` -> `moveTo` ->
+`unpick_entity`; see `docs/removed-tasks.md` and
+`docs/skills/entity-transport.md`.
 
 The legacy one-shot executors (`AnvilService`, `MachineCraftExecutor`,
 `SmeltingService`, `ChestSorter`) and their batch queues (fluid scoop/place,
@@ -102,6 +105,8 @@ commands and there is no AI-facing instruction queue.
 | `drone.placeBlock(x,y,z,block,meta)` | Place exactly one explicit block |
 | `drone.interactBlock(x,y,z,side)` | Activate exactly one block; never chains held-item use |
 | `drone.useItem(item, x,y,z,side)` | Use one item; never activates the target block first |
+| `drone.pickEntity(id)` | Mount one entity on the drone; moves into reach first |
+| `drone.unpickEntity({entityId?})` | Dismount the current rider or explicit entity |
 | `drone.transfer({op,...})` | move / give / take / drop / withdraw / deposit / suck |
 | `drone.craft(filter,count)` | Vanilla crafting primitive |
 | `drone.effect(kind,args)` | LED / particles / sound / note / status / chat |

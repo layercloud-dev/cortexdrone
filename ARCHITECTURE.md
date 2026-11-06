@@ -99,12 +99,14 @@ Sampling, dedupe and loop pruning happen in the service; `inspect('breadcrumbs')
 reads the same service through `BreadcrumbRpcTranslator`.
 
 Every movement leg is an action executor under
-`action/navigation/impl/`: `NavigateAction` (no-dig flight), `TrailAction`
-(breadcrumb backtrack), `DigRouteAction` (hands a dig route to
-`BuildingManager`), `HoldAction` and `StopAction`. `NavigationManager` only
-chooses the next leg and retains its context; managers contain no flight or
-waypoint code. The same executors are used by follow/drop/deposit and mining
-standoffs through `NavigationManager.flyToward` / `hold`.
+`action/navigation/impl/`: `NavigateAction` (no-dig flight), `DigRouteAction`
+(hands a dig route to `BuildingManager`), `HoldAction` and `StopAction`.
+`NavigationManager` only chooses the next leg and retains its context; managers
+contain no flight or waypoint code. Breadcrumbs are not an action: when
+`BreadcrumbService` suggests a useful backtrack endpoint, the manager simply
+sets that endpoint as the next flight target. The same executors are used by
+follow/drop/deposit and mining standoffs through
+`NavigationManager.flyToward` / `hold`.
 
 ## Actions
 

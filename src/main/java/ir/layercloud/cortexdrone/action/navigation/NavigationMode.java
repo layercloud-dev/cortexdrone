@@ -4,7 +4,6 @@ package ir.layercloud.cortexdrone.action.navigation;
 public enum NavigationMode {
     FLIGHT,
     HOLD,
-    TRAIL,
     TUNNEL,
     DIG_UP,
     DIG_DOWN,

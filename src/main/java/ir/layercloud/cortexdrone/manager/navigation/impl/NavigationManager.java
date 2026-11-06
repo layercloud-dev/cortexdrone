@@ -9,7 +9,6 @@ import ir.layercloud.cortexdrone.action.navigation.impl.DigRouteAction;
 import ir.layercloud.cortexdrone.action.navigation.impl.HoldAction;
 import ir.layercloud.cortexdrone.action.navigation.impl.NavigateAction;
 import ir.layercloud.cortexdrone.action.navigation.impl.StopAction;
-import ir.layercloud.cortexdrone.action.navigation.impl.TrailAction;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.navigation.impl.NavigationContext;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
@@ -34,9 +33,9 @@ import net.minecraft.world.World;
  * Goal-driven movement manager.
  *
  * <p>The harness sends only {@code goto} or {@code stop}. This manager chooses
- * a leg (trail, flight, tunnel, dig-up, dig-down) and delegates the actual
- * movement to an action executor. Managers never contain flight or waypoint
- * code; actions do.</p>
+ * a leg (flight, tunnel, dig-up, dig-down) and delegates the actual movement
+ * to an action executor. Managers never contain flight or waypoint code;
+ * actions do. Breadcrumb backtracking is a service query, not an action.</p>
  */
 public final class NavigationManager {
     private static final double ARRIVAL_RADIUS = 0.85;
@@ -97,7 +96,7 @@ public final class NavigationManager {
         controller.stuckTicks = 0;
         NavigationContext context = new NavigationContext(controller, player,
             NavigationMode.STOP, controller.drone.posX, controller.drone.posY,
-            controller.drone.posZ, null, null, reason != null ? reason : "Navigation stop");
+            controller.drone.posZ, null, reason != null ? reason : "Navigation stop");
         new StopAction(this.manager).execute(context);
         return NavigationResult.stopped(controller.drone.posX, controller.drone.posY,
             controller.drone.posZ);
@@ -157,7 +156,7 @@ public final class NavigationManager {
             return NavigateResult.failure("No active drone");
         }
         NavigationContext context = new NavigationContext(controller, null,
-            NavigationMode.FLIGHT, x, y, z, null, null, label);
+            NavigationMode.FLIGHT, x, y, z, null, label);
         NavigateAction action = new NavigateAction(this.pathfinder, this.breadcrumbService);
         try {
             action.tick(context);
@@ -175,7 +174,7 @@ public final class NavigationManager {
         }
         NavigationContext context = new NavigationContext(controller, null,
             NavigationMode.HOLD, controller.drone.posX, controller.drone.posY,
-            controller.drone.posZ, null, null, label);
+            controller.drone.posZ, null, label);
         new HoldAction().execute(context);
         return context.result() != null ? context.result() : NavigateResult.done();
     }
@@ -206,24 +205,30 @@ public final class NavigationManager {
             TrailPlan trail = this.breadcrumbService.planBacktrack(controller,
                 session.goalX, session.goalY, session.goalZ);
             if (trail != null && trail.isUseful()) {
-                session.reason = trail.getReason();
-                startLeg(controller, session, NavigationMode.TRAIL,
-                    trail.getWaypoints(), null, "Breadcrumbs (" + trail.getReason() + ")");
-                this.logger.log("NAV", controller, "Following breadcrumbs (" + trail.getReason() + ")",
-                    "points=" + trail.getWaypoints().size());
+                Breadcrumb endpoint = trail.getEndpoint();
+                session.usingTrail = true;
+                session.reason = "trail-" + trail.getReason();
+                startLeg(controller, session, NavigationMode.FLIGHT,
+                    endpoint.getX() + 0.5, endpoint.getY() + 0.65, endpoint.getZ() + 0.5,
+                    null, "Trail endpoint (" + trail.getReason() + ")");
+                this.logger.log("NAV", controller, "Flying to trail endpoint (" + trail.getReason() + ")",
+                    "point=(" + endpoint.getX() + "," + endpoint.getY() + "," + endpoint.getZ() + ")");
                 return;
             }
         }
 
+        session.usingTrail = false;
         session.reason = "flight";
-        startLeg(controller, session, NavigationMode.FLIGHT, null, null, "Flight");
+        startLeg(controller, session, NavigationMode.FLIGHT,
+            session.goalX, session.goalY, session.goalZ, null, "Flight");
     }
 
     private void startLeg(DroneController controller, Session session, NavigationMode mode,
-                          List<Breadcrumb> trail, List<int[]> digPath, String label) {
+                          double targetX, double targetY, double targetZ,
+                          List<int[]> digPath, String label) {
         session.phase = phaseFor(mode);
         NavigationContext context = new NavigationContext(controller, null, mode,
-            session.goalX, session.goalY, session.goalZ, trail, digPath, label);
+            targetX, targetY, targetZ, digPath, label);
         Action<NavigationContext> action = actionFor(mode);
         action.execute(context);
         if (context.isActive()) {
@@ -236,9 +241,7 @@ public final class NavigationManager {
     }
 
     private static Phase phaseFor(NavigationMode mode) {
-        if (mode == NavigationMode.TRAIL) return Phase.TRAIL;
-        if (mode == NavigationMode.FLIGHT) return Phase.FLIGHT;
-        return Phase.DIG;
+        return mode == NavigationMode.FLIGHT ? Phase.FLIGHT : Phase.DIG;
     }
 
     private void tickLeg(DroneController controller, Session session) {
@@ -263,7 +266,14 @@ public final class NavigationManager {
             Leg leg = session.leg;
             session.leg = null;
             if (leg != null && leg.context.isActive()) leg.context.cancel();
-            escalate(controller, session);
+            if (session.usingTrail) {
+                session.usingTrail = false;
+                session.trailRejected = true;
+                session.phase = Phase.PLAN;
+                session.replanCooldown = 0;
+            } else {
+                escalate(controller, session);
+            }
         } else if (result.isLegDone()) {
             Leg leg = session.leg;
             session.leg = null;
@@ -294,19 +304,17 @@ public final class NavigationManager {
                 session.reason = context.mode().name().toLowerCase();
                 controller.stuckTicks = 0;
                 return;
-            case TRAIL:
-                if (result.isNeedsDig() || result.isBlocked()) {
-                    session.trailRejected = true;
-                    escalate(controller, session);
-                } else {
-                    session.phase = Phase.PLAN;
-                    session.replanCooldown = 4;
-                }
-                return;
             case FLIGHT:
             default:
                 if (result.isNeedsDig() || result.isBlocked()) {
-                    escalate(controller, session);
+                    if (session.usingTrail) {
+                        session.usingTrail = false;
+                        session.trailRejected = true;
+                        session.phase = Phase.PLAN;
+                        session.replanCooldown = 0;
+                    } else {
+                        escalate(controller, session);
+                    }
                 } else if (result.isLegDone()) {
                     session.phase = Phase.PLAN;
                     session.replanCooldown = 2;
@@ -363,7 +371,7 @@ public final class NavigationManager {
             return;
         }
 
-        startLeg(controller, session, mode, null, path,
+        startLeg(controller, session, mode, session.goalX, session.goalY, session.goalZ, path,
             "Navigation " + mode.name().toLowerCase() + " toward (" + gx + "," + gy + "," + gz + ")");
         session.reason = mode.name().toLowerCase();
         controller.stuckTicks = 0;
@@ -405,8 +413,6 @@ public final class NavigationManager {
 
     private Action<NavigationContext> actionFor(NavigationMode mode) {
         switch (mode) {
-            case TRAIL:
-                return new TrailAction();
             case TUNNEL:
             case DIG_UP:
             case DIG_DOWN:
@@ -447,7 +453,6 @@ public final class NavigationManager {
 
     private enum Phase {
         PLAN,
-        TRAIL,
         FLIGHT,
         DIG
     }
@@ -469,6 +474,7 @@ public final class NavigationManager {
         private Phase phase = Phase.PLAN;
         private Leg leg;
         private boolean trailRejected;
+        private boolean usingTrail;
         private int ticks;
         private int replanCooldown;
         private int digAttempts;

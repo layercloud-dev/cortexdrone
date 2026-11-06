@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.inventory;
+package ir.layercloud.cortexdrone.service.inventory;
 
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;

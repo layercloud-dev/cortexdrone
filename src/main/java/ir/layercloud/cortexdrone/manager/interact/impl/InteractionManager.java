@@ -9,7 +9,7 @@ import ir.layercloud.cortexdrone.action.interact.impl.UnpickEntityAction;
 import ir.layercloud.cortexdrone.action.interact.impl.PickEntityAction;
 import ir.layercloud.cortexdrone.action.interact.impl.UseItemAction;
 import ir.layercloud.cortexdrone.context.interact.impl.InteractionContext;
-import ir.layercloud.cortexdrone.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.ActionManager;
 import net.minecraft.entity.player.EntityPlayerMP;

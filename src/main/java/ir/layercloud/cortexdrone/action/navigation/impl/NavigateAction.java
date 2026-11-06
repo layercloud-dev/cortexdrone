@@ -8,7 +8,7 @@ import ir.layercloud.cortexdrone.navigation.NavContext;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import java.util.List;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.util.MathHelper;

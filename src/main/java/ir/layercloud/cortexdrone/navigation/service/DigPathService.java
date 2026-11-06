@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.navigation.service;
 
 import ir.layercloud.cortexdrone.navigation.raytrace.ChunkCacheContext;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;

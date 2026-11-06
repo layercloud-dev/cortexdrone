@@ -1,6 +1,6 @@
-package ir.layercloud.cortexdrone.inventory;
+package ir.layercloud.cortexdrone.service.machine;
 
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;

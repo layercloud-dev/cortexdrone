@@ -1,11 +1,11 @@
-package ir.layercloud.cortexdrone.inventory;
+package ir.layercloud.cortexdrone.service.inventory;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;

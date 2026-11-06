@@ -1,9 +1,9 @@
-package ir.layercloud.cortexdrone.inventory;
+package ir.layercloud.cortexdrone.service.inventory;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;

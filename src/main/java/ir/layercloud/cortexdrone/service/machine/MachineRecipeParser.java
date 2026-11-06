@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.inventory;
+package ir.layercloud.cortexdrone.service.machine;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

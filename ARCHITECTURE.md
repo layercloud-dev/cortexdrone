@@ -5,12 +5,15 @@
 CortexDrone is split into four execution layers plus transport:
 
 ```text
-action/       one-shot commands; no decisions, no JSON
-context/      mutable state for one action execution
-manager/      long-lived decision and orchestration layer
-service/      read-only data, recon, planning and telemetry
-harness/      Code Mode agent, RPC transport and single-session task logic
-harness/rpc/  JSON/HTTP transport; parsers and serializers only
+action/              one-shot commands; no decisions, no JSON
+context/             mutable state for one action execution
+manager/             long-lived decision and orchestration layer
+service/inventory/   inventory data, containers and crafting support
+service/machine/     machine recipes, machine tiles and furnaces
+service/navigation/  breadcrumbs and navigation plans
+service/world/       world/item/entity recon and documentation
+harness/             Code Mode agent and single-session task logic
+harness/rpc/         JSON/HTTP transport; parsers and serializers only
 ```
 
 The rule is simple:
@@ -49,9 +52,12 @@ It contains no JSON.
 | `service.navigation.impl.BreadcrumbService` | Records the traversal trail, surface anchor and trail backtrack candidates |
 | `navigation.service.FlightPathfinder` | No-dig flight A* and geometry queries |
 | `navigation.service.DigPathService` | Weighted dig A*; returns a route, never executes it |
-| `inventory.InventoryService` | Inventory/container inspection and storage primitives |
-| `world.WorldScanner` | World/resource/room/entity recon |
-| `inventory.*`, `world.*` | Recipe, machine, furnace and documentation readers |
+| `service.inventory.InventoryService` | Inventory snapshots, container lookup, item moves and crafting support |
+| `service.machine.MachineRecipeService` | Machine recipe introspection and ranking |
+| `service.machine.MachineTileInspector` | Machine tile discovery/description |
+| `service.machine.FurnaceScanner` | Furnace discovery |
+| `service.world.WorldScanner` | World/resource/room/entity recon |
+| `service.world.*` | Item classification, structure, target and documentation readers |
 
 Services may cache results, but they do not choose routes, set modes, switch
 tools or start actions.

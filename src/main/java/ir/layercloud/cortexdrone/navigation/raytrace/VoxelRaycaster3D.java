@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.navigation.raytrace;
 
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.util.MathHelper;

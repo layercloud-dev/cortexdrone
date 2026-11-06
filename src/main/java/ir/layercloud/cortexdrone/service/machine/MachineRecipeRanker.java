@@ -1,7 +1,8 @@
-package ir.layercloud.cortexdrone.inventory;
+package ir.layercloud.cortexdrone.service.machine;
 
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;

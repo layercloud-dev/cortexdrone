@@ -2,7 +2,7 @@ package ir.layercloud.cortexdrone.command.impl;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.command.BaseCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;

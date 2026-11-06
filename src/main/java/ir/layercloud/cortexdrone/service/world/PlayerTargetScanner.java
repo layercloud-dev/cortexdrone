@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.world;
+package ir.layercloud.cortexdrone.service.world;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.navigation.raytrace.VoxelRaycaster3D;

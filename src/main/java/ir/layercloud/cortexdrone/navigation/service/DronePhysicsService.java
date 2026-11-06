@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.navigation.service;
 
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;

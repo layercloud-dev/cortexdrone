@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.navigation.raytrace;
 
-import ir.layercloud.cortexdrone.world.ChunkAccess;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ChunkAccess;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;

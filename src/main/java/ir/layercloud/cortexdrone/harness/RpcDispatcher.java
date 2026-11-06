@@ -9,7 +9,7 @@ import ir.layercloud.cortexdrone.harness.rpc.impl.MasterRpcHandler;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;

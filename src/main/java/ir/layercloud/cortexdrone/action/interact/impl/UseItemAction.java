@@ -6,7 +6,7 @@ import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.action.interact.InteractionSupport;
 import ir.layercloud.cortexdrone.context.interact.impl.InteractionContext;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;

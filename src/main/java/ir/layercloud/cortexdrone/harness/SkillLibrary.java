@@ -101,13 +101,13 @@ public class SkillLibrary {
             return all.subList(0, Math.min(limit, all.size()));
         }
 
-        List<String> qTokens = ir.layercloud.cortexdrone.world.LexicalItemMatcher.tokenize(query);
+        List<String> qTokens = ir.layercloud.cortexdrone.service.world.LexicalItemMatcher.tokenize(query);
         int numDocs = Math.max(1, all.size());
         Map<String, List<String>> docTokensMap = new LinkedHashMap<String, List<String>>();
         double totalDocLen = 0.0;
 
         for (SkillEntry s : all) {
-            List<String> dToks = ir.layercloud.cortexdrone.world.LexicalItemMatcher.tokenize(
+            List<String> dToks = ir.layercloud.cortexdrone.service.world.LexicalItemMatcher.tokenize(
                 s.getName() + " " + s.getName() + " " + (s.getTags() != null ? s.getTags() + " " + s.getTags() : "") + " " + s.getDescription()
             );
             docTokensMap.put(s.getName(), dToks);
@@ -125,7 +125,7 @@ public class SkillLibrary {
             if (qt.length() < 3) continue;
             int docFreq = 0;
             for (SkillEntry s : all) {
-                if (ir.layercloud.cortexdrone.world.LexicalItemMatcher.tokenListContains(docTokensMap.get(s.getName()), qt)) {
+                if (ir.layercloud.cortexdrone.service.world.LexicalItemMatcher.tokenListContains(docTokensMap.get(s.getName()), qt)) {
                     docFreq++;
                 }
             }
@@ -136,7 +136,7 @@ public class SkillLibrary {
                 List<String> dToks = docTokensMap.get(s.getName());
                 int tf = 0;
                 for (String dt : dToks) {
-                    if (ir.layercloud.cortexdrone.world.LexicalItemMatcher.fuzzyTokenMatches(dt, qt)) {
+                    if (ir.layercloud.cortexdrone.service.world.LexicalItemMatcher.fuzzyTokenMatches(dt, qt)) {
                         tf++;
                     }
                 }

@@ -4,7 +4,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.visuals.LightConfig;
 import ir.layercloud.cortexdrone.manager.visuals.LightResult;
-import ir.layercloud.cortexdrone.world.ChunkAccess;
+import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;

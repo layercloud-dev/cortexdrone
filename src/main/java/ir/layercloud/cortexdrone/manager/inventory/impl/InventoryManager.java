@@ -13,7 +13,7 @@ import ir.layercloud.cortexdrone.action.inventory.impl.SuckItemsAction;
 import ir.layercloud.cortexdrone.action.inventory.impl.TakeFromPlayerAction;
 import ir.layercloud.cortexdrone.action.inventory.impl.WithdrawChestAction;
 import ir.layercloud.cortexdrone.context.inventory.impl.InventoryContext;
-import ir.layercloud.cortexdrone.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.ActionManager;
 import net.minecraft.entity.player.EntityPlayerMP;

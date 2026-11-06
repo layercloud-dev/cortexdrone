@@ -4,7 +4,7 @@ import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.navigation.raytrace.VoxelRaycaster3D;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
-import ir.layercloud.cortexdrone.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;

@@ -242,7 +242,7 @@ cleanly.
 `SetLedAction` is a one-shot primitive that sets the drone LED to one colour.
 There is no Java effect engine, no named effect list and no disco/fun loop:
 animated effects are composed by skills or inline Code Mode, for example the
-bundled `rainbow_show` skill loops `drone.visuals('led')` with `hsvToRgb`.
+bundled `rainbow_show` skill loops `drone.setLed` with `hsvToRgb`.
 
 ## 12. State ownership
 

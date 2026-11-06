@@ -192,12 +192,15 @@ Deterministic anti-loop helpers:
 - code fingerprinting;
 - pre-code stop/cancel;
 - physical action detection (`goto`, `stop`, `breakBlock`, `placeBlock`,
-  `interactBlock`, `useItem`, `transfer`, `craft`);
+  `interactBlock`, `useItem`, `attackEntity`, `moveItem`, `giveToPlayer`,
+  `takeFromPlayer`, `withdrawChest`, `depositChest`, `dropItems`, `suckItems`,
+  `craft`);
 - concrete progress detection (`started/placed/used/activated/broken/
-  transferred/moved/withdrawn/deposited/crafted/arrived`);
+  attacked/picked/unpicked/transferred/moved/withdrawn/deposited/dropped/
+  delivered/crafted/arrived`);
 - repeated-result detection;
 - machine-config/empty-search fast final;
-- query fingerprinting for repeated `inspect/state` targets;
+- query fingerprinting for repeated inspection/state targets;
 - nudge texts for anti-requery, empty-search, anti-loiter.
 
 ## 10. LoopTracer
@@ -237,14 +240,14 @@ The JavaScript body is user/model-provided; the SDK is trusted infrastructure.
 2. If large scan and not already on server thread → `submitLargeScan`.
 3. Otherwise marshal to server thread via `AIDroneManager.callOnMainThread`.
 4. Timeout budget:
-   - 2.5 s for cheap inspect ops (block/box/veins/room/distant/entities/drops/
-     blocks);
+   - 2.5 s for cheap read-only tools (get_block/get_blocks_in_box/get_top_y/
+     scan_room/scan_veins/find_distant/get_entities/get_drops/scan_blocks);
    - 8 s otherwise.
 5. `executeSync` routes to the registered `RpcHandler`.
 
 ### Large scans
 
-Only `inspect` with op `blocks`/`scanblocks` and radius >32.
+Only `scan_blocks` with radius >32.
 
 - one active job at a time (`AtomicScanLock`);
 - later submissions get `{ok:false,busy:true,jobId}`;
@@ -270,7 +273,7 @@ Only `inspect` with op `blocks`/`scanblocks` and radius >32.
   `LexicalItemMatcher`; sorted by score then recency.
 - `recordSelfCorrectedSkill` distills a working self-corrected workflow into a
   `learned_*` skill.
-- `toJsonArray` used by the `skills` tool.
+- `toJsonArray` used by `search_skills` / `list_skills`.
 
 ## 14. Threading model
 

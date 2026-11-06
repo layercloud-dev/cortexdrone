@@ -4,32 +4,19 @@ import ir.layercloud.cortexdrone.DroneController;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
-import ir.layercloud.cortexdrone.harness.session.DroneSession;
-import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
-import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
-import ir.layercloud.cortexdrone.harness.SkillLibrary;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
-import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
-
-import java.util.List;
 
 /**
- * JSON translation boundary for visuals actions and visuals/telemetry queries.
+ * JSON translation boundary for the visuals actions. Live status lives in
+ * {@link StateRpcTranslator}; skill memory lives in {@link SkillRpcTranslator}.
  */
 @RequiredArgsConstructor
 public final class VisualsRpcTranslator {
-    private final AIDroneManager manager;
     private final VisualsManager service;
-
     public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {
         VisualsResult result = this.service.handle(
@@ -98,82 +85,6 @@ public final class VisualsRpcTranslator {
                 return "FF2D55";
         }
         return null;
-    }
-
-    public JsonObject status(DroneController controller, JsonObject args) {
-        if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
-            return RpcJson.error("No active drone or world");
-        }
-        JsonObject response = RpcJson.ok();
-        Drone drone = controller.drone;
-        DroneSession session = this.manager.getSessionManager().session(controller);
-        NavigationState nav = this.manager.getNavigationManager().state(controller);
-        VisualsState visuals = this.service.state(controller);
-        if (RpcArgs.has(args, "loopId") && args.get("loopId").getAsInt() > 0
-                && session.isLoopCancelled(args.get("loopId").getAsInt())) {
-            response.addProperty("aborted", true);
-        }
-        response.addProperty("id", controller.id);
-        response.addProperty("name", controller.name);
-        response.addProperty("owner", controller.ownerName);
-        response.addProperty("lastThought", session.lastThought() != null ? session.lastThought() : "");
-        response.addProperty("x", drone.posX);
-        response.addProperty("y", drone.posY);
-        response.addProperty("z", drone.posZ);
-        response.addProperty("navigationActive",
-                this.manager.getNavigationManager().isActive(controller));
-        response.addProperty("lightActive", visuals.lightAura);
-        response.addProperty("lightRadius", visuals.lightRadius);
-        response.addProperty("lightLevel", visuals.lightIntensity);
-        response.addProperty("lightColor", String.format("0x%06X", visuals.lightColor & 0xFFFFFF));
-        response.addProperty("blockedWaypoints", nav.solidWaypointHits.size());
-
-        JsonArray inventory = new JsonArray();
-        IInventory inv = drone.mainInventory();
-        int usedSlots = 0;
-        int totalItems = 0;
-        if (inv != null) {
-            for (int i = 0; i < inv.getSizeInventory(); i++) {
-                ItemStack stack = inv.getStackInSlot(i);
-                if (stack != null && stack.stackSize > 0) {
-                    usedSlots++;
-                    totalItems += stack.stackSize;
-                    inventory.add(ItemClassifier.itemStackToJson(i, stack));
-                }
-            }
-        }
-        response.addProperty("freeSlots", Math.max(0, 8 - usedSlots));
-        response.addProperty("totalItems", totalItems);
-        response.addProperty("isFull", InventoryService.isInventoryFull(inv));
-        response.add("inventory", inventory);
-        return response;
-    }
-
-    public JsonObject skills(DroneController controller,
-                             String operation, JsonObject args) {
-        if (controller == null) return RpcJson.error("No active drone");
-        JsonObject response = RpcJson.ok();
-        if ("save_skill".equals(operation)) {
-            String name = RpcArgs.string(args, "name", "custom_skill");
-            String description = RpcArgs.string(args, "description", "");
-            String code = RpcArgs.string(args, "code", "");
-            String tags = RpcArgs.string(args, "tags", "");
-            SkillLibrary.SkillEntry entry = this.manager.getSkillLibrary()
-                    .saveSkill(name, description, code, tags);
-            response.addProperty("saved", entry != null);
-            if (entry != null) response.addProperty("name", entry.getName());
-            return response;
-        }
-        if ("search_skills".equals(operation) || "list_skills".equals(operation)) {
-            String query = RpcArgs.string(args, "query", "");
-            int limit = RpcArgs.integer(args, "limit", 10);
-            List<SkillLibrary.SkillEntry> found = this.manager.getSkillLibrary()
-                    .searchSkills(query, limit);
-            response.addProperty("count", found.size());
-            response.add("skills", this.manager.getSkillLibrary().toJsonArray(found));
-            return response;
-        }
-        return RpcJson.error("Unhandled visuals RPC method: " + operation);
     }
 
     private static VisualsRequest parse(JsonObject args) {

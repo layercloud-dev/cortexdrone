@@ -27,10 +27,10 @@ service.
 5. Implement `createContext`, `createAction`, `result`.
 6. Register the manager in `AIDroneManager` and `ActionRegistry`.
 7. Add `harness/rpc/translate/XRpcTranslator.java`.
-8. Route operation names in `ActionRpcTranslator`.
-9. If it is a generic master primitive, register it in `ToolRegistry.master()`,
-   route it in `MasterRpcHandler`, and update the SDK, system prompt, and
-   tool-surface test.
+8. Route operation names in the owning domain `RpcHandler`.
+9. If it is a generic primitive, register it in your domain handler's
+   `ToolRegistry`, route it in that handler's `handle`, and update the SDK,
+   system prompt, and `ToolRegistryTest`.
 10. Add tests for lifecycle/routing if the behavior is non-trivial.
 11. Update docs.
 
@@ -94,15 +94,15 @@ public final class XAction implements Action<XContext> {
 6. Prefer returning typed DTOs/JSON only at the RPC boundary; services may return
    domain objects.
 
-## 4. Adding a master tool
+## 4. Adding a tool
 
-A master tool is justified only if it is a **generic primitive**, not a
-composite task.
+A tool is justified only if it is a **generic primitive**, not a composite
+task. One tool = one operation, owned by one handler.
 
-1. Register the operation name in `ToolRegistry.master()` with a short
+1. Register the tool name in the owning handler's `ToolRegistry` with a short
    description.
-2. Update `MasterToolSurfaceTest` expected list.
-3. Route it in `MasterRpcHandler.handle`.
+2. Update `ToolRegistryTest` required list.
+3. Route it in that handler's `handle`.
 4. Add/extend a translator; never parse JSON in the manager.
 5. Add the SDK method in `resources/sdk/drone-actions.mjs`.
 6. Add the tool and semantics to `resources/system-prompt.md`.
@@ -132,7 +132,7 @@ Navigation is intentionally centralized. To change it:
 
 1. Create `src/main/resources/skills/<name>.json`.
 2. Add it to `skills/index.json`.
-3. Use only master tools (`drone.*`) and utility globals.
+3. Use only `drone.*` tools and utility globals.
 4. Keep code compact and await every physical call.
 5. Avoid returning huge payloads; return compact summaries.
 6. Validate JSON and run `./gradlew validate`.
@@ -144,7 +144,7 @@ Skill format:
   "name": "lowercase_name",
   "description": "what it does",
   "tags": "space separated search tags",
-  "code": "const x = await drone.inspect(...); ... return ...;"
+  "code": "const x = await drone.scanBlocks(...); ... return ...;"
 }
 ```
 
@@ -191,5 +191,5 @@ Then:
 - no JSON imports in action/context/manager/service;
 - no action calls another action;
 - no manager contains flight/waypoint code;
-- master tool list synchronized in catalog, handler, SDK, prompt, test, docs;
+- tool names synchronized in handler, SDK, prompt, test, docs;
 - removed tools are not reintroduced.

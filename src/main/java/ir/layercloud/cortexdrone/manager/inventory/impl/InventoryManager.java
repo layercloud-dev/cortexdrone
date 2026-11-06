@@ -13,16 +13,17 @@ import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
- * Long-lived inventory action manager. It parses transfer/craft requests,
- * creates one single-use action, serializes the result and manages the context.
- * Read-only inventory inspection stays in InventoryRpcHandler.
+ * Long-lived inventory action manager. Every inventory tool is its own
+ * operation: there is no generic {@code transfer(op)} switch. Read-only
+ * inventory inspection stays in InventoryRpcHandler.
  */
 public final class InventoryManager extends ActionManager<InventoryContext, InventoryRequest, InventoryResult> {
     private final AIDroneManager manager;
     private final InventoryService inventoryService;
 
     public InventoryManager(AIDroneManager manager, InventoryService inventoryService) {
-        super("inventory", "transfer", "craft");
+        super("inventory", "move_item", "give_to_player", "take_from_player",
+                "withdraw_chest", "deposit_chest", "drop_items", "suck_items", "craft");
         this.manager = manager;
         this.inventoryService = inventoryService;
     }
@@ -36,19 +37,27 @@ public final class InventoryManager extends ActionManager<InventoryContext, Inve
     @Override
     protected Action<InventoryContext> createAction(InventoryContext context, String operation,
                                                     InventoryRequest request) {
-        if ("craft".equals(operation)) {
-            return new CraftAction(this.inventoryService, request);
+        switch (operation) {
+            case "craft":
+                return new CraftAction(this.inventoryService, request);
+            case "take_from_player":
+                return new TakeFromPlayerAction(this.inventoryService, request);
+            case "give_to_player":
+                return new GiveToPlayerAction(this.manager, this.inventoryService, request);
+            case "move_item":
+                return new MoveSlotAction(this.inventoryService, request);
+            case "withdraw_chest":
+                return new WithdrawChestAction(this.inventoryService, request);
+            case "deposit_chest":
+                return new DepositChestAction(this.manager, this.inventoryService, request);
+            case "drop_items":
+                return new DropAction(this.manager, request);
+            case "suck_items":
+                return new SuckItemsAction(request);
+            default:
+                return ignored -> context.result(InventoryResult.failure(
+                        "Unsupported inventory action: " + operation));
         }
-        String op = request.getOperation();
-        if ("take".equals(op)) return new TakeFromPlayerAction(this.inventoryService, request);
-        if ("give".equals(op)) return new GiveToPlayerAction(this.manager, this.inventoryService, request);
-        if ("move".equals(op)) return new MoveSlotAction(this.inventoryService, request);
-        if ("withdraw".equals(op)) return new WithdrawChestAction(this.inventoryService, request);
-        if ("deposit".equals(op)) return new DepositChestAction(this.manager, this.inventoryService, request);
-        if ("drop".equals(op)) return new DropAction(this.manager, request);
-        if ("suck".equals(op)) return new SuckItemsAction(request);
-        return ignored -> context.result(InventoryResult.failure(
-                "Unknown transfer op: " + op));
     }
 
     @Override

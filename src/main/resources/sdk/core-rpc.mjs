@@ -63,8 +63,8 @@ async function rpc(method, args = {}, opts = {}) {
   return out;
 }
 
-// Low-level RPC stays private to the SDK. Code Mode only gets the `drone`
-// master-tool surface, so arbitrary legacy RPC names cannot be called directly.
+// Low-level RPC stays private to the SDK. Code Mode only gets the `drone` tool
+// surface, so arbitrary legacy RPC names cannot be called directly.
 
 /**
  * @returns {Promise<any>}
@@ -154,8 +154,8 @@ async function _awaitScanJob(jobId, fallbackRadius, timeoutMs = _SCAN_POLL_TIMEO
   return _normalizeScanResult(last, fallbackRadius);
 }
 
-// All master primitives await their own physical completion. Kept as a stable
-// hook for the runtime wrapper; intentionally does not drain an instruction queue.
+// All tools await their own physical completion. Kept as a stable hook for the
+// runtime wrapper; intentionally does not drain an instruction queue.
 //noinspection JSUnusedGlobalSymbols
 async function _finalizeScript() {
 

@@ -5,7 +5,9 @@ import ir.layercloud.cortexdrone.DroneController;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.harness.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.translate.RpcJson;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.machine.FurnaceScanner;
 import ir.layercloud.cortexdrone.service.machine.MachineTileInspector;
@@ -26,23 +28,30 @@ import java.util.List;
 
 /**
  * Read-only inventory RPCs: player, chest, furnace, crafting and machine
- * inspection. Mutating transfer/craft operations are actions in
+ * inspection. Mutating inventory tools are actions in
  * action/inventory and are handled by InventoryManager.
  */
 @RequiredArgsConstructor
 public class InventoryRpcHandler implements RpcHandler {
-    private static final String[] METHODS = new String[]{
-            "get_player", "get_player_inventory", "scan_chests",
-            "find_item_in_chests", "find_item", "get_chest", "get_recipes",
-            "scan_furnaces", "get_machine_recipes", "get_machine_recipe",
-            "scan_machines", "machine_ingredients"
-    };
+    private static final ToolRegistry TOOLS = new ToolRegistry()
+            .register("get_player", "Read the player's position, facing and held item.")
+            .register("get_player_inventory", "Read the player's inventory.")
+            .register("get_chest", "Read one chest/container at x/y/z.")
+            .register("scan_chests", "Scan chests for items matching a filter.")
+            .register("find_item_in_chests", "Find a filtered item only in nearby chests.")
+            .register("find_item", "Find a filtered item in the drone, player and chests.")
+            .register("get_recipes", "List vanilla crafting recipes for a filter.")
+            .register("scan_furnaces", "Scan nearby furnaces and their contents.")
+            .register("get_machine_recipes", "List machine recipes for a filter/machine.")
+            .register("get_machine_recipe", "Find the best machine recipe for a filter.")
+            .register("scan_machines", "Scan and describe nearby machine tiles.")
+            .register("machine_ingredients", "Check ingredient availability for a machine recipe.");
 
     private final InventoryService inventoryService;
 
     @Override
-    public String[] getSupportedMethods() {
-        return METHODS;
+    public ToolRegistry toolRegistry() {
+        return TOOLS;
     }
 
     @Override
@@ -51,6 +60,11 @@ public class InventoryRpcHandler implements RpcHandler {
         res.addProperty("ok", true);
         Drone d = ctrl.drone;
         World world = d.worldObj;
+
+        if ("get_chest".equals(m)
+                && (args == null || !args.has("x") || !args.has("y") || !args.has("z"))) {
+            return RpcJson.error("get_chest requires x/y/z");
+        }
 
         switch (m) {
             case "get_player": {

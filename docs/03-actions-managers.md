@@ -72,8 +72,8 @@ execution before retaining the new one.
 - `activeContextCount(controller)` totals retained contexts.
 
 Navigation is **not** registered because it owns a goal session rather than a
-single retained operation; its `goto`/`stop` are routed directly by
-`ActionRpcTranslator`.
+single retained operation; its `goto`/`stop` are routed by
+`NavigationRpcHandler`.
 
 ## 5. Managers and operations
 
@@ -126,7 +126,8 @@ Actions: `InteractBlockAction`, `UseItemAction`, `AttackEntityAction`,
 
 ### InventoryManager (`manager/inventory/impl`)
 
-Operations: `transfer`, `craft`.
+Operations: `move_item`, `give_to_player`, `take_from_player`,
+`withdraw_chest`, `deposit_chest`, `drop_items`, `suck_items`, `craft`.
 
 `transfer` operation mapping:
 
@@ -218,8 +219,8 @@ DTOs: `NavigationMode`, `NavigateResult`, `NavigationContext`.
 4. Add manager under `manager/<category>/impl/` extending `ActionManager`.
 5. Register it in `AIDroneManager`.
 6. Add a translator under `harness/rpc/translate/`.
-7. Route the operation in `ActionRpcTranslator` or `MasterRpcHandler`.
-8. Add a master tool only if it is a genuinely generic primitive.
+7. Route the operation in your domain `RpcHandler`.
+8. Register the tool in that handler's `ToolRegistry` with a description.
 9. Update docs and tests.
 
 See [11-extending.md](11-extending.md) for the full checklist.

@@ -116,8 +116,10 @@ final class AgentLoopHeuristics {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();
         return c.contains(".goto(") || c.contains(".stop(") || c.contains(".breakblock(") || c.contains(".placeblock(")
-                || c.contains(".interactblock(") || c.contains(".useitem(")
-                || c.contains(".transfer(") || c.contains(".craft(");
+                || c.contains(".interactblock(") || c.contains(".useitem(") || c.contains(".attackentity(")
+                || c.contains(".moveitem(") || c.contains(".givetoplayer(") || c.contains(".takefromplayer(")
+                || c.contains(".withdrawchest(") || c.contains(".depositchest(") || c.contains(".dropitems(")
+                || c.contains(".suckitems(") || c.contains(".craft(");
     }
 
     static boolean codeMentionsProgressAction(String code) {
@@ -128,7 +130,8 @@ final class AgentLoopHeuristics {
         if (execRes == null || !execRes.has("result") || !execRes.get("result").isJsonObject()) return false;
         JsonObject res = execRes.getAsJsonObject("result");
         String[] counters = new String[]{"started", "placed", "used", "activated", "broken",
-                "transferred", "moved", "withdrawn", "deposited", "crafted"};
+                "attacked", "picked", "unpicked", "transferred", "moved", "withdrawn",
+                "deposited", "dropped", "delivered", "crafted", "spawned"};
         for (String k : counters) {
             if (res.has(k) && !res.get(k).isJsonNull()) {
                 JsonElement v = res.get(k);
@@ -153,7 +156,7 @@ final class AgentLoopHeuristics {
     }
 
     static String nudgeForRepeat(String originalPrompt) {
-        return "REPETITION WARNING: you just re-queried the same block/chest/recipe data with no progress. Do NOT call drone.inspect for the same target again. Act on what you already know: move to the target and use breakBlock/placeBlock/transfer, or report the exact blocker as your final reply (done=true). Original task: " + truncateForPrompt(originalPrompt, 300);
+        return "REPETITION WARNING: you just re-queried the same block/chest/recipe data with no progress. Do NOT call a read-only tool for the same target again. Act on what you already know: move to the target and use breakBlock/placeBlock/giveToPlayer, or report the exact blocker as your final reply (done=true). Original task: " + truncateForPrompt(originalPrompt, 300);
     }
 
     static boolean shouldForceFinal(JsonObject plan, JsonArray messages) {
@@ -190,7 +193,14 @@ final class AgentLoopHeuristics {
     static String queryFingerprint(String code) {
         if (code == null || code.isEmpty()) return "";
         String c = code.replaceAll("\\s+", " ");
-        String[] tools = new String[]{"drone.inspect", "drone.state"};
+        String[] tools = new String[]{"drone.state", "drone.getblock", "drone.getblocksinbox",
+                "drone.gettopy", "drone.scanroom", "drone.scanblocks", "drone.scanveins",
+                "drone.finddistant", "drone.getentities", "drone.getdrops", "drone.getplayer",
+                "drone.getplayerinventory", "drone.getchest", "drone.scanchests",
+                "drone.finditem", "drone.finditeminchests", "drone.getrecipes",
+                "drone.scanfurnaces", "drone.getmachinerecipes", "drone.getmachinerecipe",
+                "drone.scanmachines", "drone.machineingredients", "drone.lookupdoc",
+                "drone.getbreadcrumbs"};
         for (String t : tools) {
             int idx = c.toLowerCase().indexOf(t);
             if (idx < 0) continue;
@@ -246,15 +256,19 @@ final class AgentLoopHeuristics {
         }
         JsonObject res = execRes.getAsJsonObject("result");
         boolean attempted = res.has("started") || res.has("placed") || res.has("used")
-                || res.has("activated") || res.has("transferred") || res.has("moved")
-                || res.has("withdrawn") || res.has("deposited") || res.has("crafted");
+                || res.has("activated") || res.has("attacked") || res.has("picked")
+                || res.has("unpicked") || res.has("transferred") || res.has("moved")
+                || res.has("withdrawn") || res.has("deposited") || res.has("dropped")
+                || res.has("delivered") || res.has("crafted");
         if (!attempted) return false;
         boolean acted = res.has("arrived") && res.get("arrived").isJsonPrimitive() && res.get("arrived").getAsBoolean();
-        String[] flags = new String[]{"started", "placed", "used", "activated", "broken"};
+        String[] flags = new String[]{"started", "placed", "used", "activated", "broken",
+                "attacked", "picked", "unpicked"};
         for (String k : flags) {
             if (res.has(k) && res.get(k).isJsonPrimitive() && res.get(k).getAsBoolean()) acted = true;
         }
-        String[] nums = new String[]{"transferred", "moved", "withdrawn", "deposited", "crafted"};
+        String[] nums = new String[]{"transferred", "moved", "withdrawn", "deposited",
+                "dropped", "delivered", "crafted"};
         for (String k : nums) {
             if (res.has(k) && res.get(k).isJsonPrimitive() && res.get(k).getAsInt() > 0) acted = true;
         }

@@ -2,11 +2,11 @@
 
 CortexDrone is an autonomous OpenComputers drone controller for Minecraft 1.7.10.
 The drone is driven by an LLM that writes JavaScript, executed by Node.js, which
-calls a small master-tool RPC surface on the Minecraft server. The design goal is
+calls a small RPC tool surface on the Minecraft server. The design goal is
 a clean split between **data**, **decisions**, **atomic actions**, and
 **transport**.
 
-This file is the master map. The detailed chapters live in `docs/`:
+This file is the top-level map. The detailed chapters live in `docs/`:
 
 - [docs/README.md](docs/README.md) — documentation index and reading order
 - [docs/01-overview.md](docs/01-overview.md) — what the project is and how it runs
@@ -15,7 +15,7 @@ This file is the master map. The detailed chapters live in `docs/`:
 - [docs/04-navigation.md](docs/04-navigation.md) — goal navigation and movement engine
 - [docs/05-services.md](docs/05-services.md) — inventory, machine, world, navigation services
 - [docs/06-harness.md](docs/06-harness.md) — LLM loop, Code Mode runtime, task/session, RPC dispatcher
-- [docs/07-tools-rpc.md](docs/07-tools-rpc.md) — master tools, inspect ops, RPC/HTTP, SDK
+- [docs/07-tools-rpc.md](docs/07-tools-rpc.md) — tool catalog, RPC/HTTP, SDK
 - [docs/08-runtime.md](docs/08-runtime.md) — lifecycle, tick pipeline, modes, spawn, config, logging
 - [docs/09-resources.md](docs/09-resources.md) — prompts, SDK resources, skills
 - [docs/10-build-deploy.md](docs/10-build-deploy.md) — Gradle, validation, tests, deploy, operations
@@ -41,7 +41,7 @@ LlmResponseParser -> CodeModeRuntime (Node.js JavaScript)
 SDK `drone.*` -> POST /rpc -> RpcDispatcher
 		|
 		v
-MasterRpcHandler -> RPC translators -> managers -> actions
+RPC handlers -> RPC translators -> managers -> actions
 		|
 		v
 Minecraft world / OpenComputers Drone / inventory / navigation
@@ -111,8 +111,8 @@ src/main/java/ir/layercloud/cortexdrone/
     CodeModeRuntime.java     Node.js runner and SDK bundle loader
     SkillLibrary.java        bundled + saved skills, BM25 retrieval
     RpcDispatcher.java       main-thread RPC + time-sliced large scans
-    ToolRegistry.java         master tool registry (names + descriptions)
-    rpc/                     RpcHandler + handlers + translators
+    ToolRegistry.java         per-handler tool registry (names + descriptions)
+    rpc/                     RpcHandler + per-domain handlers + translators
 
   command/                  /drone command
   config/                   AIConfig + DroneLogger + ChatRecord/DebugEntry
@@ -222,27 +222,32 @@ continuations, and premature-`done` rejection.
 JSON. The SDK's `drone` object is the only tool global.
 
 `RpcDispatcher` marshals every RPC onto the server thread with per-method
-timeouts. Large `inspect('blocks')` scans are time-sliced across ticks as a
+timeouts. Large `scan_blocks` calls are time-sliced across ticks as a
 single job (`poll_scan`) instead of blocking a tick.
 
-## 7. Master tool surface
+## 7. Tool surface
+
+Each domain handler owns its tools and `RpcDispatcher` merges them (duplicates
+are a startup error). There is no catch-all router and no `inspect(op)` dispatcher.
 
 ```text
-state
-inspect
-goto
-stop
-break_block
-place_block
-interact_block
-use_item
-pick_entity
-unpick_entity
-transfer
-craft
-visuals
-skills
-cancel
+session      state cancel
+navigation   goto stop get_breadcrumbs
+block        break_block place_block
+interaction  interact_block use_item attack_entity pick_entity unpick_entity
+inventory    move_item give_to_player take_from_player withdraw_chest
+             deposit_chest drop_items suck_items craft
+visuals      set_led set_light spawn_particles play_sound play_note say
+             set_status_text
+skills       search_skills list_skills save_skill
+world        get_block get_blocks_in_box get_top_y scan_room scan_blocks
+             scan_veins find_distant get_entities get_drops raycast_player
+             lookup_doc find_build_site plan_structure
+query        get_player get_player_inventory get_chest scan_chests
+             find_item_in_chests find_item get_recipes scan_furnaces
+             get_machine_recipes get_machine_recipe scan_machines
+             machine_ingredients
+transport    poll_scan
 ```
 
 Removed composite tools (`mine`, `hunt`, `farm`, `buildStructure`, etc.) are not
@@ -286,7 +291,7 @@ from `resources/skills/`.
   and `node --check` for every `.mjs`.
 - `deploy` copies the reobfuscated jar to `/root/forge-smp/mods` and removes old
   CortexDrone jars.
-- Tests cover action lifecycle/registry, master tool surface, skill library,
+- Tests cover action lifecycle/registry, tool registration, skill library,
   task intent and task session.
 
 Detailed build/operations instructions: [docs/10-build-deploy.md](docs/10-build-deploy.md).

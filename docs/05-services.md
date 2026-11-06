@@ -154,12 +154,12 @@ Used by item search, crafting filters, machine ranker and skill search.
 ### `RoomScanner`
 
 3D room/shelter geometry: floor, walls, ceiling, door side, interior volume,
-materials. Used by `inspect('room')`.
+materials. Used by `scan_room`.
 
 ### `VeinScanner`
 
 Connected-component scan of ore/block veins by filter, grouped clusters with
-counts/centers/distance. Used by `inspect('veins')`.
+counts/centers/distance. Used by `scan_veins`.
 
 ### `StructureArchitect`
 
@@ -171,7 +171,7 @@ Build-site finding and blueprint generation:
 - `resolveDoorSideTowardPlayer`;
 - `generateStructureBlueprint(world, player, ctrl, spec)`.
 
-Used by `inspect('buildSite')` and `inspect('plan')`.
+Used by `find_build_site` and `plan_structure`.
 
 ### `PlayerTargetScanner`
 
@@ -197,7 +197,7 @@ Documentation lookup for items/recipes/machines:
 - HBM/mod recipe config search;
 - optional web wiki summary with cache.
 
-Used by `inspect('doc')`.
+Used by `lookup_doc`.
 
 ### `raytrace/`
 

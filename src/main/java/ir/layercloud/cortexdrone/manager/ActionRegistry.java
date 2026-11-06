@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Resolves master operations to their category manager.
+ * Resolves action operations to their category manager.
  *
  * <p>The registry knows only managers. JSON translation lives in the RPC/HTTP
  * transport layer; contexts, ticking and cancellation live in the manager that

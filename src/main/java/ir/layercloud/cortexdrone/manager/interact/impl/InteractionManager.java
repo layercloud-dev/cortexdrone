@@ -16,15 +16,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Long-lived interaction manager. It only parses requests, creates the matching
- * single-use action, serializes the result and manages context lifetime.
+ * Long-lived interaction manager. Every interaction tool is its own operation;
+ * attacks are {@code attack_entity}, not a flag on {@code use_item}.
  */
 public final class InteractionManager extends ActionManager<InteractionContext, InteractionRequest, InteractionResult> {
     private final InventoryService inventoryService;
     private final Map<DroneController, InteractionState> states = new ConcurrentHashMap<>();
 
     public InteractionManager(InventoryService inventoryService) {
-        super("interact", "interact_block", "use_item", "pick_entity", "unpick_entity");
+        super("interact", "interact_block", "use_item", "attack_entity",
+                "pick_entity", "unpick_entity");
         this.inventoryService = inventoryService;
     }
 
@@ -61,9 +62,14 @@ public final class InteractionManager extends ActionManager<InteractionContext, 
             return new InteractBlockAction(this.inventoryService, request);
         }
         if ("use_item".equals(operation)) {
-            return request.hasEntity()
-                    ? new AttackEntityAction(this, request)
-                    : new UseItemAction(request);
+            return new UseItemAction(request);
+        }
+        if ("attack_entity".equals(operation)) {
+            if (!request.hasEntity()) {
+                return ignored -> context.result(InteractionResult.failure(
+                        "attack_entity requires entityId"));
+            }
+            return new AttackEntityAction(this, request);
         }
         if ("pick_entity".equals(operation)) {
             if (!request.hasEntity()) {

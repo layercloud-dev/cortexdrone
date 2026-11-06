@@ -65,7 +65,8 @@ using a legacy API and the suppression is local.
 | Test | Covers |
 | --- | --- |
 | `action/ActionRegistryTest` | one-shot context release, retained ticking, newer invocation cancels previous, cancelAll, duplicate operation rejection, unknown operation rejection |
-| `harness/MasterToolSurfaceTest` | exact master tool list, no removed composite tools, unique names |
+| `harness/ToolRegistryTest` | unique tool ownership, required primitives, no removed routers/composites |
+| `harness/RpcDispatcherRegistryTest` | duplicate-tool rejection and handler ownership |
 | `harness/SkillLibraryTest` | bundled skill loading/search |
 | `harness/TaskIntentClassifierTest` | deterministic intent classification |
 | `harness/session/DroneSessionTest` | session lifecycle/notes/age |
@@ -120,7 +121,7 @@ curl -s http://127.0.0.1:25580/state | head
 Startup is complete when the world log contains:
 
 ```text
-CortexDrone v1.4.0 (Master-Tool Code Mode Harness) initialized
+CortexDrone v1.4.0 (Tool Code Mode Harness) initialized
 ```
 
 The mod writes `world/layercloud-drone-debug.log` for its own categories.

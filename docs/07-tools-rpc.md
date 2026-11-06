@@ -1,32 +1,31 @@
-# 07 — Master Tools, Inspect Ops and RPC/HTTP
+# 07 — Tools, RPC and HTTP
 
-## 1. The master tool surface
+## 1. Tool surface
 
-Canonical list: `harness/ToolRegistry.master()`.
+There is no catch-all tool and no router. Every tool is one explicit
+operation, owned by exactly one domain handler. Handlers declare their tools in
+their own `ToolRegistry`; `RpcDispatcher` merges the registries and rejects
+duplicate names.
 
-```text
-state
-inspect
-goto
-stop
-break_block
-place_block
-interact_block
-use_item
-pick_entity
-unpick_entity
-transfer
-craft
-visuals
-skills
-cancel
-```
+| Handler | Tools |
+| --- | --- |
+| `SessionRpcHandler` | `state`, `cancel` |
+| `NavigationRpcHandler` | `goto`, `stop`, `get_breadcrumbs` |
+| `BlockRpcHandler` | `break_block`, `place_block` |
+| `InteractionRpcHandler` | `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity` |
+| `InventoryActionRpcHandler` | `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`, `deposit_chest`, `drop_items`, `suck_items`, `craft` |
+| `VisualsRpcHandler` | `set_led`, `set_light`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` |
+| `SkillRpcHandler` | `search_skills`, `list_skills`, `save_skill` |
+| `WorldRpcHandler` | `get_block`, `get_blocks_in_box`, `get_top_y`, `scan_room`, `scan_blocks`, `scan_veins`, `find_distant`, `get_entities`, `get_drops`, `raycast_player`, `lookup_doc`, `find_build_site`, `plan_structure` |
+| `InventoryRpcHandler` | `get_player`, `get_player_inventory`, `get_chest`, `scan_chests`, `find_item_in_chests`, `find_item`, `get_recipes`, `scan_furnaces`, `get_machine_recipes`, `get_machine_recipe`, `scan_machines`, `machine_ingredients` |
+| `ScanRpcHandler` | `poll_scan` |
 
-The registry is the single source of truth: `MasterRpcHandler` returns
-`ToolRegistry.master().names()` as its supported methods, and each entry also
-carries a short description for introspection. Removed composite tools are
-documented in `docs/removed-tasks.md` and the surface test rejects them. They are
-not callable through any alias.
+Removed router tools (`inspect`, `visuals`, `skills`, `transfer`) and removed
+composite tasks (`mine`, `hunt`, `farm`, `buildStructure`, `sortChests`, ...)
+must not be reintroduced. `ToolRegistryTest` asserts both lists.
+
+The SDK method names are camelCase versions of the RPC names
+(`break_block` → `drone.breakBlock`, `scan_blocks` → `drone.scanBlocks`).
 
 ## 2. `drone.state()`
 
@@ -35,49 +34,35 @@ Returns live status. Important fields:
 - identity: `id`, `name`, `owner`, position;
 - task: `activeTask`, `taskPrompt`, `taskSummary`, `taskAgeMs`, `taskNotes`;
 - navigation: `navigationActive`, `navigationPhase`, `navigationReason`,
-  `navigationError`, `distanceToGoal`, `arrived`;
+  `navigationError`, `distanceToGoal`, `arrived`, `blockedWaypoints`;
 - work: `busy` (navigation or any retained action);
 - lighting: `lightActive`, `lightRadius`, `lightLevel`, `lightColor`;
 - inventory: `inventory`, `freeSlots`, `totalItems`, `isFull`;
 - loop: `aborted` when the calling loop ID was cancelled.
 
-## 3. `drone.inspect(op, args)`
+## 3. World inspection tools
 
-Read-only query namespace. Ops:
-
-| Op | Purpose |
+| Tool | Purpose |
 | --- | --- |
-| `block {x,y,z}` | block id/name/meta/hardness/passable/liquid/light |
-| `box {x1,y1,z1,x2,y2,z2,includeAir}` | blocks in a box |
-| `top {x,z}` | surface Y/material/biome |
-| `room {x?,y?,z?,maxRadius}` | floor/walls/ceiling geometry |
-| `blocks {filter,radius,x?,y?,z?}` | matching blocks; large scans time-sliced |
-| `veins {filter,radius}` | grouped ore/vein clusters |
-| `distant {target,maxRadius}` | distant resource/biome search |
-| `entities {radius,filter}` | nearby entities |
-| `drops {radius,filter}` | dropped items |
-| `raycast {maxDist}` | player look target |
-| `player {}` / `playerInventory {}` | player position/look/held/inventory |
-| `recipe {filter}` | vanilla crafting recipes |
-| `chest {x,y,z}` | one chest/container contents |
-| `chests {radius,filter}` | scan chests for items |
-| `findItem {filter,radius}` | item search everywhere nearby |
-| `findItemInChests {filter,radius}` | item search only in chests |
-| `furnaces {radius}` | furnace scan |
-| `machineRecipes {filter,machine?}` | machine recipe list |
-| `machineRecipe {filter,machine?,radius?}` | best machine recipe |
-| `machines {radius,machine?}` | machine tile scan/description |
-| `machineIngredients {filter,machine?,radius?}` | ingredient availability |
-| `breadcrumbs {limit}` | trail snapshot + surface anchor |
-| `buildSite {...}` | find a build site |
-| `plan {...}` | structure blueprint |
-| `doc {query,mod?}` | local/web documentation lookup |
+| `get_block {x,y,z}` | block id/name/meta/hardness/passable/liquid/light |
+| `get_blocks_in_box {x1,y1,z1,x2,y2,z2,includeAir}` | blocks in a box |
+| `get_top_y {x,z}` | surface Y/material/biome |
+| `scan_room {x?,y?,z?,maxRadius}` | floor/walls/ceiling geometry |
+| `scan_blocks {filter,radius,x?,y?,z?}` | matching blocks; large scans time-sliced |
+| `scan_veins {filter,radius}` | grouped ore/vein clusters |
+| `find_distant {target,maxRadius}` | distant resource/biome search |
+| `get_entities {radius,filter}` | nearby entities |
+| `get_drops {radius,filter}` | dropped items |
+| `raycast_player {maxDist}` | player look target |
+| `lookup_doc {query,modId?,includeWeb?}` | local/web documentation |
+| `find_build_site {width,depth,maxRadius}` | flat build pad |
+| `plan_structure {...}` | structure blueprint |
 
-Unknown op returns `{ok:false,error:"Unknown inspect op: ..."}`.
+Unknown tool names are rejected by the dispatcher before any handler runs.
 
 ### Large block scans
 
-If op is `blocks`/`scanblocks` and `radius > 32`:
+If `scan_blocks` has `radius > 32`:
 
 - returns `{ok:true,queued:true,pending:true,jobId,radius,cappedRadius,
   truncated:true,scanMode:"time_sliced"}`;
@@ -86,12 +71,11 @@ If op is `blocks`/`scanblocks` and `radius > 32`:
 - cap 32 by default, absolute 64; max 400 blocks; 30 s age-out;
 - result includes `scannedVoxels`, `truncated`, `done`, `blocks`.
 
-The sync inspect path still exists for small scans and for already-on-server-thread
-calls.
+The sync path still runs for small scans and already-on-server-thread calls.
 
-## 4. Movement tools
+## 4. Navigation tools
 
-### `drone.goto(x,y,z,opts)`
+### `goto(x,y,z,opts)` / `goto({x,y,z,standoffOf,maxWaitMs})`
 
 - Goal-driven; manager chooses trail/flight.
 - `standoffOf`/`nearBlock` resolves a safe position beside a block.
@@ -99,103 +83,110 @@ calls.
 - Returns `{started,arrived,phase,goal,...state}`.
 - `navigationError` explains failure.
 
-### `drone.stop()`
+### `stop()`
 
 - Clears navigation/path and holds position.
 - Leaves the drone idle; there is no mode to set.
 
-No `tunnel`, `digUp`, `digDown`, or `navigate` tools exist.
+### `get_breadcrumbs({limit})`
+
+- Read-only trail snapshot plus `lastSurfaceAnchor`.
+
+No `tunnel`, `digUp`, `digDown` or `navigate` tools exist.
 
 ## 5. Block tools
 
-### `drone.breakBlock(x,y,z,opts)`
+### `break_block {x,y,z}`
 
 - Exactly one explicit block.
 - If out of reach: `{needsMovement:true,standoff,action:"break",distance,target}`.
-- SDK goto standoff then retries.
-- If no standoff: SDK goto the block coordinates, then retries.
+- SDK flies to the standoff, then retries.
+- If no standoff: SDK flies to the block coordinates, then retries.
 - Breaks the block immediately; the call returns after it is gone.
 - Returns `{broken:true, block}` or `{ok:false, error}`.
 
-### `drone.placeBlock(x,y,z,block,meta,opts)`
+### `place_block {x,y,z,block,meta}`
 
-- Exactly one block from drone/chest/player inventory.
+- Exactly one block from the drone inventory.
 - Checks replaceable; out-of-reach returns standoff.
 - No blueprint, queue, or substitution.
 - Returns `{placed,block,target}`.
 
 ## 6. Interaction tools
 
-### `drone.interactBlock(x,y,z,side,opts)`
+### `interact_block {x,y,z,side}`
 
 - One right-click/activation.
 - Does not chain held-item use.
 - `InteractBlockAction` also supports liquid scooping via bucket.
 
-### `drone.useItem(itemOrSlot, x?,y?,z?,side?)`
+### `use_item {item|slot,x?,y?,z?,side?}`
 
 - One held-item use, optional block target.
 - Does not activate the block first.
-- With `{entityId, item}` or `{attack:id}` → one melee attack, optionally fire
-  aspect.
 - Out-of-reach returns standoff.
 
-### `drone.pickEntity(id)` / `drone.unpickEntity({entityId?})`
+### `attack_entity {entityId,item?,slot?}`
+
+- One melee attack with the selected/held item.
+- Fire aspect and attack damage come from `ToolInspector`.
+- Refuses to attack players.
+
+### `pick_entity {entityId}` / `unpick_entity {entityId?}`
 
 - Mount/dismount one entity/player.
 - Movement into reach is handled by the SDK standoff loop.
 
 ## 7. Inventory tools
 
-### `drone.transfer({op,...})`
+One tool per operation; there is no `op` field.
 
-Ops: `move`, `give`, `take`, `withdraw`, `deposit`, `drop`, `suck`.
-
-- `give`/`drop`/`deposit` retain an action that flies to the target; the SDK
-  waits for `busy === false`.
-- Results include counts and a `flyingToPlayer`/`flyingToChest` flag while the
-  action is still travelling.
-
-### `drone.craft(filter, count)`
-
-- Vanilla crafting primitive.
-- Uses only the drone inventory. Missing ingredients return an error instead of
-  pulling from chests or the player.
-- Returns `CraftResult` fields (`crafted`, `item`, error).
-
-## 8. Visuals and skills
-
-### `drone.visuals(kind,args)`
-
-Kinds:
-
-| kind | Operation |
+| Tool | Behavior |
 | --- | --- |
-| `led` / `color` | `set_led` (one static color) |
-| `light` / `aura` | `set_light` (enable/disable, radius, level, color) |
-| `particles` | `spawn_particles` |
-| `sound` | `play_sound` |
-| `note` | `play_note` |
-| `status` | `set_status_text` |
-| `say` | chat via `SayAction` |
+| `move_item` | move filtered items between inventories/slots |
+| `give_to_player` | give drone items to a player; retains while flying |
+| `take_from_player` | take filtered items from a player |
+| `withdraw_chest` | pull from one chest, or the nearest matching chests |
+| `deposit_chest` | push the drone inventory into a chest; retains while flying |
+| `drop_items` | hand inventory to the owner, or drop it when offline |
+| `suck_items` | vacuum nearby dropped items |
+| `craft` | vanilla crafting from drone inventory only |
+
+`give_to_player`, `drop_items` and `deposit_chest` retain an action that flies to
+the target; the SDK waits for `busy === false` and merges the final state.
+
+`craft` uses only the drone inventory. Missing ingredients return an error
+instead of pulling from chests or the player.
+
+## 8. Visuals, skills and cancellation
+
+### Visual tools
+
+| Tool | Operation |
+| --- | --- |
+| `set_led {color}` | one static color |
+| `set_light {enabled,radius,level,color,toggle}` | illumination aura |
+| `spawn_particles {type,count,spread,speed,x?,y?,z?}` | particle burst |
+| `play_sound {sound,volume,pitch}` | sound effect |
+| `play_note {semitone}` | note |
+| `say {message}` | chat message |
+| `set_status_text {text}` | drone status text |
 
 Animated LED effects are not a Java feature: compose them in a skill
-(`rainbow_show` is the bundled example) by looping `drone.visuals('led')`.
+(`rainbow_show` is the bundled example) by looping `drone.setLed`.
 
-### `drone.skills(op,args)`
+### Skill tools
 
-Ops: `search`, `list`, `save`.
+- `search_skills {query,limit}` — BM25 over bundled + saved skills.
+- `list_skills {limit}`.
+- `save_skill {name,code,description,tags}`.
 
-- `save` requires `name` + `code`; optional description/tags.
-- `search` uses BM25 over bundled + saved skills.
-- `list` returns top/bounded entries.
-
-### `drone.cancel()`
+### `cancel()`
 
 - Cancels other loops for this controller.
 - Clears action state (all managers + navigation).
-- Cancels task session.
-- Stops navigation/hovers.
+- Cancels the task session.
+- Stops navigation and hovers.
 - Returns `{cancelled:true,cancelledLoops}`.
 
 ## 9. Transport: HTTP
@@ -243,7 +234,7 @@ Body:
 - `droneId` or `player` selects drone; fallback any live drone.
 - `args` defaults to the whole body.
 - `loopId` copied into args for cancellation checks.
-- RPC runs on the main thread with method budget.
+- RPC runs on the main thread with a per-tool budget.
 - 60 s HTTP wait; timeout → 504.
 - Returns JSON result.
 
@@ -256,54 +247,38 @@ Actions:
 - `spawn` — spawn drone for player or at coordinates;
 - `despawn`/`remove` — despawn and drop inventory;
 - `instruct`/`command` — natural-language task;
-- any other action name falls through to `executeSync` (direct RPC method).
+- any other action name falls through to `executeSync` (direct tool name).
 
 Non-JS actions run on the server thread with a 2.5 s wait; if no result yet, the
 HTTP response says `{ok:true,queued:true}`.
 
-## 10. RPC handlers and translators
+## 10. Handlers and translators
 
-### Handlers
+Every handler implements `RpcHandler`:
 
-`MasterRpcHandler` routes the 15 master tools:
-
-- `state` → status translator;
-- `inspect` → `WorldRpcHandler` / `InventoryRpcHandler` / breadcrumbs;
-- `goto`/`stop` → `ActionRpcTranslator` → navigation;
-- `break_block`/`place_block` → building;
-- `interact_block`/`use_item`/`pick_entity`/`unpick_entity` → interaction;
-- `transfer`/`craft` → inventory;
-- `visuals`/`skills` → visuals manager/translator;
-- `cancel` → cancel action state.
-
-`WorldRpcHandler` methods:
-
-```text
-get_block, get_blocks_in_box, get_top_y, scan_room, scan_blocks,
-scan_veins, find_distant, get_entities, get_drops, raycast_player,
-lookup_doc,
-find_build_site, plan_structure
+```java
+ToolRegistry toolRegistry();
+JsonObject handle(DroneController ctrl, EntityPlayerMP player,
+                  String method, JsonObject args);
 ```
 
-`InventoryRpcHandler` methods:
+`RpcDispatcher`:
 
-```text
-get_player, get_player_inventory, scan_chests, find_item_in_chests,
-find_item, get_chest, get_recipes, scan_furnaces,
-get_machine_recipes, get_machine_recipe, scan_machines,
-machine_ingredients
-```
+1. merges each handler's tools on construction;
+2. maps `method` → owning handler;
+3. rejects duplicate names at startup.
 
-### Translators
+Translators (the only JSON boundary):
 
 | Translator | Responsibility |
 | --- | --- |
-| `ActionRpcTranslator` | category router; status/skills/light delegation |
+| `StateRpcTranslator` | `state` snapshot |
 | `NavigationRpcTranslator` | parse goto/stop, serialize result |
 | `BuildingRpcTranslator` | parse block request/result |
 | `InteractionRpcTranslator` | parse interaction/entity request |
-| `InventoryRpcTranslator` | parse transfer/craft options |
-| `VisualsRpcTranslator` | parse visuals, LED/light, status, skills |
+| `InventoryRpcTranslator` | parse inventory request |
+| `VisualsRpcTranslator` | parse visuals request |
+| `SkillRpcTranslator` | skill search/list/save |
 | `BreadcrumbRpcTranslator` | trail JSON |
 | `RpcArgs` / `RpcJson` | safe field helpers, ok/error builders |
 
@@ -323,18 +298,11 @@ machine_ingredients
 
 ### `drone-actions.mjs`
 
-The `drone` object:
-
-- `state`, `inspect`;
-- `goto`, `stop`;
-- `breakBlock`, `placeBlock`, `interactBlock`, `useItem`;
-- `pickEntity`, `unpickEntity`;
-- `transfer`, `craft`;
-- `visuals`, `skills`, `cancel`.
-
-`_awaitMovement` waits for `state.navigationActive === false`, then returns
-`arrived` unless `navigationError` is set. Block/interaction helpers loop up to
-3–4 times on `needsMovement`, calling `goto(standoff)`.
+The `drone` object exposes one method per tool, grouped as session, navigation,
+blocks, interaction, inventory, visuals, skills, world inspection and inventory
+inspection. `_awaitMovement` waits for `state.navigationActive === false`.
+Block/interaction helpers loop up to 3–4 times on `needsMovement`, calling
+`goto(standoff)`. Transfer helpers wait for idle when a flight is in progress.
 
 ## 12. Error contract
 

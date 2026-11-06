@@ -8,6 +8,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.harness.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.harness.rpc.translate.RpcJson;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
@@ -35,20 +36,28 @@ import java.util.*;
  */
 @RequiredArgsConstructor
 public class WorldRpcHandler implements RpcHandler {
-    private static final String[] METHODS = new String[]{
-            "get_block", "get_blocks_in_box", "get_top_y", "scan_room", "scan_blocks",
-            "scan_veins", "find_distant", "get_entities", "get_drops", "raycast_player",
-            "find_base", "get_location", "list_locations", "lookup_doc",
-            "find_build_site", "plan_structure"
-    };
+    private static final ToolRegistry TOOLS = new ToolRegistry()
+            .register("get_block", "Read one block: name, id, meta, hardness, light, passability.")
+            .register("get_blocks_in_box", "Read blocks in a box, with counts by type.")
+            .register("get_top_y", "Surface height, material and biome at x/z.")
+            .register("scan_room", "Scan floor/walls/ceiling geometry around a point.")
+            .register("scan_blocks", "Find matching blocks within a radius.")
+            .register("scan_veins", "Find connected ore/block vein clusters.")
+            .register("find_distant", "Search distant terrain for a resource or biome.")
+            .register("get_entities", "List nearby living entities.")
+            .register("get_drops", "List nearby dropped items.")
+            .register("raycast_player", "Raycast the player's look direction.")
+            .register("lookup_doc", "Look up local/web documentation for an item or mod.")
+            .register("find_build_site", "Find a flat build site near the player.")
+            .register("plan_structure", "Generate a structure blueprint and material counts.");
 
     private final AIDroneManager manager;
     private final WorldScanner worldScanner;
     private final StructureArchitect structureArchitect = new StructureArchitect();
 
     @Override
-    public String[] getSupportedMethods() {
-        return METHODS;
+    public ToolRegistry toolRegistry() {
+        return TOOLS;
     }
 
     @Override
@@ -57,6 +66,9 @@ public class WorldRpcHandler implements RpcHandler {
         res.addProperty("ok", true);
         Drone d = ctrl.drone;
         World world = d.worldObj;
+
+        String missing = missingArgument(m, args);
+        if (missing != null) return RpcJson.error(m + " requires " + missing);
 
         if (!world.isRemote && !ChunkAccess.isBlockLoaded(world,
                 MathHelper.floor_double(d.posX),
@@ -365,8 +377,23 @@ public class WorldRpcHandler implements RpcHandler {
         return res;
     }
 
-    private static JsonObject chunkNotLoaded(String source) {
-        JsonObject res = new JsonObject();
+    /** Clean error instead of a raw NPE when a required coordinate is absent. */
+    private static String missingArgument(String method, JsonObject args) {
+        if ("get_top_y".equals(method)) {
+            return args != null && args.has("x") && args.has("z") ? null : "x/z";
+        }
+        if ("get_blocks_in_box".equals(method)) {
+            if (args == null) return "x1/y1/z1/x2/y2/z2";
+            String[] required = {"x1", "y1", "z1", "x2", "y2", "z2"};
+            for (String key : required) {
+                if (!args.has(key)) return "x1/y1/z1/x2/y2/z2";
+            }
+        }
+        if ("plan_structure".equals(method) && args == null) return "structure options";
+        return null;
+    }
+
+    private static JsonObject chunkNotLoaded(String source) {        JsonObject res = new JsonObject();
         res.addProperty("ok", false);
         res.addProperty("error", "Chunk is not loaded: " + source);
         return res;

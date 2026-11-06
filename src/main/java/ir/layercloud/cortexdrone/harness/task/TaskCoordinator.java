@@ -67,7 +67,7 @@ public final class TaskCoordinator {
         session.begin(myLoopId, cleanPrompt);
         String senderName = player != null ? player.getCommandSenderName() : ctrl.ownerName;
         this.manager.getLogger().log("CMD", ctrl,
-                "Master-tool session from " + senderName + " (loopId=" + myLoopId + ", intent=" + intent.name() + ")",
+                "Tool session from " + senderName + " (loopId=" + myLoopId + ", intent=" + intent.name() + ")",
                 "prompt=\"" + cleanPrompt + "\"");
 
         final JsonObject worldContext = this.manager.getAgentService().buildDroneContextForLlm(player, ctrl);

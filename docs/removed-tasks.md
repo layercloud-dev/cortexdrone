@@ -67,7 +67,7 @@ Unknown `/drone` subcommands fall through to natural-language task handling.
 Carrying a player or mob is **not** a movement action. It is a skill composed
 from interaction primitives:
 
-1. `inspect('entities')` to find the target,
+1. `get_entities` to find the target,
 2. `pickEntity(entityId)` to mount it,
 3. `goto(destination)` to travel,
 4. `unpickEntity()` to dismount.

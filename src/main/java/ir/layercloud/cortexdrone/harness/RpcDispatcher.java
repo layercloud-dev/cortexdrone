@@ -8,7 +8,16 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
-import ir.layercloud.cortexdrone.harness.rpc.impl.MasterRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.BlockRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.InteractionRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.InventoryActionRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.InventoryRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.NavigationRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.ScanRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.SessionRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.SkillRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.VisualsRpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.WorldRpcHandler;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -49,25 +58,58 @@ public class RpcDispatcher {
     private static final int MAX_SCAN_RESULTS = 400;
 
     private final AIDroneManager manager;
-    private final Map<String, RpcHandler> handlerRegistry = new HashMap<>();
+    private final Map<String, RpcHandler> handlerRegistry = new LinkedHashMap<>();
     private final AtomicScanLock scanLock = new AtomicScanLock();
     private volatile ScanJob activeJob;
     private final Map<String, ScanJob> jobByKey = new ConcurrentHashMap<>();
 
     public RpcDispatcher(AIDroneManager manager) {
         this.manager = manager;
-        // Single master tool surface. Read-only handlers remain internal
-        // delegates; they are deliberately NOT registered as tools.
-        registerHandler(new MasterRpcHandler(manager));
+        // One handler per domain; each handler owns its own tool registry.
+        // The dispatcher merges them and rejects duplicate names so every tool
+        // has exactly one owner and no operation can be left unregistered.
+        registerHandler(new SessionRpcHandler(manager));
+        registerHandler(new NavigationRpcHandler(manager));
+        registerHandler(new BlockRpcHandler(manager));
+        registerHandler(new InteractionRpcHandler(manager));
+        registerHandler(new InventoryActionRpcHandler(manager));
+        registerHandler(new VisualsRpcHandler(manager));
+        registerHandler(new SkillRpcHandler(manager));
+        registerHandler(new WorldRpcHandler(manager, manager.getWorldScanner()));
+        registerHandler(new InventoryRpcHandler(manager.getInventoryService()));
+        registerHandler(new ScanRpcHandler(this));
     }
 
     public void registerHandler(RpcHandler handler) {
-        if (handler == null || handler.getSupportedMethods() == null) return;
-        for (String method : handler.getSupportedMethods()) {
-            if (method != null && !method.isEmpty()) {
-                this.handlerRegistry.put(method.trim().toLowerCase(), handler);
+        registerInto(this.handlerRegistry, handler);
+    }
+
+    /**
+     * Merge one handler's owned tools into a name map, rejecting duplicate
+     * names. Package-visible so tests can exercise the exact dispatcher rule.
+     */
+    static void registerInto(Map<String, RpcHandler> registry, RpcHandler handler) {
+        if (handler == null || handler.toolRegistry() == null) return;
+        for (ToolRegistry.Tool tool : handler.toolRegistry().tools()) {
+            String method = tool.getName();
+            RpcHandler previous = registry.get(method);
+            if (previous != null && previous != handler) {
+                throw new IllegalStateException("Duplicate tool '" + method
+                        + "' in " + previous.getClass().getSimpleName()
+                        + " and " + handler.getClass().getSimpleName());
             }
+            registry.put(method, handler);
         }
+    }
+
+    /** All registered tools, merged in handler registration order. */
+    public ToolRegistry toolRegistry() {
+        ToolRegistry merged = new ToolRegistry();
+        for (Map.Entry<String, RpcHandler> entry : this.handlerRegistry.entrySet()) {
+            ToolRegistry.Tool tool = entry.getValue().toolRegistry().find(entry.getKey());
+            if (tool != null) merged.register(tool.getName(), tool.getDescription());
+        }
+        return merged;
     }
 
     /**
@@ -209,30 +251,22 @@ public class RpcDispatcher {
     }
 
     private static boolean isLargeScan(String method, JsonObject args) {
-        if (!"inspect".equals(method)) return false;
-        String op = args != null && args.has("op") && !args.get("op").isJsonNull()
-                ? args.get("op").getAsString().trim().toLowerCase() : "";
-        if (!"blocks".equals(op) && !"scanblocks".equals(op)) return false;
+        if (!"scan_blocks".equals(method)) return false;
         int radius = parseIntField(args, -1);
-        // Radius > default cap counts as large. The WorldRpcHandler also
-        // confirms the capped radius; here we only route.
+        // Radius > default cap counts as large. The handler also confirms the
+        // capped radius; here we only route.
         return radius > LARGE_RADIUS_THRESHOLD;
     }
 
     private static long getTimeoutForMethod(String method, JsonObject args) {
         // Avoid a flat 8s wait for everything: cheap read-only inspection gets a
         // tight budget while world-mutating primitives keep their longer horizon.
-        if ("inspect".equals(method)) {
-            String op = args != null && args.has("op") && !args.get("op").isJsonNull()
-                    ? args.get("op").getAsString().trim().toLowerCase() : "";
-            if ("blocks".equals(op) || "scanblocks".equals(op) || "box".equals(op)
-                    || "veins".equals(op) || "scanveins".equals(op)
-                    || "room".equals(op) || "scanroom".equals(op)
-                    || "distant".equals(op) || "finddistant".equals(op)
-                    || "entities".equals(op) || "getentities".equals(op)
-                    || "drops".equals(op) || "getdrops".equals(op)) {
-                return 2500L;
-            }
+        if ("get_block".equals(method) || "get_blocks_in_box".equals(method)
+                || "get_top_y".equals(method) || "scan_room".equals(method)
+                || "scan_veins".equals(method) || "find_distant".equals(method)
+                || "get_entities".equals(method) || "get_drops".equals(method)
+                || "scan_blocks".equals(method)) {
+            return 2500L;
         }
         return 8000L;
     }
@@ -516,22 +550,20 @@ public class RpcDispatcher {
     }
 
     public JsonObject executeSync(DroneController ctrl, EntityPlayerMP player, String method, JsonObject args) {
-        // Direct poll endpoint for time-sliced large scans, so JS callers can
-        // retrieve partial results without re-issuing the scan.
-        String pre = normalizeMethod(method);
-        if (pre.equals("poll_scan")) {
-            String jobId = args != null && args.has("jobId") && !args.get("jobId").isJsonNull()
-                    ? args.get("jobId").getAsString() : null;
-            return this.pollScanResult(jobId);
-        }
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.isDead) {
+        String m = normalizeMethod(method);
+        RpcHandler handler = this.handlerRegistry.get(m);
+        boolean hasDrone = ctrl != null && ctrl.drone != null && !ctrl.drone.isDead;
+        if (!hasDrone) {
+            // A time-sliced scan must stay pollable even if the drone dies
+            // mid-scan, so drone-independent handlers run before the guard.
+            if (handler instanceof ScanRpcHandler) {
+                return handler.handle(ctrl, player, m, args != null ? args : new JsonObject());
+            }
             JsonObject res = new JsonObject();
             res.addProperty("ok", false);
             res.addProperty("error", "No active drone");
             return res;
         }
-        String m = normalizeMethod(method);
-        RpcHandler handler = this.handlerRegistry.get(m);
         if (handler != null) {
             return handler.handle(ctrl, player, m, args != null ? args : new JsonObject());
         }

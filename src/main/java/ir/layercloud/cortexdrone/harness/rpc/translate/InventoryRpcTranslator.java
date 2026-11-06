@@ -10,7 +10,8 @@ import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
- * JSON translation boundary for inventory actions.
+ * JSON translation boundary for inventory actions. Each tool name is already a
+ * concrete operation; no {@code op} switch happens here.
  */
 @RequiredArgsConstructor
 public final class InventoryRpcTranslator {
@@ -33,45 +34,23 @@ public final class InventoryRpcTranslator {
                     .build();
         }
 
-        String op = RpcArgs.string(args, "op", "move").trim().toLowerCase();
-        switch (op) {
-            case "moveslot":
-                op = "move";
-                break;
-            case "withdrawchest":
-                op = "withdraw";
-                break;
-            case "depositchest":
-                op = "deposit";
-                break;
-            case "givetoplayer":
-                op = "give";
-                break;
-            case "takefromplayer":
-                op = "take";
-                break;
-            case "suckitems":
-                op = "suck";
-                break;
-        }
-
         String filter = first(args, "filter", "target");
         String item = RpcArgs.string(args, "item", null);
         String fromType = RpcArgs.string(args, "from", "drone").toLowerCase();
         String toType = RpcArgs.string(args, "to", "player").toLowerCase();
 
         int[] source = null;
-        if ("withdraw".equals(op)) {
+        if ("withdraw_chest".equals(operation)) {
             source = coords(args, "x", "y", "z");
-        } else if ("move".equals(op)) {
+        } else if ("move_item".equals(operation)) {
             source = coords(args, "fromX", "fromY", "fromZ");
             if (source == null) source = coords(args, "chestX", "chestY", "chestZ");
         }
 
         int[] target = null;
-        if ("deposit".equals(op)) {
+        if ("deposit_chest".equals(operation)) {
             target = coords(args, "x", "y", "z");
-        } else if ("move".equals(op)) {
+        } else if ("move_item".equals(operation)) {
             target = coords(args, "toX", "toY", "toZ");
             if (target == null) target = coords(args, "chestTargetX", "chestTargetY", "chestTargetZ");
             if (target == null) target = coords(args, "targetX", "targetY", "targetZ");
@@ -81,7 +60,7 @@ public final class InventoryRpcTranslator {
         }
 
         return InventoryRequest.builder()
-                .operation(op)
+                .operation(operation)
                 .filter(filter)
                 .item(item)
                 .count(RpcArgs.integer(args, "count", 0))

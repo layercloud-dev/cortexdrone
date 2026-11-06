@@ -13,7 +13,7 @@ Read in order for a complete picture, or jump to a chapter.
 | [04-navigation.md](04-navigation.md) | Goal navigation, breadcrumbs, flight A*, dig planning, movement actions |
 | [05-services.md](05-services.md) | Inventory, machine, world and navigation read/planning services |
 | [06-harness.md](06-harness.md) | LLM loop, Code Mode runtime, task/session, heartbeat, RPC dispatcher |
-| [07-tools-rpc.md](07-tools-rpc.md) | Master tools, inspect ops, translators, HTTP API, SDK behavior |
+| [07-tools-rpc.md](07-tools-rpc.md) | Tool catalog, translators, HTTP API, SDK behavior |
 | [08-runtime.md](08-runtime.md) | Mod lifecycle, tick pipeline, modes, spawn/link/despawn, config, logging |
 | [09-resources.md](09-resources.md) | System prompt, SDK modules, skill format, bundled skills |
 | [10-build-deploy.md](10-build-deploy.md) | Gradle/RFG, validation, tests, deploy, server operations |

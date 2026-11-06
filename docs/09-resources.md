@@ -31,8 +31,8 @@ The system prompt is the model's contract. It defines:
 - the drone's role and version;
 - required JSON response schema:
   `{thought, stop, code, done, reply}`;
-- the 15 master tools and their exact semantics;
-- inspection ops;
+- every explicit tool name and its exact semantics;
+- world/inventory inspection tools;
 - composition rules (no premade tools, no hidden queues);
 - entity transport / mining / move-then-cut examples;
 - single-task/single-session behavior;
@@ -73,7 +73,6 @@ The only public global is `drone`:
 
 ```js
 drone.state()
-drone.inspect(op,args)
 drone.goto(x,y,z,opts)
 drone.goto({x,y,z,standoffOf,maxWaitMs})
 drone.stop()
@@ -83,10 +82,27 @@ drone.interactBlock(x,y,z,side,opts)
 drone.useItem(itemOrSlot,x,y,z,side)
 drone.pickEntity(id,opts)
 drone.unpickEntity(opts)
-drone.transfer(opOrOpts,args)
+drone.moveItem(opts)
+drone.giveToPlayer(opts)
+drone.takeFromPlayer(opts)
+drone.withdrawChest(opts)
+drone.depositChest(opts)
+drone.dropItems(opts)
+drone.suckItems(opts)
 drone.craft(filter,count)
-drone.visuals(kind,args)
-drone.skills(op,args)
+drone.setLed(opts)
+drone.setLight(opts)
+drone.spawnParticles(opts)
+drone.playSound(opts)
+drone.playNote(opts)
+drone.say(message)
+drone.setStatusText(text)
+drone.searchSkills(query,opts)
+drone.listSkills(opts)
+drone.saveSkill(opts)
+drone.getBlock(x,y,z)
+drone.scanBlocks(opts)
+drone.getPlayer()
 drone.cancel()
 ```
 
@@ -107,13 +123,13 @@ There are no `world`, `player`, `kb`, `harness`, `say`, `setStatusText`, `mine`,
 | `mine_and_deliver` | Find matching blocks, break, deliver to player | mine ore break deliver player iron stone |
 | `mine_blocks` | Find blocks, move to standoff, break a bounded set | mining mine ore block tunnel dig |
 | `place_double_chest` | Craft chests then place two adjacent | craft place double chest planks wood |
-| `rainbow_show` | Rainbow LED loop via `drone.visuals` | rainbow led color light fun music show |
+| `rainbow_show` | Rainbow LED loop via `drone.setLed` | rainbow led color light fun music show |
 | `return_to_player` | Goal-driven navigation back to owner | return come back player escape cave underground tunnel navigate |
 | `store_items` | Fly to chest and deposit inventory | chest deposit store items inventory storage |
 | `transport_entity` | Pick entity, fly, unpick | entity transport pick unpick player carry move |
 
 Skills are examples/compositions, not hidden Java tasks. They call the same
-master tools the model has.
+tools the model has.
 
 ## 6. Skill format
 
@@ -184,8 +200,7 @@ It only records code between 15 and 1400 chars.
 
 When changing the prompt/SDK/skills:
 
-1. Keep the master tool list in sync with `ToolRegistry.master()` and
-   `MasterRpcHandler`.
+1. Keep the SDK method list in sync with the handler `ToolRegistry` entries.
 2. Keep SDK methods in sync with RPC translators.
 3. Never reintroduce removed composite tools.
 4. Keep `index.json` listing every bundled skill file.

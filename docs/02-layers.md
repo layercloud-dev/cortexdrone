@@ -107,9 +107,9 @@ Example: `drone.breakBlock(10, 64, -3)`.
 
 1. SDK sends `POST /rpc` with method `break_block`.
 2. `DroneHttpServer` routes to `RpcDispatcher.executeOnMainThread`.
-3. `MasterRpcHandler` checks reach; if out of reach it returns
+3. `BlockRpcHandler` checks reach; if out of reach it returns
    `{needsMovement:true, standoff}`.
-4. If in reach, `ActionRpcTranslator` routes to `BuildingRpcTranslator`.
+4. If in reach, `BlockRpcHandler` routes to `BuildingRpcTranslator`.
 5. Translator builds `BlockRequest` and calls `BuildingManager.handle`.
 6. `ActionManager` creates `BlockContext`, then `BreakBlockAction`.
 7. Action calls `BuildingManager.breakBlock`, which removes the block immediately
@@ -151,17 +151,19 @@ session in `NavigationManager`; the session is separate from the action context.
 
 | Translator | Operations |
 | --- | --- |
-| `ActionRpcTranslator` | routes all category operations |
 | `NavigationRpcTranslator` | `goto`, `stop` |
 | `BuildingRpcTranslator` | `break_block`, `place_block` |
 | `InteractionRpcTranslator` | `interact_block`, `use_item`, `pick_entity`, `unpick_entity` |
-| `InventoryRpcTranslator` | `transfer`, `craft` |
-| `VisualsRpcTranslator` | `set_led`, `set_light`, particles/sound/note/say/status, `state` status, skills |
-| `BreadcrumbRpcTranslator` | `inspect('breadcrumbs')` |
+| `InventoryRpcTranslator` | move/give/take/withdraw/deposit/drop/suck, `craft` |
+| `VisualsRpcTranslator` | `set_led`, `set_light`, particles/sound/note/say/status |
+| `StateRpcTranslator` | `state` |
+| `SkillRpcTranslator` | `search_skills`, `list_skills`, `save_skill` |
+| `BreadcrumbRpcTranslator` | `get_breadcrumbs` |
 | `RpcArgs` / `RpcJson` | safe JSON helpers |
 
-The `MasterRpcHandler` is a thin router: it routes the 15 master tools, delegates
-read-only inspect ops, and injects the `needsMovement` standoff contract.
+Each domain handler owns its tools and injects its own reach contract
+(`BlockRpcHandler` and `InteractionRpcHandler` return `needsMovement`).
+`RpcDispatcher` only merges registries and routes a method to its owner.
 
 ## 7. Package conventions
 

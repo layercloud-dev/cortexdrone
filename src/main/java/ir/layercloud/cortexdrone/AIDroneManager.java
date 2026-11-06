@@ -9,7 +9,6 @@ import ir.layercloud.cortexdrone.harness.RpcDispatcher;
 import ir.layercloud.cortexdrone.harness.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.agent.LlmAgentService;
 import ir.layercloud.cortexdrone.harness.session.SessionManager;
-import ir.layercloud.cortexdrone.harness.rpc.translate.ActionRpcTranslator;
 import ir.layercloud.cortexdrone.harness.task.TaskCoordinator;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.manager.ActionRegistry;
@@ -66,7 +65,6 @@ public class AIDroneManager {
     private final InteractionManager interactionManager;
     private final InventoryManager inventoryManager;
     private final ActionRegistry actionRegistry;
-    private final ActionRpcTranslator actionRpcTranslator;
     private final DocLookupService docLookupService;
     private SkillLibrary skillLibrary;
     private final CodeModeRuntime codeModeRuntime;
@@ -101,7 +99,6 @@ public class AIDroneManager {
         this.actionRegistry.register(this.interactionManager);
         this.actionRegistry.register(this.inventoryManager);
         this.actionRegistry.register(this.visualsManager);
-        this.actionRpcTranslator = new ActionRpcTranslator(this);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.skillLibrary = new SkillLibrary(new File("./world"));
         this.codeModeRuntime = new CodeModeRuntime(this.logger, this.config, this.sessionManager);
@@ -130,7 +127,7 @@ public class AIDroneManager {
         this.logger.setDebugLogFile(new File(worldDir, "layercloud-drone-debug.log"));
         loadConfig();
         reconnectUnlinkedWorldDrones();
-        this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION + " (Master-Tool Code Mode Harness) initialized", "worldDir=" + worldDir.getAbsolutePath());
+        this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION + " (Tool Code Mode Harness) initialized", "worldDir=" + worldDir.getAbsolutePath());
 
         event.registerServerCommand(new DroneCommand("drone", this));
 

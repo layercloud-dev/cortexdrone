@@ -154,17 +154,26 @@ not a substitute for the subsystem chapters.
 | `session/SessionManager` | One session per controller, dropped on despawn |
 | `SkillLibrary` | Bundled/saved skills, BM25 search, self-corrected skills |
 | `RpcDispatcher` | Main-thread RPC, timeouts, time-sliced large scans, poll_scan |
-| `ToolRegistry` | Ordered master tool registry: names + descriptions |
+| `ToolRegistry` | Per-handler ordered tool registry (name + description, duplicate rejection) |
 | `rpc/RpcHandler` | RPC handler interface |
-| `rpc/impl/MasterRpcHandler` | Master tool router, state/inspect/cancel/standoff |
+| `rpc/impl/SessionRpcHandler` | `state`, `cancel` |
+| `rpc/impl/NavigationRpcHandler` | `goto`, `stop`, `get_breadcrumbs` + standoff contract |
+| `rpc/impl/BlockRpcHandler` | `break_block`, `place_block` + reach contract |
+| `rpc/impl/InteractionRpcHandler` | `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity` |
+| `rpc/impl/InventoryActionRpcHandler` | `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`, `deposit_chest`, `drop_items`, `suck_items`, `craft` |
+| `rpc/impl/VisualsRpcHandler` | `set_led`, `set_light`, particles/sound/note/say/status |
+| `rpc/impl/SkillRpcHandler` | `search_skills`, `list_skills`, `save_skill` |
+| `rpc/impl/ScanRpcHandler` | `poll_scan` |
+| `rpc/impl/ReachSupport` | Shared `needsMovement` standoff helper |
 | `rpc/impl/WorldRpcHandler` | World/room/vein/entity/location/doc/build queries |
 | `rpc/impl/InventoryRpcHandler` | Player/chest/furnace/recipe/machine queries |
-| `rpc/translate/ActionRpcTranslator` | Category router |
 | `rpc/translate/NavigationRpcTranslator` | goto/stop JSON |
 | `rpc/translate/BuildingRpcTranslator` | break/place JSON |
 | `rpc/translate/InteractionRpcTranslator` | interaction/entity JSON |
 | `rpc/translate/InventoryRpcTranslator` | transfer/craft JSON |
-| `rpc/translate/VisualsRpcTranslator` | visuals/state/skills/light JSON |
+| `rpc/translate/VisualsRpcTranslator` | visuals JSON |
+| `rpc/translate/StateRpcTranslator` | `state` JSON |
+| `rpc/translate/SkillRpcTranslator` | skill search/list/save JSON |
 | `rpc/translate/BreadcrumbRpcTranslator` | breadcrumbs JSON |
 | `rpc/translate/RpcArgs` | Safe JSON field helpers |
 | `rpc/translate/RpcJson` | ok/error/merge helpers |
@@ -193,7 +202,8 @@ not a substitute for the subsystem chapters.
 | Test | Responsibility |
 | --- | --- |
 | `action/ActionRegistryTest` | Manager lifecycle/registry invariants |
-| `harness/MasterToolSurfaceTest` | Tool surface and removed-tool rejection |
+| `harness/ToolRegistryTest` | Tool ownership and removed-tool rejection |
+| `harness/RpcDispatcherRegistryTest` | Duplicate-tool rejection |
 | `harness/SkillLibraryTest` | Bundled skill load/search |
 | `harness/task/TaskIntentClassifierTest` | Intent classification |
 | `harness/session/DroneSessionTest` | Session lifecycle/notes |

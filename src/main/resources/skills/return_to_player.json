@@ -1,6 +1,6 @@
 {
   "name": "return_to_player",
-  "description": "Navigate back to the owner with goal-driven navigation (the manager flies, follows a trail, or digs) and wait for arrival",
+  "description": "Navigate back to the owner with goal-driven navigation and wait for arrival",
   "tags": "return come back player escape cave underground tunnel navigate",
-  "code": "const p = await drone.inspect('player', {});\nreturn await drone.goto(p.blockX, p.blockY + 2, p.blockZ);"
+  "code": "const p = await drone.getPlayer();\nreturn await drone.goto(p.blockX, p.blockY + 2, p.blockZ);"
 }

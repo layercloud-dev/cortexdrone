@@ -176,7 +176,7 @@ waypoint or a partial path that cannot continue, the session ends with
 `navigationError` and the drone holds position. To get through, the model
 composes the work itself:
 
-1. `inspect('block')` / `inspect('blocks')` to find the obstruction;
+1. `get_block` / `scan_blocks` to find the obstruction;
 2. `breakBlock(x,y,z)` for each block, one call per block;
 3. `goto(...)` again once the path is open.
 

@@ -84,9 +84,9 @@ string is `required-after:OpenComputers;after:layercloudsmp`.
 - Spawn/link/despawn AI drones; reconnect world drones after restart.
 - Natural-language chat control (`@drone ...` or `@<droneName> ...`).
 - LLM-backed Code Mode session with bounded turns/time and self-correction.
-- Master tools for status, inspection, navigation, block break/place,
-  interaction/item use, entity pick/unpick, inventory transfer, crafting,
-  visuals, skill memory and cancellation.
+- Explicit tools for status, inspection, navigation, block break/place,
+  interaction/item use, entity attack/pick/unpick, inventory moves, crafting,
+  visuals, skill memory and cancellation. One tool = one operation.
 - Goal navigation: breadcrumb backtracking and 3D flight A*.
 - `break_block` destroys exactly the block you name, yields its drops (Fortune
   aware) and reports; there is no mining queue, target selection or dig planner.
@@ -102,7 +102,7 @@ string is `required-after:OpenComputers;after:layercloudsmp`.
 
 | Term | Meaning |
 | --- | --- |
-| **Master tool** | One of the 15 tools exposed to Code Mode (`state`, `inspect`, ...) |
+| **Tool** | One explicit operation exposed to Code Mode (`state`, `scan_blocks`, ...) |
 | **SDK** | `resources/sdk/*.mjs` injected into every Node script as `drone` |
 | **Code Mode** | LLM writes async JavaScript; Node runs it; SDK calls RPC |
 | **Session** | One active task for one drone; owned by `DroneSession` |

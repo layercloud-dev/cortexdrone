@@ -1,11 +1,11 @@
-package ir.layercloud.cortexdrone.codemode.rpc.translate;
+package ir.layercloud.cortexdrone.harness.rpc.translate;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
-import ir.layercloud.cortexdrone.codemode.SkillLibrary;
+import ir.layercloud.cortexdrone.harness.SkillLibrary;
 import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.visuals.LightConfig;

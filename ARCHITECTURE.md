@@ -9,7 +9,8 @@ action/       one-shot commands; no decisions, no JSON
 context/      mutable state for one action execution
 manager/      long-lived decision and orchestration layer
 service/      read-only data, recon, planning and telemetry
-codemode/rpc/ JSON/HTTP transport; parsers and serializers only
+harness/      Code Mode agent, RPC transport and single-session task logic
+harness/rpc/  JSON/HTTP transport; parsers and serializers only
 ```
 
 The rule is simple:
@@ -56,6 +57,10 @@ Services may cache results, but they do not choose routes, set modes, switch
 tools or start actions.
 
 ## Navigation
+
+The `harness` package owns the Code Mode agent loop, prompt/context assembly,
+single-session task state, skill library, RPC dispatcher and the JSON transport
+under `harness/rpc`. There is no separate `codemode` package.
 
 The harness has exactly two movement calls:
 
@@ -111,11 +116,11 @@ itself is composed by the AI as `inspect -> goto -> breakBlock`; see
 Inventory mutations (`transfer` and `craft`) are actions under
 `action/inventory/impl/`, managed by `InventoryManager`. Read-only inventory,
 chest, furnace and machine inspection stays in
-`codemode/rpc/impl/InventoryRpcHandler`.
+`harness/rpc/impl/InventoryRpcHandler`.
 
 ## Transport
 
-`codemode/rpc/translate/ActionRpcTranslator` routes operations to one translator
+`harness/rpc/translate/ActionRpcTranslator` routes operations to one translator
 per category. Translators parse JSON into typed requests and serialize typed
 results. Action classes, contexts, managers, services and `ActionRegistry` never
 import Gson.

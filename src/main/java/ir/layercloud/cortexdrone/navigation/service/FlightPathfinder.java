@@ -51,6 +51,16 @@ public class FlightPathfinder {
         this.logger = logger;
     }
 
+    public void clearNavigation(DroneController controller) {
+        if (controller == null) return;
+        controller.pathWaypoints.clear();
+        controller.pathIndex = 0;
+        controller.pathGoalX = Double.NaN;
+        controller.pathGoalY = Double.NaN;
+        controller.pathGoalZ = Double.NaN;
+        controller.repathCooldown = 0;
+    }
+
     public static long packBlockPos(int x, int y, int z) {
         return (((long) x & 0x3FFFFFFL) << 38) | (((long) z & 0x3FFFFFFL) << 12) | ((long) y & 0xFFFL);
     }

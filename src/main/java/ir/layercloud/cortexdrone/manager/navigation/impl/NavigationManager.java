@@ -2,8 +2,16 @@ package ir.layercloud.cortexdrone.manager.navigation.impl;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.action.Action;
+import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
+import ir.layercloud.cortexdrone.action.navigation.NavigationMode;
+import ir.layercloud.cortexdrone.action.navigation.impl.DigRouteAction;
+import ir.layercloud.cortexdrone.action.navigation.impl.HoldAction;
+import ir.layercloud.cortexdrone.action.navigation.impl.NavigateAction;
+import ir.layercloud.cortexdrone.action.navigation.impl.StopAction;
+import ir.layercloud.cortexdrone.action.navigation.impl.TrailAction;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
+import ir.layercloud.cortexdrone.context.navigation.impl.NavigationContext;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationResult;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
@@ -23,12 +31,12 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 /**
- * Goal-driven movement authority.
+ * Goal-driven movement manager.
  *
- * <p>This is the one manager allowed to run an automatic loop. The harness only
- * sends {@code goto} or {@code stop}; the manager evaluates the recorded trail,
- * no-dig flight paths, and finally dig routes, then keeps working until the
- * drone arrives, the goal is proven unreachable, or it is explicitly stopped.</p>
+ * <p>The harness sends only {@code goto} or {@code stop}. This manager chooses
+ * a leg (trail, flight, tunnel, dig-up, dig-down) and delegates the actual
+ * movement to an action executor. Managers never contain flight or waypoint
+ * code; actions do.</p>
  */
 public final class NavigationManager {
     private static final double ARRIVAL_RADIUS = 0.85;
@@ -38,22 +46,18 @@ public final class NavigationManager {
 
     private final AIDroneManager manager;
     private final DroneLogger logger;
-    private final FlightPilot flightPilot;
-    private final DigPathService digPathService;
+    private final FlightPathfinder pathfinder;
     private final BreadcrumbService breadcrumbService;
-    private final BuildingManager buildingManager;
+    private final DigPathService digPathService = new DigPathService();
     private final Map<DroneController, Session> sessions =
         new IdentityHashMap<DroneController, Session>();
 
-    public NavigationManager(AIDroneManager manager, DroneLogger logger, FlightPilot flightPilot,
-                             DigPathService digPathService, BreadcrumbService breadcrumbService,
-                             BuildingManager buildingManager) {
+    public NavigationManager(AIDroneManager manager, DroneLogger logger,
+                             FlightPathfinder pathfinder, BreadcrumbService breadcrumbService) {
         this.manager = manager;
         this.logger = logger;
-        this.flightPilot = flightPilot;
-        this.digPathService = digPathService;
+        this.pathfinder = pathfinder;
         this.breadcrumbService = breadcrumbService;
-        this.buildingManager = buildingManager;
     }
 
     public NavigationResult gotoGoal(DroneController controller, EntityPlayerMP player,
@@ -67,8 +71,8 @@ public final class NavigationManager {
         }
 
         this.sessions.remove(controller);
+        this.pathfinder.clearNavigation(controller);
         controller.navigationGeneration++;
-        this.flightPilot.clear(controller);
         controller.stuckTicks = 0;
         controller.lastPathPartial = false;
         controller.navigationError = "";
@@ -89,23 +93,17 @@ public final class NavigationManager {
         }
         this.sessions.remove(controller);
         controller.navigationGeneration++;
-        this.flightPilot.clear(controller);
+        this.pathfinder.clearNavigation(controller);
         controller.stuckTicks = 0;
-        controller.goalX = controller.drone.posX;
-        controller.goalY = controller.drone.posY;
-        controller.goalZ = controller.drone.posZ;
-        FlightPathfinder.setDroneFlightTarget(controller.drone,
-            controller.drone.posX, controller.drone.posY, controller.drone.posZ, 0.06f);
-        controller.drone.motionX *= 0.25;
-        controller.drone.motionY *= 0.25;
-        controller.drone.motionZ *= 0.25;
-        controller.drone.statusText_$eq("Hovering\nStopped");
-        this.manager.setDroneMode(controller, Mode.STAY, reason != null ? reason : "Navigation stop");
+        NavigationContext context = new NavigationContext(controller, player,
+            NavigationMode.STOP, controller.drone.posX, controller.drone.posY,
+            controller.drone.posZ, null, null, reason != null ? reason : "Navigation stop");
+        new StopAction(this.manager).execute(context);
         return NavigationResult.stopped(controller.drone.posX, controller.drone.posY,
             controller.drone.posZ);
     }
 
-    /** Advances the active goal. Called once per tick from the runtime pipeline. */
+    /** Called once per server tick from the runtime pipeline. */
     public void tick(DroneController controller) {
         Session session = this.sessions.get(controller);
         if (session == null || controller == null || controller.drone == null) return;
@@ -113,18 +111,23 @@ public final class NavigationManager {
         World world = drone.worldObj;
         if (world == null || world.isRemote) return;
 
-        if (session.phase == Phase.DIG && controller.escapeResume != null) {
-            return; // the building manager is executing the dig route
+        if (session.leg != null) {
+            tickLeg(controller, session);
+            return;
+        }
+        if (session.phase == Phase.DIG) {
+            if (controller.escapeResume != null || controller.mode == Mode.MINE) return;
+            if (controller.mode != Mode.GOTO) {
+                fail(controller, session, "Navigation interrupted by " + controller.mode.name());
+                return;
+            }
+            session.phase = Phase.PLAN;
+            session.replanCooldown = 0;
+            session.trailRejected = false;
         }
         if (controller.mode != Mode.GOTO) {
             this.sessions.remove(controller);
             return;
-        }
-        if (session.phase == Phase.DIG) {
-            session.phase = Phase.PLAN;
-            session.replanCooldown = 0;
-            session.trail = null;
-            session.trailRejected = false;
         }
 
         session.ticks++;
@@ -139,16 +142,42 @@ public final class NavigationManager {
             arrive(controller, session);
             return;
         }
-        if (session.bestDistance - distance > 1.0) session.bestDistance = distance;
-
         if (session.phase == Phase.PLAN) {
             decide(controller, session);
         }
-        if (session.phase == Phase.TRAIL) {
-            driveTrail(controller, session);
-        } else if (session.phase == Phase.FLIGHT) {
-            driveFlight(controller, session);
+    }
+
+    /**
+     * Runs one flight action tick for non-session callers (follow/drop/deposit
+     * and mining standoffs). Still executed by {@link NavigateAction}.
+     */
+    public NavigateResult flyToward(DroneController controller, double x, double y, double z,
+                                    String label) {
+        if (controller == null || controller.drone == null) {
+            return NavigateResult.failure("No active drone");
         }
+        NavigationContext context = new NavigationContext(controller, null,
+            NavigationMode.FLIGHT, x, y, z, null, null, label);
+        NavigateAction action = new NavigateAction(this.pathfinder, this.breadcrumbService);
+        try {
+            action.tick(context);
+            return context.result() != null
+                ? context.result() : NavigateResult.failure("No flight result");
+        } finally {
+            context.complete();
+        }
+    }
+
+    /** Holds the current position. All motion is applied by {@link HoldAction}. */
+    public NavigateResult hold(DroneController controller, String label) {
+        if (controller == null || controller.drone == null) {
+            return NavigateResult.failure("No active drone");
+        }
+        NavigationContext context = new NavigationContext(controller, null,
+            NavigationMode.HOLD, controller.drone.posX, controller.drone.posY,
+            controller.drone.posZ, null, null, label);
+        new HoldAction().execute(context);
+        return context.result() != null ? context.result() : NavigateResult.done();
     }
 
     public boolean isActive(DroneController controller) {
@@ -163,6 +192,10 @@ public final class NavigationManager {
     }
 
     public void clear(DroneController controller) {
+        Session session = this.sessions.get(controller);
+        if (session != null && session.leg != null && session.leg.context.isActive()) {
+            session.leg.action.cancel(session.leg.context);
+        }
         this.sessions.remove(controller);
     }
 
@@ -173,74 +206,113 @@ public final class NavigationManager {
             TrailPlan trail = this.breadcrumbService.planBacktrack(controller,
                 session.goalX, session.goalY, session.goalZ);
             if (trail != null && trail.isUseful()) {
-                session.phase = Phase.TRAIL;
-                session.trail = trail.getWaypoints();
-                session.trailIndex = 0;
                 session.reason = trail.getReason();
+                startLeg(controller, session, NavigationMode.TRAIL,
+                    trail.getWaypoints(), null, "Breadcrumbs (" + trail.getReason() + ")");
                 this.logger.log("NAV", controller, "Following breadcrumbs (" + trail.getReason() + ")",
-                    "points=" + session.trail.size());
+                    "points=" + trail.getWaypoints().size());
                 return;
             }
         }
 
-        FlightPilot.Outcome flight = this.flightPilot.flyToward(controller,
-            session.goalX, session.goalY, session.goalZ, 0.1f);
-        if (flight.hasPath() && !flight.isBlocked()) {
-            session.phase = Phase.FLIGHT;
-            session.partial = flight.isPartial();
-            session.reason = session.partial ? "flight-partial" : "flight";
-            return;
-        }
-        escalate(controller, session);
+        session.reason = "flight";
+        startLeg(controller, session, NavigationMode.FLIGHT, null, null, "Flight");
     }
 
-    private void driveTrail(DroneController controller, Session session) {
-        if (session.trail == null || session.trailIndex >= session.trail.size()) {
-            session.phase = Phase.PLAN;
-            session.trail = null;
-            session.replanCooldown = 4;
-            return;
+    private void startLeg(DroneController controller, Session session, NavigationMode mode,
+                          List<Breadcrumb> trail, List<int[]> digPath, String label) {
+        session.phase = phaseFor(mode);
+        NavigationContext context = new NavigationContext(controller, null, mode,
+            session.goalX, session.goalY, session.goalZ, trail, digPath, label);
+        Action<NavigationContext> action = actionFor(mode);
+        action.execute(context);
+        if (context.isActive()) {
+            context.retain();
+            session.leg = new Leg(action, context);
+        } else {
+            session.leg = null;
+            handleResult(controller, session, action, context, context.result());
         }
-        Breadcrumb point = session.trail.get(session.trailIndex);
-        double x = point.getX() + 0.5;
-        double y = point.getY() + 0.65;
-        double z = point.getZ() + 0.5;
-        if (controller.drone.getDistance(x, y, z) <= 0.85) {
-            session.trailIndex++;
-            if (session.trailIndex >= session.trail.size()) {
-                session.phase = Phase.PLAN;
-                session.trail = null;
-                session.replanCooldown = 4;
-            }
-            return;
-        }
-        if (controller.stuckTicks >= STUCK_ESCALATION_TICKS) {
-            session.trailRejected = true;
-            session.phase = Phase.PLAN;
-            session.trail = null;
-            session.replanCooldown = 0;
-            return;
-        }
-        FlightPathfinder.setDroneFlightTarget(controller.drone, x, y, z, 0.1f);
-        controller.drone.lightColor_$eq(0xFFCC00);
-        controller.drone.statusText_$eq("Trail\n" + (session.trail.size() - session.trailIndex) + " pts");
     }
 
-    private void driveFlight(DroneController controller, Session session) {
-        FlightPilot.Outcome flight = this.flightPilot.flyToward(controller,
-            session.goalX, session.goalY, session.goalZ, 0.1f);
-        session.partial = flight.isPartial();
+    private static Phase phaseFor(NavigationMode mode) {
+        if (mode == NavigationMode.TRAIL) return Phase.TRAIL;
+        if (mode == NavigationMode.FLIGHT) return Phase.FLIGHT;
+        return Phase.DIG;
+    }
 
-        if (!flight.hasPath() || flight.isBlocked()
-            || controller.stuckTicks >= STUCK_ESCALATION_TICKS
-            || (flight.isExhausted() && flight.isPartial())) {
+    private void tickLeg(DroneController controller, Session session) {
+        Leg leg = session.leg;
+        if (!leg.context.isActive()) {
+            session.leg = null;
+            handleResult(controller, session, leg.action, leg.context, leg.context.result());
+            return;
+        }
+        leg.action.tick(leg.context);
+        NavigateResult result = leg.context.result();
+        if (!leg.context.isActive()) {
+            session.leg = null;
+            handleResult(controller, session, leg.action, leg.context, result);
+        } else if (result != null) {
+            handleProgress(controller, session, result);
+        }
+    }
+
+    private void handleProgress(DroneController controller, Session session, NavigateResult result) {
+        if (result.isNeedsDig() || result.isBlocked()) {
+            Leg leg = session.leg;
+            session.leg = null;
+            if (leg != null && leg.context.isActive()) leg.context.cancel();
             escalate(controller, session);
+        } else if (result.isLegDone()) {
+            Leg leg = session.leg;
+            session.leg = null;
+            if (leg != null && leg.context.isActive()) leg.context.complete();
+            session.phase = Phase.PLAN;
+            session.replanCooldown = 2;
+        }
+    }
+
+    private void handleResult(DroneController controller, Session session, Action<NavigationContext> action,
+                              NavigationContext context, NavigateResult result) {
+        if (result == null) {
+            fail(controller, session, "Navigation action produced no result");
             return;
         }
-        double distance = controller.drone.getDistance(session.goalX, session.goalY, session.goalZ);
-        controller.drone.lightColor_$eq(0xFFCC00);
-        controller.drone.statusText_$eq("Goto " + (int) distance + "m\n"
-            + (int) session.goalX + "," + (int) session.goalY + "," + (int) session.goalZ);
+        if (result.getError() != null) {
+            fail(controller, session, result.getError());
+            return;
+        }
+        switch (context.mode()) {
+            case STOP:
+                this.sessions.remove(controller);
+                return;
+            case DIG_UP:
+            case DIG_DOWN:
+            case TUNNEL:
+                session.phase = Phase.DIG;
+                session.reason = context.mode().name().toLowerCase();
+                controller.stuckTicks = 0;
+                return;
+            case TRAIL:
+                if (result.isNeedsDig() || result.isBlocked()) {
+                    session.trailRejected = true;
+                    escalate(controller, session);
+                } else {
+                    session.phase = Phase.PLAN;
+                    session.replanCooldown = 4;
+                }
+                return;
+            case FLIGHT:
+            default:
+                if (result.isNeedsDig() || result.isBlocked()) {
+                    escalate(controller, session);
+                } else if (result.isLegDone()) {
+                    session.phase = Phase.PLAN;
+                    session.replanCooldown = 2;
+                }
+                return;
+        }
     }
 
     private void escalate(DroneController controller, Session session) {
@@ -269,22 +341,21 @@ public final class NavigationManager {
         double horiz = Math.hypot(session.goalX - drone.posX, session.goalZ - drone.posZ);
         double vertical = session.goalY - drone.posY;
 
-        String kind;
+        NavigationMode mode;
         List<int[]> path;
         if (!openSky && goalOnSurface && vertical > 4.0) {
-            kind = "dig-up";
+            mode = NavigationMode.DIG_UP;
             int top = world.getHeightValue(sx, sz);
             path = this.digPathService.findPath(world, sx, sy, sz, sx, Math.min(250, top + 2), sz, true);
         } else if (vertical < -6.0 && Math.abs(vertical) > Math.max(6.0, horiz * 1.1)) {
-            kind = "dig-down";
+            mode = NavigationMode.DIG_DOWN;
             path = this.digPathService.findPath(world, sx, sy, sz, gx, gy, gz, false);
         } else {
-            kind = "tunnel";
+            mode = NavigationMode.TUNNEL;
             path = this.digPathService.findPath(world, sx, sy, sz, gx, gy, gz, false);
         }
-
-        if (path.isEmpty() && !"tunnel".equals(kind)) {
-            kind = "tunnel";
+        if (path.isEmpty() && mode != NavigationMode.TUNNEL) {
+            mode = NavigationMode.TUNNEL;
             path = this.digPathService.findPath(world, sx, sy, sz, gx, gy, gz, false);
         }
         if (path.isEmpty()) {
@@ -292,25 +363,18 @@ public final class NavigationManager {
             return;
         }
 
-        int queued = this.buildingManager.startDigRoute(controller, path,
-            "Navigation " + kind + " toward (" + gx + "," + gy + "," + gz + ")");
-        if (queued <= 0) {
-            session.phase = Phase.PLAN;
-            session.replanCooldown = 20;
-            return;
-        }
-        session.phase = Phase.DIG;
-        session.reason = kind;
-        session.partial = false;
+        startLeg(controller, session, mode, null, path,
+            "Navigation " + mode.name().toLowerCase() + " toward (" + gx + "," + gy + "," + gz + ")");
+        session.reason = mode.name().toLowerCase();
         controller.stuckTicks = 0;
-        this.logger.log("NAV", controller, "Escalating to " + kind,
-            "queuedDigs=" + queued + " goal=(" + gx + "," + gy + "," + gz + ")");
+        this.logger.log("NAV", controller, "Escalating to " + mode.name().toLowerCase(),
+            "steps=" + path.size() + " goal=(" + gx + "," + gy + "," + gz + ")");
     }
 
     private void arrive(DroneController controller, Session session) {
         this.sessions.remove(controller);
         controller.stuckTicks = 0;
-        this.flightPilot.clear(controller);
+        this.pathfinder.clearNavigation(controller);
         this.manager.setDroneMode(controller, Mode.STAY, "Arrived at navigation goal");
         controller.drone.lightColor_$eq(0x00FFAA);
         controller.drone.statusText_$eq("Arrived\n"
@@ -328,7 +392,7 @@ public final class NavigationManager {
         this.sessions.remove(controller);
         if (controller == null) return;
         controller.navigationError = reason;
-        this.flightPilot.clear(controller);
+        this.pathfinder.clearNavigation(controller);
         controller.stuckTicks = 0;
         if (controller.mode == Mode.GOTO) {
             this.manager.setDroneMode(controller, Mode.STAY, reason);
@@ -337,6 +401,24 @@ public final class NavigationManager {
             controller.drone.statusText_$eq("Route failed\n" + reason);
         }
         this.logger.log("NAV", controller, "Navigation failed", reason);
+    }
+
+    private Action<NavigationContext> actionFor(NavigationMode mode) {
+        switch (mode) {
+            case TRAIL:
+                return new TrailAction();
+            case TUNNEL:
+            case DIG_UP:
+            case DIG_DOWN:
+                return new DigRouteAction(this.manager.getBuildingManager());
+            case STOP:
+                return new StopAction(this.manager);
+            case HOLD:
+                return new HoldAction();
+            case FLIGHT:
+            default:
+                return new NavigateAction(this.pathfinder, this.breadcrumbService);
+        }
     }
 
     private NavigationTarget resolveTarget(NavigationRequest request) {
@@ -370,16 +452,23 @@ public final class NavigationManager {
         DIG
     }
 
+    private static final class Leg {
+        private final Action<NavigationContext> action;
+        private final NavigationContext context;
+
+        private Leg(Action<NavigationContext> action, NavigationContext context) {
+            this.action = action;
+            this.context = context;
+        }
+    }
+
     private static final class Session {
         private final double goalX;
         private final double goalY;
         private final double goalZ;
         private Phase phase = Phase.PLAN;
-        private List<Breadcrumb> trail;
-        private int trailIndex;
+        private Leg leg;
         private boolean trailRejected;
-        private boolean partial;
-        private double bestDistance;
         private int ticks;
         private int replanCooldown;
         private int digAttempts;
@@ -389,7 +478,6 @@ public final class NavigationManager {
             this.goalX = goalX;
             this.goalY = goalY;
             this.goalZ = goalZ;
-            this.bestDistance = Double.MAX_VALUE;
         }
     }
 

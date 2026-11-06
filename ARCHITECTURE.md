@@ -84,8 +84,13 @@ The trail is owned by `BreadcrumbService`, not by actions or the controller.
 Sampling, dedupe and loop pruning happen in the service; `inspect('breadcrumbs')`
 reads the same service through `BreadcrumbRpcTranslator`.
 
-`flightPilot` is the low-level no-dig pilot shared by navigation and the
-follow/drop/deposit modes. It never digs or changes mode.
+Every movement leg is an action executor under
+`action/navigation/impl/`: `NavigateAction` (no-dig flight), `TrailAction`
+(breadcrumb backtrack), `DigRouteAction` (hands a dig route to
+`BuildingManager`), `HoldAction` and `StopAction`. `NavigationManager` only
+chooses the next leg and retains its context; managers contain no flight or
+waypoint code. The same executors are used by follow/drop/deposit and mining
+standoffs through `NavigationManager.flyToward` / `hold`.
 
 ## Actions
 

@@ -8,7 +8,6 @@ import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
-import ir.layercloud.cortexdrone.manager.navigation.impl.FlightPilot;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
@@ -35,7 +34,6 @@ public class TickManager {
     private final BuildingManager buildingManager;
     private final VisualsManager visualsManager;
     private final NavigationManager navigationManager;
-    private final FlightPilot flightPilot;
     private final BreadcrumbService breadcrumbService;
 
     public void tickController(DroneController ctrl) {
@@ -138,10 +136,7 @@ public class TickManager {
                         ctrl.goalX = d.posX;
                         ctrl.goalY = d.posY;
                         ctrl.goalZ = d.posZ;
-                        FlightPathfinder.setDroneFlightTarget(d, d.posX, d.posY, d.posZ, 0.12f);
-                        d.motionX *= 0.25;
-                        d.motionY *= 0.25;
-                        d.motionZ *= 0.25;
+                        this.navigationManager.hold(ctrl, "Player look hold");
                         d.lightColor_$eq(0x55FF55);
                         d.statusText_$eq("Ready\n[Right-Click]");
                         break;
@@ -175,12 +170,9 @@ public class TickManager {
 
                     double distToAnchor = d.getDistance(ctrl.anchorX, ctrl.anchorY, ctrl.anchorZ);
                     if (distToAnchor > 0.35) {
-                        this.flightPilot.flyToward(ctrl, ctrl.anchorX, ctrl.anchorY, ctrl.anchorZ, 0.08f);
+                        this.navigationManager.flyToward(ctrl, ctrl.anchorX, ctrl.anchorY, ctrl.anchorZ, "Follow anchor");
                     } else {
-                        FlightPathfinder.setDroneFlightTarget(d, ctrl.anchorX, ctrl.anchorY, ctrl.anchorZ, 0.06f);
-                        d.motionX *= 0.5;
-                        d.motionY *= 0.5;
-                        d.motionZ *= 0.5;
+                        this.navigationManager.hold(ctrl, "Follow anchor hold");
                     }
                     d.lightColor_$eq(0x00FFFF);
                     d.statusText_$eq("Following\n" + AIDroneManager.trimStatus(target.getCommandSenderName()));
@@ -189,10 +181,7 @@ public class TickManager {
                     // inside OC's entity NBT may now sit in solid blocks. Hover in place —
                     // grinding into the floor forever silently drains the machine and spams STUCK.
                     ctrl.playerLookHold = false;
-                    FlightPathfinder.setDroneFlightTarget(d, d.posX, d.posY, d.posZ, 0.05f);
-                    d.motionX *= 0.5;
-                    d.motionY *= 0.5;
-                    d.motionZ *= 0.5;
+                    this.navigationManager.hold(ctrl, "Owner offline hold");
                     d.statusText_$eq("Owner offline\nHovering");
                     d.lightColor_$eq(0x00AA88);
                 }
@@ -206,7 +195,7 @@ public class TickManager {
                     ctrl.playerLookHold = false;
                     d.statusText_$eq("Hovering\nStandby");
                 }
-                FlightPathfinder.setDroneFlightTarget(d, ctrl.goalX, ctrl.goalY, ctrl.goalZ, 0.08f);
+                this.navigationManager.hold(ctrl, "Stay hold");
                 d.lightColor_$eq(0x0088FF);
                 break;
             }
@@ -234,7 +223,7 @@ public class TickManager {
         double px = owner.posX;
         double py = owner.posY + 1.25;
         double pz = owner.posZ;
-        this.flightPilot.flyToward(ctrl, px, py, pz, 0.1f);
+        this.navigationManager.flyToward(ctrl, px, py, pz, "Deliver to player");
         d.lightColor_$eq(0x00FFAA);
         d.statusText_$eq("Delivering\nItems");
         if (d.getDistance(px, py, pz) <= 3.5) {
@@ -288,7 +277,7 @@ public class TickManager {
         double cx = standoff != null ? standoff[0] : (chestTe.xCoord + 0.5);
         double cy = standoff != null ? standoff[1] : (chestTe.yCoord + 1.2);
         double cz = standoff != null ? standoff[2] : (chestTe.zCoord + 0.5);
-        this.flightPilot.flyToward(ctrl, cx, cy, cz, 0.1f);
+        this.navigationManager.flyToward(ctrl, cx, cy, cz, "Deposit flight");
         d.lightColor_$eq(0xFFAA00);
         d.statusText_$eq("Depositing\nChest");
 

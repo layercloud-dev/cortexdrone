@@ -13,7 +13,6 @@ import ir.layercloud.cortexdrone.inventory.InventoryService;
 import ir.layercloud.cortexdrone.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.manager.navigation.impl.FlightPilot;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.world.ItemClassifier;
 import java.lang.reflect.Method;
@@ -41,20 +40,17 @@ import net.minecraft.world.WorldServer;
 public final class BuildingManager extends ActionManager<BlockContext, BlockRequest, BlockResult> {
     private final AIDroneManager manager;
     private final DroneLogger logger;
-    private final FlightPilot flightPilot;
     private final InventoryService inventoryService;
     private Method blockGetDropsMethod = null;
 
     public BuildingManager(
         AIDroneManager manager,
         DroneLogger logger,
-        FlightPilot flightPilot,
         InventoryService inventoryService
     ) {
         super("block", "break_block", "place_block");
         this.manager = manager;
         this.logger = logger;
-        this.flightPilot = flightPilot;
         this.inventoryService = inventoryService;
         try {
             this.blockGetDropsMethod = Block.class.getMethod(
@@ -357,10 +353,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         }
 
         if (distToBlock <= 3.6 || distToStandoff <= 1.25) {
-            FlightPathfinder.setDroneFlightTarget(d, sx, sy, sz, 0.08f);
-            d.motionX *= 0.4;
-            d.motionY *= 0.4;
-            d.motionZ *= 0.4;
+            this.manager.getNavigationManager().hold(ctrl, "Mining standoff hold");
 
             float hardness = Math.max(0.2f, block.getBlockHardness(world, bx, by, bz));
             ctrl.miningRequiredTicks = ToolInspector.computeRequiredMiningTicks(d.mainInventory(), block, hardness);
@@ -414,7 +407,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
                 ctrl.stuckTicks = 0;
             }
         } else {
-            this.flightPilot.flyToward(ctrl, sx, sy, sz, 0.1f);
+            this.manager.getNavigationManager().flyToward(ctrl, sx, sy, sz, "Mining standoff");
             d.statusText_$eq("To Ore " + (int) distToBlock + "m\n" + AIDroneManager.trimStatus(ItemClassifier.getBlockDisplayName(block, world.getBlockMetadata(bx, by, bz))));
         }
     }

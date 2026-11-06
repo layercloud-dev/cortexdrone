@@ -20,9 +20,7 @@ import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.manager.TickManager;
-import ir.layercloud.cortexdrone.manager.navigation.impl.FlightPilot;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
-import ir.layercloud.cortexdrone.navigation.service.DigPathService;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
@@ -60,8 +58,8 @@ public class AIDroneManager {
     private AIConfig config = new AIConfig();
 
     private final DroneLogger logger = new DroneLogger();
+    private final FlightPathfinder pathfinder;
     private final BreadcrumbService breadcrumbService;
-    private final FlightPilot flightPilot;
     private final NavigationManager navigationManager;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
@@ -89,17 +87,16 @@ public class AIDroneManager {
     private final java.util.Set<UUID> despawnedUuids = java.util.Collections.synchronizedSet(new java.util.HashSet<UUID>());
     public AIDroneManager(CortexDroneMod mod) {
         this.mod = mod;
+        this.pathfinder = new FlightPathfinder(this.logger);
         this.breadcrumbService = new BreadcrumbService();
-        this.flightPilot = new FlightPilot(this.breadcrumbService, this.logger,
-            new FlightPathfinder(this.logger));
         this.worldScanner = new WorldScanner(this.logger, this.config);
         this.inventoryService = new InventoryService(this.logger);
         this.visualsManager = new VisualsManager(this, this.logger);
         this.interactionManager = new InteractionManager(this.inventoryService);
         this.inventoryManager = new InventoryManager(this, this.inventoryService);
-        this.buildingManager = new BuildingManager(this, this.logger, this.flightPilot, this.inventoryService);
-        this.navigationManager = new NavigationManager(this, this.logger, this.flightPilot,
-            new DigPathService(), this.breadcrumbService, this.buildingManager);
+        this.buildingManager = new BuildingManager(this, this.logger, this.inventoryService);
+        this.navigationManager = new NavigationManager(this, this.logger,
+            this.pathfinder, this.breadcrumbService);
         this.actionRegistry = new ActionRegistry();
         this.actionRegistry.register(this.buildingManager);
         this.actionRegistry.register(this.interactionManager);
@@ -124,7 +121,6 @@ public class AIDroneManager {
             this.buildingManager,
             this.visualsManager,
             this.navigationManager,
-            this.flightPilot,
             this.breadcrumbService
         );
         this.tickProfiler = new TickProfiler(this.logger);

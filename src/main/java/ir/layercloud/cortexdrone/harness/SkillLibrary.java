@@ -23,7 +23,7 @@ public class SkillLibrary {
     }
 
     private final File storageFile;
-    private final Map<String, SkillEntry> skills = new LinkedHashMap<String, SkillEntry>();
+    private final Map<String, SkillEntry> skills = new LinkedHashMap<>();
 
     public SkillLibrary(File worldDir) {
         File dir = worldDir != null ? worldDir : new File(".");
@@ -90,14 +90,14 @@ public class SkillLibrary {
     }
 
     public synchronized List<SkillEntry> searchSkills(String query, int limit) {
-        List<SkillEntry> all = new ArrayList<SkillEntry>(this.skills.values());
+        List<SkillEntry> all = new ArrayList<>(this.skills.values());
         if (query == null || query.trim().isEmpty()) {
             return all.subList(0, Math.min(limit, all.size()));
         }
 
         List<String> qTokens = ir.layercloud.cortexdrone.service.world.LexicalItemMatcher.tokenize(query);
         int numDocs = Math.max(1, all.size());
-        Map<String, List<String>> docTokensMap = new LinkedHashMap<String, List<String>>();
+        Map<String, List<String>> docTokensMap = new LinkedHashMap<>();
         double totalDocLen = 0.0;
 
         for (SkillEntry s : all) {
@@ -112,8 +112,8 @@ public class SkillLibrary {
         // Okapi BM25 parameters (k1 = 1.5, b = 0.75) with Damerau-Levenshtein fuzzy term matching
         final double k1 = 1.5;
         final double b = 0.75;
-        final Map<String, Double> bm25Scores = new LinkedHashMap<String, Double>();
-        List<SkillEntry> matched = new ArrayList<SkillEntry>();
+        final Map<String, Double> bm25Scores = new LinkedHashMap<>();
+        List<SkillEntry> matched = new ArrayList<>();
 
         for (String qt : qTokens) {
             if (qt.length() < 3) continue;
@@ -195,7 +195,7 @@ public class SkillLibrary {
 
     private synchronized void saveToDisk() {
         try (FileWriter writer = new FileWriter(this.storageFile)) {
-            CortexDroneMod.GSON.toJson(new ArrayList<SkillEntry>(this.skills.values()), writer);
+            CortexDroneMod.GSON.toJson(new ArrayList<>(this.skills.values()), writer);
         } catch (Exception ignored) {
         }
     }

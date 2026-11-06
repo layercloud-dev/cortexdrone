@@ -33,10 +33,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @UtilityClass
 public final class RegistryIntrospector {
     private static final Random PROBE_RANDOM = new Random(42L);
-    private static final Map<Integer, Boolean> ORE_BLOCK_CACHE = new ConcurrentHashMap<Integer, Boolean>();
-    private static final Map<Integer, Boolean> LOG_BLOCK_CACHE = new ConcurrentHashMap<Integer, Boolean>();
-    private static final Map<Integer, Boolean> LEAF_BLOCK_CACHE = new ConcurrentHashMap<Integer, Boolean>();
-    private static final Map<Class<?>, Boolean> STORAGE_TILE_CLASS_CACHE = new ConcurrentHashMap<Class<?>, Boolean>();
+    private static final Map<Integer, Boolean> ORE_BLOCK_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Integer, Boolean> LOG_BLOCK_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Integer, Boolean> LEAF_BLOCK_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Boolean> STORAGE_TILE_CLASS_CACHE = new ConcurrentHashMap<>();
 
     private static volatile Set<String> cachedUndergroundTokens = Collections.emptySet();
     private static volatile Set<String> cachedCropTokens = Collections.emptySet();
@@ -87,7 +87,7 @@ public final class RegistryIntrospector {
     }
 
     public static List<String> getOreDictNames(ItemStack stack) {
-        List<String> names = new ArrayList<String>();
+        List<String> names = new ArrayList<>();
         if (stack == null || stack.getItem() == null) return names;
         try {
             int[] ids = OreDictionary.getOreIDs(stack);
@@ -105,7 +105,7 @@ public final class RegistryIntrospector {
     }
 
     public static List<String> getOreDictNames(Block block, int meta) {
-        if (block == null || block == Blocks.air) return new ArrayList<String>();
+        if (block == null || block == Blocks.air) return new ArrayList<>();
         try {
             Item item = Item.getItemFromBlock(block);
             if (item != null) {
@@ -114,7 +114,7 @@ public final class RegistryIntrospector {
             }
         } catch (Throwable ignored) {
         }
-        return new ArrayList<String>();
+        return new ArrayList<>();
     }
 
     public static boolean hasOreDictPrefix(ItemStack stack, String... prefixes) {
@@ -298,7 +298,7 @@ public final class RegistryIntrospector {
             String[] oreNames = OreDictionary.getOreNames();
             int len = oreNames != null ? oreNames.length : 0;
             if (len != lastOreDictCount || cachedUndergroundTokens.isEmpty()) {
-                Set<String> tokens = new HashSet<String>();
+                Set<String> tokens = new HashSet<>();
                 tokens.add("ore");
                 tokens.add("ores");
                 tokens.add("vein");
@@ -355,7 +355,7 @@ public final class RegistryIntrospector {
      */
     public static Set<String> getCropAndPlantTokens() {
         if (!cachedCropTokens.isEmpty()) return cachedCropTokens;
-        Set<String> tokens = new HashSet<String>();
+        Set<String> tokens = new HashSet<>();
         tokens.add("crop");
         tokens.add("crops");
         tokens.add("farm");

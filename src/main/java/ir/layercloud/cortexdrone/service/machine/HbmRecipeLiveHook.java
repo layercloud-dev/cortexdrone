@@ -25,7 +25,7 @@ public final class HbmRecipeLiveHook implements MachineRecipeHook {
 
     @Override
     public List<MachineRecipeService.NormalizedRecipe> load() {
-        if (!isAvailable()) return new ArrayList<MachineRecipeService.NormalizedRecipe>();
+        if (!isAvailable()) return new ArrayList<>();
         return MachineRecipeReflection.readLive();
     }
 }

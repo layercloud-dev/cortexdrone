@@ -11,9 +11,13 @@ import java.util.List;
  * the hook reports itself unavailable and the service simply has no recipes.</p>
  */
 public interface MachineRecipeHook {
-    /** True when the mod/config this hook reads is present. */
+    /**
+     * True when the mod/config this hook reads is present.
+     */
     boolean isAvailable();
 
-    /** All recipes this source currently exposes. */
+    /**
+     * All recipes this source currently exposes.
+     */
     List<MachineRecipeService.NormalizedRecipe> load();
 }

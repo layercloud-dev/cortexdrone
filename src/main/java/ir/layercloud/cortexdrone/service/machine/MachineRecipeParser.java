@@ -57,7 +57,7 @@ final class MachineRecipeParser {
             List<JsonObject> nested = null;
             if (o.has("recipes") && o.get("recipes").isJsonArray()) {
                 JsonArray nestedArr = o.getAsJsonArray("recipes");
-                nested = new ArrayList<JsonObject>();
+                nested = new ArrayList<>();
                 for (JsonElement e : nestedArr) {
                     if (e.isJsonObject()) nested.add(e.getAsJsonObject());
                 }
@@ -67,7 +67,7 @@ final class MachineRecipeParser {
                     JsonArray inner = new JsonArray();
                     for (JsonObject n : nested) inner.add(n);
                     base.add("recipes", inner);
-                    java.util.List<MachineRecipeService.NormalizedRecipe> expanded = new ArrayList<MachineRecipeService.NormalizedRecipe>();
+                    java.util.List<MachineRecipeService.NormalizedRecipe> expanded = new ArrayList<>();
                     for (JsonObject n : nested) {
                         JsonObject wrapper = new JsonObject();
                         wrapper.add("recipe", n);

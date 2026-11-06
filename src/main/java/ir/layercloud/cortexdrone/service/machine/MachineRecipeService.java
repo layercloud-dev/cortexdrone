@@ -37,7 +37,7 @@ public class MachineRecipeService {
     private long cachedRecipesAtMs = -1L;
 
     private final InventoryService inventoryService;
-    private final List<MachineRecipeHook> hooks = new ArrayList<MachineRecipeHook>();
+    private final List<MachineRecipeHook> hooks = new ArrayList<>();
 
     static class NormalizedRecipe {
         String machine;
@@ -56,10 +56,10 @@ public class MachineRecipeService {
         int constructionIndex = -1;
 
         NormalizedRecipe() {
-            this.inputs = new ArrayList<JsonObject>();
-            this.outputs = new ArrayList<JsonObject>();
-            this.inputFluids = new ArrayList<JsonObject>();
-            this.outputFluids = new ArrayList<JsonObject>();
+            this.inputs = new ArrayList<>();
+            this.outputs = new ArrayList<>();
+            this.inputFluids = new ArrayList<>();
+            this.outputFluids = new ArrayList<>();
         }
     }
 
@@ -183,10 +183,10 @@ public class MachineRecipeService {
     private List<NormalizedRecipe> loadAllRecipes() {
         long now = System.currentTimeMillis();
         if (this.cachedRecipes != null && now - this.cachedRecipesAtMs < RECIPE_CACHE_TTL_MS) {
-            return new ArrayList<NormalizedRecipe>(this.cachedRecipes);
+            return new ArrayList<>(this.cachedRecipes);
         }
-        List<NormalizedRecipe> out = new ArrayList<NormalizedRecipe>();
-        Set<String> seen = new HashSet<String>();
+        List<NormalizedRecipe> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
         for (MachineRecipeHook hook : this.hooks) {
             if (!hook.isAvailable()) continue;
             for (NormalizedRecipe recipe : hook.load()) {
@@ -197,6 +197,6 @@ public class MachineRecipeService {
         }
         this.cachedRecipes = out;
         this.cachedRecipesAtMs = now;
-        return new ArrayList<NormalizedRecipe>(out);
+        return new ArrayList<>(out);
     }
 }

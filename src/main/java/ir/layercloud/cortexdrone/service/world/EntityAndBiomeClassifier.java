@@ -106,7 +106,7 @@ public final class EntityAndBiomeClassifier {
         if (qTokens.isEmpty()) return false;
 
         String bName = biome.biomeName != null ? biome.biomeName.toLowerCase() : "";
-        List<String> biomeTokens = new ArrayList<String>(LexicalItemMatcher.tokenize(bName));
+        List<String> biomeTokens = new ArrayList<>(LexicalItemMatcher.tokenize(bName));
         try {
             BiomeDictionary.Type[] types = BiomeDictionary.getTypesForBiome(biome);
             if (types != null) {
@@ -132,7 +132,7 @@ public final class EntityAndBiomeClassifier {
 
     public static Set<String> getRegisteredBiomeTokens() {
         if (!cachedBiomeTokens.isEmpty()) return cachedBiomeTokens;
-        Set<String> tokens = new HashSet<String>();
+        Set<String> tokens = new HashSet<>();
         try {
             BiomeGenBase[] allBiomes = BiomeGenBase.getBiomeGenArray();
             if (allBiomes != null) {

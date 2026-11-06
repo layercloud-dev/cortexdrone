@@ -181,7 +181,7 @@ public class InventoryService {
         int cx = MathHelper.floor_double(x);
         int cy = MathHelper.floor_double(y);
         int cz = MathHelper.floor_double(z);
-        List<TileEntity> tiles = new ArrayList<TileEntity>();
+        List<TileEntity> tiles = new ArrayList<>();
         double r2 = (double) radius * radius;
 
         // Fast path: iterate already-loaded tile entities (world.loadedTileEntityList list) and distance-filter,

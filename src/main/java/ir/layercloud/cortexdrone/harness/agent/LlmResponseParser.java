@@ -356,7 +356,7 @@ public final class LlmResponseParser {
             }
         }
 
-        List<String> balancedBlocks = new ArrayList<String>();
+        List<String> balancedBlocks = new ArrayList<>();
         int depth = 0;
         int startIdx = -1;
         boolean inQuotes = false;

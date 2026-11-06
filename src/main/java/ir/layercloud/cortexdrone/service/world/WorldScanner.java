@@ -39,9 +39,9 @@ public class WorldScanner {
     private final AIConfig config;
 
     private final java.util.Map<Long, java.util.Map<String, int[]>> nearbyResourceCache =
-            new java.util.HashMap<Long, java.util.Map<String, int[]>>();
+            new java.util.HashMap<>();
     private final java.util.Map<Long, Long> nearbyResourceExpiry =
-            new java.util.HashMap<Long, Long>();
+            new java.util.HashMap<>();
 
     public JsonObject scanRoom3D(World world, int startX, int startY, int startZ, int maxRadius) {
         return RoomScanner.scanRoom3D(world, startX, startY, startZ, maxRadius);
@@ -60,8 +60,8 @@ public class WorldScanner {
     }
 
     public List<int[]> findDistantResourceOrBiome(World world, DroneController ctrl, double startX, double startY, double startZ, String target, int maxRadius) {
-        List<int[]> found = new ArrayList<int[]>();
-        Set<Long> seen = new HashSet<Long>();
+        List<int[]> found = new ArrayList<>();
+        Set<Long> seen = new HashSet<>();
         String f = target.toLowerCase();
         int ix = MathHelper.floor_double(startX);
         int iz = MathHelper.floor_double(startZ);
@@ -214,7 +214,7 @@ public class WorldScanner {
     }
 
     private static Map<String, int[]> copySummary(Map<String, int[]> source) {
-        Map<String, int[]> copy = new LinkedHashMap<String, int[]>();
+        Map<String, int[]> copy = new LinkedHashMap<>();
         for (Map.Entry<String, int[]> e : source.entrySet()) {
             copy.put(e.getKey(), e.getValue().clone());
         }
@@ -222,7 +222,7 @@ public class WorldScanner {
     }
 
     private static Map<String, int[]> scanNearbyResourcesUncached(World world, int ix, int iy, int iz, int radius) {
-        Map<String, int[]> summary = new LinkedHashMap<String, int[]>();
+        Map<String, int[]> summary = new LinkedHashMap<>();
         if (world == null) return summary;
 
         for (int x = ix - radius; x <= ix + radius; x++) {

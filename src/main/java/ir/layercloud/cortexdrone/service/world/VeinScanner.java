@@ -27,8 +27,8 @@ public final class VeinScanner {
         int maxY = Math.min(254, cy + r);
 
         ChunkCacheContext bsi = new ChunkCacheContext(world, cx, cz, (r >> 4) + 2);
-        Map<Long, int[]> matched = new LinkedHashMap<Long, int[]>();
-        Map<String, Integer> histogram = new LinkedHashMap<String, Integer>();
+        Map<Long, int[]> matched = new LinkedHashMap<>();
+        Map<String, Integer> histogram = new LinkedHashMap<>();
 
         for (int x = cx - r; x <= cx + r; x++) {
             for (int y = minY; y <= maxY; y++) {
@@ -46,8 +46,8 @@ public final class VeinScanner {
             }
         }
 
-        Set<Long> visited = new HashSet<Long>();
-        List<JsonObject> veins = new ArrayList<JsonObject>();
+        Set<Long> visited = new HashSet<>();
+        List<JsonObject> veins = new ArrayList<>();
 
         for (Map.Entry<Long, int[]> entry : matched.entrySet()) {
             long startKey = entry.getKey();
@@ -59,8 +59,8 @@ public final class VeinScanner {
             String veinName = ItemClassifier.getBlockDisplayName(rootBlock, targetMeta);
             String reg = rootBlock != null ? Block.blockRegistry.getNameForObject(rootBlock) : "";
 
-            List<int[]> cluster = new ArrayList<int[]>();
-            Deque<int[]> q = new ArrayDeque<int[]>();
+            List<int[]> cluster = new ArrayList<>();
+            Deque<int[]> q = new ArrayDeque<>();
             q.add(root);
             boolean exposed = false;
             double sumX = 0, sumY = 0, sumZ = 0;

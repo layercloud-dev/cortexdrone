@@ -18,8 +18,8 @@ public class ChunkCacheContext {
     private final Chunk[][] chunks;
     private final boolean[][] resolved;
     // Memoized passability lookups: A*/Theta* revisits the same voxel hundreds of times.
-    private final java.util.HashMap<Long, Boolean> passableCache = new java.util.HashMap<Long, Boolean>(512);
-    private final java.util.HashMap<Long, Block> blockCache = new java.util.HashMap<Long, Block>(512);
+    private final java.util.HashMap<Long, Boolean> passableCache = new java.util.HashMap<>(512);
+    private final java.util.HashMap<Long, Block> blockCache = new java.util.HashMap<>(512);
 
     public ChunkCacheContext(World world, int centerX, int centerZ, int chunkRadius) {
         this.world = world;

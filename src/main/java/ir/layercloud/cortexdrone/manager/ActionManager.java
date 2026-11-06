@@ -19,7 +19,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
     private final String category;
     private final String[] operations;
     private final Map<DroneController, Map<String, Execution<C>>> active =
-            new IdentityHashMap<DroneController, Map<String, Execution<C>>>();
+            new IdentityHashMap<>();
 
     protected ActionManager(String category, String... operations) {
         this.category = category;
@@ -61,7 +61,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
             action.execute(context);
             T result = result(context);
             if (context.isRetained()) {
-                retain(controller, operation, new Execution<C>(action, context));
+                retain(controller, operation, new Execution<>(action, context));
             } else {
                 context.complete();
             }
@@ -82,7 +82,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
         try {
             action.execute(context);
             if (context.isRetained()) {
-                retain(controller, operation, new Execution<C>(action, context));
+                retain(controller, operation, new Execution<>(action, context));
             } else {
                 context.complete();
             }
@@ -97,7 +97,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
         Map<String, Execution<C>> executions = this.active.get(controller);
         if (executions == null) return;
 
-        for (Execution<C> execution : new ArrayList<Execution<C>>(executions.values())) {
+        for (Execution<C> execution : new ArrayList<>(executions.values())) {
             if (!execution.context.isRetained()) {
                 execution.context.complete();
                 continue;
@@ -156,7 +156,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
     private void retain(DroneController controller, String operation, Execution<C> execution) {
         Map<String, Execution<C>> executions = this.active.get(controller);
         if (executions == null) {
-            executions = new LinkedHashMap<String, Execution<C>>();
+            executions = new LinkedHashMap<>();
             this.active.put(controller, executions);
         }
         Execution<C> previous = executions.put(operation, execution);

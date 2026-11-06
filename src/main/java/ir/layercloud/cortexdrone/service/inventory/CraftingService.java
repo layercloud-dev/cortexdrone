@@ -61,7 +61,7 @@ public class CraftingService {
 
     @SuppressWarnings("unchecked")
     public static List<List<ItemStack>> extractRecipeIngredients(IRecipe recipe) {
-        List<List<ItemStack>> slots = new ArrayList<List<ItemStack>>();
+        List<List<ItemStack>> slots = new ArrayList<>();
         if (recipe == null) return slots;
         try {
             if (recipe instanceof ShapedRecipes && shapedItemsField != null) {
@@ -138,7 +138,7 @@ public class CraftingService {
     }
 
     private static final long RECIPE_CACHE_TTL_MS = 30000L;
-    private final java.util.Map<String, RecipeCacheEntry> recipeRankCache = new java.util.concurrent.ConcurrentHashMap<String, RecipeCacheEntry>();
+    private final java.util.Map<String, RecipeCacheEntry> recipeRankCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     private java.util.List<IRecipe> findRankedMatchingRecipesCached(String filter) {
         if (filter == null || filter.trim().isEmpty()) return java.util.Collections.emptyList();
@@ -163,7 +163,7 @@ public class CraftingService {
     }
 
     private static List<IRecipe> findRankedMatchingRecipes(String filter) {
-        List<ScoredRecipe> scored = new ArrayList<ScoredRecipe>();
+        List<ScoredRecipe> scored = new ArrayList<>();
         List<?> allRecipes = CraftingManager.getInstance().getRecipeList();
         if (allRecipes != null) {
             for (Object ro : allRecipes) {
@@ -183,7 +183,7 @@ public class CraftingService {
                 return Integer.compare(b.getScore(), a.getScore());
             }
         });
-        List<IRecipe> result = new ArrayList<IRecipe>(scored.size());
+        List<IRecipe> result = new ArrayList<>(scored.size());
         for (ScoredRecipe sr : scored) {
             result.add(sr.getRecipe());
         }

@@ -12,18 +12,18 @@ import java.util.*;
  */
 @UtilityClass
 public final class LexicalItemMatcher {
-    private static final Set<String> DERIVATIVE_SHAPE_TOKENS = new HashSet<String>(Arrays.asList(
+    private static final Set<String> DERIVATIVE_SHAPE_TOKENS = new HashSet<>(Arrays.asList(
             "stairs", "stair", "slab", "slabs", "wall", "walls", "fence", "gate",
             "brick", "bricks", "pillar", "chiseled", "pane", "bars", "nugget",
             "dust", "tiny", "powder", "crushed", "gear", "plate", "wire", "cable",
             "chestplate", "leggings", "helmet", "boots", "tunic", "cap", "pants"
     ));
 
-    private static final Set<String> SPECIAL_CONTAINER_QUALIFIERS = new HashSet<String>(Arrays.asList(
+    private static final Set<String> SPECIAL_CONTAINER_QUALIFIERS = new HashSet<>(Arrays.asList(
             "ender", "sky", "skystone", "trapped", "personal", "void"
     ));
 
-    private static final Set<String> FILLED_LIQUID_MODIFIERS = new HashSet<String>(Arrays.asList(
+    private static final Set<String> FILLED_LIQUID_MODIFIERS = new HashSet<>(Arrays.asList(
             "water", "lava", "milk", "oil", "fuel", "acid", "blood", "sludge", "toxic", "coolant", "cryotheum", "pyrotheum"
     ));
 
@@ -31,7 +31,7 @@ public final class LexicalItemMatcher {
      * Splits any camelCase, snake_case, namespace:id, or display name string into lowercase word tokens.
      */
     public static List<String> tokenize(String text) {
-        List<String> tokens = new ArrayList<String>();
+        List<String> tokens = new ArrayList<>();
         if (text == null || text.isEmpty()) return tokens;
         StringBuilder cur = new StringBuilder();
         int len = text.length();
@@ -214,7 +214,7 @@ public final class LexicalItemMatcher {
         }
 
         // 5) Check if all query tokens are present across displayName + fullId (e.g., "oak_log" -> "oak" in "Oak Wood" + "log" in "minecraft:log")
-        List<String> combinedTokens = new ArrayList<String>(dispTokens.size() + idTokens.size());
+        List<String> combinedTokens = new ArrayList<>(dispTokens.size() + idTokens.size());
         combinedTokens.addAll(dispTokens);
         combinedTokens.addAll(idTokens);
 

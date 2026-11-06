@@ -16,9 +16,9 @@ import java.util.Map;
  */
 public final class ActionRegistry {
     private final Map<String, ActionManager<?, ?, ?>> byOperation =
-            new LinkedHashMap<String, ActionManager<?, ?, ?>>();
+            new LinkedHashMap<>();
     private final List<ActionManager<?, ?, ?>> managers =
-            new ArrayList<ActionManager<?, ?, ?>>();
+            new ArrayList<>();
 
     public void register(ActionManager<?, ?, ?> manager) {
         if (manager == null) return;

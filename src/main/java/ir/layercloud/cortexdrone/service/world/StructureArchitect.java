@@ -31,9 +31,9 @@ public class StructureArchitect {
         private final int floorY;
         private final int maxY;
         private final String doorSide;
-        private final List<int[]> clearBlocks = new ArrayList<int[]>();
-        private final List<BuildTask> buildTasks = new ArrayList<BuildTask>();
-        private final Map<String, Integer> materialCounts = new LinkedHashMap<String, Integer>();
+        private final List<int[]> clearBlocks = new ArrayList<>();
+        private final List<BuildTask> buildTasks = new ArrayList<>();
+        private final Map<String, Integer> materialCounts = new LinkedHashMap<>();
 
         public void addTask(int x, int y, int z, String blockFilter, int meta, boolean replace) {
             this.buildTasks.add(new BuildTask(x, y, z, blockFilter, meta, replace));

@@ -63,8 +63,8 @@ public class ContainerSearchService {
             }
         }
 
-        Map<String, Integer> totalsByItem = new LinkedHashMap<String, Integer>();
-        List<ChestMatchResult> matchedChests = new ArrayList<ChestMatchResult>();
+        Map<String, Integer> totalsByItem = new LinkedHashMap<>();
+        List<ChestMatchResult> matchedChests = new ArrayList<>();
         int grandTotalMatching = 0;
 
         for (TileEntity te : tiles) {
@@ -77,7 +77,7 @@ public class ContainerSearchService {
             int bestChestScore = 0;
 
             JsonArray matchesArr = new JsonArray();
-            Map<String, JsonObject> aggregatedByItem = new LinkedHashMap<String, JsonObject>();
+            Map<String, JsonObject> aggregatedByItem = new LinkedHashMap<>();
 
             for (int i = 0; i < totalSlots; i++) {
                 ItemStack st = inv.getStackInSlot(i);

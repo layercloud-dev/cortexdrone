@@ -5,9 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.harness.rpc.impl.MasterRpcHandler;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -49,10 +49,10 @@ public class RpcDispatcher {
     private static final int MAX_SCAN_RESULTS = 400;
 
     private final AIDroneManager manager;
-    private final Map<String, RpcHandler> handlerRegistry = new HashMap<String, RpcHandler>();
+    private final Map<String, RpcHandler> handlerRegistry = new HashMap<>();
     private final AtomicScanLock scanLock = new AtomicScanLock();
     private volatile ScanJob activeJob;
-    private final Map<String, ScanJob> jobByKey = new ConcurrentHashMap<String, ScanJob>();
+    private final Map<String, ScanJob> jobByKey = new ConcurrentHashMap<>();
 
     public RpcDispatcher(AIDroneManager manager) {
         this.manager = manager;
@@ -388,8 +388,8 @@ public class RpcDispatcher {
         boolean done;
         boolean truncated;
         JsonObject result;
-        final List<int[]> results = new ArrayList<int[]>();
-        final Set<Long> seen = new HashSet<Long>();
+        final List<int[]> results = new ArrayList<>();
+        final Set<Long> seen = new HashSet<>();
 
         ScanJob(DroneController ctrl, EntityPlayerMP player, String method, JsonObject args) {
             this.ctrl = ctrl;
@@ -510,7 +510,7 @@ public class RpcDispatcher {
         }
 
         JsonArray toJsonArray() {
-            List<int[]> sorted = new ArrayList<int[]>(this.results);
+            List<int[]> sorted = new ArrayList<>(this.results);
             // Distance-sorted at completion, matching the sync handler.
             CollectionsSortHelper.sortByDistanceSq(sorted);
             JsonArray arr = new JsonArray();

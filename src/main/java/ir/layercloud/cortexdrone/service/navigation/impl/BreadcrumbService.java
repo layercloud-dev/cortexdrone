@@ -24,7 +24,7 @@ public final class BreadcrumbService {
     private static final int MIN_BACKTRACK = 4;
 
     private final Map<DroneController, Trail> trails =
-            new IdentityHashMap<DroneController, Trail>();
+            new IdentityHashMap<>();
 
     /**
      * Samples the drone position. Call once per server tick; the service throttles itself.
@@ -48,9 +48,9 @@ public final class BreadcrumbService {
         Trail trail = this.trails.get(controller);
         if (trail == null) return Collections.emptyList();
         int max = Math.min(MAX_POINTS, Math.max(MIN_BACKTRACK, limit));
-        List<Breadcrumb> all = new ArrayList<Breadcrumb>(trail.points);
+        List<Breadcrumb> all = new ArrayList<>(trail.points);
         int start = Math.max(0, all.size() - max);
-        return new ArrayList<Breadcrumb>(all.subList(start, all.size()));
+        return new ArrayList<>(all.subList(start, all.size()));
     }
 
     public Breadcrumb surfaceAnchor(DroneController controller) {
@@ -84,7 +84,7 @@ public final class BreadcrumbService {
         if (trail == null || trail.points.size() < 2) return null;
 
         World world = controller.drone.worldObj;
-        List<Breadcrumb> history = new ArrayList<Breadcrumb>(trail.points);
+        List<Breadcrumb> history = new ArrayList<>(trail.points);
         int maxSteps = Math.min(MAX_BACKTRACK, Math.max(MIN_BACKTRACK, history.size() / 2));
         maxSteps = Math.min(maxSteps, history.size() - 1);
 
@@ -159,7 +159,7 @@ public final class BreadcrumbService {
     }
 
     private static List<Breadcrumb> waypointsTo(List<Breadcrumb> history, int endpointIndex) {
-        List<Breadcrumb> waypoints = new ArrayList<Breadcrumb>();
+        List<Breadcrumb> waypoints = new ArrayList<>();
         for (int i = history.size() - 2; i >= endpointIndex; i--) {
             waypoints.add(history.get(i));
         }
@@ -196,7 +196,7 @@ public final class BreadcrumbService {
             if (dx * dx + dy * dy + dz * dz < 4) return;
         }
 
-        List<Breadcrumb> snapshot = new ArrayList<Breadcrumb>(trail.points);
+        List<Breadcrumb> snapshot = new ArrayList<>(trail.points);
         int searchStart = Math.max(0, snapshot.size() - 28);
         for (int i = searchStart; i < snapshot.size() - 1; i++) {
             Breadcrumb point = snapshot.get(i);
@@ -231,7 +231,7 @@ public final class BreadcrumbService {
     }
 
     private static final class Trail {
-        private final Deque<Breadcrumb> points = new ArrayDeque<Breadcrumb>();
+        private final Deque<Breadcrumb> points = new ArrayDeque<>();
         private Breadcrumb surfaceAnchor;
         private int cooldown;
     }

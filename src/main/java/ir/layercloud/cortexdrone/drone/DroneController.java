@@ -30,7 +30,7 @@ public class DroneController {
     public final TaskSession task = new TaskSession();
 
     // 3D A* pathfinding state
-    public final List<double[]> pathWaypoints = new ArrayList<double[]>();
+    public final List<double[]> pathWaypoints = new ArrayList<>();
     public int pathIndex = 0;
     public double pathGoalX = Double.NaN;
     public double pathGoalY = Double.NaN;
@@ -43,7 +43,7 @@ public class DroneController {
     public int lastStuckLogTick = -10000;
     // Per-waypoint hit counters: an A/B/A/B alternation of two blocked goals
     // defeats a single last-key throttle, so hits are counted per waypoint.
-    public final Map<Long, Integer> solidWaypointHits = new HashMap<Long, Integer>();
+    public final Map<Long, Integer> solidWaypointHits = new HashMap<>();
     public int solidEscalations = 0;
     public String lastPathLogKey = "";
     public int lastPathLogTick = -10000;
@@ -59,15 +59,15 @@ public class DroneController {
     public int lightCooldown = 0;
     public long lightAnchor = Long.MIN_VALUE;
     // packed world position -> original block-light level, for exact restore
-    public final Map<Long, Integer> lightCells = new HashMap<Long, Integer>();
+    public final Map<Long, Integer> lightCells = new HashMap<>();
 
     // Active Code Mode loop generation ID & running script counter
     public final AtomicInteger activeLoopId = new AtomicInteger(0);
     public final AtomicInteger activeScriptCount = new AtomicInteger(0);
-    private final Set<Integer> runningLoopIds = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
-    private final Set<Integer> cancelledLoopIds = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
+    private final Set<Integer> runningLoopIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Integer> cancelledLoopIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
     public volatile String lastThought = "";
-    public final Deque<String> thoughtHistory = new ConcurrentLinkedDeque<String>();
+    public final Deque<String> thoughtHistory = new ConcurrentLinkedDeque<>();
 
     public int attackCooldown = 0;
     public int stuckTicks = 0;

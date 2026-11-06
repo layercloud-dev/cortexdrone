@@ -19,7 +19,7 @@ import java.util.List;
 public final class FurnaceScanner {
 
     public static List<TileEntity> findAllFurnaceTiles(final World world, final double x, final double y, final double z, int radius) {
-        List<TileEntity> tiles = new ArrayList<TileEntity>();
+        List<TileEntity> tiles = new ArrayList<>();
         double r2 = (double) radius * radius;
         if (world.loadedTileEntityList != null) {
             for (Object o : world.loadedTileEntityList) {

@@ -1,13 +1,14 @@
 package ir.layercloud.cortexdrone.harness;
 
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.junit.Test;
+
+import static org.junit.Assert.assertTrue;
 
 public class SkillLibraryTest {
     @Test
@@ -16,7 +17,7 @@ public class SkillLibraryTest {
         try {
             SkillLibrary library = new SkillLibrary(dir);
             List<SkillLibrary.SkillEntry> all = library.searchSkills("", 100);
-            Set<String> names = new HashSet<String>();
+            Set<String> names = new HashSet<>();
             for (SkillLibrary.SkillEntry entry : all) {
                 names.add(entry.getName());
             }

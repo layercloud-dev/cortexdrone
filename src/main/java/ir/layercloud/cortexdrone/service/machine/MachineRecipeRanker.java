@@ -25,8 +25,8 @@ import java.util.List;
 final class MachineRecipeRanker {
 
     private static final long COUNT_CACHE_TTL_MS = 1000L;
-    private static final java.util.Map<String, java.util.Map<String, Integer>> COUNT_CACHE = new java.util.HashMap<String, java.util.Map<String, Integer>>();
-    private static final java.util.Map<String, Long> COUNT_CACHE_EXPIRY = new java.util.HashMap<String, Long>();
+    private static final java.util.Map<String, java.util.Map<String, Integer>> COUNT_CACHE = new java.util.HashMap<>();
+    private static final java.util.Map<String, Long> COUNT_CACHE_EXPIRY = new java.util.HashMap<>();
 
     static java.util.Map<String, Integer> countAllNearby(InventoryService inventoryService, World world, EntityPlayerMP player, int radius) {
         return countAllNearbyCached(inventoryService, world, player, radius);
@@ -55,10 +55,10 @@ final class MachineRecipeRanker {
         java.util.Map<String, Integer> hitCache = COUNT_CACHE.get(key);
         Long expiry = COUNT_CACHE_EXPIRY.get(key);
         if (hitCache != null && expiry != null && expiry > now) {
-            return new java.util.LinkedHashMap<String, Integer>(hitCache);
+            return new java.util.LinkedHashMap<>(hitCache);
         }
         java.util.Map<String, Integer> totals = countAllNearbyUncached(inventoryService, world, player, radius);
-        COUNT_CACHE.put(key, new java.util.LinkedHashMap<String, Integer>(totals));
+        COUNT_CACHE.put(key, new java.util.LinkedHashMap<>(totals));
         COUNT_CACHE_EXPIRY.put(key, Long.valueOf(now + COUNT_CACHE_TTL_MS));
         if (COUNT_CACHE.size() > 16) {
             java.util.Iterator<String> it = COUNT_CACHE_EXPIRY.keySet().iterator();
@@ -79,7 +79,7 @@ final class MachineRecipeRanker {
     }
 
     static java.util.Map<String, Integer> countAllNearbyUncached(InventoryService inventoryService, World world, EntityPlayerMP player, int radius) {
-        java.util.Map<String, Integer> totals = new java.util.LinkedHashMap<String, Integer>();
+        java.util.Map<String, Integer> totals = new java.util.LinkedHashMap<>();
         try {
             if (world == null) return totals;
             IInventory droneInv = findDroneInventory(world, player);
@@ -213,7 +213,7 @@ final class MachineRecipeRanker {
     }
 
     static List<MachineRecipeService.NormalizedRecipe> rankAndFilter(List<MachineRecipeService.NormalizedRecipe> all, String filter, String wantMachine) {
-        List<MachineRecipeService.NormalizedRecipe> scored = new ArrayList<MachineRecipeService.NormalizedRecipe>();
+        List<MachineRecipeService.NormalizedRecipe> scored = new ArrayList<>();
         String q = filter != null ? filter.toLowerCase() : "";
         for (MachineRecipeService.NormalizedRecipe r : all) {
             if (!wantMachine.isEmpty() && !r.machine.equals(wantMachine)) continue;

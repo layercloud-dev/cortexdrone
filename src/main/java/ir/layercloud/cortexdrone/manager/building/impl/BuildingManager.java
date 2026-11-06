@@ -16,10 +16,10 @@ import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
@@ -51,7 +51,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
 
     @SuppressWarnings("unchecked")
     public List<ItemStack> getBlockDrops(World world, Block block, int x, int y, int z, int meta, int fortune) {
-        List<ItemStack> drops = new ArrayList<ItemStack>();
+        List<ItemStack> drops = new ArrayList<>();
         if (this.blockGetDropsMethod != null) {
             try {
                 Object res = this.blockGetDropsMethod.invoke(block, world, x, y, z, meta, fortune);

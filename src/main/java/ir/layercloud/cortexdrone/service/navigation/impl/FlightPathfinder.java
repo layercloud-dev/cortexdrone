@@ -110,7 +110,7 @@ public class FlightPathfinder {
     }
 
     public List<double[]> findFlightPath(World world, DroneController ctrl, double sx, double sy, double sz, double gx, double gy, double gz) {
-        List<double[]> result = new ArrayList<double[]>(4);
+        List<double[]> result = new ArrayList<>(4);
         if (isFlightLineClear(world, sx, sy, sz, gx, gy, gz)) {
             result.add(new double[]{gx, gy, gz});
             if (ctrl != null) {
@@ -126,7 +126,7 @@ public class FlightPathfinder {
             long sig = pathSignature(sx, sy, sz, gx, gy, gz);
             if (sig == ctrl.cachedPathSignature && ctrl.tickClock - ctrl.cachedPathCreatedTick < 60) {
                 ctrl.lastPathNodesExpanded = 0; // cache hit: zero expansion cost
-                return new ArrayList<double[]>(ctrl.pathWaypoints);
+                return new ArrayList<>(ctrl.pathWaypoints);
             }
         }
 
@@ -151,9 +151,9 @@ public class FlightPathfinder {
             }
         }
 
-        PriorityQueue<AStarNode> open = new PriorityQueue<AStarNode>();
-        Map<Long, Double> bestG = new HashMap<Long, Double>();
-        Set<Long> closed = new HashSet<Long>();
+        PriorityQueue<AStarNode> open = new PriorityQueue<>();
+        Map<Long, Double> bestG = new HashMap<>();
+        Set<Long> closed = new HashSet<>();
 
         double h0 = Math.sqrt(
                 (goalX - startX) * (goalX - startX)
@@ -297,7 +297,7 @@ public class FlightPathfinder {
             }
         }
 
-        List<double[]> raw = new ArrayList<double[]>();
+        List<double[]> raw = new ArrayList<>();
         AStarNode ptr = targetNode;
         while (ptr != null) {
             raw.add(new double[]{ptr.x + 0.5, ptr.y + 0.65, ptr.z + 0.5});

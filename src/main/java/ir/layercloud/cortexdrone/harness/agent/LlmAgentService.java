@@ -5,16 +5,15 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.harness.CodeModeRuntime;
-import ir.layercloud.cortexdrone.harness.RpcDispatcher;
-import ir.layercloud.cortexdrone.harness.SkillLibrary;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.harness.CodeModeRuntime;
+import ir.layercloud.cortexdrone.harness.RpcDispatcher;
+import ir.layercloud.cortexdrone.harness.SkillLibrary;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.world.World;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -617,7 +616,9 @@ public class LlmAgentService {
         return lastMalformed;
     }
 
-    /** True when no action owns the status text, so the loop may show progress. */
+    /**
+     * True when no action owns the status text, so the loop may show progress.
+     */
     private boolean idleForStatus(DroneController ctrl) {
         return !this.manager.getNavigationManager().isActive(ctrl)
                 && this.manager.getActionRegistry().activeContextCount(ctrl) == 0;

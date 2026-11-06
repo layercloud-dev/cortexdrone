@@ -25,8 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @UtilityClass
 public final class ItemClassifier {
-    private static final Map<Integer, String> BLOCK_DISP_CACHE = new ConcurrentHashMap<Integer, String>();
-    private static final Map<Integer, String> BLOCK_ID_CACHE = new ConcurrentHashMap<Integer, String>();
+    private static final Map<Integer, String> BLOCK_DISP_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Integer, String> BLOCK_ID_CACHE = new ConcurrentHashMap<>();
 
     public static List<String> getOreDictNames(ItemStack stack) {
         return RegistryIntrospector.getOreDictNames(stack);

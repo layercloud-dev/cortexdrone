@@ -6,8 +6,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.drone.DroneController;
+import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.StructureArchitect;
@@ -101,7 +101,7 @@ public class WorldRpcHandler implements RpcHandler {
                     }
                 }
             }
-            Map<String, Integer> counts = new LinkedHashMap<String, Integer>();
+            Map<String, Integer> counts = new LinkedHashMap<>();
             JsonArray blocksArr = new JsonArray();
             int totalVoxels = 0;
             int nonAirCount = 0;
@@ -186,7 +186,7 @@ public class WorldRpcHandler implements RpcHandler {
                     : (!args.has("y") && ItemClassifier.isLikelyUndergroundQuery(filter) ? 1 : Math.max(1, cy - radius));
             int maxY = args.has("maxY") ? Math.min(254, args.get("maxY").getAsInt()) : Math.min(254, cy + radius);
 
-            List<int[]> matched = new ArrayList<int[]>();
+            List<int[]> matched = new ArrayList<>();
             for (int x = cx - radius; x <= cx + radius; x++) {
                 for (int y = minY; y <= maxY; y++) {
                     for (int z = cz - radius; z <= cz + radius; z++) {

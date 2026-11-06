@@ -24,7 +24,7 @@ public final class HbmRecipeFileHook implements MachineRecipeHook {
 
     @Override
     public List<MachineRecipeService.NormalizedRecipe> load() {
-        List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<MachineRecipeService.NormalizedRecipe>();
+        List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<>();
         File dir = new File(resolveConfigDirectory(), "hbmRecipes");
         if (!dir.isDirectory()) return out;
         File[] files = dir.listFiles();
@@ -38,7 +38,7 @@ public final class HbmRecipeFileHook implements MachineRecipeHook {
     }
 
     private static List<MachineRecipeService.NormalizedRecipe> parseFile(File file, String machine) {
-        List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<MachineRecipeService.NormalizedRecipe>();
+        List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             StringBuilder text = new StringBuilder();
             String line;

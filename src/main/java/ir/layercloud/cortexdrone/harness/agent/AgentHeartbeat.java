@@ -30,7 +30,7 @@ final class AgentHeartbeat {
     private static final int MAX_CONTINUATIONS = 3;
     private static final long CONTINUATION_WINDOW_MS = 10L * 60L * 1000L;
     private static final long RESURRECT_DELAY_MS = 2500L;
-    private static final Map<Integer, long[]> CONTINUATIONS = new ConcurrentHashMap<Integer, long[]>();
+    private static final Map<Integer, long[]> CONTINUATIONS = new ConcurrentHashMap<>();
 
     private final AIDroneManager manager;
     private final DroneLogger logger;

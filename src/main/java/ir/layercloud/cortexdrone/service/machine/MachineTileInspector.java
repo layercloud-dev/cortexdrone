@@ -271,7 +271,7 @@ public final class MachineTileInspector {
     }
 
     public static List<TileEntity> findMachineTiles(World world, double x, double y, double z, int radius, String machineFilter) {
-        List<TileEntity> out = new ArrayList<TileEntity>();
+        List<TileEntity> out = new ArrayList<>();
         if (world == null) return out;
         double r2 = (double) radius * radius;
         String want = machineFilter == null ? "" : normalizeMachineAlias(machineFilter);
@@ -417,7 +417,7 @@ public final class MachineTileInspector {
     }
 
     private static List<Class<?>> allClasses(Class<?> c) {
-        List<Class<?>> out = new ArrayList<Class<?>>();
+        List<Class<?>> out = new ArrayList<>();
         while (c != null && c != Object.class) {
             out.add(c);
             c = c.getSuperclass();
@@ -426,6 +426,6 @@ public final class MachineTileInspector {
     }
 
     static Set<String> allMachineTypes() {
-        return new HashSet<String>(Arrays.asList(MACHINE_KEYWORDS));
+        return new HashSet<>(Arrays.asList(MACHINE_KEYWORDS));
     }
 }

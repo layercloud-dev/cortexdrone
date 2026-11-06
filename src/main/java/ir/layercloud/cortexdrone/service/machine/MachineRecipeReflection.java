@@ -17,7 +17,7 @@ import java.util.List;
 final class MachineRecipeReflection {
 
     static List<MachineRecipeService.NormalizedRecipe> readLive() {
-        List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<MachineRecipeService.NormalizedRecipe>();
+        List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<>();
         try {
             Class<?> anvil = Class.forName("com.hbm.inventory.recipes.anvil.AnvilRecipes");
             java.lang.reflect.Method getCons = anvil.getMethod("getConstruction");

@@ -41,8 +41,8 @@ public final class RoomScanner {
             }
         }
 
-        Set<Long> airSet = new HashSet<Long>();
-        Deque<int[]> queue = new ArrayDeque<int[]>();
+        Set<Long> airSet = new HashSet<>();
+        Deque<int[]> queue = new ArrayDeque<>();
         queue.add(new int[]{sx, sy, sz});
         airSet.add(FlightPathfinder.packBlockPos(sx, sy, sz));
 
@@ -75,21 +75,21 @@ public final class RoomScanner {
             }
         }
 
-        List<int[]> floorList = new ArrayList<int[]>();
-        List<int[]> ceilingList = new ArrayList<int[]>();
-        List<int[]> northWall = new ArrayList<int[]>();
-        List<int[]> southWall = new ArrayList<int[]>();
-        List<int[]> westWall = new ArrayList<int[]>();
-        List<int[]> eastWall = new ArrayList<int[]>();
-        List<int[]> allWalls = new ArrayList<int[]>();
+        List<int[]> floorList = new ArrayList<>();
+        List<int[]> ceilingList = new ArrayList<>();
+        List<int[]> northWall = new ArrayList<>();
+        List<int[]> southWall = new ArrayList<>();
+        List<int[]> westWall = new ArrayList<>();
+        List<int[]> eastWall = new ArrayList<>();
+        List<int[]> allWalls = new ArrayList<>();
 
-        Set<Long> seenFloor = new HashSet<Long>();
-        Set<Long> seenCeil = new HashSet<Long>();
-        Set<Long> seenWall = new HashSet<Long>();
+        Set<Long> seenFloor = new HashSet<>();
+        Set<Long> seenCeil = new HashSet<>();
+        Set<Long> seenWall = new HashSet<>();
 
-        Map<String, Integer> floorMats = new LinkedHashMap<String, Integer>();
-        Map<String, Integer> wallMats = new LinkedHashMap<String, Integer>();
-        Map<String, Integer> ceilMats = new LinkedHashMap<String, Integer>();
+        Map<String, Integer> floorMats = new LinkedHashMap<>();
+        Map<String, Integer> wallMats = new LinkedHashMap<>();
+        Map<String, Integer> ceilMats = new LinkedHashMap<>();
 
         for (Long airKey : airSet) {
             int ax = (int) (airKey >> 38);

@@ -23,7 +23,7 @@ public final class BreakBlockAction implements Action<BlockContext> {
         context.result(broken != null
                 ? BlockResult.broken(broken, this.request.getX(), this.request.getY(), this.request.getZ())
                 : BlockResult.failure("Cannot break block at "
-                        + this.request.getX() + "," + this.request.getY() + "," + this.request.getZ()
-                        + " (not mineable, already air, or no drone)"));
+                + this.request.getX() + "," + this.request.getY() + "," + this.request.getZ()
+                + " (not mineable, already air, or no drone)"));
     }
 }

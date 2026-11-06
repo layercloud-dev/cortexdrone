@@ -1,9 +1,9 @@
 package ir.layercloud.cortexdrone.manager.visuals.impl;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.manager.visuals.LightConfig;
 import ir.layercloud.cortexdrone.manager.visuals.LightResult;
-import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -122,7 +122,7 @@ public class LightingAura {
             return;
         }
         World world = ctrl.drone.worldObj;
-        Map<Long, Integer> chunkMasks = new HashMap<Long, Integer>();
+        Map<Long, Integer> chunkMasks = new HashMap<>();
         for (Map.Entry<Long, Integer> e : ctrl.lightCells.entrySet()) {
             long key = e.getKey();
             int x = unpackX(key);
@@ -151,9 +151,9 @@ public class LightingAura {
         int radius = clamp(ctrl.lightRadius, MIN_RADIUS, MAX_RADIUS);
         int level = clamp(ctrl.lightIntensity, MIN_LEVEL, MAX_LEVEL);
 
-        Map<Long, Integer> previous = new HashMap<Long, Integer>(ctrl.lightCells);
+        Map<Long, Integer> previous = new HashMap<>(ctrl.lightCells);
         ctrl.lightCells.clear();
-        Map<Long, Integer> chunkMasks = new HashMap<Long, Integer>();
+        Map<Long, Integer> chunkMasks = new HashMap<>();
         int r2 = radius * radius;
 
         for (int dx = -radius; dx <= radius; dx++) {

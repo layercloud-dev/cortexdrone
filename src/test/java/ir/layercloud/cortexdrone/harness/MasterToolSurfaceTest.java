@@ -1,13 +1,12 @@
 package ir.layercloud.cortexdrone.harness;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class MasterToolSurfaceTest {
     @Test
@@ -24,7 +23,7 @@ public class MasterToolSurfaceTest {
 
     @Test
     public void legacyCompositeToolsAreGone() {
-        Set<String> actual = new HashSet<String>(Arrays.asList(MasterToolCatalog.METHODS));
+        Set<String> actual = new HashSet<>(Arrays.asList(MasterToolCatalog.METHODS));
         for (String legacy : MasterToolCatalog.REMOVED_COMPOSITE_TOOLS) {
             assertFalse("Legacy tool still exposed: " + legacy, actual.contains(legacy));
         }
@@ -32,7 +31,7 @@ public class MasterToolSurfaceTest {
 
     @Test
     public void masterToolNamesAreUnique() {
-        Set<String> actual = new HashSet<String>();
+        Set<String> actual = new HashSet<>();
         for (String method : MasterToolCatalog.METHODS) {
             assertTrue("Duplicate master tool: " + method, actual.add(method));
         }

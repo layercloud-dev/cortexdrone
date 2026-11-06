@@ -80,7 +80,7 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
     public void restore(DroneController controller) {
         if (controller == null) return;
         VisualsState state = state(controller);
-        if (state.autoTorch) {
+        if (state.lightAura) {
             VisualsContext context = createContext(controller, null, "set_light");
             VisualsRequest request = VisualsRequest.builder().lightEnabled(Boolean.TRUE).build();
             run(controller, "set_light", context,

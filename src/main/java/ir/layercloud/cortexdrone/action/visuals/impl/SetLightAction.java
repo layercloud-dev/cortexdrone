@@ -59,7 +59,7 @@ public final class SetLightAction implements Action<VisualsContext> {
             return;
         }
         VisualsState state = this.manager.state(controller);
-        if (!state.autoTorch) {
+        if (!state.lightAura) {
             context.complete();
             return;
         }

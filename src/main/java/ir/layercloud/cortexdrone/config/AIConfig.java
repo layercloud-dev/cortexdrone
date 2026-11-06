@@ -30,7 +30,7 @@ public class AIConfig {
         private String uuid;
         private String name;
         private String owner;
-        private boolean autoTorch;
+        private boolean lightAura;
         private String ledEffect;
         private Integer customLedColor;
         private int dimension;
@@ -105,7 +105,7 @@ public class AIConfig {
                     info.setName(c.name);
                     info.setOwner(c.ownerName);
                     VisualsState visuals = visualsOf != null ? visualsOf.apply(c) : null;
-                    info.setAutoTorch(visuals != null && visuals.autoTorch);
+                    info.setLightAura(visuals != null && visuals.lightAura);
                     info.setLedEffect(visuals != null ? visuals.ledEffect : "NONE");
                     info.setCustomLedColor(visuals != null ? visuals.customLedColor : null);
                     info.setDimension(c.drone.dimension);

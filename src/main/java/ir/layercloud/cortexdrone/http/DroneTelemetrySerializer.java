@@ -154,8 +154,8 @@ public class DroneTelemetrySerializer {
             dj.addProperty("isRunning", d.isRunning());
             dj.addProperty("energy", d.globalBuffer());
             dj.addProperty("maxEnergy", d.globalBufferSize());
-            dj.addProperty("autoTorch", visuals.autoTorch);
-            dj.addProperty("lightActive", visuals.autoTorch);
+            dj.addProperty("lightAura", visuals.lightAura);
+            dj.addProperty("lightActive", visuals.lightAura);
             dj.addProperty("lightRadius", visuals.lightRadius);
             dj.addProperty("lightIntensity", visuals.lightIntensity);
             dj.addProperty("auraColor", String.format("0x%06X", visuals.lightColor & 0xFFFFFF));

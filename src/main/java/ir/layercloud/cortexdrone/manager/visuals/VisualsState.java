@@ -8,7 +8,7 @@ import java.util.Map;
  * the current LED effect/colour. The controller no longer carries these fields.
  */
 public final class VisualsState {
-    public boolean autoTorch = false;
+    public boolean lightAura = false;
     public int lightRadius = 6;
     public int lightIntensity = 14;
     public int lightColor = 0xFFFFFF;
@@ -21,17 +21,4 @@ public final class VisualsState {
     public Integer customLedColor = null;
     public String ledEffect = "NONE";
     public int ledEffectTick = 0;
-
-    public boolean isAuraActive() {
-        return this.autoTorch;
-    }
-
-    public void ledEffect(String effect) {
-        this.ledEffect = effect != null ? effect : "NONE";
-        this.ledEffectTick = 0;
-    }
-
-    public void customColor(Integer packed) {
-        this.customLedColor = packed;
-    }
 }

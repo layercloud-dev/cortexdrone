@@ -284,7 +284,7 @@ public class AIDroneManager {
                     UUID uid = d.getUniqueID();
                     String owner = d.ownerName() != null && !d.ownerName().isEmpty() ? d.ownerName() : "Server";
                     String name = d.getCommandSenderName() != null ? d.getCommandSenderName() : "AI-Drone";
-                    boolean restoredTorch = false;
+                    boolean restoredLightAura = false;
                     String restoredLedEffect = "NONE";
                     Integer restoredCustomLed = null;
 
@@ -309,7 +309,7 @@ public class AIDroneManager {
                                 name = matchedSaved.getName();
                             if (matchedSaved.getOwner() != null && !matchedSaved.getOwner().isEmpty())
                                 owner = matchedSaved.getOwner();
-                            restoredTorch = matchedSaved.isAutoTorch();
+                            restoredLightAura = matchedSaved.isLightAura();
                             if (matchedSaved.getLedEffect() != null) restoredLedEffect = matchedSaved.getLedEffect();
                             restoredCustomLed = matchedSaved.getCustomLedColor();
                         }
@@ -331,7 +331,7 @@ public class AIDroneManager {
                     d.inventorySize_$eq(8);
                     DroneController ctrl = registerDroneController(d, name, owner);
                     VisualsState visuals = this.visualsManager.state(ctrl);
-                    visuals.autoTorch = restoredTorch;
+                    visuals.lightAura = restoredLightAura;
                     visuals.ledEffect = restoredLedEffect;
                     visuals.customLedColor = restoredCustomLed;
                     this.visualsManager.restore(ctrl);
@@ -553,8 +553,8 @@ public class AIDroneManager {
                 this.navigationManager.state(ctrl).pathWaypoints.size()));
         VisualsState visuals = this.visualsManager.state(ctrl);
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "LED: " + EnumChatFormatting.AQUA + String.format("#%06X", d.lightColor() & 0xFFFFFF)
-                + EnumChatFormatting.YELLOW + " | Light Aura: " + EnumChatFormatting.WHITE + (visuals.autoTorch ? "ON" : "OFF")
-                + (visuals.autoTorch ? " (#" + String.format("%06X", visuals.lightColor & 0xFFFFFF) + ", r=" + visuals.lightRadius + ", level=" + visuals.lightIntensity + ")" : "")
+                + EnumChatFormatting.YELLOW + " | Light Aura: " + EnumChatFormatting.WHITE + (visuals.lightAura ? "ON" : "OFF")
+                + (visuals.lightAura ? " (#" + String.format("%06X", visuals.lightColor & 0xFFFFFF) + ", r=" + visuals.lightRadius + ", level=" + visuals.lightIntensity + ")" : "")
                 + EnumChatFormatting.YELLOW + " | Energy: " + EnumChatFormatting.GREEN + d.globalBuffer() + "/" + d.globalBufferSize());
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "Inventory (8 slots): " + EnumChatFormatting.WHITE + InventoryService.formatInventorySummary(d.mainInventory()));
     }

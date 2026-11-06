@@ -21,7 +21,7 @@ import java.util.Map;
 /**
  * Torch-free illumination aura.
  *
- * <p>While {@link VisualsState#autoTorch} is enabled the drone raises the block
+ * <p>While {@link VisualsState#lightAura} is enabled the drone raises the block
  * light around itself, exactly like a moving light source, without consuming a
  * torch or placing any block. The original light values of every touched voxel
  * are remembered so switching the aura off restores the world byte-for-byte.
@@ -48,11 +48,11 @@ public class LightingAura {
         if (ctrl == null || ctrl.drone == null) {
             return LightResult.failure("No active drone");
         }
-        boolean wasActive = state.autoTorch;
+        boolean wasActive = state.lightAura;
         if (config.getEnabled() != null) {
-            state.autoTorch = config.getEnabled();
+            state.lightAura = config.getEnabled();
         } else if (config.isToggle()) {
-            state.autoTorch = !state.autoTorch;
+            state.lightAura = !state.lightAura;
         }
         if (config.getRadius() != null) {
             state.lightRadius = clamp(config.getRadius(), MIN_RADIUS, MAX_RADIUS);
@@ -64,7 +64,7 @@ public class LightingAura {
             state.lightColor = config.getColor();
         }
 
-        if (state.autoTorch) {
+        if (state.lightAura) {
             state.lightCooldown = 0;
             state.lightAnchor = Long.MIN_VALUE;
             if (config.getColor() != null && (config.getColor() & 0xFFFFFF) != 0xFFFFFF) {
@@ -79,7 +79,7 @@ public class LightingAura {
 
         return LightResult.builder()
                 .ok(true)
-                .active(state.autoTorch)
+                .active(state.lightAura)
                 .radius(state.lightRadius)
                 .level(state.lightIntensity)
                 .color(state.lightColor)
@@ -95,7 +95,7 @@ public class LightingAura {
         if (ctrl == null || ctrl.drone == null) return;
         World world = ctrl.drone.worldObj;
         if (world == null || world.isRemote) return;
-        if (!state.autoTorch) {
+        if (!state.lightAura) {
             if (!state.lightCells.isEmpty()) clearAura(ctrl, state);
             return;
         }

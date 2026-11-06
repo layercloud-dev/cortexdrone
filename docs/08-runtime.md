@@ -117,7 +117,7 @@ Every 40 ticks and at startup, unlinked live OC drones are adopted:
 
 - skip dead/known/despawned;
 - match saved drone by UUID, fallback by owner;
-- restore name/owner/autoTorch/LED effect/custom color;
+- restore name/owner/light aura/LED effect/custom color;
 - deduplicate multiple drones for one owner (merge inventory into existing drone,
   despawn duplicate);
 - ensure machine running, 8 slots, register controller, log `LINK`.
@@ -142,7 +142,7 @@ Environment variables:
 
 File: `<world>/layercloud-ai.json`.
 
-Saved drones store UUID/name/owner/autoTorch/LED effect/custom color/dimension/
+Saved drones store UUID/name/owner/light aura/LED effect/custom color/dimension/
 position. Work state is never saved: a restarted drone comes back idle. Server
 drones are not saved.
 

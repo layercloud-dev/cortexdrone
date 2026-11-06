@@ -121,7 +121,7 @@ public final class VisualsRpcTranslator {
         response.addProperty("z", drone.posZ);
         response.addProperty("navigationActive",
                 this.manager.getNavigationManager().isActive(controller));
-        response.addProperty("lightActive", visuals.autoTorch);
+        response.addProperty("lightActive", visuals.lightAura);
         response.addProperty("lightRadius", visuals.lightRadius);
         response.addProperty("lightLevel", visuals.lightIntensity);
         response.addProperty("lightColor", String.format("0x%06X", visuals.lightColor & 0xFFFFFF));

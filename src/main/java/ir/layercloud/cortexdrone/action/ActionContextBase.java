@@ -50,11 +50,6 @@ public abstract class ActionContextBase implements ActionContext {
     }
 
     @Override
-    public final void tick() {
-        if (this.active) onTick();
-    }
-
-    @Override
     public final void complete() {
         if (!this.active) return;
         this.active = false;
@@ -68,10 +63,6 @@ public abstract class ActionContextBase implements ActionContext {
         this.active = false;
         this.retained = false;
         onCancel();
-    }
-
-    /** Called once per tick while retained. */
-    protected void onTick() {
     }
 
     /** Called once when the action finishes normally. */

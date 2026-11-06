@@ -1,15 +1,22 @@
 package ir.layercloud.cortexdrone.action;
 
 /**
- * A single-use command.
+ * A command managed by an {@link ActionService}.
  *
- * <p>An action is created by an {@link ActionService} from one request,
- * executed exactly once against its context, and then discarded. Actions must
- * not own long-lived controller or world state; the service does that.</p>
+ * <p>The service creates the action, executes it once, ticks it while its
+ * context is retained, and releases it when it finishes. Actions contain the
+ * operation logic; services only manage lifecycle and serialization.</p>
  *
- * @param <C> mutable state for this one execution
+ * @param <C> mutable state for this execution
  */
-@FunctionalInterface
 public interface Action<C extends ActionContext> {
     void execute(C context);
+
+    /** Called once per server tick while the service retains this action. */
+    default void tick(C context) {
+    }
+
+    /** Called when the service cancels this action. */
+    default void cancel(C context) {
+    }
 }

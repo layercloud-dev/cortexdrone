@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.action.movement.impl;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.action.Action;
+import ir.layercloud.cortexdrone.action.movement.MovementAction;
 import ir.layercloud.cortexdrone.action.movement.MovementRequest;
 import ir.layercloud.cortexdrone.action.movement.MovementResult;
 import ir.layercloud.cortexdrone.action.movement.MovementSupport;
@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 
 /** Single-use command: fly to an explicit point. */
 @RequiredArgsConstructor
-final class NavigateAction implements Action<MovementContext> {
+final class NavigateAction extends MovementAction {
     private final AIDroneManager manager;
     private final MovementRequest request;
 

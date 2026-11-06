@@ -1,6 +1,6 @@
 package ir.layercloud.cortexdrone.action.movement.impl;
 
-import ir.layercloud.cortexdrone.action.Action;
+import ir.layercloud.cortexdrone.action.movement.MovementAction;
 import ir.layercloud.cortexdrone.action.movement.MovementRequest;
 import ir.layercloud.cortexdrone.action.movement.MovementResult;
 import ir.layercloud.cortexdrone.model.DroneController;
@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 
 /** Single-use command: read the breadcrumb trail. */
 @RequiredArgsConstructor
-final class BreadcrumbsAction implements Action<MovementContext> {
+final class BreadcrumbsAction extends MovementAction {
     private final MovementRequest request;
 
     @Override

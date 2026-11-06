@@ -19,16 +19,16 @@ Removed from the tool surface:
 The entire `behavior` package was removed. Operational code now lives in the
 categorized `action` package. The base is deliberately split in three parts:
 
-- `Action<C extends ActionContext>` — a single-use command, created per request,
-  executed once and discarded;
-- `ActionContext` / `ActionContextBase` — mutable state for that one execution,
-  optionally retained for ticking;
+- `Action<C extends ActionContext>` — a command, created per request, executed
+  once, optionally ticked while active, then discarded;
+- `ActionContext` / `ActionContextBase` — mutable state for that one execution;
 - `ActionService<C>` — the long-lived manager that parses the request, creates the
-  action, executes it, serializes the result, and retains/reaps contexts.
+  action, executes it, serializes the result, and retains/reaps the
+  action/context pair.
 
 `ActionRegistry` only routes operations to their owning service. Services never
-implement `Action`; they manage actions. Each category owns one service and one
-context type:
+implement `Action` and contain no operation logic; they manage the action
+lifecycle. Each category owns one service and one context type:
 
 - `action.movement.impl.MovementService` + `MovementContext` — route selection and breadcrumbs
 - `action.block.impl.BlockService` + `BlockContext` — one-block break and one-block place
@@ -37,25 +37,32 @@ context type:
 - `action.combat.CombatService` — internal guard/patrol/hunt ticking (not a tool)
 - `service.TickService` — the single-task 20-Hz pipeline
 
+All operation behavior lives in action classes under `action/<category>/impl/`.
+For example, `InteractBlockAction` owns liquid scooping and block activation,
+`UseItemAction` owns held-item use, `AttackEntityAction` owns melee combat,
+`BreakBlockAction` starts one block break and `PlaceBlockAction` performs the
+complete placement. The long-running mining loop is a domain engine
+(`action.block.MiningEngine`), not action-dispatch logic in a service.
+
 Project convention: interfaces and abstract bases live at the package root;
 concrete implementations live under an `impl` subpackage. Action
 implementations therefore live in `action/<category>/impl/`, while request and
 result DTOs stay in `action/<category>/`.
 
-A context is active while its action runs and is discarded when the call
-returns unless the action calls `retain()`. Retained contexts are ticked by their
-owning service and removed when they complete: a movement context lives until
-the navigator arrives, changes mode or is replaced by a newer navigation
-generation; a block-break context lives until that exact block is no longer the
-active mining target. `AIDroneManager.clearActionState` cancels both controller
+An action is active while it runs and is released when the call returns unless
+it calls `context.retain()`. Retained action/context pairs are ticked by their
+owning service and removed when they complete: a movement action lives until the
+navigator arrives, changes mode or is replaced by a newer navigation generation;
+a block-break action lives until that exact block is no longer the active mining
+target. `AIDroneManager.clearActionState` cancels both controller
 state and all live contexts.
 
 Request and result DTOs are immutable Lombok `@Value @Builder` objects, contexts
 use Lombok accessors, and actions/services use constructor injection from
 `@RequiredArgsConstructor`. Navigation services are split into
 `navigation/service`, `navigation/raytrace` and the immutable
-`navigation/NavContext` request snapshot. Movement actions stay in
-`action/movement`: `NavigateAction`, `TunnelAction`, `DigUpAction`,
+`navigation/NavContext` request snapshot. Movement actions live in
+`action/movement/impl/`: `NavigateAction`, `TunnelAction`, `DigUpAction`,
 `DigDownAction` and `BreadcrumbsAction`. `MovementService` is the only movement
 JSON boundary.
 

@@ -356,7 +356,7 @@ public class CaveEscapeService {
                 if (d.getDistance(bx + 0.5, by + 0.5, bz + 0.5) <= 4.5 && dug < 4) {
                     Block b = world.getBlock(bx, by, bz);
                     int meta = world.getBlockMetadata(bx, by, bz);
-                    List<ItemStack> drops = this.manager.getBlockService().getBlockDrops(world, b, bx, by, bz, meta, 0);
+                    List<ItemStack> drops = this.manager.getMiningEngine().getBlockDrops(world, b, bx, by, bz, meta, 0);
                     world.playAuxSFX(2001, bx, by, bz, Block.getIdFromBlock(b) + (meta << 12));
                     world.setBlockToAir(bx, by, bz);
                     if (drops != null) {

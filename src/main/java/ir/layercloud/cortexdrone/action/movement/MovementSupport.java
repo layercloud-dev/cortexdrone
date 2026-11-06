@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.action.movement;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.action.movement.impl.MovementContext;
 import ir.layercloud.cortexdrone.navigation.NavContext;
 import ir.layercloud.cortexdrone.navigation.service.FlightPathfinder;
 import lombok.Value;
@@ -74,6 +75,29 @@ public final class MovementSupport {
         int y = Math.max(1, MathHelper.floor_double(controller.drone.posY) - Math.max(1, depth));
         int z = MathHelper.floor_double(controller.drone.posZ);
         return new Target(x + 0.5, y, z + 0.5);
+    }
+
+
+    /** Advances one navigation action and completes its context on arrival. */
+    public static void tick(MovementContext context) {
+        DroneController controller = context.controller();
+        if (controller == null || controller.drone == null || controller.drone.isDead) {
+            context.complete();
+            return;
+        }
+
+        double x = controller.drone.posX;
+        double y = controller.drone.posY;
+        double z = controller.drone.posZ;
+        double dx = x - context.goalX();
+        double dy = y - context.goalY();
+        double dz = z - context.goalZ();
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        context.recordProgress(x, y, z, distance);
+
+        if (controller.mode != Mode.GOTO || controller.navigationGeneration != context.generation()) {
+            context.finish(controller.mode != Mode.GOTO && distance <= 1.25);
+        }
     }
 
     public static MovementResult start(AIDroneManager manager, MovementRequest request,

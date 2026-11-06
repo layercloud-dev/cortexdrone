@@ -10,6 +10,7 @@ import ir.layercloud.cortexdrone.command.impl.DroneCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.harness.TaskCoordinator;
+import ir.layercloud.cortexdrone.action.block.MiningEngine;
 import ir.layercloud.cortexdrone.action.block.impl.BlockService;
 import ir.layercloud.cortexdrone.action.combat.CombatService;
 import ir.layercloud.cortexdrone.action.effect.impl.EffectService;
@@ -59,6 +60,7 @@ public class AIDroneManager {
     private final FlightPathfinder pathfinder;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
+    private final MiningEngine miningEngine;
     private final BlockService blockService;
     private final EffectService effectService;
     private final InteractionService interactionService;
@@ -87,7 +89,8 @@ public class AIDroneManager {
         this.inventoryService = new InventoryService(this.logger);
         this.effectService = new EffectService(this, this.logger);
         this.interactionService = new InteractionService(this.inventoryService);
-        this.blockService = new BlockService(this, this.logger, this.pathfinder, this.inventoryService);
+        this.miningEngine = new MiningEngine(this, this.logger, this.pathfinder, this.inventoryService);
+        this.blockService = new BlockService(this, this.inventoryService, this.logger);
         this.combatService = new CombatService(this, this.logger, this.pathfinder);
         this.actionRegistry = new ActionRegistry();
         this.actionRegistry.register(new MovementService(this));
@@ -110,7 +113,7 @@ public class AIDroneManager {
             this.logger,
             this.pathfinder,
             this.inventoryService,
-            this.blockService,
+            this.miningEngine,
             this.effectService,
             this.combatService
         );

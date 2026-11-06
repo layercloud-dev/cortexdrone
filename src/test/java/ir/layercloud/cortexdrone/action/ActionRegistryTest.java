@@ -26,13 +26,12 @@ public class ActionRegistryTest {
             this.result = result;
         }
 
-        String result() {
-            return this.result;
+        void countTick() {
+            this.ticks++;
         }
 
-        @Override
-        protected void onTick() {
-            this.ticks++;
+        String result() {
+            return this.result;
         }
 
         @Override
@@ -66,10 +65,18 @@ public class ActionRegistryTest {
         @Override
         protected Action<TestContext> createAction(TestContext context, String operation,
                                                    JsonObject args) {
-            return ignored -> {
-                this.executions++;
-                context.result("executed:" + operation);
-                if (this.retain) context.retain();
+            return new Action<TestContext>() {
+                @Override
+                public void execute(TestContext context) {
+                    TestService.this.executions++;
+                    context.result("executed:" + operation);
+                    if (TestService.this.retain) context.retain();
+                }
+
+                @Override
+                public void tick(TestContext context) {
+                    context.countTick();
+                }
             };
         }
 

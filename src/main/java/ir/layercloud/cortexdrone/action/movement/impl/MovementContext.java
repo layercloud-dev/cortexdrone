@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.action.movement.impl;
+import ir.layercloud.cortexdrone.action.movement.MovementResult;
 
 import ir.layercloud.cortexdrone.action.ActionContextBase;
-import ir.layercloud.cortexdrone.action.movement.MovementResult;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import lombok.Getter;
@@ -12,8 +12,8 @@ import net.minecraft.entity.player.EntityPlayerMP;
 /**
  * Mutable state for one point-to-point navigation action.
  *
- * <p>The context is retained when the navigator accepts the route and is
- * discarded when the drone arrives, leaves {@link Mode#GOTO}, despawns or a
+ * <p>The action is retained when the navigator accepts the route and is
+ * released when the drone arrives, leaves {@link Mode#GOTO}, despawns or a
  * newer navigation generation replaces it.</p>
  */
 @Getter
@@ -38,7 +38,7 @@ public final class MovementContext extends ActionContextBase {
         super(controller, player, operation);
     }
 
-    /** Records the accepted route and keeps this context alive across ticks. */
+    /** Records the accepted route and keeps the action alive across ticks. */
     public void begin(MovementResult result) {
         if (result == null || !result.isOk() || result.hasBreadcrumbs()) return;
         this.route = result.getRoute();
@@ -49,26 +49,16 @@ public final class MovementContext extends ActionContextBase {
         retain();
     }
 
-    @Override
-    protected void onTick() {
-        DroneController controller = controller();
-        if (controller == null || controller.drone == null || controller.drone.isDead) {
-            complete();
-            return;
-        }
-
+    public void recordProgress(double x, double y, double z, double distance) {
         this.ticks++;
-        this.lastX = controller.drone.posX;
-        this.lastY = controller.drone.posY;
-        this.lastZ = controller.drone.posZ;
-        double dx = this.lastX - this.goalX;
-        double dy = this.lastY - this.goalY;
-        double dz = this.lastZ - this.goalZ;
-        this.distanceToGoal = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        this.lastX = x;
+        this.lastY = y;
+        this.lastZ = z;
+        this.distanceToGoal = distance;
+    }
 
-        if (controller.mode != Mode.GOTO || controller.navigationGeneration != this.generation) {
-            this.arrived = controller.mode != Mode.GOTO && this.distanceToGoal <= 1.25;
-            complete();
-        }
+    public void finish(boolean arrived) {
+        this.arrived = arrived;
+        complete();
     }
 }

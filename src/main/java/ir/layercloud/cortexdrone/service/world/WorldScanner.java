@@ -3,7 +3,7 @@ package ir.layercloud.cortexdrone.service.world;
 import ir.layercloud.cortexdrone.DroneController;
 
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.config.AIConfig;
+import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ public class WorldScanner {
     private static final int NEARBY_RESOURCES_MAX_RADIUS = 24;
 
     private final DroneLogger logger;
-    private final AIConfig config;
+    private final ModConfig config;
 
     private final java.util.Map<Long, java.util.Map<String, int[]>> nearbyResourceCache =
             new java.util.HashMap<>();

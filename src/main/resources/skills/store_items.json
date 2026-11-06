@@ -1,6 +1,10 @@
 {
   "name": "store_items",
-  "description": "Fly to a chest and deposit the drone inventory",
-  "tags": "chest deposit store items inventory storage",
-  "code": "const c = await drone.scanChests({ radius: 24 });\nif (!c.chests || !c.chests.length) return { blocker: 'no chest within 24m' };\nconst t = c.chests[0];\nawait drone.goto({ standoffOf: t });\nreturn await drone.depositChest({ x: t.x, y: t.y, z: t.z });"
+  "description": "Fly to the nearest chest and deposit the drone inventory; reports the chest and amount moved.",
+  "tags": "chest deposit store items inventory storage put away",
+  "triggers": ["store the items", "put this in a chest", "deposit your inventory"],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "code": "const chests = drone.scanChests({ radius: 24 });\nif (!chests.chests || !chests.chests.length) return { ok: false, error: 'no chest within 24m', hint: 'craft/place a chest or widen the search' };\nconst chest = chests.chests[0];\nconst moved = drone.goto({ standoffOf: { x: chest.x, y: chest.y, z: chest.z } });\nif (!moved.arrived) return { ok: false, error: 'could not reach the chest', chest: chest };\nconst deposited = drone.depositChest({ x: chest.x, y: chest.y, z: chest.z });\nreturn { chest: chest, deposited: deposited };"
 }

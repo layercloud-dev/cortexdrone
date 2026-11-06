@@ -6,7 +6,7 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.command.BaseCommand;
-import ir.layercloud.cortexdrone.config.AIConfig;
+import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.config.DebugEntry;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
@@ -68,7 +68,7 @@ public class DroneCommand extends BaseCommand {
     public void processCommand(ICommandSender sender, String[] args) {
         CortexDroneMod mod = this.manager.getMod();
         DroneLogger logger = this.manager.getLogger();
-        AIConfig config = this.manager.getConfig();
+        ModConfig config = this.manager.getConfig();
         EntityPlayerMP player = (sender instanceof EntityPlayerMP) ? (EntityPlayerMP) sender : null;
 
         if (player != null && !mod.isAuthenticated(player)) {
@@ -77,7 +77,7 @@ public class DroneCommand extends BaseCommand {
         }
 
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v1.4.0 (Tool Harness) Commands ===");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v2.0.0 (Tool Harness) Commands ===");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear] | config");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
@@ -170,7 +170,7 @@ public class DroneCommand extends BaseCommand {
                         return;
                 }
                 this.manager.saveConfig();
-                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] Updated AI config '" + key + "' and saved to world/layercloud-ai.json.");
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] Updated AI config '" + key + "' and saved to config/cortexdrone/config.json.");
                 return;
         }
 
@@ -234,8 +234,11 @@ public class DroneCommand extends BaseCommand {
             final String code = args.length >= 2 ? joinArgs(args, 1) : "return await drone.state();";
             final DroneController fCtrl = ctrl;
             final EntityPlayerMP fPlayer = player;
-            CortexDroneMod.HTTP_POOL.submit(() -> {
-                final JsonObject res = manager.getCodeModeRuntime().executeJavaScript(fCtrl, fPlayer, code);
+            CortexDroneMod.AGENT_POOL.submit(() -> {
+                final JsonObject res = manager.getJsEngine().execute(
+                        new ir.layercloud.cortexdrone.harness.tool.ToolContext(
+                                manager.getHarness(), fCtrl, fPlayer, 0), code,
+                        manager.getConfig().getExecuteTimeoutMs());
                 manager.getMod().queueMain(() -> manager.droneSay(fPlayer, fCtrl, "JS Result: " + res.toString()));
             });
             return;

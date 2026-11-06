@@ -1,301 +1,105 @@
-# 06 — Harness and Code Mode
-
-The `harness` package is the agent/orchestration layer. It owns the LLM loop,
-JavaScript execution, task/session state, observability, skill memory, and the
-RPC transport boundary (`harness/rpc`).
-
-## 1. Entry points
-
-A task can start from:
-
-- chat: `@drone <message>` or `@<droneName> <message>`;
-- command: `/drone <natural-language instruction>` (unknown subcommands fall
-  through to natural language);
-- HTTP `/action` with `action:"instruct"`/`"command"`;
-- heartbeat resurrection (internal continuation loop).
-
-All paths reach `AIDroneManager.handleNaturalInstruction`, which dispatches to the
-server thread and then `TaskCoordinator.handle`.
-
-## 2. TaskCoordinator — one session, no queue
-
-`TaskCoordinator`:
-
-1. trims the prompt;
-2. determines whether a task is active (`DroneSession.isActive()` or any live loop);
-3. classifies intent deterministically;
-4. acts by intent.
-
-| Intent | When active | When idle |
-| --- | --- | --- |
-| `QUESTION` | Reply from live state; task continues | Starts a new task |
-| `BY_THE_WAY` | Attach note to `DroneSession`; task continues | Adds note, replies "Noted." |
-| `MODIFY` | Cancel old loops/actions, start replacement with previous-task note | Starts new task |
-| `CANCEL` | Cancel loops, clear action state, cancel task, stop navigation | Replies "No task is running" |
-| `NEW_TASK` | Replaces the active task | Starts new task |
-
-Starting a task:
-
-1. increments the session loop ID;
-2. `DroneSession.begin(loopId, prompt)`;
-3. builds world context via `LlmAgentService.buildDroneContextForLlm`;
-4. registers the loop ID;
-5. submits `runAgentLoop` to `CortexDroneMod.HTTP_POOL`.
-
-There is no instruction queue and no background work that the model does not
-await.
-
-## 3. TaskIntentClassifier
-
-Deterministic, no LLM. Normalizes text (trim/lowercase, removes leading `@`,
-collapses whitespace) and checks:
-
-- cancel prefixes (`stop`, `cancel`, `abort`, `halt`, `quit`, `cease`,
-  `stand down`, `never mind`, `forget it`, `belay that`, `shut it down`);
-- polite cancel (`can you stop ...`);
-- question prefixes (`what/how/where/when/why/who/which/status/report/...`);
-- `?` questions (unless a polite command);
-- side-note prefixes (`by the way`, `btw`, `also`, `fyi`, ...);
-- idle → new task;
-- modify prefixes (`actually`, `instead`, `change`, `modify`, ...) or action
-  words (`mine`, `dig`, `place`, `craft`, `go`, `bring`, ...).
-
-Unknown side comments while a task is active are treated as questions (keep the
-task, acknowledge).
-
-## 4. DroneSession / SessionManager
-
-`harness/session/DroneSession` owns the per-drone harness state; the controller
-keeps only identity and the entity link. `SessionManager` keeps one session per
-controller and drops it on despawn.
-
-Each session owns:
-
-- task state: active flag, loop ID, prompt, summary, timestamps, notes (max 8);
-- loop state: active loop ID, running/cancelled loop sets, script count;
-- thought state: last thought and a bounded history (max 12).
-
-Task methods (`begin`, `addNote`, `complete`, `cancel`, `getAgeMs`) are
-synchronized because HTTP/agent threads read them while the server thread
-updates them.
-
-## 5. LlmAgentService
-
-### Inputs
-
-- `AIDroneManager`
-- `DroneLogger`
-- `WorldScanner`
-- `CodeModeRuntime`
-- `RpcDispatcher`
-
-### Prompt construction
-
-`SYSTEM_PROMPT_TEMPLATE` is loaded from `/system-prompt.md`.
-`LlmAgentService.buildDroneContextForLlm` delegates to `DroneContextBuilder`,
-which adds:
-
-- player position/facing/yaw/pitch/held item/crosshair/support block;
-- drone position/navigation/active actions/can-see-sky;
-- breadcrumb count;
-- drone and player inventory summaries;
-- distance to player, task state, script count;
-- last path partial/nodes, last thought;
-- nearby resource summary (24 m).
-
-Matched skills (top 3 by BM25) are appended to the system message when available.
-
-### Loop
-
-Constants: `MAX_AGENT_TURNS = 100`, `AGENT_DEADLINE_MS = 8 min`.
-
-For each turn:
-
-1. abort if loop cancelled/drone dead;
-2. abort with partial reply at the wall-clock deadline;
-3. show "Thinking..." status when no action owns the status text;
-4. compact messages if too large;
-5. call the configured OpenAI-compatible chat endpoint;
-6. handle context-overflow compaction + retry;
-7. on backend failure, retry up to 3 times;
-8. parse/salvage response (`LlmResponseParser`);
-9. record thought;
-10. handle malformed/missing code via self-correction feedback;
-11. handle optional pre-code stop/cancel;
-12. execute JS through `CodeModeRuntime`;
-13. feed result back; detect progress, errors, repeated code, repeated queries,
-    empty searches;
-14. handle `done:true`:
-    - `AgentHeartbeat.rejectIncompleteDone` refuses premature completion;
-    - optionally records a self-corrected skill;
-    - sends `reply` and exits.
-
-If a turn produces no code and no done, it appends a "next step" nudge. At turn
-cap/deadline it reports partial progress instead of silently stopping.
-
-### HTTP call
-
-- OpenAI-compatible `POST` to `AIConfig.apiUrl`;
-- headers: JSON, `Authorization: Bearer <key>` when set;
-- body: model, temperature 0.2, `reasoning_effort:"low"`, max_tokens 1400,
-  JSON response format on first attempt;
-- 10 s connect / 30 s read timeout, 3 attempts;
-- circuit breaker after 5 consecutive connect failures (60 s window);
-- API key diagnostics are masked.
-
-## 6. LlmResponseParser
-
-Resilient parser for model output:
-
-- strips ` thinking...</think>`;
-- extracts balanced JSON objects;
-- salvages truncated/unescaped `code` strings;
-- extracts `thought`, `code`, `done`, `reply`, `stop`;
-- detects prose blockers (HBM machine/recipe/missing-ingredient essays) and turns
-  them into a `done:true` result with the blocker;
-- `sanitizeThought` caps thought length and strips fences.
-
-This is intentionally forgiving: a malformed model response should become one
-self-correction turn, not a dead task.
-
-## 7. PromptCompactor
-
-- estimate chars across messages;
-- threshold 60,000 chars;
-- keeps system prompt (capped 16,000 chars) + original user prompt + digest of
-  last 10 messages (700 chars each);
-- marks context overflow for `LlmAgentService` to compact/retry;
-- compaction preserves the original task and recent results so a replacement
-  loop can continue.
-
-## 8. AgentHeartbeat
-
-Watchdog/resurrector for three failure modes:
-
-1. empty/failed LLM responses;
-2. premature `done:true` with only scans/queued work/undelivered items;
-3. loop exit with active work or no progress.
-
-Limits: max 3 continuations per drone per 10-minute window, 2.5 s delay.
-
-`rejectIncompleteDone` checks concrete progress, active work (a navigation
-session or a retained action), and delivery pending. `onLoopExit` builds a compact
-`[HEARTBEAT RESUME]` prompt and re-enters `handleNaturalInstruction` if the loop
-was not cancelled/superseded and budget remains.
-
-## 9. AgentLoopHeuristics
-
-Deterministic anti-loop helpers:
-
-- 8-minute deadline;
-- message window pruning (system + original user + last 6);
-- code fingerprinting;
-- pre-code stop/cancel;
-- physical action detection (`goto`, `stop`, `breakBlock`, `placeBlock`,
-  `interactBlock`, `useItem`, `attackEntity`, `moveItem`, `giveToPlayer`,
-  `takeFromPlayer`, `withdrawChest`, `depositChest`, `dropItems`, `suckItems`,
-  `craft`);
-- concrete progress detection (`started/placed/used/activated/broken/
-  attacked/picked/unpicked/transferred/moved/withdrawn/deposited/dropped/
-  delivered/crafted/arrived`);
-- repeated-result detection;
-- machine-config/empty-search fast final;
-- query fingerprinting for repeated inspection/state targets;
-- nudge texts for anti-requery, empty-search, anti-loiter.
-
-## 10. LoopTracer
-
-Structured loop observability:
-
-- `TRACE` start line for every loop;
-- `TRACE` per turn with elapsed/malformed/thought/code snippets;
-- `SUPERSEDED` log + spoken notice;
-- masked API keys;
-- error/status snippets capped.
-
-## 11. CodeModeRuntime
-
-- Loads SDK bundle: `/sdk/core-rpc.mjs` + `/sdk/drone-actions.mjs`.
-- Writes a temporary `/tmp/opencode/drone-codemode-<id>-<nano>.mjs`.
-- Prepends constants: `DRONE_ID`, `LOOP_ID`, `IS_FINAL_TURN`, `PLAYER_NAME`,
-  `HTTP_PORT`.
-- Appends an async wrapper that catches errors, finalizes, and prints one JSON
-  result.
-- Runs `/usr/local/bin/node --max-old-space-size=256 --no-warnings <script>`.
-- Default timeout 180 s; internal SDK kill timer at 175 s.
-- Polls every 250 ms for cancellation/dead drone and destroys the process.
-- Parses the last `{...}` JSON from stdout; returns `{ok, result, logs, error,
-  superseded, timeout, rawOutput}`.
-- Deletes the temp script in `finally`; decrements `activeScriptCount`.
-
-The JavaScript body is user/model-provided; the SDK is trusted infrastructure.
-
-## 12. RpcDispatcher
-
-`RpcDispatcher` is the main-thread RPC gate.
-
-### Normal RPC
-
-1. `executeOnMainThread(ctrl, player, method, args)`.
-2. If large scan and not already on server thread → `submitLargeScan`.
-3. Otherwise marshal to server thread via `AIDroneManager.callOnMainThread`.
-4. Timeout budget:
-   - 2.5 s for cheap read-only tools (get_block/get_blocks_in_box/get_top_y/
-     scan_room/scan_veins/find_distant/get_entities/get_drops/scan_blocks);
-   - 8 s otherwise.
-5. `executeSync` routes to the registered `RpcHandler`.
-
-### Large scans
-
-Only `scan_blocks` with radius >32.
-
-- one active job at a time (`AtomicScanLock`);
-- later submissions get `{ok:false,busy:true,jobId}`;
-- job scans a capped cube (default cap 32, absolute 64), optionally down to Y=1
-  for underground queries;
-- cursor scans one voxel per step; slices bounded by 8 ms and 30,000 voxels;
-- max 400 results, distance-sorted;
-- partial results report `scannedVoxels`, `truncated`, `jobId`;
-- 30 s job age-out;
-- `poll_scan` returns the active/finished job; it never drains inline on the
-  HTTP thread;
-- finished jobs stay in `jobByKey` so the SDK can poll the result.
-
-## 13. SkillLibrary
-
-- Storage file: `world/layercloud-drone-skills-v2.json`.
-- Bundled skills: `resources/skills/index.json` (array of filenames) loaded at
-  startup; saved world skills override bundled names.
-- `SkillEntry`: name, description, code, tags, uses, updatedAt.
-- `saveSkill` normalizes names to lowercase underscore, increments uses.
-- `searchSkills` uses Okapi BM25 (k1=1.5, b=0.75) over name (weighted twice),
-  tags (weighted twice), description; fuzzy term matching via
-  `LexicalItemMatcher`; sorted by score then recency.
-- `recordSelfCorrectedSkill` distills a working self-corrected workflow into a
-  `learned_*` skill.
-- `toJsonArray` used by `search_skills` / `list_skills`.
-
-## 14. Threading model
-
-| Pool/thread | Work |
-| --- | --- |
-| Server thread | world/entity mutation, RPC execution, tick pipeline |
-| `HTTP_POOL` (`CortexDrone-Agent-*`) | LLM loops, JS runtime, log flushes |
-| `HTTP_SERVER_POOL` (`CortexDrone-Http-*`) | `/state`, `/debug`, `/rpc`, `/action` handling |
-| Main-thread queue | tasks queued from HTTP/agent threads |
-| Node process | one per JS turn |
-
-`AIDroneManager.callOnMainThread` is a no-op passthrough on the server thread; off
-thread it queues and waits with a timeout. This is what keeps 1.7.10 world access
-safe.
-
-## 15. Failure behavior
-
-- LLM/backend failure → retries then spoken error; heartbeat may resurrect.
-- malformed response → self-correction turn(s).
-- JS error → self-correction feedback with error text.
-- RPC timeout → `{ok:false,error}`; no silent hang.
-- superseded loop → `SUPERSEDED` result, no continuation.
-- large scan busy → explicit busy/jobId.
-- context overflow → compact + retry.
-- turn cap/deadline → partial progress reply.
+# 06 — Harness
+
+## Components
+
+```text
+TaskCoordinator          intent + single-session policy
+SessionManager           per-drone session state
+AgentService             the tool-calling loop
+LlmClient                OpenAI-compatible HTTP client
+Conversation             bounded message log + compaction
+ContextRenderer          readable live state + tool catalog
+ToolInvoker              schema validation + MAIN/ASYNC dispatch + envelopes
+ToolRegistry             the single tool surface
+JsEngine                 in-process Rhino runtime
+SkillLibrary / Refiner   memory + recursive skill compiler
+```
+
+## Task and session
+
+`TaskCoordinator` classifies an incoming chat message deterministically:
+
+- `QUESTION` — answered from live state; the task continues.
+- `BY_THE_WAY` — attached as a note; the task continues.
+- `MODIFY` / `NEW_TASK` — cancels the running generation and starts a new one.
+- `CANCEL` — stops everything.
+
+There is no instruction queue. `DroneSession` holds the active flag, loop
+generation, notes and recent thoughts.
+
+## Agent loop
+
+`AgentService.runAgentLoop`:
+
+1. Builds a `Conversation` with:
+   - the static system prompt (`resources/prompts/system.md`);
+   - a live context message from `ContextRenderer` (Markdown, not a debug dump);
+   - the user request.
+2. Sends the request through `LlmClient` with the registry's OpenAI `tools`.
+3. If the assistant returns `tool_calls`:
+   - parse each call's JSON arguments;
+   - execute through `ToolInvoker` on the correct thread;
+   - append a `tool` message with the capped result;
+   - continue.
+4. If the assistant returns text, speak it in short chat lines and end.
+5. Empty response: retry once with a nudge, then stop with an error.
+6. Turn/time budget: stop with a partial-progress message.
+
+No JSON envelope parser, salvage heuristics, heartbeat resurrection threads or
+anti-requery string matching are involved. The model sees real errors and
+adapts.
+
+## LLM client
+
+- POST `{model, temperature, max_tokens, messages, tools, tool_choice:"auto"}`.
+- Parses `message.tool_calls` (and legacy `function_call`).
+- One-time fallback to legacy `functions` if a gateway rejects `tools`.
+- Retries transient failures; does not retry auth/schema failures.
+- Keys are masked in logs.
+
+## Conversation bounds
+
+- Each string is capped; arrays are capped at 24 items by default.
+- A tool result larger than `maxToolResultChars` becomes a compact preview with
+  a hint to narrow the query or process it in `execute`.
+- When the transcript exceeds `maxContextChars`, the middle turns are replaced by
+  a digest while the system prompt, live context, original task and recent tool
+  results survive. Tool-call/result pairing is preserved.
+
+## JavaScript runtime
+
+`JsEngine` evaluates a function body on Rhino 1.7.15 in interpreted mode.
+
+Bindings:
+
+```text
+drone.<camelCaseTool>(args)     all public tools
+drone.<snake_case_tool>(args)   alias
+tools.call(name, args)          registry escape hatch
+tools.list()                    compact tool list
+skills.search(query, limit)     loaded skill metadata
+skills.load(name)               full skill code
+ctx                             {droneId, droneName, owner, player, loopId}
+log / console.log               collected and returned
+sleep(ms)                       capped at 10s
+hsvToRgb / clamp / pick / distance3 / summarizeItems
+Java.type(name), Packages, java.* (reflection when enabled)
+```
+
+Behavior:
+
+- Tools are synchronous; `await`/`async` are removed by `JsSource`.
+- `needs_movement` results are retried automatically by the JS binding.
+- Large `scan_blocks` jobs are polled automatically.
+- `goto` waits for arrival inside `ToolInvoker`.
+- Tool failures are JavaScript errors with `message`, `tool` and `toolResult`.
+- Instruction observer + wall clock enforce the budget; cancellation is checked
+  between instructions and before/after each tool call.
+
+## Skills
+
+`SkillLibrary` stores bundled + learned skills in
+`config/cortexdrone/skills.json`. `skill` searches/lists/loads; `skill_refine`
+sends the task, working code and notes to the model with a compiler prompt,
+normalizes name/description/triggers/tags/code, and saves a new version. If the
+compiler call fails, the working code is saved verbatim under a derived name.

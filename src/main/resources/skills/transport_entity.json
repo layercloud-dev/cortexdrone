@@ -1,6 +1,10 @@
 {
   "name": "transport_entity",
-  "description": "Pick up an entity, fly to a location, then unpick it using interaction primitives",
+  "description": "Pick up the nearest matching entity, fly to a destination, then dismount it using the interaction primitives.",
   "tags": "entity transport pick unpick player carry move",
-  "code": "async function transportEntity(entityId, x, y, z) {\n  const picked = await drone.pickEntity(entityId);\n  if (!picked || picked.ok === false || picked.picked !== true) return picked;\n  const moved = await drone.goto(x, y, z);\n  if (!moved || moved.ok === false || moved.arrived !== true) return moved;\n  return await drone.unpickEntity({ entityId });\n}"
+  "triggers": ["carry a mob", "transport this animal", "pick up and move"],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "code": "const filter = (typeof entityFilter === 'string') ? entityFilter : 'animal';\nconst p = drone.getPlayer();\nconst found = drone.getEntities({ radius: 8, filter: filter });\nif (!found || !found.entities || !found.entities.length) return { ok: false, error: 'no matching entity nearby', filter: filter };\nconst id = found.entities[0].id;\nconst picked = drone.pickEntity({ entity_id: id });\nif (!picked || picked.ok === false || picked.picked !== true) return picked;\nconst dest = (typeof destination === 'object' && destination !== null)\n  ? destination\n  : { x: p.blockX + 4, y: p.blockY + 2, z: p.blockZ };\nconst moved = drone.goto({ x: dest.x, y: dest.y, z: dest.z });\nif (!moved || moved.ok === false || moved.arrived !== true) {\n  drone.unpickEntity({ entity_id: id });\n  return { ok: false, error: 'could not fly to destination', moved: moved };\n}\nreturn drone.unpickEntity({ entity_id: id });"
 }

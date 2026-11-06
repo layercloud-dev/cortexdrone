@@ -38,7 +38,7 @@ import java.util.logging.Logger;
 public class CortexDroneMod {
     public static final String MODID = "cortexdrone";
     public static final String NAME = "CortexDrone";
-    public static final String VERSION = "1.4.0";
+    public static final String VERSION = "2.0.0";
     private static final Logger LOG = Logger.getLogger("CortexDrone");
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -46,7 +46,7 @@ public class CortexDroneMod {
      * Agent loops (LLM + JS engine). Never share with the HTTP server: a hung
      * loop must not starve /state|/debug|/rpc (that made failures silent).
      */
-    public static final ExecutorService HTTP_POOL = Executors.newCachedThreadPool(runnable -> {
+    public static final ExecutorService AGENT_POOL = Executors.newCachedThreadPool(runnable -> {
         Thread t = new Thread(runnable, "CortexDrone-Agent-" + System.nanoTime());
         t.setDaemon(true);
         return t;
@@ -70,7 +70,8 @@ public class CortexDroneMod {
     public void preInit(FMLPreInitializationEvent event) {
         MinecraftForge.EVENT_BUS.register(this);
         FMLCommonHandler.instance().bus().register(this);
-        this.aiDroneManager = new AIDroneManager(this);
+        this.aiDroneManager = new AIDroneManager(this,
+                new File(event.getModConfigurationDirectory(), "cortexdrone"));
     }
 
     @Mod.EventHandler

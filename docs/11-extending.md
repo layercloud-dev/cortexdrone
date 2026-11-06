@@ -1,195 +1,80 @@
-# 11 — Extending CortexDrone
+# 11 — Extending
 
-## 1. Choose the right layer
+## Add a tool
 
-| You are adding... | Layer | Location |
-| --- | --- | --- |
-| one physical operation | action + context | `action/<cat>/impl`, `context/impl` |
-| a category/service manager | manager | `manager/<cat>/impl` |
-| a read-only query/planner | service | `service/<domain>` |
-| a new JSON tool | transport + SDK | `harness/rpc/translate`, `resources/sdk` |
-| a reusable workflow | skill | `resources/skills` |
-| a chat/command entry | command/harness | `command/impl`, `harness` |
-
-Do not put operation logic in a manager, JSON in an action, or a goal loop in a
-service.
-
-## 2. Adding an action category
-
-1. Add DTOs under `action/<category>/` (`XRequest`, `XResult`), Lombok
-   `@Value @Builder`.
-2. Add `context/impl/XContext.java` extending `ActionContextBase`; keep only
-   execution state and result.
-3. Add action(s) under `action/<category>/impl/`, implementing
-   `Action<XContext>`.
-4. Add `manager/<category>/impl/XManager.java` extending
-   `ActionManager<XContext, XRequest, XResult>`.
-5. Implement `createContext`, `createAction`, `result`.
-6. Register the manager in `AIDroneManager` and `ActionRegistry`.
-7. Add `harness/rpc/translate/XRpcTranslator.java`.
-8. Route operation names in the owning domain `RpcHandler`.
-9. If it is a generic primitive, register it in your domain handler's
-   `ToolRegistry`, route it in that handler's `handle`, and update the SDK,
-   system prompt, and `ToolRegistryTest`.
-10. Add tests for lifecycle/routing if the behavior is non-trivial.
-11. Update docs.
-
-### Manager template
+1. Pick the owning provider in `harness/tools/` (or create one).
+2. Declare a `ToolSpec` in `specs()`:
 
 ```java
-public final class XManager extends ActionManager<XContext, XRequest, XResult> {
-    private final AIDroneManager manager;
-
-    public XManager(AIDroneManager manager) {
-        super("x", "x_operation");
-        this.manager = manager;
-    }
-
-    public AIDroneManager manager() {
-        return this.manager;
-    }
-
-    @Override
-    protected XContext createContext(DroneController c, EntityPlayerMP p, String op) {
-        return new XContext(c, p, op);
-    }
-
-    @Override
-    protected Action<XContext> createAction(XContext ctx, String op, XRequest req) {
-        if ("x_operation".equals(op)) return new XAction(req);
-        throw new IllegalArgumentException("Unsupported x action: " + op);
-    }
-
-    @Override
-    protected XResult result(XContext ctx) {
-        return ctx.result();
-    }
-}
+ToolSpec.builder("my_tool")
+    .description("What it does, its filters, defaults and failure modes. "
+            + "This text is shown to the model.")
+    .parameters(ToolSchema.object()
+            .requiredInt("x", "Block X.")
+            .optionalString("filter", "Item/block/ore tag or 'all'.", "all"))
+    .affinity(ToolAffinity.MAIN)   // or ASYNC for pure I/O
+    .timeoutMs(5_000L)
+    .build();
 ```
 
-### Action template
+3. Bind a handler in `register(ToolRegistry registry)`:
 
 ```java
-@RequiredArgsConstructor
-public final class XAction implements Action<XContext> {
-    private final XRequest request;
-
-    @Override
-    public void execute(XContext context) {
-        // one operation
-        context.result(XResult.success());
-        // context.retain() only if it must tick
-    }
-}
+registry.bind("my_tool", getClass().getSimpleName(), (context, args) -> {
+    JsonObject result = ToolJson.ok();
+    result.addProperty("done", true);
+    return result;
+});
 ```
 
-## 3. Adding a service
+4. Add the provider to `ToolCatalog.standard()` and `Harness` if it is new.
+5. Add the name to `ToolRegistryTest.requiredPrimitivesAndHarnessToolsExist`.
+6. Implement world access in a service or manager, not in the provider.
 
-1. Put it under `service/<domain>/` or `service/<domain>/impl/`.
-2. Keep it read-only/planning unless it is a low-level storage primitive invoked
-   by an action/manager.
-3. Inject it into `AIDroneManager` or the manager that needs it.
-4. Do not let it own goals, work state, path state, or start actions.
-5. Add caches only with a short TTL and document invalidation.
-6. Prefer returning typed DTOs/JSON only at the RPC boundary; services may return
-   domain objects.
+The tool automatically appears in the OpenAI tool list, the JS `drone` object,
+the prompt catalog and `/tool`.
 
-## 4. Adding a tool
+## Add an action
 
-A tool is justified only if it is a **generic primitive**, not a composite
-task. One tool = one operation, owned by one handler.
+1. Create request/result DTOs in `action/<domain>/`.
+2. Implement `Action<XContext>`.
+3. Register the operation in the matching manager (`createContext` /
+   `createAction` / `result`).
+4. Add a tool that parses JSON into the DTO in `harness/tools/view/`.
+5. Add a unit test for the manager/registry behavior.
 
-1. Register the tool name in the owning handler's `ToolRegistry` with a short
-   description.
-2. Update `ToolRegistryTest` required list.
-3. Route it in that handler's `handle`.
-4. Add/extend a translator; never parse JSON in the manager.
-5. Add the SDK method in `resources/sdk/drone-actions.mjs`.
-6. Add the tool and semantics to `resources/system-prompt.md`.
-7. Update `docs/07-tools-rpc.md`.
-8. Consider `AgentLoopHeuristics.codeMentionsPhysicalAction` and
-   `hasConcreteProgress` so the loop recognizes the new action.
-9. Add validation: no removed composite tool names.
+## Add a service
 
-Do **not** add:
-- `mine`, `hunt`, `farm`, `chop`, `buildStructure`, `sortChests`;
-- queued/batched tools (`queue_mine`, `waitUntilIdle`, task lists);
-- aliases for existing tools.
+Services are read-only. Put data/recon/planning in `service/` and expose it
+through a tool. A service must not start actions, retain work, or import
+`harness`.
 
-## 5. Adding a navigation strategy
+## Add a skill
 
-Navigation is intentionally centralized. To change it:
+- Bundled: add a JSON file compatible with `Skill` and list it in
+  `resources/skills/index.json`.
+- Learned: call `skill_refine({task, code, notes})` after a successful workflow.
+- Manual: add an entry to `config/cortexdrone/skills.json` (or use the tool).
 
-1. Add a read-only planner/service if new data is needed.
-2. Add an action executor under `action/navigation/impl` if a new physical
-   movement type is needed.
-3. Add a `NavigationMode` value.
-4. Wire it in `NavigationManager.actionFor` and `decide`/`escalate`.
-5. Keep `goto`/`stop` as the only public navigation tools.
-6. Do not add a trail action: breadcrumbs are a `BreadcrumbService` query.
+Skill code is a function body: use synchronous `drone.*` calls and `return` a
+small result.
 
-## 6. Adding a skill
+## Add a web source
 
-1. Create `src/main/resources/skills/<name>.json`.
-2. Add it to `skills/index.json`.
-3. Use only `drone.*` tools and utility globals.
-4. Keep code compact and await every physical call.
-5. Avoid returning huge payloads; return compact summaries.
-6. Validate JSON and run `./gradlew validate`.
+Extend `WebLookupService` and declare an `ASYNC` tool in `WebTools`. Never touch
+Minecraft state from an `ASYNC` tool. Respect `webSearchEnabled` and cap output.
 
-Skill format:
+## Add Java reflection access
 
-```json
-{
-  "name": "lowercase_name",
-  "description": "what it does",
-  "tags": "space separated search tags",
-  "code": "const x = await drone.scanBlocks(...); ... return ...;"
-}
-```
+`ModConfig.allowJavaReflection` controls whether the Rhino `ClassShutter` denies
+I/O/network/process classes. Default is `true` for trusted single-server use.
+Reflection is available through `Packages`, `java.*` and `Java.type(name)`;
+prefer a registered tool whenever one exists.
 
-## 7. Adding a chat/command behavior
+## Guidelines
 
-- Command syntax/help belongs in `DroneCommand`.
-- Intent classification belongs in `TaskIntentClassifier`.
-- One-session behavior belongs in `TaskCoordinator`.
-- Agent loop/LLM behavior belongs in `LlmAgentService` and its helpers.
-- Do not add a second command name for an existing behavior.
-
-## 8. Threading and safety rules
-
-- World/entity/inventory mutations must run on the server thread.
-- Use `AIDroneManager.callOnMainThread` or `CortexDroneMod.queueMain`.
-- Do not block the server thread on HTTP/Node/LLM.
-- Large scans must go through `RpcDispatcher` time slicing.
-- Avoid unbounded queues/caches; cap and expire.
-- Do not load/generate chunks during scans/pathfinding; use `ChunkAccess`.
-
-## 9. Logging and diagnostics
-
-- Use `DroneLogger.log(category, ctrl, message, details)`.
-- Choose a category; throttle repetitive lines.
-- Never log API keys; use `LoopTracer.maskKey`.
-- Add `NAV`/`PATH`/`STUCK`/`ESCAPE` lines for navigation changes.
-- Add `MODE` lines when changing modes.
-- Keep details useful for `/debug`.
-
-## 10. Validation checklist
-
-Before committing:
-
-```bash
-./gradlew clean build     # compile + tests + validate + reobf + deploy
-node --check src/main/resources/sdk/*.mjs
-python3 -m json.tool src/main/resources/skills/index.json
-```
-
-Then:
-
-- no `.java` >696 lines;
-- package = directory;
-- no JSON imports in action/context/manager/service;
-- no action calls another action;
-- no manager contains flight/waypoint code;
-- tool names synchronized in handler, SDK, prompt, test, docs;
-- removed tools are not reintroduced.
+- Keep Java files under 696 lines (validated).
+- Keep package names equal to directories.
+- Describe *when not to use* a tool and what its errors mean.
+- Never add a hidden composite task; loops belong in `execute`.
+- Return small results; the conversation and JS logs are bounded.

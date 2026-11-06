@@ -52,6 +52,11 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.38'
     annotationProcessor 'org.projectlombok:lombok:1.18.38'
 
+    // In-process JavaScript engine. Rhino 1.7.15 is the newest release that is
+    // still Java 8 bytecode (required by the 1.7.10 class loader); the harness
+    // runs it inside the JVM instead of spawning Node.js.
+    implementation 'org.mozilla:rhino:1.7.15'
+
     testImplementation 'junit:junit:4.13.2'
 }
 
@@ -72,7 +77,20 @@ processResources {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
+configurations {
+    shade
+}
+
+dependencies {
+    shade 'org.mozilla:rhino:1.7.15'
+}
+
 jar {
+    from {
+        configurations.shade.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/MANIFEST.MF'
     manifest {
         attributes 'Implementation-Title'   : 'CortexDrone',
                     'Implementation-Version': project.version,
@@ -81,12 +99,11 @@ jar {
 }
 
 // ---------------------------------------------------------------------------
-// Validation (line limits, package layout, JS syntax)
+// Validation (line limits, package layout)
 // ---------------------------------------------------------------------------
 tasks.register('validate') {
-    description = 'Modular line-limit, package structure and JS syntax validation'
+    description = 'Modular line-limit and package-structure validation'
     inputs.files(sourceSets.main.java.srcDirs.collect { fileTree(dir: it, include: '**/*.java') })
-    inputs.files(fileTree(dir: 'src/main/resources', include: '**/*.mjs'))
     outputs.files(layout.buildDirectory.file('validate.done'))
 
     doLast {
@@ -109,11 +126,8 @@ tasks.register('validate') {
             }
         }
 
-        fileTree(dir: 'src/main/resources', include: '**/*.mjs').each { f ->
-            def proc = ['/usr/local/bin/node', '--check', f.path].execute()
-            proc.waitFor()
-            if (proc.exitValue() != 0) failures << "FAIL: JS syntax ${f.path}"
-        }
+        // JavaScript syntax is validated by JsSourceTest / JsEngineTest on the
+        // embedded Rhino engine, so the build no longer depends on Node.js.
 
         tmp.get().asFile.text = 'done'
         if (!failures.isEmpty()) {

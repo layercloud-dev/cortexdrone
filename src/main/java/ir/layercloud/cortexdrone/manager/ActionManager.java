@@ -12,7 +12,7 @@ import java.util.*;
  * Long-lived manager for one action category.
  *
  * <p>The manager owns the action lifecycle but no JSON. A transport translator
- * parses RPC/HTTP input into {@code R} and serializes the returned {@code T}.
+ * parses a typed request {@code R} and returns a typed result {@code T}.
  * The manager only creates a context, creates one action, executes it, returns
  * the typed result and retains/reaps the action/context pair.</p>
  */

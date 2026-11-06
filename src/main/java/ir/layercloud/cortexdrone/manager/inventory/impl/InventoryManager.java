@@ -15,7 +15,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 /**
  * Long-lived inventory action manager. Every inventory tool is its own
  * operation: there is no generic {@code transfer(op)} switch. Read-only
- * inventory inspection stays in InventoryRpcHandler.
+ * inventory inspection stays in InventoryQueryTools.
  */
 public final class InventoryManager extends ActionManager<InventoryContext, InventoryRequest, InventoryResult> {
     private final AIDroneManager manager;

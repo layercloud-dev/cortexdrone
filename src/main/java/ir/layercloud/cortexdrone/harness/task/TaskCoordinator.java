@@ -2,9 +2,9 @@ package ir.layercloud.cortexdrone.harness.task;
 
 import ir.layercloud.cortexdrone.DroneController;
 
-import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.harness.agent.AgentService;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -70,13 +70,12 @@ public final class TaskCoordinator {
                 "Tool session from " + senderName + " (loopId=" + myLoopId + ", intent=" + intent.name() + ")",
                 "prompt=\"" + cleanPrompt + "\"");
 
-        final JsonObject worldContext = this.manager.getAgentService().buildDroneContextForLlm(player, ctrl);
-        worldContext.addProperty("taskPrompt", cleanPrompt);
-        worldContext.addProperty("taskIntent", intent.name());
-        worldContext.addProperty("singleSession", true);
+        final AgentService agent = this.manager.getAgentService();
+        final String contextMessage = agent.buildContext(player, ctrl, cleanPrompt, intent.name());
         session.registerLoop(myLoopId);
         final String sessionPrompt = cleanPrompt;
-        CortexDroneMod.HTTP_POOL.submit(() -> manager.getAgentService().runAgentLoop(player, ctrl, sessionPrompt, worldContext, myLoopId));
+        final int loopId = myLoopId;
+        CortexDroneMod.AGENT_POOL.submit(() -> agent.runAgentLoop(player, ctrl, sessionPrompt, contextMessage, loopId));
     }
 
     private void cancel(DroneController ctrl) {

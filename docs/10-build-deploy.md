@@ -1,173 +1,101 @@
-# 10 — Build, Validation, Tests and Deployment
+# 10 — Build, test, deploy
 
-## 1. Toolchain
+## Toolchain
 
-| Item | Value |
+| Component | Version |
 | --- | --- |
-| Build system | Gradle 9.2 wrapper |
-| Minecraft plugin | RetroFuturaGradle `2.0.6` |
-| Minecraft | `1.7.10` |
-| Mappings | MCP stable `12` |
-| Compile Java | 8 (`sourceCompatibility`/`targetCompatibility`) |
-| Gradle daemon | Java 25 (`graalvm-jdk-25` on this server) |
-| OpenComputers | `1.12.70-GTNH` compile-only, deobfuscated by RFG |
-| Lombok | `1.18.38` compile + annotation processor |
-| Guava | `17.0` compile-only |
-| Scala library | `2.11.1` compile-only |
-| JUnit | `4.13.2` |
+| Minecraft / Forge | 1.7.10 / 10.13.4.1614 |
+| Gradle | 9.2 (wrapper) |
+| Gradle daemon | Java 25 (GraalVM) |
+| Java compile target | 8 |
+| RetroFuturaGradle | 2.0.6 |
+| OpenComputers | `1.12.70-GTNH` (compile-only) |
+| JavaScript engine | Rhino 1.7.15 (shaded) |
 
 `build.sh` exports `JAVA_HOME=/usr/lib/jvm/graalvm-jdk-25` when present and runs
 `./gradlew build`.
 
-## 2. Standard commands
+## Commands
 
 ```bash
 ./build.sh                 # validate + test + reobf + deploy
-./gradlew build            # same without the wrapper env setup
-./gradlew compileJava      # compile only (MCP names)
-./gradlew test             # JUnit
-./gradlew validate         # structure + line limit + JS syntax
-./gradlew reobfJar         # production SRG-named jar
+./gradlew compileJava      # compile against MCP-named Minecraft
+./gradlew test             # unit tests
+./gradlew validate         # line limit + package/directory checks
+./gradlew jar              # development jar (includes shaded Rhino)
+./gradlew reobfJar         # production (SRG-named) jar
 ./gradlew deploy           # reobf + copy to modsDir
 ./gradlew clean build
 ```
 
-`build` depends on `validate` and `deploy`; it always runs tests and reobfuscates.
+`build` depends on `validate` and `deploy`. `deploy` removes older
+`CortexDrone-*.jar` files from `modsDir`.
 
-## 3. Validation task
+## Dependency and shading
 
-`validate` enforces:
+`build.gradle`:
 
-1. **Java line limit** — every `.java` file ≤ **696 lines**.
-   The cap exists to keep files modular; split helpers/services rather than
-   raising it.
-2. **Package/directory consistency** — declared package must equal the directory
-   path under `src/main/java`.
-3. **JavaScript syntax** — `/usr/local/bin/node --check` for every
-   `src/main/resources/**/*.mjs`.
-
-Failure prints each problem and fails the build. Output marker:
-`build/validate.done`.
-
-## 4. Compiler settings
-
-`compileJava`:
-
-- UTF-8;
-- `-Xlint:deprecation -Xlint:unchecked -Werror -Xlint:-options`;
-- Java 8 source/target.
-
-Warnings are errors. Do not suppress a warning unless the code is intentionally
-using a legacy API and the suppression is local.
-
-## 5. Tests
-
-| Test | Covers |
-| --- | --- |
-| `action/ActionRegistryTest` | one-shot context release, retained ticking, newer invocation cancels previous, cancelAll, duplicate operation rejection, unknown operation rejection |
-| `harness/ToolRegistryTest` | unique tool ownership, required primitives, no removed routers/composites |
-| `harness/RpcDispatcherRegistryTest` | duplicate-tool rejection and handler ownership |
-| `harness/SkillLibraryTest` | bundled skill loading/search |
-| `harness/TaskIntentClassifierTest` | deterministic intent classification |
-| `harness/session/DroneSessionTest` | session lifecycle/notes/age |
-
-Run:
-
-```bash
-./gradlew test
+```gradle
+implementation 'org.mozilla:rhino:1.7.15'
+configurations { shade }
+dependencies { shade 'org.mozilla:rhino:1.7.15' }
+jar {
+    from { configurations.shade.collect { it.isDirectory() ? it : zipTree(it) } }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/MANIFEST.MF'
+}
 ```
 
-Tests are Java 8 and must not require a live Minecraft server.
+Rhino 1.7.15 is deliberately pinned: it is Java 8 bytecode (class version 52),
+which Minecraft 1.7.10's ASM-based mod scanner accepts. Newer Rhino/GraalJS
+releases use Java 11+ class files and would break mod discovery.
 
-## 6. Packaging
+## Validation
 
-`jar` manifest includes Implementation-Title/Version/Vendor. The reobfuscated
-artifact is `build/libs/CortexDrone-1.4.0.jar` (SRG names for production).
+`validate` fails the build when:
 
-## 7. Deploy task
+- a Java file exceeds 696 lines;
+- a package declaration does not match its directory;
+- a declared tool is not bound (the harness also checks this at startup).
 
-`deploy`:
+JavaScript syntax and behavior are covered by `JsSourceTest` and `JsEngineTest`
+on the embedded Rhino engine; Node.js is not required.
 
-1. depends on `reobfJar`;
-2. resolves `modsDir` from `gradle.properties` or `-PmodsDir=...`
-   (default `/root/forge-smp/mods`);
-3. creates the directory;
-4. deletes old `CortexDrone-*.jar` files except the current output;
-5. copies the reobfuscated jar;
-6. prints the deployed path.
+## Tests
 
-Examples:
+- `ToolRegistryTest` — catalog uniqueness, schemas, removed routers/composites,
+  binding rules, internal visibility.
+- `ToolValidatorTest` — required fields, coercion, enum errors.
+- `JsSourceTest` — await/async normalization, modern operators, TypeScript
+  erasure, literal safety, spread.
+- `JsEngineTest` — tool call/return, catchable errors, envelope propagation.
+- `SkillLibraryTest` — bundled loading, BM25 search, versioned persistence.
+- `DroneSessionTest`, `TaskIntentClassifierTest`, `ActionRegistryTest` — session,
+  intent and action lifecycle invariants.
 
-```bash
-./gradlew build
-./gradlew build -PmodsDir=/path/to/mods
-./gradlew deploy
-```
+## Deployment and operations
 
-## 8. Server operations
+1. `./build.sh` (or `./gradlew build`).
+2. Restart the server so Forge loads the new jar.
+3. On first start, `ConfigMigrator` imports legacy world config/skills into
+   `config/cortexdrone/` and renames the old files `.migrated`.
+4. Verify with `/drone status`, `GET /state`, `GET /debug`, and
+   `POST /tool {"tool":"state"}`.
 
-Typical flow on this host:
+Logs: `config/cortexdrone/logs/cortexdrone.log`.
+No Node.js path, script directory or RPC port is used.
 
-```bash
-cd /root/forge-smp/cortexdrone-src
-./gradlew clean build
-# server restart (tmux session "forge-smp")
-tmux send-keys -t forge-smp "restart 10" Enter
-# wait for startup
-tail -f /root/forge-smp/logs/latest.log
-curl -s http://127.0.0.1:25580/state | head
-```
+## Troubleshooting
 
-Startup is complete when the world log contains:
-
-```text
-CortexDrone v1.4.0 (Tool Code Mode Harness) initialized
-```
-
-The mod writes `world/layercloud-drone-debug.log` for its own categories.
-
-## 9. Runtime prerequisites
-
-- OpenComputers installed on the server.
-- Node.js at `/usr/local/bin/node` (path is hardcoded in `CodeModeRuntime`).
-- Writable `/tmp/opencode` (or `/tmp`) for temporary `.mjs` scripts.
-- LLM gateway reachable at `AIConfig.apiUrl` (default
-  `http://127.0.0.1:7002/v1/chat/completions`).
-- Port `25580` free on loopback (HTTP).
-- World directory writable for config/skills/debug log.
-
-## 10. Environment variables
-
-| Variable | Effect |
-| --- | --- |
-| `CORTEXDRONE_API_URL` | LLM chat-completions URL |
-| `CORTEXDRONE_MODEL` | model ID |
-| `CORTEXDRONE_API_KEY` | bearer key |
-| `CORTEXDRONE_TICK_WARN_MS` | slow-tick warning threshold (default 50 ms) |
-| `CORTEXDRONE_WARN_COOLDOWN_MS` | warning cooldown (default 30000 ms) |
-
-Config file values fill in when env vars are absent; env wins when set.
-
-## 11. Common failures
-
-| Symptom | Check |
-| --- | --- |
-| `validate` fails | file >696 lines, package/dir mismatch, `.mjs` syntax |
-| Compile fails on Lombok | annotation processor / Java 8 toolchain |
-| Drones do not move | OC machine state, navigation session, `STUCK` log |
-| LLM errors | API URL/key/model, `/debug`, `LLM` log category |
-| JS timeout | Node path, `/tmp` writable, script deadlock, 180 s budget |
-| HTTP 504 | RPC method exceeded budget; check server thread |
-| Large scan busy | another scan active; poll `jobId` |
-| No skill results | `skills/index.json` files present; world skill override |
-| Lighting not restored | retained `SetLightAction` cancelled; shutdown/despawn restore path |
-
-## 12. Release checklist
-
-1. Update `gradle.properties` version if needed (`CortexDroneMod.VERSION` too).
-2. Update `ARCHITECTURE.md` / docs if architecture changed.
-3. `./gradlew clean build` (validate + tests + reobf + deploy).
-4. Restart server and verify init + `/state`.
-5. Test one task in-game or via `/rpc` if a drone/player is available.
-6. Check `world/layercloud-drone-debug.log` for `ERROR`/`WARN`.
-7. Commit/push if working in the git repository.
+- **LLM 401/403** — check `/drone config` and `config/cortexdrone/config.json`.
+- **Gateway rejects tools** — the client retries once with legacy
+  `functions`/`function_call`; if it still fails, use a gateway that supports
+  OpenAI tool calling.
+- **`js_syntax`** — the model used a construct outside the ES6+subset; the error
+  includes line/column and the compatibility hint.
+- **`navigation_failed`** — the navigator found no safe no-dig route; dig a
+  tunnel with `break_block` or choose a closer standoff and retry.
+- **`scan_busy`** — one large scan at a time; poll `poll_scan` before starting
+  another.
+- **Chunk not loaded** — fly closer with `goto` (chunk loading follows the
+  player/drone) before scanning.

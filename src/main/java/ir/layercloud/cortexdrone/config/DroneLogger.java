@@ -87,7 +87,7 @@ public class DroneLogger {
             }
         }
         if (needSchedule) {
-            CortexDroneMod.HTTP_POOL.submit(this::flushPendingLog);
+            CortexDroneMod.AGENT_POOL.submit(this::flushPendingLog);
         }
     }
 
@@ -121,7 +121,7 @@ public class DroneLogger {
             // If more lines arrived while writing, schedule another coalesced flush.
             if (this.pendingLogText.length() > 0 && !this.logFlushScheduled) {
                 this.logFlushScheduled = true;
-                CortexDroneMod.HTTP_POOL.submit(this::flushPendingLog);
+                CortexDroneMod.AGENT_POOL.submit(this::flushPendingLog);
             }
         }
     }
@@ -193,7 +193,7 @@ public class DroneLogger {
         return arr;
     }
 
-    // Cap what the HTTP endpoints emit: JS Code Mode dumps (chest scans, inventories) can be
+    // Cap what the HTTP endpoints emit: JavaScript tool-result dumps (chest scans, inventories) can be
     // 100+ KB per debug line, and /state polls would re-serialize them every second.
     // Full entries still land in the debug log FILE (toLogLine) for forensics.
     private static JsonObject truncatedJson(DebugEntry entry, int maxMessageChars, int maxDetailsChars) {

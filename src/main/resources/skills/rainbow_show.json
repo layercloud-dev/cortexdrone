@@ -1,6 +1,10 @@
 {
   "name": "rainbow_show",
-  "description": "Compose a rainbow LED animation from the static LED primitive; this is the skill path for animated effects",
-  "tags": "rainbow led color light fun music show",
-  "code": "for (let i = 0; i < 40; i++) {\n  await drone.setLed({ color: hsvToRgb((i * 18) % 360, 1, 1) });\n  await sleep(100);\n}\nreturn { ok: true, colors: 40 };"
+  "description": "Animate the drone LED through a rainbow with the static setLed primitive.",
+  "tags": "rainbow led color light fun show music",
+  "triggers": ["rainbow lights", "led show", "change colors"],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "code": "for (var i = 0; i < 40; i++) {\n  drone.setLed({ color: hsvToRgb((i * 18) % 360, 1, 1) });\n  sleep(100);\n}\nreturn { ok: true, colors: 40 };"
 }

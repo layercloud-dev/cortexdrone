@@ -1,209 +1,121 @@
-# 12 — Source Inventory (class by class)
-
-This appendix lists every production class and its responsibility. It is a map,
-not a substitute for the subsystem chapters.
+# 12 — Source inventory
 
 ## Root
 
-| Class | Responsibility |
+| Class | Role |
 | --- | --- |
-| `CortexDroneMod` | Forge mod entrypoint, event registration, tick/chat events, executor pools, config/skill Gson, chat/player helpers |
-| `AIDroneManager` | Root composition and lifecycle: managers/services/harness, config, spawn/link/despawn, reconnect, tick dispatch, status/chat |
-| `TickProfiler` | Server tick timing ring buffer, avg/p95/max/TPS, env-tuned warnings |
-
-## `action/`
-
-| Class | Responsibility |
-| --- | --- |
-| `Action` | Single-use action interface (`execute`, optional `tick`/`cancel`) |
-| `block/BlockRequest` | Block action request DTO |
-| `block/BlockResult` | Block action result DTO (started/placed/error/coords) |
-| `block/impl/BreakBlockAction` | Starts/ticks one explicit block break |
-| `block/impl/PlaceBlockAction` | Places one explicit block |
-| `interact/InteractionRequest` | Interaction request DTO (coords/entity/slot/item/side) |
-| `interact/InteractionResult` | Interaction result DTO |
-| `interact/InteractionSupport` | Syncs fake player to drone for item/attack |
-| `interact/impl/AttackEntityAction` | One melee attack with selected item |
-| `interact/impl/InteractBlockAction` | One block activation / liquid scoop |
-| `interact/impl/PickEntityAction` | Mount one entity/player |
-| `interact/impl/UnpickEntityAction` | Dismount one entity/rider |
-| `interact/impl/UseItemAction` | One held-item use, optional block target |
-| `inventory/InventoryRequest` | Transfer/craft request DTO |
-| `inventory/InventoryResult` | Transfer/craft result DTO |
-| `inventory/impl/CraftAction` | One crafting primitive |
-| `inventory/impl/DepositChestAction` | Fly to a chest and deposit; retained until done |
-| `inventory/impl/DropAction` | Hand inventory to the owner, or drop in place when offline |
-| `inventory/impl/GiveToPlayerAction` | Give inventory to player |
-| `inventory/impl/MoveSlotAction` | Move filtered items between inventories |
-| `inventory/impl/SuckItemsAction` | Vacuum nearby dropped items |
-| `inventory/impl/TakeFromPlayerAction` | Take filtered items from player |
-| `inventory/impl/WithdrawChestAction` | Withdraw from chest/container |
-| `navigation/NavigateResult` | One navigation leg result (`moved/legDone/blocked/partial/error`) |
-| `navigation/NavigationMode` | Flight/hold/stop legs |
-| `navigation/impl/NavigateAction` | Flight leg execution (A*, waypoints, blocked detection) |
-| `navigation/impl/StopAction` | Clears path and stops/hovers |
-| `visuals/VisualsRequest` | Visuals request DTO |
-| `visuals/VisualsResult` | Visuals result DTO |
-| `visuals/impl/PlaySoundAction` | Sound/note |
-| `visuals/impl/SayAction` | Chat through root manager |
-| `visuals/impl/SetLedAction` | One static LED color |
-| `visuals/impl/SetLightAction` | Illumination aura on/off/config (retained while on) |
-| `visuals/impl/SetStatusTextAction` | Drone status text |
-| `visuals/impl/SpawnParticlesAction` | Particle burst |
-
-## `context/`
-
-| Class | Responsibility |
-| --- | --- |
-| `ActionContext` | Action execution state interface |
-| `ActionContextBase` | Active/retained lifecycle, identity fields, complete/cancel callbacks |
-| `impl/BlockContext` | Block result/target/break tracking |
-| `impl/InteractionContext` | Interaction result/target data |
-| `impl/InventoryContext` | Inventory result, chest target, filter, moved count |
-| `impl/NavigationContext` | Action kind/target/label/result/ticks |
-| `impl/VisualsContext` | Visuals result |
-
-## `manager/`
-
-| Class | Responsibility |
-| --- | --- |
-| `ActionManager` | Typed action lifecycle base (create/execute/retain/tick/cancel) |
-| `ActionRegistry` | Operation→manager map, tick/cancel all, duplicate detection |
-| `TickManager` | 20-Hz pipeline: breadcrumbs, stalls, aura, navigation, retained actions, idle hold, LED, physics |
-| `building/impl/BuildingManager` | One immediate break (drops, Fortune) and one strict place |
-| `interact/impl/InteractionManager` | Interaction/attack/pick/unpick action dispatch |
-| `inventory/impl/InventoryManager` | Transfer/craft action dispatch |
-| `navigation/NavigationRequest` | Goto request DTO |
-| `navigation/NavigationResult` | Goto/stop acknowledgement DTO |
-| `navigation/NavigationTarget` | Resolved goal position |
-| `navigation/impl/NavigationManager` | Goal session, trail/flight decision, action legs, arrival/failure, internal fly/hold |
-| `visuals/LightConfig` | Light aura configuration DTO |
-| `visuals/LightResult` | Light aura result DTO |
-| `visuals/impl/LightingAura` | Torch-free light application/restore, chunk sync |
-| `visuals/impl/VisualsManager` | Visuals action dispatch + lighting aura ownership |
-
-## `service/inventory/`
-
-| Class | Responsibility |
-| --- | --- |
-| `InventoryService` | Inventory/container operations, static stack helpers, delegation to crafting/fluid/container/player/machine services |
-| `CraftResult` | Crafting result DTO |
-| `CraftingService` | Vanilla recipe lookup, ingredient extraction, recursive crafting, caches |
-| `FluidOpsService` | Bucket/container discovery, liquid scooping |
-| `ContainerSearchService` | Chest/item search and fuzzy matching |
-| `PlayerInventoryOps` | Take/give/move between drone and player inventories |
-| `ToolInspector` | Fortune/attack damage/fire aspect |
-
-## `service/machine/`
-
-| Class | Responsibility |
-| --- | --- |
-| `MachineRecipeService` | Read-only recipe facade; composes optional hooks, ranks, caches |
-| `MachineRecipeHook` / `HbmRecipeFileHook` / `HbmRecipeLiveHook` | Optional HBM recipe sources (JSON dir, live reflection) |
-| `MachineRecipeParser` | Recipe JSON schema normalization |
-| `MachineRecipeRanker` | Output/filter ranking, ingredient availability, nearby count cache |
-| `MachineRecipeReflection` | Live HBM recipe reflection (used by `HbmRecipeLiveHook`) |
-| `MachineTileInspector` | Machine tile discovery/aliases/description/power/fluid |
-| `FurnaceScanner` | Furnace tile scan |
-
-## `service/navigation/`
-
-| Class | Responsibility |
-| --- | --- |
-| `Breadcrumb` | Trail point DTO |
-| `TrailPlan` | Trail suggestion DTO |
-| `impl/BreadcrumbService` | Trail recording/dedupe/pruning/surface anchor/backtrack suggestion |
-| `impl/DronePhysicsService` | Physics step, obstruction, block standoff, follow anchor |
-| `impl/FlightPathfinder` | 3D A*/Theta*, path cache, geometry/standoff helpers |
-
-## `service/world/`
-
-| Class | Responsibility |
-| --- | --- |
-| `WorldScanner` | Room/vein/distant/nearby resource scans, base location |
-| `ItemClassifier` | Block/item/entity classification, ore dict, filters, JSON item conversion |
-| `RegistryIntrospector` | Registry/reflection discovery, token caches |
-| `LexicalItemMatcher` | Tokenization, fuzzy matching, scoring |
-| `RoomScanner` | 3D room geometry |
-| `VeinScanner` | Connected ore/block veins |
-| `StructureArchitect` | Build site + blueprint generation |
-| `BuildTask` | Read-only block placement entry in a generated structure plan |
-| `PlayerTargetScanner` | Player look raycast/support block |
-| `EntityAndBiomeClassifier` | Entity type/hostile/passive, biome matching |
-| `ChunkAccess` | Loaded chunk checks |
-| `DocLookupService` | Local/web documentation lookup |
-| `raytrace/ChunkCacheContext` | Chunk-local block/passability cache |
-| `raytrace/VoxelRaycaster3D` | 3D DDA line-of-sight/raycast |
-
-## `harness/`
-
-| Class | Responsibility |
-| --- | --- |
-| `agent/LlmAgentService` | LLM loop, prompt/context, HTTP call, turn handling, self-correction, skill match |
-| `agent/DroneContextBuilder` | Read-only "Initial World State" JSON: player, drone, session, nearby resources |
-| `CodeModeRuntime` | Node.js runner, SDK bundle, temp script, timeout/supersession, JSON parse |
-| `agent/LlmResponseParser` | Tolerant JSON/code salvage, think stripping, prose blocker detection |
-| `agent/PromptCompactor` | Bounded context + continuation digest |
-| `agent/AgentHeartbeat` | Premature-done rejection, continuation resurrection |
-| `agent/AgentLoopHeuristics` | Deadline, message pruning, loop/query fingerprints, nudges, progress detection |
-| `agent/LoopTracer` | Loop trace/superseded/error logging, key masking |
-| `task/TaskCoordinator` | One-session intent handling |
-| `task/TaskIntent` | Intent enum |
-| `task/TaskIntentClassifier` | Deterministic intent classifier |
-| `session/DroneSession` | Task, loop/script and thought state |
-| `session/SessionManager` | One session per controller, dropped on despawn |
-| `SkillLibrary` | Bundled/saved skills, BM25 search, self-corrected skills |
-| `RpcDispatcher` | Main-thread RPC, timeouts, time-sliced large scans, poll_scan |
-| `ToolRegistry` | Per-handler ordered tool registry (name + description, duplicate rejection) |
-| `rpc/RpcHandler` | RPC handler interface |
-| `rpc/impl/SessionRpcHandler` | `state`, `cancel` |
-| `rpc/impl/NavigationRpcHandler` | `goto`, `stop`, `get_breadcrumbs` + standoff contract |
-| `rpc/impl/BlockRpcHandler` | `break_block`, `place_block` + reach contract |
-| `rpc/impl/InteractionRpcHandler` | `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity` |
-| `rpc/impl/InventoryActionRpcHandler` | `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`, `deposit_chest`, `drop_items`, `suck_items`, `craft` |
-| `rpc/impl/VisualsRpcHandler` | `set_led`, `set_light`, particles/sound/note/say/status |
-| `rpc/impl/SkillRpcHandler` | `search_skills`, `list_skills`, `save_skill` |
-| `rpc/impl/ScanRpcHandler` | `poll_scan` |
-| `rpc/impl/ReachSupport` | Shared `needsMovement` standoff helper |
-| `rpc/impl/WorldRpcHandler` | World/room/vein/entity/location/doc/build queries |
-| `rpc/impl/InventoryRpcHandler` | Player/chest/furnace/recipe/machine queries |
-| `rpc/translate/NavigationRpcTranslator` | goto/stop JSON |
-| `rpc/translate/BuildingRpcTranslator` | break/place JSON |
-| `rpc/translate/InteractionRpcTranslator` | interaction/entity JSON |
-| `rpc/translate/InventoryRpcTranslator` | transfer/craft JSON |
-| `rpc/translate/VisualsRpcTranslator` | visuals JSON |
-| `rpc/translate/StateRpcTranslator` | `state` JSON |
-| `rpc/translate/SkillRpcTranslator` | skill search/list/save JSON |
-| `rpc/translate/BreadcrumbRpcTranslator` | breadcrumbs JSON |
-| `rpc/translate/RpcArgs` | Safe JSON field helpers |
-| `rpc/translate/RpcJson` | ok/error/merge helpers |
-
-## Root, `command/`, `config/`, `http/`, `oc/`
-
-| Class | Responsibility |
-| --- | --- |
-| `CortexDroneMod` | Forge entrypoint, tick events, chat, worker pools |
-| `AIDroneManager` | Root manager: controller registry, spawn/link/despawn, config |
-| `DroneController` | Identity + entity link only |
+| `CortexDroneMod` | Forge entry point, tick events, chat, agent/HTTP pools |
+| `AIDroneManager` | Lifecycle, spawn/link/despawn, controller registry, config |
+| `DroneController` | Per-drone identity + entity link |
 | `TickProfiler` | Server tick timing diagnostics |
-| `command/BaseCommand` | Command base/compareTo |
-| `command/impl/DroneCommand` | `/drone` management + natural-language fallback |
-| `config/AIConfig` | Env/file defaults, saved drones, persistence |
-| `config/DroneLogger` | Debug/chat rings, subscribers, async file flush/rotation, JSON caps |
-| `config/ChatRecord` | Chat history entry used by `DroneLogger` |
-| `config/DebugEntry` | Debug log entry used by `DroneLogger` |
-| `http/DroneHttpServer` | `/state`, `/debug`, `/rpc`, `/action`, cached snapshots |
-| `http/DroneTelemetrySerializer` | State/debug JSON snapshots, TPS |
-| `oc/OcHardwareBridge` | OC reflection: network/energy/paused/machine/component control |
-| `oc/impl/InertMachineArchitecture` | No-op architecture for paused ghost machines |
+
+## Harness
+
+| Class | Role |
+| --- | --- |
+| `Harness` | Composition root: registry, invoker, JS, LLM, refiner, agent |
+| `harness.agent.AgentService` | Native tool-calling loop, context, chat output |
+| `harness.agent.LlmClient` | OpenAI-compatible HTTP client with tool calls |
+| `harness.agent.LlmResponse` / `ToolCall` | Parsed assistant turn / call |
+| `harness.agent.Conversation` | Bounded message log, compaction, result caps |
+| `harness.agent.ContextRenderer` | Markdown live context + tool catalog |
+| `harness.agent.LoopTracer` | Structured turn/supersession logging |
+| `harness.agent.AgentResources` | Prompt resource loader |
+| `harness.js.JsEngine` | Rhino runtime, bindings, budgets, error envelopes |
+| `harness.js.JsSource` | await/async, modern-operator, spread compatibility |
+| `harness.js.TypeScriptEraser` | Common TypeScript annotation erasure |
+| `harness.js.JsConvert` | Rhino ↔ Gson conversion and argument mapping |
+| `harness.js.JsBudget` | Instruction/time/cancellation budget |
+| `harness.tool.ToolSpec` / `Tool` / `ToolSchema` | Declarations and JSON schema |
+| `harness.tool.ToolRegistry` | Single source of truth, duplicate/bind checks |
+| `harness.tool.ToolInvoker` | Validation, MAIN/ASYNC dispatch, wait, errors |
+| `harness.tool.ToolValidator` | Required/type/enum/coercion checks |
+| `harness.tool.ScanJobs` | Time-sliced large scan job |
+| `harness.tool.ToolCatalog` | Merges provider declarations |
+| `harness.tool.ToolContext` | Per-call services/controller/loop |
+| `harness.tool.ToolJson` / `ToolArgs` | JSON helpers and camel aliases |
+| `harness.skill.Skill` | Skill model and version/usage metadata |
+| `harness.skill.SkillLibrary` | Bundled + saved skills, versioned storage |
+| `harness.skill.SkillSearch` | BM25 + fuzzy retrieval |
+| `harness.skill.SkillRefiner` | Recursive skill compiler (RLM) |
+| `harness.session.DroneSession` | Active task, loop generation, notes, thoughts |
+| `harness.session.SessionManager` | One session per controller |
+| `harness.task.TaskCoordinator` | Single-session intent policy |
+| `harness.task.TaskIntentClassifier` / `TaskIntent` | Deterministic intent |
+
+## Tool providers
+
+| Class | Tools |
+| --- | --- |
+| `harness.tools.SessionTools` | `state`, `cancel` |
+| `harness.tools.NavigationTools` | `goto`, `stop`, `get_breadcrumbs` |
+| `harness.tools.BlockTools` | `break_block`, `place_block` |
+| `harness.tools.InteractionTools` | `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity` |
+| `harness.tools.InventoryActionTools` | transfer/craft tools |
+| `harness.tools.InventoryQueryTools` | player/chest/recipe/machine inspection |
+| `harness.tools.VisualsTools` | LED/light/particles/sound/chat/status |
+| `harness.tools.WorldTools` | block/room/vein/entity/build/doc tools |
+| `harness.tools.SkillTools` | `skill`, `skill_refine` |
+| `harness.tools.WebTools` | `web_search`, `web_fetch`, `wiki_lookup` |
+| `harness.tools.CodeTools` | `execute` |
+| `harness.tools.ScanTools` | `poll_scan` |
+
+## JSON views
+
+`harness.tools.view.*`: `StateView`, `NavigationView`, `BreadcrumbView`,
+`BuildingView`, `InteractionView`, `InventoryView`, `VisualsView`. They convert
+`JsonObject` to typed requests and serialize typed results. No view starts work.
+
+## Actions and contexts
+
+| Package | Contents |
+| --- | --- |
+| `action.block` | `BreakBlockAction`, `PlaceBlockAction`, request/result |
+| `action.interact` | block use, item use, attack, pick/unpick + support |
+| `action.inventory` | move/give/take/withdraw/deposit/drop/suck/craft actions |
+| `action.navigation` | `NavigateAction`, `StopAction`, mode/result |
+| `action.visuals` | LED/light/particles/sound/note/say/status actions |
+| `action.Action` | one-operation interface |
+| `context.*` | `ActionContextBase` + block/navigation/interaction/inventory/visuals contexts |
+
+## Managers
+
+| Package | Contents |
+| --- | --- |
+| `manager.ActionManager` / `ActionRegistry` | lifecycle/registry |
+| `manager.TickManager` | per-tick pipeline |
+| `manager.navigation.*` | goal/request/result/state + `NavigationManager` |
+| `manager.building.impl` | `BuildingManager` |
+| `manager.interact.impl` | `InteractionManager` |
+| `manager.inventory.impl` | `InventoryManager` |
+| `manager.visuals.*` | `VisualsManager`, `LightingAura`, light config/result/state |
+
+## Services
+
+| Package | Contents |
+| --- | --- |
+| `service.inventory` | `InventoryService`, `ContainerSearchService`, `CraftingService`, `PlayerInventoryOps`, `FluidOpsService`, `ToolInspector`, `CraftResult` |
+| `service.machine` | `MachineRecipeService`, hooks/parser/ranker/reflection, `MachineTileInspector`, `FurnaceScanner` |
+| `service.navigation` | `Breadcrumb`, `TrailPlan`, `BreadcrumbService`, `FlightPathfinder`, `DronePhysicsService` |
+| `service.world` | `WorldScanner`, `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `ChunkAccess`, `StructureArchitect`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`, `LexicalItemMatcher`, `EntityAndBiomeClassifier`, `DocLookupService`, `WebLookupService`, `raytrace/*` |
+
+## Config, command, HTTP, OC
+
+| Class | Role |
+| --- | --- |
+| `config.ModConfig` | Persistent AI/agent/drone config |
+| `config.ModPaths` | `config/cortexdrone/` layout |
+| `config.ConfigMigrator` | One-time legacy world-file import |
+| `config.DroneLogger` | Structured in-memory + file log |
+| `config.ChatRecord` / `DebugEntry` | Log records |
+| `command.BaseCommand` / `command.impl.DroneCommand` | `/drone` |
+| `http.DroneHttpServer` | `/state`, `/debug`, `/tool`, `/action` |
+| `http.DroneTelemetrySerializer` | State/debug snapshots |
+| `oc.OcHardwareBridge` / `oc.impl.InertMachineArchitecture` | OC machine state bridge |
 
 ## Tests
 
-| Test | Responsibility |
-| --- | --- |
-| `action/ActionRegistryTest` | Manager lifecycle/registry invariants |
-| `harness/ToolRegistryTest` | Tool ownership and removed-tool rejection |
-| `harness/RpcDispatcherRegistryTest` | Duplicate-tool rejection |
-| `harness/SkillLibraryTest` | Bundled skill load/search |
-| `harness/task/TaskIntentClassifierTest` | Intent classification |
-| `harness/session/DroneSessionTest` | Session lifecycle/notes |
+`harness/tool/ToolRegistryTest`, `harness/tool/ToolValidatorTest`,
+`harness/js/JsSourceTest`, `harness/js/JsEngineTest`,
+`harness/skill/SkillLibraryTest`, `harness/session/DroneSessionTest`,
+`harness/task/TaskIntentClassifierTest`, `action/ActionRegistryTest`.

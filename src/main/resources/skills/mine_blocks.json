@@ -1,6 +1,10 @@
 {
   "name": "mine_blocks",
-  "description": "Find matching blocks, move to a safe standoff, and break a bounded set of them",
-  "tags": "mining mine ore block tunnel dig",
-  "code": "async function mineBlocks(filter, radius = 24, limit = 8) {\n  const found = await drone.scanBlocks({ filter, radius });\n  const blocks = (found.blocks || []).slice(0, limit);\n  const mined = [];\n  for (const block of blocks) {\n    const moved = await drone.goto({\n      x: block.x, y: block.y, z: block.z,\n      standoffOf: { x: block.x, y: block.y, z: block.z }\n    });\n    if (!moved || moved.arrived !== true) continue;\n    const broke = await drone.breakBlock(block.x, block.y, block.z);\n    if (broke && broke.ok !== false) mined.push(block);\n  }\n  return { mined, count: mined.length, remaining: Math.max(0, (found.count || 0) - mined.length) };\n}"
+  "description": "Find matching blocks, move to a safe standoff, and break a bounded set; returns the mined list and remaining count.",
+  "tags": "mining mine ore block tunnel dig gather",
+  "triggers": ["mine iron", "dig ore", "gather stone", "tunnel to ore"],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "code": "const filter = typeof filterName === 'string' ? filterName : 'ores';\nconst found = drone.scanBlocks({ filter: filter, radius: 24 });\nif (!found.count) return { ok: false, error: 'no matching blocks within 24m', hint: 'scan wider or move to another area' };\nconst mined = [];\nfor (var i = 0; i < found.blocks.length && i < 8; i++) {\n  const block = found.blocks[i];\n  const moved = drone.goto({ standoffOf: { x: block.x, y: block.y, z: block.z } });\n  if (!moved.arrived) continue;\n  const broke = drone.breakBlock({ x: block.x, y: block.y, z: block.z });\n  if (broke.ok !== false && broke.broken) mined.push(block);\n}\nreturn { mined: mined.length, blocks: mined, remaining: Math.max(0, (found.count || 0) - mined.length) };"
 }

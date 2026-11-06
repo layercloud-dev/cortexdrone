@@ -2,14 +2,18 @@ package ir.layercloud.cortexdrone;
 
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ir.layercloud.cortexdrone.command.impl.DroneCommand;
-import ir.layercloud.cortexdrone.config.AIConfig;
+import ir.layercloud.cortexdrone.config.ConfigMigrator;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.harness.CodeModeRuntime;
-import ir.layercloud.cortexdrone.harness.RpcDispatcher;
-import ir.layercloud.cortexdrone.harness.SkillLibrary;
-import ir.layercloud.cortexdrone.harness.agent.LlmAgentService;
+import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.config.ModPaths;
+import ir.layercloud.cortexdrone.harness.Harness;
+import ir.layercloud.cortexdrone.harness.agent.AgentService;
+import ir.layercloud.cortexdrone.harness.js.JsEngine;
+import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.session.SessionManager;
 import ir.layercloud.cortexdrone.harness.task.TaskCoordinator;
+import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
+import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
 import ir.layercloud.cortexdrone.manager.ActionRegistry;
 import ir.layercloud.cortexdrone.manager.TickManager;
@@ -50,8 +54,9 @@ import java.util.concurrent.atomic.AtomicReference;
 @Getter
 public class AIDroneManager {
     private final CortexDroneMod mod;
+    private File configRoot;
     private File configFile;
-    private final AIConfig config = new AIConfig();
+    private ModConfig config = new ModConfig();
 
     private final DroneLogger logger = new DroneLogger();
     private final SessionManager sessionManager = new SessionManager();
@@ -66,10 +71,7 @@ public class AIDroneManager {
     private final InventoryManager inventoryManager;
     private final ActionRegistry actionRegistry;
     private final DocLookupService docLookupService;
-    private SkillLibrary skillLibrary;
-    private final CodeModeRuntime codeModeRuntime;
-    private final RpcDispatcher rpcDispatcher;
-    private final LlmAgentService agentService;
+    private Harness harness;
     private final TickManager tickManager;
     private final TickProfiler tickProfiler;
     private final DroneHttpServer httpServer;
@@ -82,8 +84,9 @@ public class AIDroneManager {
     private final OcHardwareBridge ocHardwareBridge = new OcHardwareBridge();
     private final java.util.Set<UUID> despawnedUuids = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
 
-    public AIDroneManager(CortexDroneMod mod) {
+    public AIDroneManager(CortexDroneMod mod, File configRoot) {
         this.mod = mod;
+        this.configRoot = ModPaths.ensure(configRoot);
         this.pathfinder = new FlightPathfinder(this.logger);
         this.breadcrumbService = new BreadcrumbService();
         this.worldScanner = new WorldScanner(this.logger, this.config);
@@ -100,16 +103,6 @@ public class AIDroneManager {
         this.actionRegistry.register(this.inventoryManager);
         this.actionRegistry.register(this.visualsManager);
         this.docLookupService = new DocLookupService(this.inventoryService);
-        this.skillLibrary = new SkillLibrary(new File("./world"));
-        this.codeModeRuntime = new CodeModeRuntime(this.logger, this.config, this.sessionManager);
-        this.rpcDispatcher = new RpcDispatcher(this);
-        this.agentService = new LlmAgentService(
-                this,
-                this.logger,
-                this.worldScanner,
-                this.codeModeRuntime,
-                this.rpcDispatcher
-        );
         this.tickManager = new TickManager(
                 this,
                 this.logger,
@@ -122,12 +115,17 @@ public class AIDroneManager {
     }
 
     public void onServerStarting(FMLServerStartingEvent event, File worldDir) {
-        this.configFile = new File(worldDir, "layercloud-ai.json");
-        this.skillLibrary = new SkillLibrary(worldDir);
-        this.logger.setDebugLogFile(new File(worldDir, "layercloud-drone-debug.log"));
-        loadConfig();
+        this.configRoot = ModPaths.ensure(this.configRoot);
+        this.configFile = ModPaths.configFile(this.configRoot);
+        ConfigMigrator.migrate(worldDir, this.configRoot);
+        this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
+        this.harness = Harness.create(this, this.config, new SkillLibrary(this.configRoot));
+        this.logger.setDebugLogFile(ModPaths.logFile(this.configRoot));
         reconnectUnlinkedWorldDrones();
-        this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION + " (Tool Code Mode Harness) initialized", "worldDir=" + worldDir.getAbsolutePath());
+        this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION
+                + " (in-process tool harness) initialized",
+                "configDir=" + this.configRoot.getAbsolutePath()
+                        + " tools=" + this.harness.registry().modelTools().size());
 
         event.registerServerCommand(new DroneCommand("drone", this));
 
@@ -145,18 +143,38 @@ public class AIDroneManager {
         this.httpServer.stop();
     }
 
-    public synchronized void loadConfig() {
-        AIConfig loaded = AIConfig.load(this.configFile, CortexDroneMod.GSON);
-        this.config.setApiUrl(loaded.getApiUrl());
-        this.config.setModel(loaded.getModel());
-        this.config.setApiKey(loaded.getApiKey());
-        this.config.setHttpPort(loaded.getHttpPort());
-        this.config.setSavedDrones(loaded.getSavedDrones());
+    public synchronized void reloadConfig() {
+        this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
+        if (this.harness != null) {
+            this.harness = Harness.create(this, this.config,
+                    new SkillLibrary(this.configRoot));
+        }
     }
 
     public synchronized void saveConfig() {
+        if (this.configFile == null) return;
         this.config.save(this.configFile, CortexDroneMod.GSON, this.controllersById.values(),
                 this.visualsManager::state);
+    }
+
+    public ToolRegistry getToolRegistry() {
+        return this.harness != null ? this.harness.registry() : new ToolRegistry();
+    }
+
+    public ToolInvoker getToolInvoker() {
+        return this.harness != null ? this.harness.invoker() : null;
+    }
+
+    public JsEngine getJsEngine() {
+        return this.harness != null ? this.harness.js() : null;
+    }
+
+    public AgentService getAgentService() {
+        return this.harness != null ? this.harness.agent() : null;
+    }
+
+    public SkillLibrary getSkillLibrary() {
+        return this.harness != null ? this.harness.skills() : null;
     }
 
     public <T> T callOnMainThread(final Callable<T> callable, long timeoutMs) throws Exception {
@@ -229,7 +247,7 @@ public class AIDroneManager {
     }
 
     public void onServerTickEnd() {
-        this.rpcDispatcher.onServerTickEnd();
+        if (this.harness != null) this.harness.onServerTickEnd();
         this.tickCounter++;
         if (this.tickCounter % 40 == 0) {
             reconnectUnlinkedWorldDrones();
@@ -284,15 +302,15 @@ public class AIDroneManager {
                     Integer restoredLedColor = null;
 
                     if (this.config.getSavedDrones() != null) {
-                        AIConfig.SavedDroneInfo matchedSaved = null;
-                        for (AIConfig.SavedDroneInfo s : this.config.getSavedDrones()) {
+                        ModConfig.SavedDroneInfo matchedSaved = null;
+                        for (ModConfig.SavedDroneInfo s : this.config.getSavedDrones()) {
                             if (uid != null && uid.toString().equals(s.getUuid())) {
                                 matchedSaved = s;
                                 break;
                             }
                         }
                         if (matchedSaved == null && !"Server".equalsIgnoreCase(owner)) {
-                            for (AIConfig.SavedDroneInfo s : this.config.getSavedDrones()) {
+                            for (ModConfig.SavedDroneInfo s : this.config.getSavedDrones()) {
                                 if (owner.equalsIgnoreCase(s.getOwner())) {
                                     matchedSaved = s;
                                     break;

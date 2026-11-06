@@ -43,7 +43,7 @@ public class LightingAura {
     private final DroneLogger logger;
 
     /**
-     * Handles {@code torch} / {@code light} RPC: toggle, or set colour/radius/level.
+     * Applies a light tool request: toggle, or set colour/radius/level.
      */
     public LightResult configure(DroneController ctrl, VisualsState state, LightConfig config) {
         if (ctrl == null || ctrl.drone == null) {

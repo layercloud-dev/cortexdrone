@@ -1,6 +1,10 @@
 {
   "name": "place_double_chest",
-  "description": "Craft chests from planks already in the drone inventory, then place two adjacent chests; reports missing materials instead of pulling from storage",
-  "tags": "craft place double chest planks wood",
-  "code": "const p = await drone.getPlayer();\nconst c = await drone.craft('chest', 2);\nconst made = Number((c && c.crafted) || 0);\nif (!c || c.ok === false || made < 2) {\n  return { ok: false, error: 'Need 2 chests in the drone inventory. Craft result: ' + ((c && c.error) || 'none') + '. Gather wood/planks first (takeFromPlayer or breakBlock).' };\n}\nconst a = await drone.placeBlock(p.blockX + 1, p.blockY, p.blockZ, 'chest');\nconst b = await drone.placeBlock(p.blockX + 2, p.blockY, p.blockZ, 'chest');\nreturn { ok: !!(a.placed && b.placed), placed: [a.placed, b.placed].filter(Boolean).length };"
+  "description": "Craft two chests from the drone inventory and place them adjacent; reports missing materials instead of pulling from storage.",
+  "tags": "craft place double chest planks wood storage",
+  "triggers": ["make a double chest", "place two chests", "craft a chest"],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "code": "const p = drone.getPlayer();\nconst crafted = drone.craft({ filter: 'chest', count: 2 });\nconst made = Number((crafted && crafted.crafted) || 0);\nif (!crafted || crafted.ok === false || made < 2) {\n  return { ok: false, error: 'need 2 chests in the drone inventory', craft: crafted, hint: 'gather wood/planks or take them from the player first' };\n}\nconst a = drone.placeBlock({ x: p.blockX + 1, y: p.blockY, z: p.blockZ, block: 'chest' });\nconst b = drone.placeBlock({ x: p.blockX + 2, y: p.blockY, z: p.blockZ, block: 'chest' });\nreturn { ok: !!(a.placed && b.placed), placed: [a.placed, b.placed].filter(Boolean).length };"
 }

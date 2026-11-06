@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Long-lived visuals manager. Every visual primitive is an action. The light
  * aura is the only retained visual; LED colour is a one-shot primitive and
- * animations are composed by skills. JSON stays in VisualsRpcTranslator.
+ * animations are composed by skills. JSON stays in VisualsView.
  */
 public final class VisualsManager extends ActionManager<VisualsContext, VisualsRequest, VisualsResult> {
     private final AIDroneManager manager;

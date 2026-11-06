@@ -1,36 +1,25 @@
-# CortexDrone Documentation
+# CortexDrone documentation
 
-This is the full project documentation for CortexDrone v1.4.0, a Forge 1.7.10
-mod that connects an LLM-driven Code Mode agent to OpenComputers drones.
+CortexDrone connects an LLM-driven agent to OpenComputers drones in Minecraft
+1.7.10. The agent uses native tool calling and an **in-process Rhino JavaScript
+runtime**; there is no Node.js sidecar and no RPC transport.
 
-Read in order for a complete picture, or jump to a chapter.
+Reading order:
 
 | Chapter | Contents |
 | --- | --- |
-| [01-overview.md](01-overview.md) | Product purpose, runtime topology, constraints, terminology |
-| [02-layers.md](02-layers.md) | Action/context/manager/service/harness/RPC layers and dependency rules |
-| [03-actions-managers.md](03-actions-managers.md) | Action lifecycle, registry, every manager and action |
-| [04-navigation.md](04-navigation.md) | Goal navigation, breadcrumbs, flight A*, dig planning, movement actions |
-| [05-services.md](05-services.md) | Inventory, machine, world and navigation read/planning services |
-| [06-harness.md](06-harness.md) | LLM loop, Code Mode runtime, task/session, heartbeat, RPC dispatcher |
-| [07-tools-rpc.md](07-tools-rpc.md) | Tool catalog, translators, HTTP API, SDK behavior |
-| [08-runtime.md](08-runtime.md) | Mod lifecycle, tick pipeline, modes, spawn/link/despawn, config, logging |
-| [09-resources.md](09-resources.md) | System prompt, SDK modules, skill format, bundled skills |
-| [10-build-deploy.md](10-build-deploy.md) | Gradle/RFG, validation, tests, deploy, server operations |
-| [11-extending.md](11-extending.md) | Rules and recipes for adding actions, services, tools and skills |
-| [12-source-inventory.md](12-source-inventory.md) | Class-by-class source map |
-| [removed-tasks.md](removed-tasks.md) | Tasks intentionally removed from the runtime |
+| [01-overview.md](01-overview.md) | What the mod does, runtime pipeline, requirements |
+| [02-layers.md](02-layers.md) | Layer rules, package map, dependency direction |
+| [03-actions-managers.md](03-actions-managers.md) | Actions, contexts, managers, registries |
+| [04-navigation.md](04-navigation.md) | Goal navigation, trail/flight, digging policy |
+| [05-services.md](05-services.md) | Inventory, machine, world, navigation and web services |
+| [06-harness.md](06-harness.md) | Task loop, LLM client, tool calling, JS runtime, skills |
+| [07-tools.md](07-tools.md) | Tool registry, schemas, JS surface, HTTP API |
+| [08-runtime.md](08-runtime.md) | Lifecycle, tick pipeline, config, logging, persistence |
+| [09-resources.md](09-resources.md) | Prompts, JS bootstrap, bundled skills, config files |
+| [10-build-deploy.md](10-build-deploy.md) | Gradle, tests, validation, deploy, operations |
+| [11-extending.md](11-extending.md) | Adding tools, actions, services and skills |
+| [12-source-inventory.md](12-source-inventory.md) | Class-by-class source inventory |
+| [removed-tasks.md](removed-tasks.md) | Deliberately removed legacy paths |
 
-## Reading order
-
-1. **New contributor**: 01 → 02 → 03 → 06 → 07.
-2. **Navigation work**: 02 → 03 → 04 → 05.
-3. **LLM/prompt work**: 06 → 07 → 09.
-4. **Deployment**: 10 → 08.
-5. **Adding a feature**: 11, then the relevant subsystem chapter.
-
-## Source of truth
-
-The documentation describes the current code. When code and docs differ, the
-code under `src/main/java` and `src/main/resources` wins; update the relevant
-chapter in the same change.
+Top-level architecture: [../ARCHITECTURE.md](../ARCHITECTURE.md).

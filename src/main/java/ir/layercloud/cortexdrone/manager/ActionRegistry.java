@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * Resolves action operations to their category manager.
  *
- * <p>The registry knows only managers. JSON translation lives in the RPC/HTTP
+ * <p>The registry knows only managers. JSON translation lives in the tool/HTTP
  * transport layer; contexts, ticking and cancellation live in the manager that
  * owns the action category.</p>
  */

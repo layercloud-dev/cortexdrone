@@ -8,7 +8,7 @@ import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.TickProfiler;
-import ir.layercloud.cortexdrone.config.AIConfig;
+import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
@@ -229,7 +229,7 @@ public class DroneTelemetrySerializer {
         root.add("recentDebug", this.logger.toDebugJsonArray(25));
         root.add("tps", buildTpsJson());
 
-        AIConfig cfg = this.manager.getConfig();
+        ModConfig cfg = this.manager.getConfig();
         JsonObject cfgObj = new JsonObject();
         cfgObj.addProperty("apiUrl", cfg.getApiUrl());
         cfgObj.addProperty("model", cfg.getModel());

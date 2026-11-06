@@ -13,9 +13,9 @@ import net.minecraft.world.World;
 /**
  * Per-tick runtime pipeline.
  *
- * <p>It owns no behavior: it samples breadcrumbs, detects stalls, applies the
- * lighting aura and LED animation, runs the active navigation session, ticks
- * every retained action, and applies the physics safety step. Everything the
+ * <p>It owns no behavior: it samples breadcrumbs, detects stalls, runs the
+ * active navigation session, ticks every retained action (including the light
+ * aura and LED animation), and applies the physics safety step. Everything the
  * drone actually does is an action started by a tool call.</p>
  */
 @RequiredArgsConstructor

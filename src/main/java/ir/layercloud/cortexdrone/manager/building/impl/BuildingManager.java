@@ -8,9 +8,8 @@ import ir.layercloud.cortexdrone.action.block.impl.BreakBlockAction;
 import ir.layercloud.cortexdrone.action.block.impl.PlaceBlockAction;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
-import ir.layercloud.cortexdrone.manager.ActionManager;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
+import ir.layercloud.cortexdrone.manager.ActionManager;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
@@ -23,7 +22,6 @@ import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
@@ -34,9 +32,12 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Long-lived building manager. It owns block break/place behavior, the mining
- * loop and block-drop calculations used by block actions and navigation
- * self-rescue. It is not an action dispatcher.
+ * Block mechanics: break one target, queue a dig route, place one block.
+ *
+ * <p>The manager holds no goal and no mode. It is driven by retained actions
+ * ({@code BreakBlockAction}, {@code DigRouteAction}); when the work queue and
+ * the current target are both empty, the action completes and the drone is idle
+ * again.</p>
  */
 public final class BuildingManager extends ActionManager<BlockContext, BlockRequest, BlockResult> {
     private final AIDroneManager manager;
@@ -60,7 +61,6 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         } catch (Throwable ignored) {
         }
     }
-
 
     private static boolean hasPassableHeadroom(World world, double[] st) {
         if (st == null || st.length < 3) return false;
@@ -96,177 +96,159 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         return drops;
     }
 
-    public void tick(DroneController ctrl, EntityPlayerMP owner) {
+    /**
+     * Advances the current break target or picks the next one from the dig
+     * queue. Called every tick by the retained block action.
+     */
+    public void tickMining(DroneController ctrl) {
         if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null) return;
         Drone d = ctrl.drone;
         World world = d.worldObj;
         d.lightColor_$eq(0x00FF66);
 
         if (InventoryService.isInventoryFull(d.mainInventory())) {
+            if (ctrl.isMining()) {
+                this.logger.log("MINE", ctrl, "Inventory full; mining stopped",
+                        "remaining=" + ctrl.mineQueue.size() + " harvested=" + ctrl.minedCount);
+            }
             ctrl.currentMineTarget = null;
             ctrl.currentMineStandoff = null;
-            if (ctrl.mineUntilFull) {
-                ctrl.mineQueue.clear();
-                ctrl.mineUntilFull = false;
-                ctrl.mineTargetCount = 0;
-                if (!ctrl.isScriptRunning() && owner != null) {
-                    this.manager.droneSay(owner, ctrl, "Inventory is full (8/8 slots, " + InventoryService.countInventoryItems(d.mainInventory()) + " items)! Flying back to deliver to you now.");
-                }
-                this.logger.log("MINE", ctrl, "Inventory full (mineUntilFull=true)", "harvested=" + ctrl.minedCount + " scriptRunning=" + ctrl.isScriptRunning());
-                this.manager.setDroneMode(ctrl, ctrl.isScriptRunning() ? Mode.FOLLOW : Mode.DROP, "Completed mineUntilFull");
-                return;
-            }
-            TileEntity nearbyChest = this.inventoryService.findNearestInventoryWithSpace(world, d.posX, d.posY, d.posZ, 20, d.mainInventory());
-            if (nearbyChest != null) {
-                if (owner != null) {
-                    this.manager.droneSay(owner, ctrl, "Inventory full! Depositing into nearby chest and resuming (" + ctrl.mineQueue.size() + " blocks left).");
-                }
-                this.logger.log("MINE", ctrl, "Inventory full; auto-depositing into nearby chest", "remainingQueue=" + ctrl.mineQueue.size());
-                this.manager.setDroneMode(ctrl, Mode.DEPOSIT, "Auto-deposit during mining");
-            } else {
-                if (owner != null) {
-                    this.manager.droneSay(owner, ctrl, "Inventory full (8/8 slots)! Delivering items to you and resuming (" + ctrl.mineQueue.size() + " blocks left).");
-                }
-                this.logger.log("MINE", ctrl, "Inventory full; delivering to owner", "remainingQueue=" + ctrl.mineQueue.size());
-                this.manager.setDroneMode(ctrl, Mode.DROP, "Auto-drop to owner during mining");
-            }
+            ctrl.mineQueue.clear();
+            ctrl.mineProgressTicks = 0;
+            d.statusText_$eq("Inventory full");
             return;
         }
 
         if (ctrl.currentMineTarget == null && !ctrl.mineQueue.isEmpty()) {
-            Iterator<int[]> qIt = ctrl.mineQueue.iterator();
-            while (qIt.hasNext()) {
-                int[] p = qIt.next();
-                // A temporarily unloaded chunk must NOT purge its queued targets:
-                // doing so silently truncates a mine task ("damaged logic") as soon
-                // as the drone crosses a chunk border. Keep them until loaded.
-                if (!world.getChunkProvider().chunkExists(p[0] >> 4, p[2] >> 4)) {
-                    continue;
-                }
-                if (!ItemClassifier.isMineableBlock(world, p[0], p[1], p[2])) {
-                    qIt.remove();
-                }
+            selectNextTarget(ctrl, d, world);
+        }
+
+        if (ctrl.currentMineTarget == null) return;
+        breakCurrentTarget(ctrl, d, world);
+    }
+
+    private void selectNextTarget(DroneController ctrl, Drone d, World world) {
+        Iterator<int[]> qIt = ctrl.mineQueue.iterator();
+        while (qIt.hasNext()) {
+            int[] p = qIt.next();
+            // A temporarily unloaded chunk must NOT purge its queued targets:
+            // doing so silently truncates a mine task as soon as the drone
+            // crosses a chunk border. Keep them until loaded.
+            if (!world.getChunkProvider().chunkExists(p[0] >> 4, p[2] >> 4)) {
+                continue;
             }
-
-            int[] bestExposed = null;
-            double[] bestStandoff = null;
-            double bestScore = Double.MAX_VALUE;
-            int highestY = Integer.MIN_VALUE;
-            for (int[] p : ctrl.mineQueue) {
-                if (p[1] > highestY) highestY = p[1];
-            }
-
-            int curBx = MathHelper.floor_double(d.posX);
-            int curBy = MathHelper.floor_double(d.posY);
-            int curBz = MathHelper.floor_double(d.posZ);
-            int topCur = world.getHeightValue(curBx, curBz);
-            boolean droneInOpenSky = world.canBlockSeeTheSky(curBx, curBy, curBz) || d.posY >= topCur - 1;
-            // Surface digs are ordered top-down; underground work is ordered by
-            // proximity to the drone so a vertical shaft is consumed from the
-            // current level instead of the drone targeting the far surface lip.
-            int refY = droneInOpenSky ? highestY : curBy;
-
-            int checked = 0;
-            int scanned = 0;
-            for (int[] p : ctrl.mineQueue) {
-                if (++scanned > 256) break;
-                double[] st = FlightPathfinder.findMiningStandoff(world, d, p[0], p[1], p[2]);
-                if (st != null) {
-                    double dist = d.getDistance(st[0], st[1], st[2]);
-                    boolean losKnown = checked < 32 && dist <= 18.0;
-                    boolean hasLos = losKnown && FlightPathfinder.isFlightLineClear(
-                            world, d.posX, d.posY, d.posZ, st[0], st[1], st[2]);
-                    if (losKnown) checked++;
-                    // An exposed cell is not reachable just because it has air next
-                    // to it. Underground, a target 20 blocks up with no line of sight
-                    // can only be reached by tunnelling: skip it here so the
-                    // tunnel branch below picks the nearest real obstruction.
-                    if (!droneInOpenSky && losKnown && !hasLos && Math.abs(p[1] - curBy) > 4) {
-                        continue;
-                    }
-                    double layerPenalty = ctrl.mineExactQueueOnly ? Math.abs(refY - p[1]) * 3.0 : 0.0;
-                    double losBonus = hasLos ? -40.0 : 0.0;
-                    double score = dist + layerPenalty + losBonus;
-                    if (score < bestScore) {
-                        bestScore = score;
-                        bestExposed = p;
-                        bestStandoff = st;
-                    }
-                }
-            }
-
-            if (bestExposed != null) {
-                ctrl.mineQueue.remove(bestExposed);
-                ctrl.currentMineTarget = bestExposed;
-                ctrl.currentMineStandoff = bestStandoff;
-                ctrl.mineProgressTicks = 0;
-                ctrl.stuckTicks = 0;
-                ctrl.pathWaypoints.clear();
-                Block cb = world.getBlock(bestExposed[0], bestExposed[1], bestExposed[2]);
-                int cbMeta = world.getBlockMetadata(bestExposed[0], bestExposed[1], bestExposed[2]);
-                this.logger.log("MINE", ctrl,
-                        String.format("Selected mine target %s at (%d,%d,%d)",
-                                cb != null ? ItemClassifier.getBlockDisplayName(cb, cbMeta) : "block", bestExposed[0], bestExposed[1], bestExposed[2]),
-                        String.format("standoff=(%.1f,%.1f,%.1f) queue=%d", bestStandoff[0], bestStandoff[1], bestStandoff[2], ctrl.mineQueue.size()));
-            } else if (!ctrl.mineQueue.isEmpty()) {
-                int[] nearestBuried = null;
-                double nearestDistSq = Double.MAX_VALUE;
-                for (int[] p : ctrl.mineQueue) {
-                    double dSq = d.getDistanceSq(p[0] + 0.5, p[1] + 0.5, p[2] + 0.5);
-                    if (dSq < nearestDistSq) {
-                        nearestDistSq = dSq;
-                        nearestBuried = p;
-                    }
-                }
-                if (nearestBuried != null) {
-                    int[] tunnelBlock = FlightPathfinder.findBlockingTunnelBlock(world, d, nearestBuried[0], nearestBuried[1], nearestBuried[2]);
-                    if (tunnelBlock != null) {
-                        ctrl.currentMineTarget = tunnelBlock;
-                        ctrl.currentMineStandoff = FlightPathfinder.findMiningStandoff(world, d, tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
-                        if (ctrl.currentMineStandoff == null) {
-                            ctrl.currentMineStandoff = new double[]{tunnelBlock[0] + 0.5, tunnelBlock[1] + 0.5, tunnelBlock[2] + 0.5};
-                        }
-                        ctrl.mineProgressTicks = 0;
-                        ctrl.stuckTicks = 0;
-                        ctrl.pathWaypoints.clear();
-                        Block tb = world.getBlock(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
-                        int tbMeta = world.getBlockMetadata(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
-                        this.logger.log("MINE", ctrl,
-                                String.format("Tunneling through %s at (%d,%d,%d) to reach buried (%d,%d,%d)",
-                                        tb != null ? ItemClassifier.getBlockDisplayName(tb, tbMeta) : "block",
-                                        tunnelBlock[0], tunnelBlock[1], tunnelBlock[2],
-                                        nearestBuried[0], nearestBuried[1], nearestBuried[2]),
-                                "queue=" + ctrl.mineQueue.size());
-                    } else {
-                        ctrl.mineQueue.remove(nearestBuried);
-                        ctrl.currentMineTarget = nearestBuried;
-                        int[] nearAir = FlightPathfinder.findNearestPassableVoxel(world, nearestBuried[0], nearestBuried[1], nearestBuried[2], 6);
-                        ctrl.currentMineStandoff = nearAir != null
-                                ? new double[]{nearAir[0] + 0.5, nearAir[1] + 0.35, nearAir[2] + 0.5}
-                                : new double[]{nearestBuried[0] + 0.5, nearestBuried[1] + 1.0, nearestBuried[2] + 0.5};
-                        ctrl.mineProgressTicks = 0;
-                        ctrl.stuckTicks = 0;
-                        ctrl.pathWaypoints.clear();
-                    }
-                }
+            if (!ItemClassifier.isMineableBlock(world, p[0], p[1], p[2])) {
+                qIt.remove();
             }
         }
 
-        if (ctrl.currentMineTarget == null) {
-            boolean deliverBack = !ctrl.isScriptRunning() && (ctrl.returnToOwnerAfterMine || ctrl.mineUntilFull);
-            if (ctrl.escapeResume != null) {
-                resumeAfterSelfRescue(ctrl);
-                return;
+        int[] bestExposed = null;
+        double[] bestStandoff = null;
+        double bestScore = Double.MAX_VALUE;
+        int highestY = Integer.MIN_VALUE;
+        for (int[] p : ctrl.mineQueue) {
+            if (p[1] > highestY) highestY = p[1];
+        }
+
+        int curBy = MathHelper.floor_double(d.posY);
+        int curBx = MathHelper.floor_double(d.posX);
+        int curBz = MathHelper.floor_double(d.posZ);
+        int topCur = world.getHeightValue(curBx, curBz);
+        boolean droneInOpenSky = world.canBlockSeeTheSky(curBx, curBy, curBz) || d.posY >= topCur - 1;
+        // Surface digs are ordered top-down; underground work is ordered by
+        // proximity to the drone so a vertical shaft is consumed from the
+        // current level instead of the drone targeting the far surface lip.
+        int refY = droneInOpenSky ? highestY : curBy;
+
+        int checked = 0;
+        int scanned = 0;
+        for (int[] p : ctrl.mineQueue) {
+            if (++scanned > 256) break;
+            double[] st = FlightPathfinder.findMiningStandoff(world, d, p[0], p[1], p[2]);
+            if (st == null) continue;
+            double dist = d.getDistance(st[0], st[1], st[2]);
+            boolean losKnown = checked < 32 && dist <= 18.0;
+            boolean hasLos = losKnown && FlightPathfinder.isFlightLineClear(
+                    world, d.posX, d.posY, d.posZ, st[0], st[1], st[2]);
+            if (losKnown) checked++;
+            // An exposed cell is not reachable just because it has air next to
+            // it. Underground, a target 20 blocks up with no line of sight can
+            // only be reached by tunnelling: skip it here so the tunnel branch
+            // below picks the nearest real obstruction.
+            if (!droneInOpenSky && losKnown && !hasLos && Math.abs(p[1] - curBy) > 4) {
+                continue;
             }
-            ctrl.returnToOwnerAfterMine = false;
-            ctrl.mineUntilFull = false;
-            ctrl.mineTargetCount = 0;
-            ctrl.mineExactQueueOnly = false;
-            this.logger.log("MINE", ctrl, "Break queue completed", "harvested=" + ctrl.minedCount + " scriptRunning=" + ctrl.isScriptRunning());
-            this.manager.setDroneMode(ctrl, deliverBack ? Mode.DROP : Mode.FOLLOW, "Break queue empty");
+            double layerPenalty = Math.abs(refY - p[1]) * 3.0;
+            double losBonus = hasLos ? -40.0 : 0.0;
+            double score = dist + layerPenalty + losBonus;
+            if (score < bestScore) {
+                bestScore = score;
+                bestExposed = p;
+                bestStandoff = st;
+            }
+        }
+
+        if (bestExposed != null) {
+            ctrl.mineQueue.remove(bestExposed);
+            ctrl.currentMineTarget = bestExposed;
+            ctrl.currentMineStandoff = bestStandoff;
+            ctrl.mineProgressTicks = 0;
+            ctrl.stuckTicks = 0;
+            ctrl.pathWaypoints.clear();
+            Block cb = world.getBlock(bestExposed[0], bestExposed[1], bestExposed[2]);
+            int cbMeta = world.getBlockMetadata(bestExposed[0], bestExposed[1], bestExposed[2]);
+            this.logger.log("MINE", ctrl,
+                    String.format("Selected mine target %s at (%d,%d,%d)",
+                            cb != null ? ItemClassifier.getBlockDisplayName(cb, cbMeta) : "block",
+                            bestExposed[0], bestExposed[1], bestExposed[2]),
+                    String.format("standoff=(%.1f,%.1f,%.1f) queue=%d", bestStandoff[0], bestStandoff[1], bestStandoff[2], ctrl.mineQueue.size()));
             return;
         }
 
+        int[] nearestBuried = null;
+        double nearestDistSq = Double.MAX_VALUE;
+        for (int[] p : ctrl.mineQueue) {
+            double dSq = d.getDistanceSq(p[0] + 0.5, p[1] + 0.5, p[2] + 0.5);
+            if (dSq < nearestDistSq) {
+                nearestDistSq = dSq;
+                nearestBuried = p;
+            }
+        }
+        if (nearestBuried == null) return;
+
+        int[] tunnelBlock = FlightPathfinder.findBlockingTunnelBlock(world, d, nearestBuried[0], nearestBuried[1], nearestBuried[2]);
+        if (tunnelBlock != null) {
+            ctrl.currentMineTarget = tunnelBlock;
+            ctrl.currentMineStandoff = FlightPathfinder.findMiningStandoff(world, d, tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
+            if (ctrl.currentMineStandoff == null) {
+                ctrl.currentMineStandoff = new double[]{tunnelBlock[0] + 0.5, tunnelBlock[1] + 0.5, tunnelBlock[2] + 0.5};
+            }
+            ctrl.mineProgressTicks = 0;
+            ctrl.stuckTicks = 0;
+            ctrl.pathWaypoints.clear();
+            Block tb = world.getBlock(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
+            int tbMeta = world.getBlockMetadata(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
+            this.logger.log("MINE", ctrl,
+                    String.format("Tunneling through %s at (%d,%d,%d) to reach buried (%d,%d,%d)",
+                            tb != null ? ItemClassifier.getBlockDisplayName(tb, tbMeta) : "block",
+                            tunnelBlock[0], tunnelBlock[1], tunnelBlock[2],
+                            nearestBuried[0], nearestBuried[1], nearestBuried[2]),
+                    "queue=" + ctrl.mineQueue.size());
+            return;
+        }
+
+        ctrl.mineQueue.remove(nearestBuried);
+        ctrl.currentMineTarget = nearestBuried;
+        int[] nearAir = FlightPathfinder.findNearestPassableVoxel(world, nearestBuried[0], nearestBuried[1], nearestBuried[2], 6);
+        ctrl.currentMineStandoff = nearAir != null
+                ? new double[]{nearAir[0] + 0.5, nearAir[1] + 0.35, nearAir[2] + 0.5}
+                : new double[]{nearestBuried[0] + 0.5, nearestBuried[1] + 1.0, nearestBuried[2] + 0.5};
+        ctrl.mineProgressTicks = 0;
+        ctrl.stuckTicks = 0;
+        ctrl.pathWaypoints.clear();
+    }
+
+    private void breakCurrentTarget(DroneController ctrl, Drone d, World world) {
         int bx = ctrl.currentMineTarget[0];
         int by = ctrl.currentMineTarget[1];
         int bz = ctrl.currentMineTarget[2];
@@ -282,15 +264,12 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
             if (ctrl.currentMineStandoff == null) {
                 // Entombed/adjacent target: the drone is inside (or flush against)
                 // the block it must break, so there is no standoff with headroom.
-                // Mine it from the current position instead of dropping the target
-                // (this is exactly what made "dig out of the rock" stall forever).
+                // Mine it from the current position instead of dropping the target.
                 if (d.getDistance(bx + 0.5, by + 0.5, bz + 0.5) <= 2.2) {
                     ctrl.currentMineStandoff = new double[]{d.posX, d.posY, d.posZ};
                 } else {
-                    // Buried target with no reachable standoff: this target is
-                    // temporarily unreachable, but bombarding the floor with a
-                    // 4-tick crack loop never yields progress. Null-guard drop +
-                    // crack-reset, then let the loop pick the next queued block.
+                    // Buried target with no reachable standoff: drop the target
+                    // and let the loop pick the next queued block.
                     world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, -1);
                     ctrl.currentMineTarget = null;
                     ctrl.mineProgressTicks = 0;
@@ -324,8 +303,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
             if (blocking != null && (blocking[0] != bx || blocking[1] != by || blocking[2] != bz)) {
                 world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, -1);
                 // Duplicate guard: only requeue the obstructed target if it isn't
-                // already queued behind the blocker; otherwise the obstructed
-                // target would requeue endlessly in front of itself.
+                // already queued behind the blocker.
                 boolean alreadyQueued = false;
                 for (int[] q : ctrl.mineQueue) {
                     if (q[0] == bx && q[1] == by && q[2] == bz) {
@@ -354,131 +332,75 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         }
 
         if (distToBlock <= 3.6 || distToStandoff <= 1.25) {
-            this.manager.getNavigationManager().hold(ctrl, "Mining standoff hold");
-
-            float hardness = Math.max(0.2f, block.getBlockHardness(world, bx, by, bz));
-            ctrl.miningRequiredTicks = ToolInspector.computeRequiredMiningTicks(d.mainInventory(), block, hardness);
-            ctrl.mineProgressTicks++;
-
-            int meta = world.getBlockMetadata(bx, by, bz);
-            int blockId = Block.getIdFromBlock(block);
-            int crackStage = Math.min(9, (ctrl.mineProgressTicks * 10) / ctrl.miningRequiredTicks);
-            world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, crackStage);
-
-            if (world instanceof WorldServer && ctrl.mineProgressTicks % 2 == 0) {
-                ((WorldServer) world).func_147487_a(
-                        "blockcrack_" + blockId + "_" + meta,
-                        tx, ty, tz, 4, 0.25, 0.25, 0.25, 0.05
-                );
-            }
-            String blockDisp = ItemClassifier.getBlockDisplayName(block, meta);
-            d.statusText_$eq("Mining " + (ctrl.mineProgressTicks * 100 / ctrl.miningRequiredTicks) + "%\n" + AIDroneManager.trimStatus(blockDisp));
-
-            if (ctrl.mineProgressTicks >= ctrl.miningRequiredTicks) {
-                world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, -1);
-                int fortune = ToolInspector.getBestFortuneLevel(d.mainInventory());
-                List<ItemStack> drops = getBlockDrops(world, block, bx, by, bz, meta, fortune);
-                world.playAuxSFX(2001, bx, by, bz, blockId + (meta << 12));
-                boolean removed = world.setBlockToAir(bx, by, bz);
-
-                if (removed) {
-                    ctrl.minedCount++;
-                    int insertedTotal = 0;
-                    IInventory inv = d.mainInventory();
-                    if (drops != null) {
-                        for (ItemStack drop : drops) {
-                            if (drop == null || drop.stackSize <= 0) continue;
-                            ItemStack copy = drop.copy();
-                            insertedTotal += InventoryService.insertIntoInventory(inv, copy);
-                            if (copy.stackSize > 0) {
-                                EntityItem leftover = new EntityItem(world, d.posX, d.posY, d.posZ, copy);
-                                leftover.delayBeforeCanPickup = 0;
-                                world.spawnEntityInWorld(leftover);
-                            }
-                        }
-                    }
-                    InventoryService.suckNearbyItems(d, tx, ty, tz, 3.8);
-                    this.logger.log("MINE", ctrl,
-                            String.format("Harvested %s at (%d,%d,%d)", blockDisp, bx, by, bz),
-                            "insertedItems=" + insertedTotal + " totalMined=" + ctrl.minedCount);
-                }
-                ctrl.currentMineTarget = null;
-                ctrl.currentMineStandoff = null;
-                ctrl.mineProgressTicks = 0;
-                ctrl.stuckTicks = 0;
-            }
+            mineBlock(ctrl, d, world, block, bx, by, bz, tx, ty, tz);
         } else {
             this.manager.getNavigationManager().flyToward(ctrl, sx, sy, sz, "Mining standoff");
-            d.statusText_$eq("To Ore " + (int) distToBlock + "m\n" + AIDroneManager.trimStatus(ItemClassifier.getBlockDisplayName(block, world.getBlockMetadata(bx, by, bz))));
+            d.statusText_$eq("To Ore " + (int) distToBlock + "m\n"
+                    + AIDroneManager.trimStatus(ItemClassifier.getBlockDisplayName(block, world.getBlockMetadata(bx, by, bz))));
         }
     }
 
-    /**
-     * Restores the task that was interrupted by a blocked-waypoint self-rescue.
-     * The rescue dig itself is deliberately not counted toward a mine target, so
-     * "mine 64 iron" cannot finish early just because stone was in the way.
-     */
-    private void resumeAfterSelfRescue(DroneController ctrl) {
-        DroneController.TaskSnapshot snap = ctrl.escapeResume;
-        ctrl.escapeResume = null;
-        if (snap == null) {
-            this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Self-rescue complete");
-            return;
-        }
-        ctrl.mineFilter = snap.mineFilter;
-        ctrl.mineExactQueueOnly = snap.mineExactQueueOnly;
-        ctrl.mineUntilFull = snap.mineUntilFull;
-        ctrl.returnToOwnerAfterMine = snap.returnToOwnerAfterMine;
-        ctrl.mineTargetCount = snap.mineTargetCount;
-        ctrl.minedCount = snap.minedCount;
-        ctrl.mineMatchedCount = snap.mineMatchedCount;
-        ctrl.currentMineTarget = null;
-        ctrl.currentMineStandoff = snap.mineStandoff;
-        ctrl.pathWaypoints.clear();
-        ctrl.pathIndex = 0;
-        ctrl.pathGoalX = Double.NaN;
-        ctrl.repathCooldown = 0;
-        ctrl.stuckTicks = 0;
+    private void mineBlock(DroneController ctrl, Drone d, World world, Block block,
+                           int bx, int by, int bz, double tx, double ty, double tz) {
+        this.manager.getNavigationManager().hold(ctrl, "Mining standoff hold");
 
-        // Restore the parked task queue, then put the interrupted current target
-        // back at the front (it was removed from the queue when selected).
-        ctrl.mineQueue.clear();
-        if (snap.mineQueue != null) {
-            ctrl.mineQueue.addAll(snap.mineQueue);
+        float hardness = Math.max(0.2f, block.getBlockHardness(world, bx, by, bz));
+        ctrl.miningRequiredTicks = ToolInspector.computeRequiredMiningTicks(d.mainInventory(), block, hardness);
+        ctrl.mineProgressTicks++;
+
+        int meta = world.getBlockMetadata(bx, by, bz);
+        int blockId = Block.getIdFromBlock(block);
+        int crackStage = Math.min(9, (ctrl.mineProgressTicks * 10) / ctrl.miningRequiredTicks);
+        world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, crackStage);
+
+        if (world instanceof WorldServer && ctrl.mineProgressTicks % 2 == 0) {
+            ((WorldServer) world).func_147487_a(
+                    "blockcrack_" + blockId + "_" + meta,
+                    tx, ty, tz, 4, 0.25, 0.25, 0.25, 0.05
+            );
         }
-        if (snap.mineTarget != null) {
-            boolean duplicate = false;
-            for (int[] p : ctrl.mineQueue) {
-                if (p != null && p[0] == snap.mineTarget[0]
-                        && p[1] == snap.mineTarget[1] && p[2] == snap.mineTarget[2]) {
-                    duplicate = true;
-                    break;
+        String blockDisp = ItemClassifier.getBlockDisplayName(block, meta);
+        d.statusText_$eq("Mining " + (ctrl.mineProgressTicks * 100 / ctrl.miningRequiredTicks) + "%\n"
+                + AIDroneManager.trimStatus(blockDisp));
+
+        if (ctrl.mineProgressTicks < ctrl.miningRequiredTicks) return;
+
+        world.destroyBlockInWorldPartially(d.getEntityId(), bx, by, bz, -1);
+        int fortune = ToolInspector.getBestFortuneLevel(d.mainInventory());
+        List<ItemStack> drops = getBlockDrops(world, block, bx, by, bz, meta, fortune);
+        world.playAuxSFX(2001, bx, by, bz, blockId + (meta << 12));
+        boolean removed = world.setBlockToAir(bx, by, bz);
+
+        if (removed) {
+            ctrl.minedCount++;
+            int insertedTotal = 0;
+            IInventory inv = d.mainInventory();
+            if (drops != null) {
+                for (ItemStack drop : drops) {
+                    if (drop == null || drop.stackSize <= 0) continue;
+                    ItemStack copy = drop.copy();
+                    insertedTotal += InventoryService.insertIntoInventory(inv, copy);
+                    if (copy.stackSize > 0) {
+                        EntityItem leftover = new EntityItem(world, d.posX, d.posY, d.posZ, copy);
+                        leftover.delayBeforeCanPickup = 0;
+                        world.spawnEntityInWorld(leftover);
+                    }
                 }
             }
-            if (!duplicate) ctrl.mineQueue.addFirst(snap.mineTarget);
+            InventoryService.suckNearbyItems(d, tx, ty, tz, 3.8);
+            this.logger.log("MINE", ctrl,
+                    String.format("Harvested %s at (%d,%d,%d)", blockDisp, bx, by, bz),
+                    "insertedItems=" + insertedTotal + " totalMined=" + ctrl.minedCount);
         }
-
-        if (snap.mode == Mode.MINE && !ctrl.mineQueue.isEmpty()) {
-            this.logger.log("ESCAPE", ctrl, "Self-rescue complete; resuming mining",
-                    "remaining=" + ctrl.mineQueue.size() + " mined=" + ctrl.minedCount);
-            this.manager.setDroneMode(ctrl, Mode.MINE, "Resumed mining after self-rescue");
-            return;
-        }
-        if (snap.mode != null && snap.mode != Mode.MINE) {
-            ctrl.goalX = snap.goalX;
-            ctrl.goalY = snap.goalY;
-            ctrl.goalZ = snap.goalZ;
-            this.logger.log("ESCAPE", ctrl, "Self-rescue complete; resuming " + snap.mode.name(),
-                    String.format("goal=(%.1f,%.1f,%.1f)", ctrl.goalX, ctrl.goalY, ctrl.goalZ));
-            this.manager.setDroneMode(ctrl, snap.mode, "Resumed " + snap.mode.name() + " after self-rescue");
-            return;
-        }
-        this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Self-rescue complete");
+        ctrl.currentMineTarget = null;
+        ctrl.currentMineStandoff = null;
+        ctrl.mineProgressTicks = 0;
+        ctrl.stuckTicks = 0;
     }
 
     /**
-     * Starts breaking exactly one explicit block. The mining loop is advanced
-     * by {@link #tick(DroneController, EntityPlayerMP)}.
+     * Starts breaking exactly one explicit block. The action ticks this target
+     * to completion through {@link #tickMining(DroneController)}.
      */
     public boolean startBreak(DroneController controller, int x, int y, int z) {
         if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
@@ -487,13 +409,13 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         Drone drone = controller.drone;
         World world = drone.worldObj;
         if (!ItemClassifier.isMineableBlock(world, x, y, z)) return false;
+        if (InventoryService.isInventoryFull(drone.mainInventory())) return false;
 
         if (controller.currentMineTarget != null) {
             world.destroyBlockInWorldPartially(drone.getEntityId(),
                     controller.currentMineTarget[0], controller.currentMineTarget[1],
                     controller.currentMineTarget[2], -1);
         }
-        controller.clearSelfRescue(false);
         controller.mineQueue.clear();
         controller.currentMineTarget = new int[]{x, y, z};
 
@@ -502,13 +424,6 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
             standoff = new double[]{drone.posX, drone.posY, drone.posZ};
         }
         controller.currentMineStandoff = standoff;
-        controller.mineFilter = "all";
-        controller.mineExactQueueOnly = true;
-        controller.mineTargetCount = 0;
-        controller.mineMatchedCount = 0;
-        controller.minedCount = 0;
-        controller.returnToOwnerAfterMine = false;
-        controller.mineUntilFull = false;
         controller.mineProgressTicks = 0;
         controller.stuckTicks = 0;
         controller.lastPathPartial = false;
@@ -516,11 +431,57 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         controller.pathIndex = 0;
         controller.repathCooldown = 0;
 
-        this.manager.setDroneMode(controller, Mode.MINE,
-                "Master break_block (" + x + "," + y + "," + z + ")");
         drone.lightColor_$eq(0x00FF66);
         drone.statusText_$eq("Break block\n" + x + "," + y + "," + z);
+        this.logger.log("MINE", controller, "Break started", "target=(" + x + "," + y + "," + z + ")");
         return true;
+    }
+
+    /**
+     * Queues a navigation dig route. The retained dig action ticks the queue.
+     */
+    public int startDigRoute(DroneController ctrl, List<int[]> blocks, String label) {
+        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null
+                || blocks == null || blocks.isEmpty()) {
+            return 0;
+        }
+        World world = ctrl.drone.worldObj;
+        int queued = 0;
+        for (int i = blocks.size() - 1; i >= 0; i--) {
+            int[] step = blocks.get(i);
+            if (step != null && step.length > 3 && step[3] == 1) {
+                queued += queueDig(ctrl, world, step[0], step[1], step[2]);
+            }
+        }
+        if (queued == 0) return 0;
+
+        ctrl.currentMineTarget = null;
+        ctrl.currentMineStandoff = null;
+        ctrl.mineProgressTicks = 0;
+        ctrl.stuckTicks = 0;
+        ctrl.lastPathPartial = false;
+        ctrl.pathWaypoints.clear();
+        ctrl.pathIndex = 0;
+        ctrl.repathCooldown = 0;
+        ctrl.drone.lightColor_$eq(0x00FF66);
+        ctrl.drone.statusText_$eq("Dig route\n" + queued + " blocks");
+        this.logger.log("PATH", ctrl, "Dig route queued",
+                "queuedDigs=" + queued + " label=" + label);
+        return queued;
+    }
+
+    private static int queueDig(DroneController ctrl, World world, int x, int y, int z) {
+        if (y <= 1 || y >= 255) return 0;
+        if (!ItemClassifier.isMineableBlock(world, x, y, z)) return 0;
+        if (ctrl.currentMineTarget != null
+                && ctrl.currentMineTarget[0] == x && ctrl.currentMineTarget[1] == y && ctrl.currentMineTarget[2] == z) {
+            return 0;
+        }
+        for (int[] point : ctrl.mineQueue) {
+            if (point[0] == x && point[1] == y && point[2] == z) return 0;
+        }
+        ctrl.mineQueue.addFirst(new int[]{x, y, z});
+        return 1;
     }
 
     /**
@@ -569,77 +530,6 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         return placed;
     }
 
-
-    /**
-     * Starts a navigation-owned dig route. The building manager performs the
-     * block breaking; the navigation manager keeps the session alive and
-     * decides what to do when control returns to GOTO.
-     */
-    public int startDigRoute(DroneController ctrl, List<int[]> blocks, String label) {
-        if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null
-                || ctrl.escapeResume != null || blocks == null || blocks.isEmpty()) {
-            return 0;
-        }
-        World world = ctrl.drone.worldObj;
-        DroneController.TaskSnapshot pending = new DroneController.TaskSnapshot();
-        pending.mode = ctrl.mode;
-        pending.goalX = ctrl.goalX;
-        pending.goalY = ctrl.goalY;
-        pending.goalZ = ctrl.goalZ;
-        pending.mineFilter = ctrl.mineFilter;
-        pending.mineExactQueueOnly = ctrl.mineExactQueueOnly;
-        pending.mineUntilFull = ctrl.mineUntilFull;
-        pending.returnToOwnerAfterMine = ctrl.returnToOwnerAfterMine;
-        pending.mineTargetCount = ctrl.mineTargetCount;
-        pending.minedCount = ctrl.minedCount;
-        pending.mineMatchedCount = ctrl.mineMatchedCount;
-        pending.mineTarget = ctrl.currentMineTarget;
-        pending.mineStandoff = ctrl.currentMineStandoff;
-        pending.mineQueue = new ArrayList<int[]>(ctrl.mineQueue);
-        ctrl.mineQueue.clear();
-
-        int queued = 0;
-        for (int i = blocks.size() - 1; i >= 0; i--) {
-            int[] step = blocks.get(i);
-            if (step != null && step.length > 3 && step[3] == 1) {
-                queued += queueDig(ctrl, world, step[0], step[1], step[2]);
-            }
-        }
-        if (queued == 0) {
-            ctrl.mineQueue.addAll(pending.mineQueue);
-            return 0;
-        }
-
-        ctrl.mineFilter = "all";
-        ctrl.mineExactQueueOnly = true;
-        ctrl.mineUntilFull = false;
-        ctrl.mineTargetCount = 0;
-        ctrl.returnToOwnerAfterMine = false;
-        ctrl.currentMineTarget = null;
-        ctrl.currentMineStandoff = null;
-        ctrl.mineProgressTicks = 0;
-        ctrl.stuckTicks = 0;
-        ctrl.lastPathPartial = false;
-        ctrl.pathWaypoints.clear();
-        ctrl.pathIndex = 0;
-        ctrl.repathCooldown = 0;
-        this.manager.setDroneMode(ctrl, Mode.MINE, label);
-        ctrl.escapeResume = pending;
-        this.logger.log("PATH", ctrl, "Dig route queued",
-                "queuedDigs=" + queued + " label=" + label);
-        return queued;
-    }
-
-    private static int queueDig(DroneController ctrl, World world, int x, int y, int z) {
-        if (y <= 1 || y >= 255) return 0;
-        if (!ItemClassifier.isMineableBlock(world, x, y, z)) return 0;
-        for (int[] point : ctrl.mineQueue) {
-            if (point[0] == x && point[1] == y && point[2] == z) return 0;
-        }
-        ctrl.mineQueue.addFirst(new int[]{x, y, z});
-        return 1;
-    }
-
     @Override
     protected BlockContext createContext(DroneController controller, EntityPlayerMP player,
                                          String operation) {
@@ -658,5 +548,4 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
     protected BlockResult result(BlockContext context) {
         return context.result();
     }
-
 }

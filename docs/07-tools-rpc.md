@@ -29,12 +29,12 @@ and `docs/removed-tasks.md`. They are not callable through any alias.
 
 Returns live status. Important fields:
 
-- identity: `id`, `name`, `owner`, `mode`, position;
+- identity: `id`, `name`, `owner`, position;
 - task: `activeTask`, `taskPrompt`, `taskSummary`, `taskAgeMs`, `taskNotes`;
 - navigation: `navigationActive`, `navigationPhase`, `navigationReason`,
   `navigationError`, `distanceToGoal`, `arrived`;
-- mining: `activeBreakTarget`, `mineQueueSize`, `mineTargetCount`,
-  `mineExactQueueOnly`, `mineFilter`, `selfRescue`, `minedCount`, `builtCount`,
+- work: `mining`, `busy` (navigation, mining or any retained action);
+- mining: `activeBreakTarget`, `mineQueueSize`, `minedCount`, `builtCount`,
   `scoopedCount`;
 - lighting: `lightActive`, `lightRadius`, `lightLevel`, `lightColor`;
 - inventory: `inventory`, `freeSlots`, `totalItems`, `isFull`;
@@ -103,7 +103,7 @@ calls.
 ### `drone.stop()`
 
 - Clears navigation/path and holds position.
-- Sets `Mode.STAY`.
+- Leaves the drone idle; there is no mode to set.
 
 No `tunnel`, `digUp`, `digDown`, or `navigate` tools exist.
 
@@ -115,7 +115,7 @@ No `tunnel`, `digUp`, `digDown`, or `navigate` tools exist.
 - If out of reach: `{needsMovement:true,standoff,action:"break",distance,target}`.
 - SDK goto standoff then retries.
 - If no standoff: SDK goto the block coordinates (navigation may tunnel).
-- Starts `Mode.MINE`; waits until `activeBreakTarget` is gone/mode changes.
+- Retains a break action that ticks the block; waits until `activeBreakTarget` is gone.
 - Returns `{started,broken,...}`.
 
 ### `drone.placeBlock(x,y,z,block,meta,opts)`
@@ -152,9 +152,10 @@ No `tunnel`, `digUp`, `digDown`, or `navigate` tools exist.
 
 Ops: `move`, `give`, `take`, `withdraw`, `deposit`, `drop`, `suck`.
 
-- `give`/`drop`/`deposit` may set `Mode.DROP`/`Mode.DEPOSIT` when out of reach;
-  the SDK waits for idle.
-- Results include counts/mode flags.
+- `give`/`drop`/`deposit` retain an action that flies to the target; the SDK
+  waits for `busy === false`.
+- Results include counts and a `flyingToPlayer`/`flyingToChest` flag while the
+  action is still travelling.
 
 ### `drone.craft(filter, count)`
 
@@ -206,7 +207,7 @@ Cached snapshot (rebuilt every 100 ticks / 5 s, on demand if empty). Includes:
 - mod identity/version/timestamp;
 - players (name/dimension/position/yaw/pitch/health/auth);
 - drones (id/entity/uuid/name/owner/thought/target player/dimension/position/
-  target/mode/lookHold/status/LED/energy/light aura/queue/task/navigation/path/
+  target/status/LED/energy/light aura/queue/task/navigation/path/mining/
   inventory/nearby blocks/entities);
 - recent chat (50);
 - recent debug (25, capped);

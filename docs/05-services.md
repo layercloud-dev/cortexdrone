@@ -236,8 +236,8 @@ target, server physics step, player look detection, stable follow anchor,
 
 ### `DigPathService`
 
-Weighted 6-neighbor dig A*; returns `int[]{x,y,z,dig}` steps only. No queues, no
-mode changes.
+Weighted 6-neighbor dig A*; returns `int[]{x,y,z,dig}` steps only. No queues
+and no drone state.
 
 ### `DronePhysicsService`
 

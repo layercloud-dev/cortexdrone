@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 import java.util.Map;
@@ -204,7 +203,7 @@ final class AgentHeartbeat {
     private String statusSummary() {
         if (this.ctrl == null || this.ctrl.drone == null) return "drone unavailable";
         StringBuilder sb = new StringBuilder();
-        sb.append("mode=").append(this.ctrl.mode != null ? this.ctrl.mode.name() : "?");
+        sb.append("mining=").append(this.ctrl.isMining());
         sb.append(" pos=(").append(Math.round(this.ctrl.drone.posX)).append(',')
                 .append(Math.round(this.ctrl.drone.posY)).append(',')
                 .append(Math.round(this.ctrl.drone.posZ)).append(')');
@@ -218,9 +217,7 @@ final class AgentHeartbeat {
 
     private boolean hasActiveWork() {
         if (this.ctrl == null) return false;
-        if (!this.ctrl.mineQueue.isEmpty()) return true;
-        Mode m = this.ctrl.mode;
-        return m == Mode.MINE || m == Mode.DROP || m == Mode.DEPOSIT;
+        return this.ctrl.isMining();
     }
 
     private int countInventory() {

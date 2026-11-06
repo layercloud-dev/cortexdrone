@@ -56,7 +56,7 @@ Infrastructure injected before the model's code:
 | `rpc(method,args,opts)` | POST `/rpc`, 3 attempts, JSON cap unless `raw` |
 | `_state()` | `/rpc state` |
 | `_waitUntil(predicate,maxWaitMs)` | poll state with backoff; throws `SUPERSEDED` on aborted |
-| `_waitIdle(maxWaitMs)` | wait for FOLLOW/STAY/GUARD/PATROL and no break target |
+| `_waitIdle(maxWaitMs)` | wait for `busy === false` and no break target |
 | `_isPendingScan` / `_normalizeScanResult` | large-scan handling |
 | `_awaitScanJob(jobId,radius)` | poll `poll_scan` with backoff until done/timeout |
 | `_finalizeScript` | no-op hook before output |
@@ -92,7 +92,7 @@ drone.cancel()
 Movement awaits `state.navigationActive === false`. Block/interaction helpers
 retry with `goto(standoff)` when `needsMovement` is returned, and the break
 helper tunnels to the target if no standoff exists. Transfer waits for idle when
-the result indicates a DROP/DEPOSIT mode.
+the result reports a flight in progress.
 
 There are no `world`, `player`, `kb`, `harness`, `say`, `setStatusText`, `mine`,
 `tunnel`, `digUp`, or `digDown` globals.

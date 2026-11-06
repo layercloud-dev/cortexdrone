@@ -1,4 +1,4 @@
-# 08 — Runtime Lifecycle, Modes and Operations
+# 08 — Runtime Lifecycle and Operations
 
 ## 1. Mod entrypoint
 
@@ -29,7 +29,7 @@ They are separate so a hung agent cannot starve telemetry/RPC and vice versa.
 3. set debug log file `<world>/layercloud-drone-debug.log`;
 4. `loadConfig` (env defaults then file values);
 5. `reconnectUnlinkedWorldDrones` (adopt existing OC drones, restore saved
-   name/owner/mode/light, deduplicate per owner);
+   name/owner/light, deduplicate per owner);
 6. log initialization;
 7. register `/drone`;
 8. start HTTP server.
@@ -54,44 +54,37 @@ They are separate so a hung agent cannot starve telemetry/RPC and vice versa.
 
 ### Per-controller tick (`TickManager`)
 
-1. increment `tickClock`, decrement follow-anchor cooldown;
+1. increment `tickClock`, decrement attack/pickup/repath cooldowns;
 2. every 40 ticks refresh OC machine state; otherwise use `drone.isRunning()`;
-3. update orbit angle, attack/pickup/repath cooldowns;
-4. compute movement delta and update last position;
-5. `BreadcrumbService.observe` (service throttles to every 4 ticks);
-6. stuck detection/logging and leaf-obstruction clearing;
-7. item pickup every 5 ticks in `FOLLOW`/`MINE`;
-8. lighting aura tick;
-9. clear look-hold outside `FOLLOW`;
-10. `NavigationManager.tick`;
-11. mode behavior (`FOLLOW`, `STAY`, `MINE`, `DROP`, `DEPOSIT`);
-12. `ActionRegistry.tick` (all retained actions);
-13. complete task session if no loop/script/task work;
-14. LED animation/color update and disco note particles;
-15. server-side physics step when needed (blocked, long-range, machine not
+3. compute movement delta and update last position;
+4. `BreadcrumbService.observe` (service throttles to every 4 ticks);
+5. stall detection/logging and leaf-obstruction clearing;
+6. lighting aura tick;
+7. `NavigationManager.tick` (only when a goal session exists);
+8. `ActionRegistry.tick` (all retained actions: break, dig, deposit, delivery);
+9. idle hold: when no session and no retained action, cancel leftover velocity
+   and pin the flight target to the current position;
+10. complete task session if no loop/script/task work;
+11. LED animation/color update and disco note particles;
+12. server-side physics step when needed (blocked, long-range, machine not
     running).
 
-## 4. Modes
+## 4. Work state (no modes)
 
-`Mode`:
+There is no `Mode` enum and no `setDroneMode`. A drone is doing exactly one of:
 
-| Mode | Owner | Behavior |
+| Work | Owner | How it is represented |
 | --- | --- | --- |
-| `FOLLOW` | `TickManager` | hover near player; look-hold when looked at |
-| `STAY` | `TickManager` | hold position; look-hold when owner looks |
-| `GOTO` | `NavigationManager` | goal session: flight/trail/dig |
-| `MINE` | `BuildingManager` | mining loop / dig route |
-| `DEPOSIT` | `TickManager` | fly to chest and deposit |
-| `DROP` | `TickManager` | fly to owner and give/drop |
+| navigation | `NavigationManager` | an entry in its `sessions` map |
+| mining / digging | a retained block action | `currentMineTarget` and/or `mineQueue` |
+| deposit / delivery | a retained inventory action | the action context itself |
+| idle | nobody | none of the above: hold position |
 
-`AIDroneManager.setDroneMode`:
-
-- restores parked self-rescue state on a real transition;
-- sets mode;
-- clears path fields;
-- clears follow anchor outside FOLLOW;
-- cancels partial break display outside MINE;
-- logs `MODE` and saves config for FOLLOW/STAY transitions.
+Every operation is started by a tool call and finishes on its own. A new tool
+call replaces the previous work through the normal `ActionManager` retention
+rule (one execution per operation) or through `goto`/`stop` for navigation.
+`cancel` clears every retained context and the navigation session, and cancels
+the partial break animation.
 
 ## 5. Spawn, link, despawn, reconnect
 
@@ -126,7 +119,7 @@ Every 40 ticks and at startup, unlinked live OC drones are adopted:
 
 - skip dead/known/despawned;
 - match saved drone by UUID, fallback by owner;
-- restore name/owner/mode/autoTorch/LED effect/custom color;
+- restore name/owner/autoTorch/LED effect/custom color;
 - deduplicate multiple drones for one owner (merge inventory into existing drone,
   despawn duplicate);
 - ensure machine running, 8 slots, register controller, log `LINK`.
@@ -153,8 +146,8 @@ Environment variables:
 
 File: `<world>/layercloud-ai.json`.
 
-Saved drones store UUID/name/owner/mode/autoTorch/LED effect/custom color/
-dimension/position. MINE/DROP/DEPOSIT are normalized to FOLLOW on save. Server
+Saved drones store UUID/name/owner/autoTorch/LED effect/custom color/dimension/
+position. Work state is never saved: a restarted drone comes back idle. Server
 drones are not saved.
 
 Saved locations support exact owner key, global key, fuzzy name/tags matching,
@@ -207,7 +200,7 @@ Unknown subcommands become a natural-language task. Legacy shortcuts (`take`,
 - subscribers receive live `[DroneDebug:CATEGORY]` chat lines;
 - `/debug` JSON is capped (message/details max chars).
 
-Common categories: `SYSTEM`, `MODE`, `PATH`, `NAV`, `STUCK`, `ESCAPE`, `MINE`,
+Common categories: `SYSTEM`, `PATH`, `NAV`, `STUCK`, `ESCAPE`, `MINE`,
 `BUILD`, `INV`, `LIGHT`, `LLM`, `CODEMODE`, `HEARTBEAT`, `TRACE`, `TASK`, `CMD`,
 `SPAWN`, `LINK`, `DESPAWN`, `WARN`, `ERROR`.
 
@@ -270,25 +263,23 @@ ticks.
 
 Key fields:
 
-- identity/mode/goal/owner/name/UUID;
+- identity/goal/owner/name/UUID;
 - navigation generation/error;
 - task session;
-- follow anchor/look-hold;
 - 3D path waypoints/index/goal/cooldown/partial/nodes;
-- stuck logs, solid waypoint hits, self-rescue snapshot;
+- stuck logs and solid waypoint hits;
 - lighting/autoTorch/cells;
 - mining queue/current target/standoff/progress/required ticks/counts;
-- deposit/drop filter;
 - active loop ID/script count/running/cancelled loop sets;
 - thought history;
-- cooldowns (attack/pickup/stuck/follow-anchor);
+- cooldowns (attack/pickup/stuck);
 - velocity/predictive braking;
 - path cache signature/tick;
 - LED custom color/effect/tick;
-- last position/orbit angle/despawn flag.
+- last position/despawn flag.
 
-`TaskSnapshot` preserves mode/goal/mining flags/queue/target/standoff during
-self-rescue.
+Work state is derived (`isMining()`, `NavigationManager.isActive`), never stored
+as an enum. Long-running action state lives in the action context.
 
 ## 13. Server shutdown
 

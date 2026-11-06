@@ -56,7 +56,7 @@ final class DroneContextBuilder {
         ctx.addProperty("droneX", Math.round(ctrl.drone.posX * 10.0) / 10.0);
         ctx.addProperty("droneY", Math.round(ctrl.drone.posY * 10.0) / 10.0);
         ctx.addProperty("droneZ", Math.round(ctrl.drone.posZ * 10.0) / 10.0);
-        ctx.addProperty("mode", ctrl.mode.name());
+        ctx.addProperty("navigationActive", manager.getNavigationManager().isActive(ctrl));
         boolean canSeeSky = false;
         try {
             canSeeSky = world.canBlockSeeTheSky(MathHelper.floor_double(ctrl.drone.posX),
@@ -70,7 +70,7 @@ final class DroneContextBuilder {
 
         ctx.addProperty("distToPlayerM", Math.round(Math.hypot(
                 ctrl.drone.posX - refX, ctrl.drone.posY - refY) * 10.0) / 10.0);
-        ctx.addProperty("droneMode", ctrl.mode.name());
+        ctx.addProperty("mining", ctrl.isMining());
         ctx.addProperty("activeTaskRunning", ctrl.task.isActive() || ctrl.hasActiveTaskOrLoop(0));
         ctx.addProperty("activeScriptCount", ctrl.activeScriptCount.get());
         ctx.addProperty("taskPrompt", ctrl.task.getPrompt());
@@ -80,7 +80,7 @@ final class DroneContextBuilder {
         ctx.addProperty("pathNodesExpanded", ctrl.lastPathNodesExpanded);
         if (!ctrl.lastThought.isEmpty()) ctx.addProperty("lastThought", ctrl.lastThought);
         JsonObject taskState = new JsonObject();
-        taskState.addProperty("mode", ctrl.mode.name());
+        taskState.addProperty("mining", ctrl.isMining());
         taskState.addProperty("navigationActive", manager.getNavigationManager().isActive(ctrl));
         taskState.addProperty("activeBreakTarget", ctrl.currentMineTarget != null
                 ? (ctrl.currentMineTarget[0] + "," + ctrl.currentMineTarget[1] + "," + ctrl.currentMineTarget[2]) : "");

@@ -2,7 +2,6 @@ package ir.layercloud.cortexdrone.service.inventory;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.item.EntityItem;
@@ -113,8 +112,6 @@ public class PlayerInventoryOps {
             droneInv.markDirty();
             InventoryService.syncPlayerInventory(player);
             this.logger.log("INV", ctrl, "Gave " + given + " item(s) to " + player.getCommandSenderName(), "filter=" + f);
-        } else if (ctrl.mode == Mode.MINE || !ctrl.mineQueue.isEmpty()) {
-            ctrl.returnToOwnerAfterMine = true;
         }
         return given;
     }

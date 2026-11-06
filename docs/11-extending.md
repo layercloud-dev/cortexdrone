@@ -84,7 +84,7 @@ public final class XAction implements Action<XContext> {
 2. Keep it read-only/planning unless it is a low-level storage primitive invoked
    by an action/manager.
 3. Inject it into `AIDroneManager` or the manager that needs it.
-4. Do not let it set `Mode`, goals, path state, or start actions.
+4. Do not let it own goals, work state, path state, or start actions.
 5. Add caches only with a short TTL and document invalidation.
 6. Prefer returning typed DTOs/JSON only at the RPC boundary; services may return
    domain objects.

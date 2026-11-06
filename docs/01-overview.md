@@ -46,15 +46,18 @@ cannot wedge the model loop.
 2. **Tools are primitives.** No hidden `mine`, `hunt`, `farm`, `buildStructure`,
    `sortChests`, or batched task queue.
 3. **Managers decide, services answer, actions execute.** A service must not
-   choose a goal, set a mode, or start an action. Some services expose low-level
-   storage primitives that an action/manager explicitly invokes. An action must
-   not decide a route or call another action. A manager owns the lifecycle and
-   the goal.
+   choose a goal, start an action, or own work state. Some services expose
+   low-level storage primitives that an action/manager explicitly invokes. An
+   action must not decide a route or call another action. A manager owns the
+   lifecycle and the goal.
 4. **Only movement is autonomous.** `goto` keeps working until arrival or proven
    failure. Every other operation is one explicit primitive.
-5. **JSON only at the edge.** Actions, contexts, managers and services use typed
+5. **No drone modes.** There is no `Mode` enum or FOLLOW/STAY/GOTO/MINE/DEPOSIT/
+   DROP switch. Work is expressed by an active navigation session or a retained
+   action context; when neither exists the drone is idle and holds position.
+6. **JSON only at the edge.** Actions, contexts, managers and services use typed
    DTOs. `harness/rpc/translate` is the only place that parses/serializes JSON.
-6. **Server-thread safety.** World reads/writes and entity mutation are marshalled
+7. **Server-thread safety.** World reads/writes and entity mutation are marshalled
    onto the server thread. Large scans are sliced across ticks.
 
 ## 4. Technology stack
@@ -86,9 +89,8 @@ string is `required-after:OpenComputers;after:layercloudsmp`.
   visuals, skill memory and cancellation.
 - Goal navigation: breadcrumb backtracking, no-dig flight A*, weighted dig A*,
   tunnel/dig-up/dig-down fallback.
-- Mining loop used by `break_block`/dig routes, including tool-aware break time,
-  block drops, fortune, inventory-full handling, auto deposit/drop and
-  self-rescue resume.
+- Mining work used by `break_block`/dig routes, including tool-aware break time,
+  block drops, fortune and inventory-full stop.
 - Inventory/chest/furnace/machine inspection, item search, crafting, fluid
   scooping and machine recipe introspection.
 - Torch-free illumination aura that restores original light values.
@@ -122,7 +124,8 @@ string is `required-after:OpenComputers;after:layercloudsmp`.
 - Hidden aliases or duplicate SDK globals (`world`, `player`, `kb`, `harness`).
 - `/ai` and `@ai` command aliases; `/drone` and `@drone` remain.
 - Legacy `/drone` shortcuts (`take`, `give`, `torch`, `drop`, `chest`, `scan`).
-- `CombatService`, hunt mode, guard/patrol/follow/stay premade tasks.
+- `CombatService`, hunt/guard/patrol/follow/stay premade tasks, and the
+  `Mode` state machine that drove them.
 - Top-level `codemode`, `inventory`, `world`, `navigation` packages.
 
 See [removed-tasks.md](removed-tasks.md) for the historical list and replacement

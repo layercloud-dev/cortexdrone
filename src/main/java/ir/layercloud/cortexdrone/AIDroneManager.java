@@ -15,7 +15,6 @@ import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
@@ -111,8 +110,6 @@ public class AIDroneManager {
         this.tickManager = new TickManager(
                 this,
                 this.logger,
-                this.inventoryService,
-                this.buildingManager,
                 this.visualsManager,
                 this.navigationManager,
                 this.breadcrumbService
@@ -194,41 +191,12 @@ public class AIDroneManager {
         if (ctrl == null) return;
         this.actionRegistry.cancelAll(ctrl);
         this.navigationManager.clear(ctrl);
-        ctrl.clearActionState();
-    }
-
-    public void setDroneMode(DroneController ctrl, Mode newMode, String reason) {
-        if (ctrl == null) return;
-        Mode old = ctrl.mode;
-        // A real mode transition means the previous task is over. Any parked
-        // self-rescue queue is merged back so internal transitions (DROP/DEPOSIT)
-        // can resume mining; explicit new commands reset queues themselves.
-        if (newMode != old) {
-            ctrl.clearSelfRescue(true);
-        }
-        ctrl.mode = newMode;
-        ctrl.pathWaypoints.clear();
-        ctrl.pathIndex = 0;
-        ctrl.pathGoalX = Double.NaN;
-        if (newMode != Mode.FOLLOW) {
-            ctrl.hasAnchor = false;
-        }
-        if (newMode != Mode.MINE && ctrl.currentMineTarget != null && ctrl.drone != null && ctrl.drone.worldObj != null) {
+        if (ctrl.drone != null && ctrl.drone.worldObj != null && ctrl.currentMineTarget != null) {
             ctrl.drone.worldObj.destroyBlockInWorldPartially(
                     ctrl.drone.getEntityId(),
-                    ctrl.currentMineTarget[0],
-                    ctrl.currentMineTarget[1],
-                    ctrl.currentMineTarget[2],
-                    -1
-            );
-            ctrl.currentMineTarget = null;
+                    ctrl.currentMineTarget[0], ctrl.currentMineTarget[1], ctrl.currentMineTarget[2], -1);
         }
-        if (old != newMode) {
-            this.logger.log("MODE", ctrl, old.name() + " -> " + newMode.name(), reason != null ? reason : "");
-            if (newMode == Mode.FOLLOW || newMode == Mode.STAY) {
-                saveConfig();
-            }
-        }
+        ctrl.clearActionState();
     }
 
     public void onPlayerChat(ServerChatEvent event) {
@@ -318,7 +286,6 @@ public class AIDroneManager {
                     UUID uid = d.getUniqueID();
                     String owner = d.ownerName() != null && !d.ownerName().isEmpty() ? d.ownerName() : "Server";
                     String name = d.getCommandSenderName() != null ? d.getCommandSenderName() : "AI-Drone";
-                    Mode restoredMode = Mode.FOLLOW;
                     boolean restoredTorch = false;
                     String restoredLedEffect = "NONE";
                     Integer restoredCustomLed = null;
@@ -344,12 +311,6 @@ public class AIDroneManager {
                                 name = matchedSaved.getName();
                             if (matchedSaved.getOwner() != null && !matchedSaved.getOwner().isEmpty())
                                 owner = matchedSaved.getOwner();
-                            if (matchedSaved.getMode() != null) {
-                                try {
-                                    restoredMode = Mode.valueOf(matchedSaved.getMode());
-                                } catch (Exception ignored) {
-                                }
-                            }
                             restoredTorch = matchedSaved.isAutoTorch();
                             if (matchedSaved.getLedEffect() != null) restoredLedEffect = matchedSaved.getLedEffect();
                             restoredCustomLed = matchedSaved.getCustomLedColor();
@@ -371,12 +332,11 @@ public class AIDroneManager {
                     ensureMachineRunningState(d);
                     d.inventorySize_$eq(8);
                     DroneController ctrl = registerDroneController(d, name, owner);
-                    ctrl.mode = restoredMode;
                     ctrl.autoTorch = restoredTorch;
                     ctrl.ledEffect = restoredLedEffect;
                     ctrl.customLedColor = restoredCustomLed;
                     this.logger.log("LINK", ctrl, "Auto-reconnected world drone",
-                            String.format("owner=%s pos=(%.1f,%.1f,%.1f) mode=%s", owner, d.posX, d.posY, d.posZ, restoredMode.name()));
+                            String.format("owner=%s pos=(%.1f,%.1f,%.1f)", owner, d.posX, d.posY, d.posZ));
                 }
             }
         }
@@ -509,7 +469,6 @@ public class AIDroneManager {
             ctrl = registerDroneController(best, dName, pName);
         } else {
             ctrl.ownerName = pName;
-            ctrl.targetPlayerName = pName;
             this.controllersByOwner.put(CortexDroneMod.normKey(pName), ctrl);
         }
         saveConfig();
@@ -585,8 +544,9 @@ public class AIDroneManager {
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== AI Drone Status [" + EnumChatFormatting.AQUA + ctrl.name + EnumChatFormatting.GOLD + "] ===");
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "ID: " + EnumChatFormatting.WHITE + "#" + ctrl.id
                 + EnumChatFormatting.YELLOW + " | Owner: " + EnumChatFormatting.WHITE + ctrl.ownerName
-                + EnumChatFormatting.YELLOW + " | Mode: " + EnumChatFormatting.GREEN + ctrl.mode.name()
-                + (ctrl.playerLookHold ? EnumChatFormatting.AQUA + " [LOOK-HOLD]" : ""));
+                + EnumChatFormatting.YELLOW + " | Navigating: " + EnumChatFormatting.GREEN
+                + this.navigationManager.isActive(ctrl)
+                + EnumChatFormatting.YELLOW + " | Mining: " + EnumChatFormatting.GREEN + ctrl.isMining());
         CortexDroneMod.sendMsg(sender, String.format(EnumChatFormatting.YELLOW + "Pos: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
                         + EnumChatFormatting.YELLOW + " -> Target: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
                         + EnumChatFormatting.GRAY + " [Waypoints: %d/%d]",

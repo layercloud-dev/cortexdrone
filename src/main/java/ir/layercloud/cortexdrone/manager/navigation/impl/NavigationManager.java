@@ -15,7 +15,6 @@ import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationResult;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
@@ -82,8 +81,6 @@ public final class NavigationManager {
 
         Session session = new Session(target.getX(), target.getY(), target.getZ());
         this.sessions.put(controller, session);
-        this.manager.setDroneMode(controller, Mode.GOTO,
-                String.format("goto (%.1f,%.1f,%.1f)", target.getX(), target.getY(), target.getZ()));
         return NavigationResult.started(target.getX(), target.getY(), target.getZ(), "planning");
     }
 
@@ -98,7 +95,7 @@ public final class NavigationManager {
         NavigationContext context = new NavigationContext(controller, player,
                 NavigationMode.STOP, controller.drone.posX, controller.drone.posY,
                 controller.drone.posZ, null, reason != null ? reason : "Navigation stop");
-        new StopAction(this.manager).execute(context);
+        new StopAction().execute(context);
         return NavigationResult.stopped(controller.drone.posX, controller.drone.posY,
                 controller.drone.posZ);
     }
@@ -117,19 +114,12 @@ public final class NavigationManager {
             tickLeg(controller, session);
             return;
         }
+        // A dig leg keeps the session parked until its block queue drains.
         if (session.phase == Phase.DIG) {
-            if (controller.escapeResume != null || controller.mode == Mode.MINE) return;
-            if (controller.mode != Mode.GOTO) {
-                fail(controller, session, "Navigation interrupted by " + controller.mode.name());
-                return;
-            }
+            if (controller.isMining()) return;
             session.phase = Phase.PLAN;
             session.replanCooldown = 0;
             session.trailRejected = false;
-        }
-        if (controller.mode != Mode.GOTO) {
-            this.sessions.remove(controller);
-            return;
         }
 
         session.ticks++;
@@ -387,7 +377,6 @@ public final class NavigationManager {
         this.sessions.remove(controller);
         controller.stuckTicks = 0;
         this.pathfinder.clearNavigation(controller);
-        this.manager.setDroneMode(controller, Mode.STAY, "Arrived at navigation goal");
         controller.drone.lightColor_$eq(0x00FFAA);
         controller.drone.statusText_$eq("Arrived\n"
                 + (int) Math.floor(session.goalX) + "," + (int) Math.floor(session.goalZ));
@@ -406,9 +395,6 @@ public final class NavigationManager {
         controller.navigationError = reason;
         this.pathfinder.clearNavigation(controller);
         controller.stuckTicks = 0;
-        if (controller.mode == Mode.GOTO) {
-            this.manager.setDroneMode(controller, Mode.STAY, reason);
-        }
         if (controller.drone != null) {
             controller.drone.statusText_$eq("Route failed\n" + reason);
         }
@@ -422,7 +408,7 @@ public final class NavigationManager {
             case DIG_DOWN:
                 return new DigRouteAction(this.manager.getBuildingManager());
             case STOP:
-                return new StopAction(this.manager);
+                return new StopAction();
             case HOLD:
                 return new HoldAction();
             case FLIGHT:

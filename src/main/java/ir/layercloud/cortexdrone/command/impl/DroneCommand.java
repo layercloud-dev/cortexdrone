@@ -129,7 +129,7 @@ public class DroneCommand extends BaseCommand {
                         EnumChatFormatting.AQUA + "#%d %s" + EnumChatFormatting.GRAY + " (Owner: %s) "
                                 + EnumChatFormatting.YELLOW + "[%s] " + EnumChatFormatting.WHITE + "@ (%.1f, %.1f, %.1f) "
                                 + EnumChatFormatting.GREEN + "Items: %d",
-                        c.id, c.name, c.ownerName, c.mode.name(),
+                        c.id, c.name, c.ownerName, c.isMining() ? "mining" : "idle",
                         c.drone.posX, c.drone.posY, c.drone.posZ,
                         InventoryService.countInventoryItems(c.drone.mainInventory())
                 ));

@@ -31,8 +31,8 @@ not a substitute for the subsystem chapters.
 | `inventory/InventoryRequest` | Transfer/craft request DTO |
 | `inventory/InventoryResult` | Transfer/craft result DTO |
 | `inventory/impl/CraftAction` | One crafting primitive |
-| `inventory/impl/DepositChestAction` | Deposit into chest or enter DEPOSIT |
-| `inventory/impl/DropAction` | Drop inventory or enter DROP |
+| `inventory/impl/DepositChestAction` | Fly to a chest and deposit; retained until done |
+| `inventory/impl/DropAction` | Hand inventory to the owner, or drop in place when offline |
 | `inventory/impl/GiveToPlayerAction` | Give inventory to player |
 | `inventory/impl/MoveSlotAction` | Move filtered items between inventories |
 | `inventory/impl/SuckItemsAction` | Vacuum nearby dropped items |
@@ -40,7 +40,7 @@ not a substitute for the subsystem chapters.
 | `inventory/impl/WithdrawChestAction` | Withdraw from chest/container |
 | `navigation/NavigateResult` | One navigation leg result (`moved/legDone/blocked/partial/needsDig/error`) |
 | `navigation/NavigationMode` | Flight/hold/tunnel/dig-up/dig-down/stop modes |
-| `navigation/impl/DigRouteAction` | Hands a dig route to `BuildingManager` |
+| `navigation/impl/DigRouteAction` | Queues a dig route and ticks it to completion |
 | `navigation/impl/HoldAction` | Applies hold target/motion damping |
 | `navigation/impl/NavigateAction` | No-dig flight leg execution (A*, waypoints, blocked detection) |
 | `navigation/impl/StopAction` | Clears path and stops/hovers |
@@ -60,8 +60,8 @@ not a substitute for the subsystem chapters.
 | `ActionContextBase` | Active/retained lifecycle, identity fields, complete/cancel callbacks |
 | `impl/BlockContext` | Block result/target/break tracking |
 | `impl/InteractionContext` | Interaction result/target data |
-| `impl/InventoryContext` | Inventory result/options |
-| `impl/NavigationContext` | Mode/target/dig path/result/ticks |
+| `impl/InventoryContext` | Inventory result, chest target, filter, moved count |
+| `impl/NavigationContext` | Action kind/target/dig path/result/ticks |
 | `impl/VisualsContext` | Visuals result |
 
 ## `manager/`
@@ -70,8 +70,8 @@ not a substitute for the subsystem chapters.
 | --- | --- |
 | `ActionManager` | Typed action lifecycle base (create/execute/retain/tick/cancel) |
 | `ActionRegistry` | Operation→manager map, tick/cancel all, duplicate detection |
-| `TickManager` | 20-Hz pipeline: breadcrumbs, stuck, pickup, aura, navigation, modes, actions, LED, physics |
-| `building/impl/BuildingManager` | Block break/place, mining loop, drops, inventory-full handling, dig routes, self-rescue restore |
+| `TickManager` | 20-Hz pipeline: breadcrumbs, stalls, aura, navigation, retained actions, idle hold, LED, physics |
+| `building/impl/BuildingManager` | Block break/place mechanics, target selection, tunneling, drops, dig queues, inventory-full stop |
 | `interact/impl/InteractionManager` | Interaction/attack/pick/unpick action dispatch |
 | `inventory/impl/InventoryManager` | Transfer/craft action dispatch |
 | `navigation/NavigationRequest` | Goto request DTO |
@@ -179,8 +179,7 @@ not a substitute for the subsystem chapters.
 
 | Class | Responsibility |
 | --- | --- |
-| `drone/DroneController` | Per-drone mutable state, task snapshot, loops, LED/path/mining |
-| `drone/Mode` | FOLLOW/STAY/GOTO/MINE/DEPOSIT/DROP |
+| `drone/DroneController` | Per-drone mutable state, loops, LED/path/mining |
 | `drone/TaskSession` | One active task/session: prompt, summary, notes, age |
 | `command/BaseCommand` | Command base/compareTo |
 | `command/impl/DroneCommand` | `/drone` management + natural-language fallback |

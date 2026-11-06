@@ -7,7 +7,6 @@ import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +14,13 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
 /**
- * Single-use inventory action: give matching items to a player.
+ * Single-use inventory action: give matching items to a player, flying to them
+ * first when they are out of reach. No DROP mode is involved.
  */
 @RequiredArgsConstructor
 public final class GiveToPlayerAction implements Action<InventoryContext> {
+    private static final double REACH = 3.5;
+
     private final AIDroneManager manager;
     private final InventoryService inventoryService;
     private final InventoryRequest request;
@@ -27,24 +29,67 @@ public final class GiveToPlayerAction implements Action<InventoryContext> {
     public void execute(InventoryContext context) {
         DroneController controller = context.controller();
         Drone drone = controller.drone;
-        World world = drone.worldObj;
-        EntityPlayerMP player = request.getPlayerName() != null
-                ? CortexDroneMod.findPlayer(request.getPlayerName())
-                : context.player();
-        if (player == null) player = CortexDroneMod.findPlayer(controller.ownerName);
-
-        String filter = request.getFilter() != null ? request.getFilter() : "all";
-        int count = request.getCount() > 0 ? request.getCount() : 512;
-        if (player != null && player.worldObj == world
-                && drone.getDistanceToEntity(player) > 4.2
-                && InventoryService.countInventoryItems(drone.mainInventory()) > 0) {
-            controller.dropFilter = filter;
-            this.manager.setDroneMode(controller, Mode.DROP,
-                    "RPC deliver_to_player (" + filter + ")");
-            context.result(InventoryResult.success("flyingToPlayer", true));
+        EntityPlayerMP player = resolvePlayer(context, controller);
+        if (player == null) {
+            context.result(InventoryResult.failure("Player not found"));
             return;
         }
-        int given = this.inventoryService.giveToPlayerInventory(controller, player, filter, count);
-        context.result(InventoryResult.success("transferred", given));
+        String filter = filter();
+        context.filter(filter);
+        if (inReach(controller, drone, player)) {
+            int given = this.inventoryService.giveToPlayerInventory(controller, player, filter, count());
+            context.movedCount(given);
+            context.result(InventoryResult.success("transferred", given));
+            return;
+        }
+        context.result(InventoryResult.success("flyingToPlayer", true));
+        context.retain();
+    }
+
+    @Override
+    public void tick(InventoryContext context) {
+        DroneController controller = context.controller();
+        if (controller == null || controller.drone == null || controller.drone.isDead) {
+            context.complete();
+            return;
+        }
+        Drone drone = controller.drone;
+        EntityPlayerMP player = resolvePlayer(context, controller);
+        if (player == null || player.worldObj != drone.worldObj) {
+            context.result(InventoryResult.failure("Player offline"));
+            context.complete();
+            return;
+        }
+        if (inReach(controller, drone, player)) {
+            String filter = context.filter() != null ? context.filter() : filter();
+            int given = this.inventoryService.giveToPlayerInventory(controller, player, filter, count());
+            context.movedCount(given);
+            context.result(InventoryResult.success("transferred", given));
+            context.complete();
+            return;
+        }
+        this.manager.getNavigationManager().flyToward(
+                controller, player.posX, player.posY + 1.25, player.posZ, "Deliver to player");
+        drone.statusText_$eq("Delivering\nItems");
+    }
+
+    private EntityPlayerMP resolvePlayer(InventoryContext context, DroneController controller) {
+        EntityPlayerMP player = this.request.getPlayerName() != null
+                ? CortexDroneMod.findPlayer(this.request.getPlayerName())
+                : context.player();
+        return player != null ? player : CortexDroneMod.findPlayer(controller.ownerName);
+    }
+
+    private static boolean inReach(DroneController controller, Drone drone, EntityPlayerMP player) {
+        World world = drone.worldObj;
+        return player.worldObj == world && drone.getDistanceToEntity(player) <= REACH;
+    }
+
+    private String filter() {
+        return this.request.getFilter() != null ? this.request.getFilter() : "all";
+    }
+
+    private int count() {
+        return this.request.getCount() > 0 ? this.request.getCount() : 512;
     }
 }

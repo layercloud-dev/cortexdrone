@@ -8,7 +8,6 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import lombok.RequiredArgsConstructor;
@@ -142,7 +141,7 @@ public class LlmAgentService {
                 this.manager.getMod().queueMain(new Runnable() {
                     @Override
                     public void run() {
-                        if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW) {
+                        if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl)) {
                             ctrl.drone.lightColor_$eq(0xAA55FF);
                             ctrl.drone.statusText_$eq("Thinking...\nTurn " + curTurn);
                         }
@@ -202,7 +201,7 @@ public class LlmAgentService {
                     this.manager.getMod().queueMain(new Runnable() {
                         @Override
                         public void run() {
-                            if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW)
+                            if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl))
                                 ctrl.drone.statusText_$eq("Think T" + curTurn + "\n" + AIDroneManager.trimStatus(thought));
                         }
                     });
@@ -275,7 +274,7 @@ public class LlmAgentService {
                     this.manager.getMod().queueMain(new Runnable() {
                         @Override
                         public void run() {
-                            if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW)
+                            if (ctrl.drone != null && !ctrl.drone.isDead && idleForStatus(ctrl))
                                 ctrl.drone.lightColor_$eq(0xAA55FF);
                         }
                     });
@@ -629,5 +628,10 @@ public class LlmAgentService {
             }
         }
         return lastMalformed;
+    }
+
+    /** True when no action owns the status text, so the loop may show progress. */
+    private boolean idleForStatus(DroneController ctrl) {
+        return !ctrl.isMining() && !this.manager.getNavigationManager().isActive(ctrl);
     }
 }

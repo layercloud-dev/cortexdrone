@@ -1,20 +1,15 @@
 package ir.layercloud.cortexdrone.action.navigation.impl;
 
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.drone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
-import lombok.RequiredArgsConstructor;
 
 /**
  * Executes the stop request: clears the path and holds position.
  */
-@RequiredArgsConstructor
 public final class StopAction implements Action<NavigationContext> {
-    private final AIDroneManager manager;
-
     @Override
     public void execute(NavigationContext context) {
         DroneController ctrl = context.controller();
@@ -39,8 +34,6 @@ public final class StopAction implements Action<NavigationContext> {
         ctrl.drone.motionY *= 0.25;
         ctrl.drone.motionZ *= 0.25;
         ctrl.drone.statusText_$eq("Hovering\nStopped");
-        this.manager.setDroneMode(ctrl, ir.layercloud.cortexdrone.drone.Mode.STAY,
-                context.label() != null ? context.label() : "Navigation stop");
         context.result(NavigateResult.done());
         context.complete();
     }

@@ -9,7 +9,6 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -368,7 +367,6 @@ public class DroneHttpServer {
                 this.manager.ensureMachineRunningState(drone);
                 ws.spawnEntityInWorld(drone);
                 DroneController ctrl = this.manager.registerDroneController(drone, dName, owner);
-                ctrl.mode = Mode.STAY;
                 this.manager.saveConfig();
                 this.logger.log("SPAWN", ctrl, "Spawned drone via HTTP /action", String.format("pos=(%.1f,%.1f,%.1f)", sx, sy, sz));
                 res.addProperty("ok", true);

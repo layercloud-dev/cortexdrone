@@ -54,7 +54,8 @@ public class DroneTelemetrySerializer {
             dj.addProperty("name", ctrl.name);
             dj.addProperty("owner", ctrl.ownerName);
             dj.addProperty("lastThought", ctrl.lastThought != null ? ctrl.lastThought : "");
-            dj.addProperty("mode", ctrl.mode.name());
+            dj.addProperty("navigationActive", this.manager.getNavigationManager().isActive(ctrl));
+            dj.addProperty("mining", ctrl.isMining());
             dj.addProperty("x", Math.round(d.posX * 100.0) / 100.0);
             dj.addProperty("y", Math.round(d.posY * 100.0) / 100.0);
             dj.addProperty("z", Math.round(d.posZ * 100.0) / 100.0);
@@ -64,10 +65,6 @@ public class DroneTelemetrySerializer {
             dj.addProperty("targetX", d.targetX());
             dj.addProperty("targetY", d.targetY());
             dj.addProperty("targetZ", d.targetZ());
-            dj.addProperty("anchorX", Math.round(ctrl.anchorX * 100.0) / 100.0);
-            dj.addProperty("anchorY", Math.round(ctrl.anchorY * 100.0) / 100.0);
-            dj.addProperty("anchorZ", Math.round(ctrl.anchorZ * 100.0) / 100.0);
-            dj.addProperty("playerLookHold", ctrl.playerLookHold);
             dj.addProperty("stuckTicks", ctrl.stuckTicks);
             dj.addProperty("lastStuckReason", ctrl.lastStuckReason);
             dj.addProperty("lastPathNodesExpanded", ctrl.lastPathNodesExpanded);
@@ -158,7 +155,6 @@ public class DroneTelemetrySerializer {
             dj.addProperty("name", ctrl.name);
             dj.addProperty("owner", ctrl.ownerName);
             dj.addProperty("lastThought", ctrl.lastThought != null ? ctrl.lastThought : "");
-            dj.addProperty("targetPlayer", ctrl.targetPlayerName);
             dj.addProperty("dimension", d.dimension);
             dj.addProperty("x", Math.round(d.posX * 100.0) / 100.0);
             dj.addProperty("y", Math.round(d.posY * 100.0) / 100.0);
@@ -166,8 +162,8 @@ public class DroneTelemetrySerializer {
             dj.addProperty("targetX", d.targetX());
             dj.addProperty("targetY", d.targetY());
             dj.addProperty("targetZ", d.targetZ());
-            dj.addProperty("mode", ctrl.mode.name());
-            dj.addProperty("playerLookHold", ctrl.playerLookHold);
+            dj.addProperty("navigationActive", this.manager.getNavigationManager().isActive(ctrl));
+            dj.addProperty("mining", ctrl.isMining());
             dj.addProperty("statusText", d.statusText());
             dj.addProperty("lightColor", String.format("0x%06X", d.lightColor() & 0xFFFFFF));
             dj.addProperty("isRunning", d.isRunning());

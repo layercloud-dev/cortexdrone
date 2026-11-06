@@ -4,13 +4,13 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
-import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
+import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Single-use command: break exactly one explicit block.
+ * Single-use command: break exactly one explicit block and tick it to
+ * completion. No mode, no queue: the action itself advances the break.
  */
 @RequiredArgsConstructor
 public final class BreakBlockAction implements Action<BlockContext> {
@@ -32,12 +32,14 @@ public final class BreakBlockAction implements Action<BlockContext> {
     public void tick(BlockContext context) {
         DroneController controller = context.controller();
         if (!context.breakOperation() || controller == null || controller.drone == null
-                || controller.drone.isDead || controller.mode != Mode.MINE
-                || controller.currentMineTarget == null
+                || controller.drone.isDead
                 || !context.matchesTarget(controller.currentMineTarget)) {
             context.complete();
             return;
         }
-        context.countTick();
+        this.buildingManager.tickMining(controller);
+        if (!context.matchesTarget(controller.currentMineTarget)) {
+            context.complete();
+        }
     }
 }

@@ -9,8 +9,8 @@ manager/service model and composing them from primitives where possible.
 
 | Task | Previous entry point | Current replacement |
 | --- | --- | --- |
-| `follow` task | `/drone follow` + `FollowAction` | `goto` to a player position; `Mode.FOLLOW` remains only as idle hover behavior |
-| `stay` task | `/drone stay|stop|hover` + `StayAction` | `drone.stop()` (hover) or a future hold skill |
+| `follow` task | `/drone follow` + `FollowAction` + `Mode.FOLLOW` | `goto` to a player position, repeated by the model if continuous following is wanted |
+| `stay` task | `/drone stay|stop|hover` + `StayAction` + `Mode.STAY` | `drone.stop()`; an idle drone already holds position |
 | `hunt` | `/drone hunt` + `CombatService` hunt loop | inspect entities + `useItem({attack:id})`, composed by AI |
 | `guard` | `/drone guard` + removed combat loop | inspect entities + attack primitives, composed by AI |
 | `patrol` | `/drone patrol` + removed combat loop | inspect entities + movement/attack composition |
@@ -53,6 +53,10 @@ Unknown `/drone` subcommands fall through to natural-language task handling.
 | `CaveEscapeService` | `DigPathService` + `NavigationManager` escalation |
 | `FlightPilot` | `NavigateAction` executor |
 | `CombatService`, `Mode.HUNT` | interaction attack primitive + AI composition |
+| `Mode` enum + `setDroneMode` | derived work state: navigation session, mining target/queue, retained action |
+| `TaskSnapshot` / `escapeResume` self-rescue restore | the dig action ticks its own queued blocks |
+| `mineUntilFull`, `returnToOwnerAfterMine`, `mineFilter`, `mineExactQueueOnly` | explicit tool calls composed by the model |
+| `FOLLOW` / `STAY` / `GOTO` / `MINE` / `DEPOSIT` / `DROP` behavior switch | actions + navigation session |
 | per-category context packages | `context/impl/` |
 
 ## Entity transport

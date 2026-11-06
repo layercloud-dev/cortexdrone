@@ -82,7 +82,7 @@ async function _waitUntil(predicateFn, maxWaitMs = 150000) {
 
 async function _waitIdle(maxWaitMs = 60000) {
   return await _waitUntil(
-    (st) => ['FOLLOW', 'STAY', 'GUARD', 'PATROL'].includes(st.mode) && !st.activeBreakTarget,
+    (st) => st.busy === false && !st.activeBreakTarget,
     maxWaitMs
   );
 }

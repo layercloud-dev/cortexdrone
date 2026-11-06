@@ -93,7 +93,7 @@ updates it.
 which adds:
 
 - player position/facing/yaw/pitch/held item/crosshair/support block;
-- drone position/mode/can-see-sky;
+- drone position/mining/navigation/can-see-sky;
 - breadcrumb count;
 - drone and player inventory summaries;
 - distance to player, task state, script count;
@@ -111,7 +111,7 @@ For each turn:
 
 1. abort if loop cancelled/drone dead;
 2. abort with partial reply at the wall-clock deadline;
-3. show "Thinking..." status when in `FOLLOW`;
+3. show "Thinking..." status when no action owns the status text;
 4. compact messages if too large;
 5. call the configured OpenAI-compatible chat endpoint;
 6. handle context-overflow compaction + retry;
@@ -176,8 +176,8 @@ Watchdog/resurrector for three failure modes:
 
 Limits: max 3 continuations per drone per 10-minute window, 2.5 s delay.
 
-`rejectIncompleteDone` checks concrete progress, active work (`MINE`/`DROP`/
-`DEPOSIT`/mine queue), and delivery pending. `onLoopExit` builds a compact
+`rejectIncompleteDone` checks concrete progress, active work (a mining target
+or dig queue), and delivery pending. `onLoopExit` builds a compact
 `[HEARTBEAT RESUME]` prompt and re-enters `handleNaturalInstruction` if the loop
 was not cancelled/superseded and budget remains.
 

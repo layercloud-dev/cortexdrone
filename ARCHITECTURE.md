@@ -117,7 +117,7 @@ src/main/java/ir/layercloud/cortexdrone/
     MasterToolCatalog.java   canonical tool names
     rpc/                     RpcHandler + handlers + translators
 
-  drone/                    DroneController, Mode, TaskSession
+  drone/                    DroneController, TaskSession
   command/                  /drone command
   config/                   AIConfig + DroneLogger + ChatRecord/DebugEntry
   http/                     DroneHttpServer + DroneTelemetrySerializer
@@ -133,15 +133,18 @@ There is no `codemode` package and no top-level `inventory`, `world`, or
 - **Action** — one physical command. Created for one execution, may be ticked
   while retained, then discarded. No JSON, no routing, no goal decisions.
 - **Context** — mutable state for one action execution. Tracks lifecycle:
-  active/retained, target, result, progress.
+  active/retained, target, result, progress. Long-running work lives here, not on
+  the drone: there is no `Mode` enum and no FOLLOW/STAY/GOTO/MINE/DEPOSIT/DROP
+  switch. A drone is idle exactly when no navigation session and no retained
+  action exist.
 - **Manager** — long-lived owner of a category. Parses typed requests, creates
   contexts/actions, retains/tick/cancels them, and decides category-level
   behavior. Navigation is the only manager with a goal loop.
 - **Service** — read-only query/recon/planning. Records data, computes paths,
   ranks recipes, scans the world, reads inventories. Some services expose
   low-level storage primitives (inventory moves, deposits, crafting) that an
-  action or manager explicitly invokes; a service never chooses a goal, sets a
-  mode, or starts an action.
+  action or manager explicitly invokes; a service never chooses a goal, starts
+  an action, or owns work state.
 
 `AIDroneManager` is the root manager. `TickManager` is the per-tick runtime. The
 `harness` is the agent/transport layer. JSON is confined to `harness/rpc`.
@@ -200,9 +203,9 @@ Decision order:
 3. **Dig escalation** — if flight is blocked, partial, or exhausted, the manager
    chooses `TUNNEL`, `DIG_UP`, or `DIG_DOWN`, asks `DigPathService` for a weighted
    dig route, and sends the blocking blocks to `BuildingManager`. The session
-   survives the `MINE` sub-state and replans when control returns to `GOTO`.
+   stays parked while that block queue drains, then replans.
 
-Follow, drop/deposit, and mining standoffs reuse `NavigationManager.flyToward` /
+Deposit, delivery and mining standoffs reuse `NavigationManager.flyToward` /
 `hold`, so all motion still goes through action executors.
 
 ## 6. Harness summary
@@ -263,15 +266,15 @@ coming back as hidden paths. See `docs/removed-tasks.md`.
    ticks.
 5. `serverStopping` restores light auras, saves config, stops HTTP.
 
-Per-controller tick: breadcrumbs, stuck detection, item pickup, lighting aura,
-navigation, mode behavior, retained actions, LED animation, physics.
+Per-controller tick: breadcrumbs, stall detection, lighting aura, the active
+navigation session, every retained action, idle hold, LED animation, physics.
 
 ## 9. Persistence and configuration
 
 `world/layercloud-ai.json` stores:
 
 - API URL, model, API key, HTTP port;
-- saved drones (UUID/name/owner/mode/light/position);
+- saved drones (UUID/name/owner/light/position);
 - player bases;
 - named saved locations.
 

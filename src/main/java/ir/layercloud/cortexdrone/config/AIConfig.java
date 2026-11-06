@@ -2,7 +2,6 @@ package ir.layercloud.cortexdrone.config;
 
 import com.google.gson.Gson;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -28,7 +27,6 @@ public class AIConfig {
         private String uuid;
         private String name;
         private String owner;
-        private String mode;
         private boolean autoTorch;
         private String ledEffect;
         private Integer customLedColor;
@@ -119,9 +117,6 @@ public class AIConfig {
                     info.setUuid(c.entityUuid.toString());
                     info.setName(c.name);
                     info.setOwner(c.ownerName);
-                    info.setMode((c.mode == Mode.MINE || c.mode == Mode.DROP || c.mode == Mode.DEPOSIT)
-                            ? Mode.FOLLOW.name()
-                            : c.mode.name());
                     info.setAutoTorch(c.autoTorch);
                     info.setLedEffect(c.ledEffect);
                     info.setCustomLedColor(c.customLedColor);

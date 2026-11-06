@@ -94,14 +94,13 @@ public final class TaskCoordinator {
     private static String shortTask(DroneController ctrl) {
         String summary = ctrl.task.getSummary();
         if (summary == null || summary.isEmpty()) summary = ctrl.task.getPrompt();
-        if (summary == null || summary.length() == 0) return "Task is running (" + ctrl.mode.name() + ").";
+        if (summary == null || summary.length() == 0) return "Task is running (" + (ctrl.isMining() ? "mining" : "navigating") + ").";
         return "Task: " + (summary.length() > 120 ? summary.substring(0, 120) + "..." : summary);
     }
 
     private static String activeTaskReply(DroneController ctrl) {
         StringBuilder sb = new StringBuilder();
         sb.append(shortTask(ctrl));
-        sb.append(" Mode: ").append(ctrl.mode.name()).append('.');
         if (ctrl.drone != null) {
             sb.append(String.format(" Position: (%.1f, %.1f, %.1f).",
                     ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ));

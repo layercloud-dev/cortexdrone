@@ -34,7 +34,7 @@ the controller and its modes live in `drone/`, the LED engine is a
 - May read the world, inventory, entities, registries, config and controller data.
 - May compute paths, scores, recipe candidates, scans and snapshots.
 - May cache results.
-- Must not choose goals, set `Mode`, change navigation/path state, or start actions.
+- Must not choose goals, own work state, change navigation/path state, or start actions.
 - May expose low-level storage primitives (inventory moves, deposits, crafting)
   that an action or manager explicitly invokes; the service still does not decide
   that the operation should happen.
@@ -112,10 +112,10 @@ Example: `drone.breakBlock(10, 64, -3)`.
 4. If in reach, `ActionRpcTranslator` routes to `BuildingRpcTranslator`.
 5. Translator builds `BlockRequest` and calls `BuildingManager.handle`.
 6. `ActionManager` creates `BlockContext`, then `BreakBlockAction`.
-7. Action calls `BuildingManager.startBreak`, which sets the mining target/mode.
+7. Action calls `BuildingManager.startBreak`, which sets the mining target.
 8. Context is retained; result `BlockResult.breakStarted` is serialized.
 9. Each tick, `ActionRegistry.tick` ticks `BreakBlockAction`.
-10. When the target is gone/mode changes, the action completes and is reaped.
+10. When the target is gone, the action completes and is reaped.
 
 Example: `drone.goto(100, 70, -40)`.
 
@@ -194,6 +194,6 @@ read-only inspect ops, and injects the `needsMovement` standoff contract.
   manager, one translator.
 - **No hidden automation**: only navigation has a goal loop; every other tool is
   explicit.
-- **Observability**: debug categories (`MODE`, `NAV`, `PATH`, `MINE`, `STUCK`,
+- **Observability**: debug categories (`NAV`, `PATH`, `MINE`, `STUCK`,
   `ESCAPE`, `LLM`, `CODEMODE`, `HEARTBEAT`, `TRACE`, `WARN`, `ERROR`) make silent
   stops visible.

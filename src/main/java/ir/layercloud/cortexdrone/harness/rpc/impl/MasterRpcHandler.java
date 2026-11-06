@@ -9,7 +9,6 @@ import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.harness.rpc.translate.BreadcrumbRpcTranslator;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.drone.DroneController;
-import ir.layercloud.cortexdrone.drone.Mode;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -93,7 +92,10 @@ public class MasterRpcHandler implements RpcHandler {
         res.addProperty("navigationReason", navigation.getReason());
         res.addProperty("navigationError", ctrl.navigationError != null ? ctrl.navigationError : "");
         res.addProperty("arrived", !navigation.isActive()
-                && (ctrl.mode != Mode.GOTO || (distGoal >= 0.0 && distGoal <= 1.0)));
+                && distGoal >= 0.0 && distGoal <= 1.0);
+        res.addProperty("mining", ctrl.isMining());
+        res.addProperty("busy", navigation.isActive() || ctrl.isMining()
+                || this.manager.getActionRegistry().activeContextCount(ctrl) > 0);
         if (ctrl.currentMineTarget != null) {
             JsonObject target = new JsonObject();
             target.addProperty("x", ctrl.currentMineTarget[0]);

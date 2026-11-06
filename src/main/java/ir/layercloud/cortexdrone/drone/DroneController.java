@@ -3,17 +3,25 @@ package ir.layercloud.cortexdrone.drone;
 import li.cil.oc.common.entity.Drone;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Per-drone mutable state for one Code Mode session.
+ *
+ * <p>There is no mode flag. What the drone is doing is derived from the work
+ * itself: an active navigation session, a pending mining target/queue, or a
+ * retained action context. Idle means none of those exist.</p>
+ */
 public class DroneController {
     public final int id;
     public Drone drone;
     public UUID entityUuid;
     public String name;
     public String ownerName;
-    public String targetPlayerName;
-    public Mode mode = Mode.FOLLOW;
+
+    // Goal of the last/active navigation session. Used for telemetry and physics.
     public double goalX;
     public double goalY;
     public double goalZ;
@@ -22,13 +30,6 @@ public class DroneController {
     public String navigationError = "";
     // Single task / single session state. The harness never queues instructions.
     public final TaskSession task = new TaskSession();
-
-    // Follow anchor & look-to-interact state
-    public double anchorX;
-    public double anchorY;
-    public double anchorZ;
-    public boolean hasAnchor = false;
-    public boolean playerLookHold = false;
 
     // 3D A* pathfinding state
     public final List<double[]> pathWaypoints = new ArrayList<double[]>();
@@ -46,32 +47,6 @@ public class DroneController {
     // defeats a single last-key throttle, so hits are counted per waypoint.
     public final Map<Long, Integer> solidWaypointHits = new HashMap<Long, Integer>();
     public int solidEscalations = 0;
-    // A blocked waypoint can force a short self-rescue dig. That dig must not
-    // silently end the task the drone was already doing, so the interrupted
-    // task (mode, goal, mine flags) is snapshotted and restored afterwards.
-    public TaskSnapshot escapeResume = null;
-
-    public static class TaskSnapshot {
-        public Mode mode;
-        public double goalX;
-        public double goalY;
-        public double goalZ;
-        public String mineFilter;
-        public boolean mineExactQueueOnly;
-        public boolean mineUntilFull;
-        public boolean returnToOwnerAfterMine;
-        public int mineTargetCount;
-        public int minedCount;
-        public int mineMatchedCount;
-        public int[] mineTarget;
-        public double[] mineStandoff;
-        // The original queue is parked here while the short self-rescue queue runs.
-        // Leaving rescue digs at the front of the real queue kept the rescue's
-        // "exact queue only / mine everything" flags alive until the whole task
-        // drained, so "mine 8 iron" never stopped at 8.
-        public List<int[]> mineQueue;
-    }
-
     public String lastPathLogKey = "";
     public int lastPathLogTick = -10000;
 
@@ -87,41 +62,30 @@ public class DroneController {
     public long lightAnchor = Long.MIN_VALUE;
     // packed world position -> original block-light level, for exact restore
     public final Map<Long, Integer> lightCells = new HashMap<Long, Integer>();
-    public String mineFilter = "ores";
-    public boolean mineExactQueueOnly = false;
-    public boolean returnToOwnerAfterMine = false;
-    public boolean mineUntilFull = false;
-    public int mineTargetCount = 0;
+
+    // Mining work: an explicit target plus the dig-route queue owned by the
+    // building manager. No filter, no "mine until full", no premade task flags.
     public final Deque<int[]> mineQueue = new ConcurrentLinkedDeque<int[]>();
     public int[] currentMineTarget = null;
     public double[] currentMineStandoff = null;
     public int mineProgressTicks = 0;
     public int miningRequiredTicks = 8;
     public int minedCount = 0;
-    public int mineMatchedCount = 0;
     public int builtCount = 0;
-
     public int scoopedCount = 0;
-
-    // Deposit / delivery target state
-    public int[] targetDepositChestPos = null;
-    public String dropFilter = "all";
 
     // Active Code Mode loop generation ID & running script counter
     public final AtomicInteger activeLoopId = new AtomicInteger(0);
     public final AtomicInteger activeScriptCount = new AtomicInteger(0);
-    private final java.util.Set<Integer> runningLoopIds = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<Integer, Boolean>());
-    private final java.util.Set<Integer> cancelledLoopIds = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<Integer, Boolean>());
+    private final Set<Integer> runningLoopIds = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
+    private final Set<Integer> cancelledLoopIds = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
     public volatile String lastThought = "";
     public final Deque<String> thoughtHistory = new ConcurrentLinkedDeque<String>();
 
     public int attackCooldown = 0;
     public int pickupCooldown = 0;
     public int stuckTicks = 0;
-    // Tick-rate pacing counters (kept on the controller: each drone ticks independently)
     public int tickClock = 0;          // ever-incrementing per-drone tick counter
-    public int followAnchorCooldown = 0;
-    // Velocity/predictive-braking load state
     public double velX = 0.0;
     public double velY = 0.0;
     public double velZ = 0.0;
@@ -134,7 +98,6 @@ public class DroneController {
     public double lastX;
     public double lastY;
     public double lastZ;
-    public float orbitAngle = 0.0f;
     public volatile boolean despawned = false;
 
     public DroneController(int id, Drone drone, String name, String ownerName) {
@@ -143,16 +106,17 @@ public class DroneController {
         this.entityUuid = drone.getUniqueID();
         this.name = name;
         this.ownerName = ownerName;
-        this.targetPlayerName = ownerName;
         this.goalX = drone.posX;
         this.goalY = drone.posY;
         this.goalZ = drone.posZ;
-        this.anchorX = drone.posX;
-        this.anchorY = drone.posY;
-        this.anchorZ = drone.posZ;
         this.lastX = drone.posX;
         this.lastY = drone.posY;
         this.lastZ = drone.posZ;
+    }
+
+    /** True while a block target or a dig queue is being worked. */
+    public boolean isMining() {
+        return this.currentMineTarget != null || !this.mineQueue.isEmpty();
     }
 
     public boolean isScriptRunning() {
@@ -190,8 +154,7 @@ public class DroneController {
                 return true;
             }
         }
-        return this.activeScriptCount.get() > 0 || !this.mineQueue.isEmpty()
-                || (this.mode != Mode.FOLLOW && this.mode != Mode.STAY);
+        return this.activeScriptCount.get() > 0 || isMining();
     }
 
     public void recordThought(int turn, String thought) {
@@ -204,57 +167,9 @@ public class DroneController {
         }
     }
 
-    /**
-     * Cancels an in-flight blocked-waypoint rescue. When {@code restoreQueue} is
-     * true the mining task that was parked during the rescue is put back, so an
-     * internal transition (e.g. inventory full -> DROP) can resume it afterwards.
-     * Explicit new commands pass false because they are replacing the task.
-     */
-    public void clearSelfRescue(boolean restoreQueue) {
-        TaskSnapshot snap = this.escapeResume;
-        this.escapeResume = null;
-        if (!restoreQueue || snap == null) return;
-        this.mineFilter = snap.mineFilter;
-        this.mineExactQueueOnly = snap.mineExactQueueOnly;
-        this.mineUntilFull = snap.mineUntilFull;
-        this.returnToOwnerAfterMine = snap.returnToOwnerAfterMine;
-        this.mineTargetCount = snap.mineTargetCount;
-        this.minedCount = snap.minedCount;
-        this.mineMatchedCount = snap.mineMatchedCount;
-        if (snap.mineQueue == null) return;
-        for (int[] p : snap.mineQueue) {
-            if (p == null) continue;
-            boolean duplicate = false;
-            for (int[] q : this.mineQueue) {
-                if (q != null && q[0] == p[0] && q[1] == p[1] && q[2] == p[2]) {
-                    duplicate = true;
-                    break;
-                }
-            }
-            if (!duplicate) this.mineQueue.addLast(p);
-        }
-        if (snap.mineTarget != null) {
-            boolean duplicate = false;
-            for (int[] q : this.mineQueue) {
-                if (q != null && q[0] == snap.mineTarget[0]
-                        && q[1] == snap.mineTarget[1] && q[2] == snap.mineTarget[2]) {
-                    duplicate = true;
-                    break;
-                }
-            }
-            if (!duplicate) this.mineQueue.addFirst(snap.mineTarget);
-        }
-    }
-
     public void clearActionState() {
-        this.escapeResume = null;
         this.mineQueue.clear();
         this.currentMineTarget = null;
         this.currentMineStandoff = null;
-        this.mineExactQueueOnly = false;
-        this.targetDepositChestPos = null;
-        this.mineUntilFull = false;
-        this.mineTargetCount = 0;
-        this.mineMatchedCount = 0;
     }
 }

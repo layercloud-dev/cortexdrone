@@ -62,7 +62,7 @@ const drone = {
         continue;
       }
       if (r && r.started) {
-        const st = await _waitUntil((s) => s.mode !== 'MINE' && !s.activeBreakTarget, maxWaitMs);
+        const st = await _waitUntil((s) => !s.mining && !s.activeBreakTarget, maxWaitMs);
         return { ...r, ...st, broken: !st.activeBreakTarget };
       }
       return r;
@@ -170,7 +170,7 @@ const drone = {
     const r = _isObj(opOrOpts)
       ? await rpc('transfer', opOrOpts)
       : await rpc('transfer', { ...( _isObj(args) ? args : {} ), op: String(opOrOpts || 'move') });
-    if (r && (r.flyingToPlayer || r.flyingToChest || r.queued > 0 || r.mode === 'DROP' || r.mode === 'DEPOSIT')) {
+    if (r && (r.flyingToPlayer || r.flyingToChest || r.queued > 0)) {
       const st = await _waitIdle(60000);
       return { ...r, ...st };
     }

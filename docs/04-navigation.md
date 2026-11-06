@@ -28,7 +28,7 @@ await drone.stop()
 - Cancels the session.
 - Clears path state.
 - Applies a hold target at the current position.
-- Sets `Mode.STAY`.
+- Leaves the drone idle (no session, no action).
 - Returns `{arrived:true, phase:"stopped"}`.
 
 ## 2. Session state
@@ -54,9 +54,9 @@ Constants:
 - max session duration `12000` ticks (10 minutes);
 - max dig attempts `12`.
 
-If a digest route is active, the manager waits while `escapeResume != null` or
-`mode == MINE`. When control returns to `GOTO`, it replans. If the mode changed
-to something else, the session fails as interrupted.
+While a dig leg is running, the manager waits until `controller.isMining()` is
+false, then replans. There is no mode to be interrupted: the session exists
+until it arrives, is stopped, or fails.
 
 ## 3. Decision pipeline
 
@@ -64,9 +64,8 @@ to something else, the session fails as interrupted.
 
 1. If a leg exists, tick it.
 2. If a dig leg just finished, return to `PLAN`.
-3. If mode is not `GOTO`, cancel the session.
-4. If within `0.85` of goal, arrive.
-5. If `PLAN`, decide the next leg.
+3. If within `0.85` of goal, arrive.
+4. If `PLAN`, decide the next leg.
 
 `decide`:
 
@@ -92,7 +91,7 @@ to something else, the session fails as interrupted.
 ## 4. Breadcrumb service
 
 `service/navigation/impl/BreadcrumbService` is the owner of the trail. It is not
-an action and it never changes mode/goals.
+an action and it never changes navigation goals.
 
 ### Recording
 
@@ -199,20 +198,18 @@ the tick when needed (blocked, long-range, or machine not running).
 
 `DigRouteAction` calls `BuildingManager.startDigRoute`, which:
 
-- snapshots the current mode/goal/mining state into `escapeResume`;
-- clears the queue;
 - queues only `dig=1` steps in path order (front insertion with duplicate guard);
-- sets `mineFilter=all`, `mineExactQueueOnly=true`;
-- switches to `Mode.MINE`;
-- restores the snapshot after the queue drains.
+- clears any current target and path state.
 
-The navigation session stays alive across `MINE` and replans after `GOTO`
-returns. If the building manager needs to drop/deposit due to a full inventory,
-the session waits while `escapeResume` is set.
+The action then retains itself and ticks `BuildingManager.tickMining` each tick.
+When the queue and current target are empty it completes, and the navigation
+session replans. Nothing is snapshotted or restored: the queued blocks are the
+whole state. If the inventory fills up, mining stops and the session continues
+with a flight leg; the model can deposit and ask for the route again.
 
 ## 7. Non-harness callers
 
-Follow, drop/deposit and mining standoffs call:
+Deposit, delivery and mining standoffs call:
 
 - `NavigationManager.flyToward(ctrl, x,y,z, label)` — runs one `NavigateAction`
   tick (no session), returns `NavigateResult`.
@@ -220,30 +217,29 @@ Follow, drop/deposit and mining standoffs call:
 
 This keeps all motion inside action executors and avoids a second flight engine.
 
-## 8. Follow / stay / drop / deposit
+## 8. Deposit and delivery
 
-`TickManager` handles these modes:
+There is no DROP or DEPOSIT mode. `transfer` ops are retained actions:
 
-- `FOLLOW`: anchor solve (amortized 6 ticks), fly to anchor when far, hold when
-  close; look-hold when the player looks at the drone.
-- `STAY`: hold position; look-hold when the owner looks at the drone.
-- `DROP`: fly to owner, give/drop inventory within 3.5 blocks, then resume
-  `MINE` if a queue exists, else `FOLLOW`.
-- `DEPOSIT`: find an explicit or nearest chest with space, fly to standoff,
-  deposit within 3.8, then resume mining or follow.
+- `deposit` resolves an explicit chest or the nearest one with space, flies to
+  its standoff, deposits within 3.8 blocks, then completes.
+- `give` flies to the player and hands over matching items within 3.5 blocks.
+- `drop` flies to the owner and delivers; if the owner is offline it drops the
+  inventory in place.
 
-These modes do not create a navigation session; they use the same flight/hold
-action executors.
+Each uses `NavigationManager.flyToward` internally, so all motion still goes
+through the flight action executor. When the action completes the drone is idle
+and holds position.
 
 ## 9. Status and diagnostics
 
 `state` exposes:
 
 - `navigationActive`, `navigationPhase`, `navigationReason`, `navigationError`;
-- `distanceToGoal`, `arrived`, `mode`;
+- `distanceToGoal`, `arrived`, `mining`, `busy`;
 - path waypoints, current target, stuck counters via `/debug`.
 
-Relevant debug categories: `NAV`, `PATH`, `STUCK`, `ESCAPE`, `MODE`.
+Relevant debug categories: `NAV`, `PATH`, `STUCK`, `ESCAPE`.
 
 ## 10. Failure behavior
 
@@ -252,5 +248,6 @@ Relevant debug categories: `NAV`, `PATH`, `STUCK`, `ESCAPE`, `MODE`.
 - No dig route → navigation fails with `navigationError`.
 - 12 dig attempts exhausted → failure.
 - 12000 ticks → timeout failure.
-- Explicit `stop`/`cancel` → session removed, mode `STAY`.
-- Mode changed away from `GOTO`/`MINE` → session interrupted.
+- Explicit `stop`/`cancel` → session removed, drone idle.
+- The drone is never "interrupted by a mode change": only `goto`, `stop`, or a
+  proven failure ends a session.

@@ -11,7 +11,7 @@ Respond ONLY with one valid JSON object matching this exact schema:
 }
 
 ### Master tools (these are the only tools; the only SDK global is `drone`)
-1. `await drone.state()` -> live status: `{ok, x, y, z, mode, distanceToGoal, arrived, activeTask, taskSummary, activeBreakTarget, freeSlots, totalItems, inventory, ...}`
+1. `await drone.state()` -> live status: `{ok, x, y, z, navigationActive, mining, busy, distanceToGoal, arrived, activeTask, taskSummary, activeBreakTarget, freeSlots, totalItems, inventory, ...}`
 2. `await drone.inspect(op, args)` -> one read-only query. There are no `world.*`, `player.*`, or `kb.*` aliases; use this namespace directly.
 3. `await drone.goto(x, y, z, opts)` or `await drone.goto({x,y,z,standoffOf,maxWaitMs})`
    - Goal-driven navigation. It resolves ONLY after arrival or failure.

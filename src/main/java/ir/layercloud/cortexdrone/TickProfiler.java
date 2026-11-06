@@ -1,12 +1,13 @@
 package ir.layercloud.cortexdrone;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import java.util.Arrays;
 import lombok.Getter;
+
+import java.util.Arrays;
 
 /**
  * Lightweight server-tick profiler for CortexDrone TPS diagnosis.
- *
+ * <p>
  * Measures the interval from FML START to END phases (onServerTickStart to
  * onServerTickEnd), which approximates the full 50 ms budget slot. Keeps a
  * ring buffer of the last 600 ticks (30 s at 20 TPS) and exposes avg/p95.
@@ -70,10 +71,10 @@ public final class TickProfiler {
                 this.lastWarnWallMs = nowWall;
                 if (this.logger != null) {
                     this.logger.log("WARN", null,
-                        String.format("Slow server tick: %.1f ms exceeds %.1f ms budget (tick=%d)",
-                            durationMs, this.warnThresholdMs, tickCounter),
-                        String.format("avgMs=%.1f p95Ms=%.1f maxMs=%.1f samples=%d over=%d",
-                            getAvgMs(), getP95Ms(), getMaxMs(), getSampleCount(), this.overThresholdCount));
+                            String.format("Slow server tick: %.1f ms exceeds %.1f ms budget (tick=%d)",
+                                    durationMs, this.warnThresholdMs, tickCounter),
+                            String.format("avgMs=%.1f p95Ms=%.1f maxMs=%.1f samples=%d over=%d",
+                                    getAvgMs(), getP95Ms(), getMaxMs(), getSampleCount(), this.overThresholdCount));
                 }
             }
         }

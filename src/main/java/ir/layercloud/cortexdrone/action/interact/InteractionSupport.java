@@ -4,7 +4,9 @@ import li.cil.oc.common.entity.Drone;
 import lombok.experimental.UtilityClass;
 import net.minecraft.entity.player.EntityPlayer;
 
-/** Shared low-level helpers for interaction actions. */
+/**
+ * Shared low-level helpers for interaction actions.
+ */
 @UtilityClass
 public final class InteractionSupport {
     public static void syncFakePlayerToDrone(EntityPlayer fakePlayer, Drone drone) {

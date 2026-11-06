@@ -10,13 +10,6 @@ import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
-import java.io.File;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -25,12 +18,20 @@ import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.ServerChatEvent;
 
+import java.io.File;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 @Mod(
-    modid = CortexDroneMod.MODID,
-    name = CortexDroneMod.NAME,
-    version = CortexDroneMod.VERSION,
-    dependencies = "required-after:OpenComputers;after:layercloudsmp",
-    acceptableRemoteVersions = "*"
+        modid = CortexDroneMod.MODID,
+        name = CortexDroneMod.NAME,
+        version = CortexDroneMod.VERSION,
+        dependencies = "required-after:OpenComputers;after:layercloudsmp",
+        acceptableRemoteVersions = "*"
 )
 public class CortexDroneMod {
     public static final String MODID = "cortexdrone";
@@ -38,22 +39,26 @@ public class CortexDroneMod {
     public static final String VERSION = "1.4.0";
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    /** Agent loops (LLM + JS engine). Never share with the HTTP server: a hung
-     *  loop must not starve /state|/debug|/rpc (that made failures silent). */
+    /**
+     * Agent loops (LLM + JS engine). Never share with the HTTP server: a hung
+     * loop must not starve /state|/debug|/rpc (that made failures silent).
+     */
     public static final ExecutorService HTTP_POOL = Executors.newCachedThreadPool(runnable -> {
         Thread t = new Thread(runnable, "CortexDrone-Agent-" + System.nanoTime());
         t.setDaemon(true);
         return t;
     });
-    /** Drone HTTP server (port 25580) request threads. Separate pool so one
-     *  hung /rpc|/action cannot wedge the LLM agent loops or vice versa. */
+    /**
+     * Drone HTTP server (port 25580) request threads. Separate pool so one
+     * hung /rpc|/action cannot wedge the LLM agent loops or vice versa.
+     */
     public static final ExecutorService HTTP_SERVER_POOL = Executors.newCachedThreadPool(runnable -> {
         Thread t = new Thread(runnable, "CortexDrone-Http-" + System.nanoTime());
         t.setDaemon(true);
         return t;
     });
 
-    private final List<Runnable> mainThreadTasks = Collections.synchronizedList(new ArrayList<Runnable>());
+    private final List<Runnable> mainThreadTasks = Collections.synchronizedList(new ArrayList<>());
     private AIDroneManager aiDroneManager = null;
     private Method authCheckMethod = null;
     private boolean authCheckResolved = false;
@@ -135,7 +140,7 @@ public class CortexDroneMod {
             try {
                 Object res = this.authCheckMethod.invoke(null, player);
                 if (res instanceof Boolean) {
-                    return ((Boolean) res).booleanValue();
+                    return (Boolean) res;
                 }
             } catch (Throwable ignored) {
             }

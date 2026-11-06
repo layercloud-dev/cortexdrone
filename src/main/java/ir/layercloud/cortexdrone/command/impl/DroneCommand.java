@@ -2,19 +2,20 @@ package ir.layercloud.cortexdrone.command.impl;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.command.BaseCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DebugEntry;
 import ir.layercloud.cortexdrone.model.DroneController;
-import java.util.List;
-import java.util.Set;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumChatFormatting;
+
+import java.util.List;
+import java.util.Set;
 
 @RequiredArgsConstructor
 public class DroneCommand extends BaseCommand {
@@ -46,8 +47,8 @@ public class DroneCommand extends BaseCommand {
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                "spawn", "link", "despawn", "list", "status", "setbase",
-                "debug", "config", "js", "help");
+                    "spawn", "link", "despawn", "list", "status", "setbase",
+                    "debug", "config", "js", "help");
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
@@ -125,12 +126,12 @@ public class DroneCommand extends BaseCommand {
             for (DroneController c : this.manager.getControllersById().values()) {
                 if (c.drone == null || c.drone.isDead) continue;
                 CortexDroneMod.sendMsg(sender, String.format(
-                    EnumChatFormatting.AQUA + "#%d %s" + EnumChatFormatting.GRAY + " (Owner: %s) "
-                        + EnumChatFormatting.YELLOW + "[%s] " + EnumChatFormatting.WHITE + "@ (%.1f, %.1f, %.1f) "
-                        + EnumChatFormatting.GREEN + "Items: %d",
-                    c.id, c.name, c.ownerName, c.mode.name(),
-                    c.drone.posX, c.drone.posY, c.drone.posZ,
-                    InventoryService.countInventoryItems(c.drone.mainInventory())
+                        EnumChatFormatting.AQUA + "#%d %s" + EnumChatFormatting.GRAY + " (Owner: %s) "
+                                + EnumChatFormatting.YELLOW + "[%s] " + EnumChatFormatting.WHITE + "@ (%.1f, %.1f, %.1f) "
+                                + EnumChatFormatting.GREEN + "Items: %d",
+                        c.id, c.name, c.ownerName, c.mode.name(),
+                        c.drone.posX, c.drone.posY, c.drone.posZ,
+                        InventoryService.countInventoryItems(c.drone.mainInventory())
                 ));
             }
             return;
@@ -144,12 +145,12 @@ public class DroneCommand extends BaseCommand {
             }
             if (args.length < 3) {
                 String maskedKey = (config.getApiKey() != null && config.getApiKey().length() > 6)
-                    ? (config.getApiKey().substring(0, 4) + "..." + config.getApiKey().substring(config.getApiKey().length() - 2))
-                    : (config.getApiKey() == null || config.getApiKey().isEmpty() ? "<not set>" : "***");
+                        ? (config.getApiKey().substring(0, 4) + "..." + config.getApiKey().substring(config.getApiKey().length() - 2))
+                        : (config.getApiKey() == null || config.getApiKey().isEmpty() ? "<not set>" : "***");
                 CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "[Drone AI Config] "
-                    + EnumChatFormatting.YELLOW + "URL: " + EnumChatFormatting.WHITE + config.getApiUrl()
-                    + EnumChatFormatting.YELLOW + " | Model: " + EnumChatFormatting.WHITE + config.getModel()
-                    + EnumChatFormatting.YELLOW + " | Key: " + EnumChatFormatting.WHITE + maskedKey);
+                        + EnumChatFormatting.YELLOW + "URL: " + EnumChatFormatting.WHITE + config.getApiUrl()
+                        + EnumChatFormatting.YELLOW + " | Model: " + EnumChatFormatting.WHITE + config.getModel()
+                        + EnumChatFormatting.YELLOW + " | Key: " + EnumChatFormatting.WHITE + maskedKey);
                 CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "Usage: /drone config <url|model|key> <value>");
                 return;
             }

@@ -4,17 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.world.World;
+
+import java.util.*;
 
 /**
  * 3D interior flood-fill room scanner that identifies enclosed air volumes
@@ -23,13 +17,13 @@ import net.minecraft.world.World;
 @UtilityClass
 public final class RoomScanner {
     private static final int[][] CARDINAL_DIRS = new int[][]{
-        {1, 0, 0}, {-1, 0, 0},
-        {0, 1, 0}, {0, -1, 0},
-        {0, 0, 1}, {0, 0, -1}
+            {1, 0, 0}, {-1, 0, 0},
+            {0, 1, 0}, {0, -1, 0},
+            {0, 0, 1}, {0, 0, -1}
     };
 
     private static final int[][] HORIZ_DIRS = new int[][]{
-        {0, -1}, {0, 1}, {-1, 0}, {1, 0}
+            {0, -1}, {0, 1}, {-1, 0}, {1, 0}
     };
 
     public static JsonObject scanRoom3D(World world, int startX, int startY, int startZ, int maxRadius) {

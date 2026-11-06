@@ -1,14 +1,15 @@
 package ir.layercloud.cortexdrone.service.machine;
 
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
 import lombok.experimental.UtilityClass;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * Read-only furnace discovery. Kept separate from any smelting executor: the
@@ -56,11 +57,11 @@ public final class FurnaceScanner {
             @Override
             public int compare(TileEntity a, TileEntity b) {
                 double da = (a.xCoord + 0.5 - x) * (a.xCoord + 0.5 - x)
-                    + (a.yCoord + 0.5 - y) * (a.yCoord + 0.5 - y)
-                    + (a.zCoord + 0.5 - z) * (a.zCoord + 0.5 - z);
+                        + (a.yCoord + 0.5 - y) * (a.yCoord + 0.5 - y)
+                        + (a.zCoord + 0.5 - z) * (a.zCoord + 0.5 - z);
                 double db = (b.xCoord + 0.5 - x) * (b.xCoord + 0.5 - x)
-                    + (b.yCoord + 0.5 - y) * (b.yCoord + 0.5 - y)
-                    + (b.zCoord + 0.5 - z) * (b.zCoord + 0.5 - z);
+                        + (b.yCoord + 0.5 - y) * (b.yCoord + 0.5 - y)
+                        + (b.zCoord + 0.5 - z) * (b.zCoord + 0.5 - z);
                 return Double.compare(da, db);
             }
         });

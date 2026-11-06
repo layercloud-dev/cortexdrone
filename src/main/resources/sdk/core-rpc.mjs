@@ -149,7 +149,7 @@ async function _awaitScanJob(jobId, fallbackRadius, timeoutMs = _SCAN_POLL_TIMEO
 // All master primitives await their own physical completion. Kept as a stable
 // hook for the runtime wrapper; intentionally does not drain an instruction queue.
 async function _finalizeScript() {
-  return;
+
 }
 
 function hsvToRgb(hDeg, s = 1, v = 1) {

@@ -5,12 +5,6 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -20,6 +14,8 @@ import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
+
+import java.util.*;
 
 /**
  * Targeted container item search and indexing service.
@@ -149,7 +145,8 @@ public class ContainerSearchService {
             @Override
             public int compare(ChestMatchResult a, ChestMatchResult b) {
                 if (a.getBestScore() != b.getBestScore()) return Integer.compare(b.getBestScore(), a.getBestScore());
-                if (a.getTotalMatching() != b.getTotalMatching()) return Integer.compare(b.getTotalMatching(), a.getTotalMatching());
+                if (a.getTotalMatching() != b.getTotalMatching())
+                    return Integer.compare(b.getTotalMatching(), a.getTotalMatching());
                 return Double.compare(a.getDist(), b.getDist());
             }
         });

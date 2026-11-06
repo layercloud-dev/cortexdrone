@@ -4,13 +4,16 @@ import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.action.navigation.NavigationMode;
 import ir.layercloud.cortexdrone.context.ActionContextBase;
 import ir.layercloud.cortexdrone.model.DroneController;
-import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/** Mutable state for one navigation leg. */
+import java.util.List;
+
+/**
+ * Mutable state for one navigation leg.
+ */
 @Getter
 @Accessors(fluent = true)
 public final class NavigationContext extends ActionContextBase {

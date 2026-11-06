@@ -1,18 +1,7 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import lombok.experimental.UtilityClass;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityList;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.EnumCreatureType;
-import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.*;
 import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.passive.EntityAnimal;
@@ -21,6 +10,9 @@ import net.minecraft.entity.passive.IAnimals;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.BiomeDictionary;
+
+import java.lang.reflect.Method;
+import java.util.*;
 
 /**
  * Dynamic entity hostility/type classifier and Forge BiomeDictionary matcher.
@@ -44,7 +36,7 @@ public final class EntityAndBiomeClassifier {
             try {
                 Object r = entityIsCreatureTypeMethod.invoke(el, type, Boolean.FALSE);
                 if (r instanceof Boolean) {
-                    return ((Boolean) r).booleanValue();
+                    return (Boolean) r;
                 }
             } catch (Throwable ignored) {
             }
@@ -83,10 +75,10 @@ public final class EntityAndBiomeClassifier {
         if (el == null || el.isDead || el.getHealth() <= 0.0f) return false;
         if (el instanceof EntityPlayer || isHostileEntity(el)) return false;
         return (el instanceof EntityAnimal)
-            || (el instanceof IAnimals)
-            || isCreatureOfType(el, EnumCreatureType.creature)
-            || isCreatureOfType(el, EnumCreatureType.waterCreature)
-            || isCreatureOfType(el, EnumCreatureType.ambient);
+                || (el instanceof IAnimals)
+                || isCreatureOfType(el, EnumCreatureType.creature)
+                || isCreatureOfType(el, EnumCreatureType.waterCreature)
+                || isCreatureOfType(el, EnumCreatureType.ambient);
     }
 
     public static String getEntityIdentifier(EntityLivingBase el) {
@@ -169,7 +161,7 @@ public final class EntityAndBiomeClassifier {
         Set<String> biomeTokens = getRegisteredBiomeTokens();
         for (String qt : qTokens) {
             if (qt.equals("log") || qt.equals("wood") || qt.equals("tree") || qt.equals("trees")
-                || qt.equals("ore") || qt.equals("stone") || qt.equals("river") || qt.equals("ocean")) {
+                    || qt.equals("ore") || qt.equals("stone") || qt.equals("river") || qt.equals("ocean")) {
                 continue;
             }
             if (biomeTokens.contains(qt)) {

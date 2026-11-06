@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.manager.visuals;
 import lombok.Builder;
 import lombok.Value;
 
-/** Typed lighting state result. */
+/**
+ * Typed lighting state result.
+ */
 @Value
 @Builder
 public class LightResult {

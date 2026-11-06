@@ -6,7 +6,9 @@ import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 
-/** Executes a position hold at the drone's current location. */
+/**
+ * Executes a position hold at the drone's current location.
+ */
 public final class HoldAction implements Action<NavigationContext> {
     @Override
     public void execute(NavigationContext context) {
@@ -17,7 +19,7 @@ public final class HoldAction implements Action<NavigationContext> {
             return;
         }
         FlightPathfinder.setDroneFlightTarget(ctrl.drone,
-            ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ, 0.06f);
+                ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ, 0.06f);
         ctrl.drone.motionX *= 0.25;
         ctrl.drone.motionY *= 0.25;
         ctrl.drone.motionZ *= 0.25;

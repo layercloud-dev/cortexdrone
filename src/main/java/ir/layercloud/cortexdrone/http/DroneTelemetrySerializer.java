@@ -8,12 +8,9 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.TickProfiler;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
@@ -24,6 +21,10 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Serializes live server, player, and drone state/diagnostics into JSON snapshots
@@ -219,8 +220,8 @@ public class DroneTelemetrySerializer {
 
             JsonArray nearbyEnts = new JsonArray();
             AxisAlignedBB eBox = AxisAlignedBB.getBoundingBox(
-                d.posX - 12.0, d.posY - 6.0, d.posZ - 12.0,
-                d.posX + 12.0, d.posY + 8.0, d.posZ + 12.0
+                    d.posX - 12.0, d.posY - 6.0, d.posZ - 12.0,
+                    d.posX + 12.0, d.posY + 8.0, d.posZ + 12.0
             );
             List<?> ents = d.worldObj.getEntitiesWithinAABB(EntityLivingBase.class, eBox);
             if (ents != null) {

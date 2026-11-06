@@ -7,7 +7,9 @@ import ir.layercloud.cortexdrone.context.impl.BlockContext;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import lombok.RequiredArgsConstructor;
 
-/** Single-use command: place exactly one explicit block. */
+/**
+ * Single-use command: place exactly one explicit block.
+ */
 @RequiredArgsConstructor
 public final class PlaceBlockAction implements Action<BlockContext> {
     private final BuildingManager buildingManager;
@@ -17,10 +19,10 @@ public final class PlaceBlockAction implements Action<BlockContext> {
     public void execute(BlockContext context) {
         String filter = this.request.getFilter() != null ? this.request.getFilter() : "any";
         boolean placed = this.buildingManager.placeBlock(
-            context.controller(), context.player(),
-            this.request.getX(), this.request.getY(), this.request.getZ(),
-            filter, this.request.getMeta());
+                context.controller(), context.player(),
+                this.request.getX(), this.request.getY(), this.request.getZ(),
+                filter, this.request.getMeta());
         context.result(BlockResult.placed(placed, filter,
-            this.request.getX(), this.request.getY(), this.request.getZ()));
+                this.request.getX(), this.request.getY(), this.request.getZ()));
     }
 }

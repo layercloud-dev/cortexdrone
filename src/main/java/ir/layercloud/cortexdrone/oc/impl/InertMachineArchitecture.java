@@ -9,13 +9,13 @@ import net.minecraft.nbt.NBTTagCompound;
 
 /**
  * Inert no-op machine architecture for OC Drones spawned by this mod.
- *
+ * <p>
  * Spawned CortexDrone machines never boot an EEPROM (they are Java-driven, paused forever with
  * an integer-max remainingPause). Upstream OC (li.cil.oc.server.machine.Machine) then unconditionally
  * calls {@code architecture.save(nbt)} during chunk saves, dereferencing a {@code null} architecture —
  * producing one NPE stack trace per expired save timer per drone
  * ("Unexpected error saving a state of computer ... Machine.architecture() is null").
- *
+ * <p>
  * Installing this architecture once (when machine.architecture() == null) makes the machine-save subtree
  * a zero-cost no-op: it is never initialized, never run, and never has any effect on the Paused machine
  * state or on energy/buffer bookkeeping. If a real EEPROM is later inserted and OC boots the machine,
@@ -54,7 +54,8 @@ public final class InertMachineArchitecture implements Architecture {
     @Override
     public ExecutionResult runThreaded(boolean synchronous) {
         // inert: paused forever, machine.update() never schedules this
-        return new ExecutionResult() { };
+        return new ExecutionResult() {
+        };
     }
 
     @Override

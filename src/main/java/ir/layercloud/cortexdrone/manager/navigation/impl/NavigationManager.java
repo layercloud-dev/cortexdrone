@@ -16,18 +16,19 @@ import ir.layercloud.cortexdrone.manager.navigation.NavigationResult;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.service.navigation.impl.DigPathService;
-import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
+import ir.layercloud.cortexdrone.service.navigation.impl.DigPathService;
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Goal-driven movement manager.
@@ -49,7 +50,7 @@ public final class NavigationManager {
     private final BreadcrumbService breadcrumbService;
     private final DigPathService digPathService = new DigPathService();
     private final Map<DroneController, Session> sessions =
-        new IdentityHashMap<DroneController, Session>();
+            new IdentityHashMap<DroneController, Session>();
 
     public NavigationManager(AIDroneManager manager, DroneLogger logger,
                              FlightPathfinder pathfinder, BreadcrumbService breadcrumbService) {
@@ -82,7 +83,7 @@ public final class NavigationManager {
         Session session = new Session(target.getX(), target.getY(), target.getZ());
         this.sessions.put(controller, session);
         this.manager.setDroneMode(controller, Mode.GOTO,
-            String.format("goto (%.1f,%.1f,%.1f)", target.getX(), target.getY(), target.getZ()));
+                String.format("goto (%.1f,%.1f,%.1f)", target.getX(), target.getY(), target.getZ()));
         return NavigationResult.started(target.getX(), target.getY(), target.getZ(), "planning");
     }
 
@@ -95,14 +96,16 @@ public final class NavigationManager {
         this.pathfinder.clearNavigation(controller);
         controller.stuckTicks = 0;
         NavigationContext context = new NavigationContext(controller, player,
-            NavigationMode.STOP, controller.drone.posX, controller.drone.posY,
-            controller.drone.posZ, null, reason != null ? reason : "Navigation stop");
+                NavigationMode.STOP, controller.drone.posX, controller.drone.posY,
+                controller.drone.posZ, null, reason != null ? reason : "Navigation stop");
         new StopAction(this.manager).execute(context);
         return NavigationResult.stopped(controller.drone.posX, controller.drone.posY,
-            controller.drone.posZ);
+                controller.drone.posZ);
     }
 
-    /** Called once per server tick from the runtime pipeline. */
+    /**
+     * Called once per server tick from the runtime pipeline.
+     */
     public void tick(DroneController controller) {
         Session session = this.sessions.get(controller);
         if (session == null || controller == null || controller.drone == null) return;
@@ -156,25 +159,27 @@ public final class NavigationManager {
             return NavigateResult.failure("No active drone");
         }
         NavigationContext context = new NavigationContext(controller, null,
-            NavigationMode.FLIGHT, x, y, z, null, label);
+                NavigationMode.FLIGHT, x, y, z, null, label);
         NavigateAction action = new NavigateAction(this.pathfinder, this.breadcrumbService);
         try {
             action.tick(context);
             return context.result() != null
-                ? context.result() : NavigateResult.failure("No flight result");
+                    ? context.result() : NavigateResult.failure("No flight result");
         } finally {
             context.complete();
         }
     }
 
-    /** Holds the current position. All motion is applied by {@link HoldAction}. */
+    /**
+     * Holds the current position. All motion is applied by {@link HoldAction}.
+     */
     public NavigateResult hold(DroneController controller, String label) {
         if (controller == null || controller.drone == null) {
             return NavigateResult.failure("No active drone");
         }
         NavigationContext context = new NavigationContext(controller, null,
-            NavigationMode.HOLD, controller.drone.posX, controller.drone.posY,
-            controller.drone.posZ, null, label);
+                NavigationMode.HOLD, controller.drone.posX, controller.drone.posY,
+                controller.drone.posZ, null, label);
         new HoldAction().execute(context);
         return context.result() != null ? context.result() : NavigateResult.done();
     }
@@ -187,7 +192,7 @@ public final class NavigationManager {
         Session session = this.sessions.get(controller);
         if (session == null) return Status.idle();
         return new Status(true, session.phase.name().toLowerCase(), session.reason,
-            session.goalX, session.goalY, session.goalZ);
+                session.goalX, session.goalY, session.goalZ);
     }
 
     public void clear(DroneController controller) {
@@ -203,16 +208,16 @@ public final class NavigationManager {
 
         if (!session.trailRejected) {
             TrailPlan trail = this.breadcrumbService.planBacktrack(controller,
-                session.goalX, session.goalY, session.goalZ);
+                    session.goalX, session.goalY, session.goalZ);
             if (trail != null && trail.isUseful()) {
                 Breadcrumb endpoint = trail.getEndpoint();
                 session.usingTrail = true;
                 session.reason = "trail-" + trail.getReason();
                 startLeg(controller, session, NavigationMode.FLIGHT,
-                    endpoint.getX() + 0.5, endpoint.getY() + 0.65, endpoint.getZ() + 0.5,
-                    null, "Trail endpoint (" + trail.getReason() + ")");
+                        endpoint.getX() + 0.5, endpoint.getY() + 0.65, endpoint.getZ() + 0.5,
+                        null, "Trail endpoint (" + trail.getReason() + ")");
                 this.logger.log("NAV", controller, "Flying to trail endpoint (" + trail.getReason() + ")",
-                    "point=(" + endpoint.getX() + "," + endpoint.getY() + "," + endpoint.getZ() + ")");
+                        "point=(" + endpoint.getX() + "," + endpoint.getY() + "," + endpoint.getZ() + ")");
                 return;
             }
         }
@@ -220,7 +225,7 @@ public final class NavigationManager {
         session.usingTrail = false;
         session.reason = "flight";
         startLeg(controller, session, NavigationMode.FLIGHT,
-            session.goalX, session.goalY, session.goalZ, null, "Flight");
+                session.goalX, session.goalY, session.goalZ, null, "Flight");
     }
 
     private void startLeg(DroneController controller, Session session, NavigationMode mode,
@@ -228,7 +233,7 @@ public final class NavigationManager {
                           List<int[]> digPath, String label) {
         session.phase = phaseFor(mode);
         NavigationContext context = new NavigationContext(controller, null, mode,
-            targetX, targetY, targetZ, digPath, label);
+                targetX, targetY, targetZ, digPath, label);
         Action<NavigationContext> action = actionFor(mode);
         action.execute(context);
         if (context.isActive()) {
@@ -319,7 +324,6 @@ public final class NavigationManager {
                     session.phase = Phase.PLAN;
                     session.replanCooldown = 2;
                 }
-                return;
         }
     }
 
@@ -372,11 +376,11 @@ public final class NavigationManager {
         }
 
         startLeg(controller, session, mode, session.goalX, session.goalY, session.goalZ, path,
-            "Navigation " + mode.name().toLowerCase() + " toward (" + gx + "," + gy + "," + gz + ")");
+                "Navigation " + mode.name().toLowerCase() + " toward (" + gx + "," + gy + "," + gz + ")");
         session.reason = mode.name().toLowerCase();
         controller.stuckTicks = 0;
         this.logger.log("NAV", controller, "Escalating to " + mode.name().toLowerCase(),
-            "steps=" + path.size() + " goal=(" + gx + "," + gy + "," + gz + ")");
+                "steps=" + path.size() + " goal=(" + gx + "," + gy + "," + gz + ")");
     }
 
     private void arrive(DroneController controller, Session session) {
@@ -386,12 +390,12 @@ public final class NavigationManager {
         this.manager.setDroneMode(controller, Mode.STAY, "Arrived at navigation goal");
         controller.drone.lightColor_$eq(0x00FFAA);
         controller.drone.statusText_$eq("Arrived\n"
-            + (int) Math.floor(session.goalX) + "," + (int) Math.floor(session.goalZ));
+                + (int) Math.floor(session.goalX) + "," + (int) Math.floor(session.goalZ));
         if (!controller.isScriptRunning()) {
             EntityPlayerMP owner = CortexDroneMod.findPlayer(controller.ownerName);
             if (owner != null) {
                 this.manager.droneSay(owner, controller, String.format(
-                    "Arrived at (%.1f, %.1f, %.1f).", session.goalX, session.goalY, session.goalZ));
+                        "Arrived at (%.1f, %.1f, %.1f).", session.goalX, session.goalY, session.goalZ));
             }
         }
     }
@@ -435,11 +439,11 @@ public final class NavigationManager {
         if (request.isStandoff()) {
             World world = controller.drone.worldObj;
             double[] standoff = FlightPathfinder.findMiningStandoff(world, controller.drone,
-                request.getStandoffX(), request.getStandoffY(), request.getStandoffZ());
+                    request.getStandoffX(), request.getStandoffY(), request.getStandoffZ());
             if (standoff == null) {
                 int[] open = FlightPathfinder.findNearestPassableVoxel(world,
-                    request.getStandoffX(), request.getStandoffY() + 1,
-                    request.getStandoffZ(), 3);
+                        request.getStandoffX(), request.getStandoffY() + 1,
+                        request.getStandoffZ(), 3);
                 if (open == null) return null;
                 standoff = new double[]{open[0] + 0.5, open[1] + 0.35, open[2] + 0.5};
             }
@@ -509,11 +513,28 @@ public final class NavigationManager {
             return new Status(false, "idle", "", 0, 0, 0);
         }
 
-        public boolean isActive() { return this.active; }
-        public String getPhase() { return this.phase; }
-        public String getReason() { return this.reason; }
-        public double getGoalX() { return this.goalX; }
-        public double getGoalY() { return this.goalY; }
-        public double getGoalZ() { return this.goalZ; }
+        public boolean isActive() {
+            return this.active;
+        }
+
+        public String getPhase() {
+            return this.phase;
+        }
+
+        public String getReason() {
+            return this.reason;
+        }
+
+        public double getGoalX() {
+            return this.goalX;
+        }
+
+        public double getGoalY() {
+            return this.goalY;
+        }
+
+        public double getGoalZ() {
+            return this.goalZ;
+        }
     }
 }

@@ -4,18 +4,11 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
-import ir.layercloud.cortexdrone.action.inventory.impl.CraftAction;
-import ir.layercloud.cortexdrone.action.inventory.impl.DepositChestAction;
-import ir.layercloud.cortexdrone.action.inventory.impl.DropAction;
-import ir.layercloud.cortexdrone.action.inventory.impl.GiveToPlayerAction;
-import ir.layercloud.cortexdrone.action.inventory.impl.MoveSlotAction;
-import ir.layercloud.cortexdrone.action.inventory.impl.SuckItemsAction;
-import ir.layercloud.cortexdrone.action.inventory.impl.TakeFromPlayerAction;
-import ir.layercloud.cortexdrone.action.inventory.impl.WithdrawChestAction;
+import ir.layercloud.cortexdrone.action.inventory.impl.*;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
-import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.ActionManager;
+import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
@@ -54,7 +47,7 @@ public final class InventoryManager extends ActionManager<InventoryContext, Inve
         if ("drop".equals(op)) return new DropAction(this.manager, request);
         if ("suck".equals(op)) return new SuckItemsAction(request);
         return ignored -> context.result(InventoryResult.failure(
-            "Unknown transfer op: " + op));
+                "Unknown transfer op: " + op));
     }
 
     @Override

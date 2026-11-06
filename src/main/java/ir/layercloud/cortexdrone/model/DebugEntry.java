@@ -1,9 +1,10 @@
 package ir.layercloud.cortexdrone.model;
 
 import com.google.gson.JsonObject;
+import lombok.Value;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import lombok.Value;
 
 @Value
 public class DebugEntry {
@@ -41,13 +42,13 @@ public class DebugEntry {
 
     public String toLogLine() {
         return String.format(
-            "[%s] [%s] [Drone#%d:%s] %s%s",
-            this.time,
-            this.category,
-            this.droneId,
-            this.droneName,
-            this.message,
-            this.details.isEmpty() ? "" : " | " + this.details
+                "[%s] [%s] [Drone#%d:%s] %s%s",
+                this.time,
+                this.category,
+                this.droneId,
+                this.droneName,
+                this.message,
+                this.details.isEmpty() ? "" : " | " + this.details
         );
     }
 }

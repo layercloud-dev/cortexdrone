@@ -11,6 +11,11 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
+import li.cil.oc.common.entity.Drone;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.WorldServer;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -20,10 +25,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import li.cil.oc.common.entity.Drone;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.WorldServer;
 
 public class DroneHttpServer {
     private final AIDroneManager manager;
@@ -63,7 +64,7 @@ public class DroneHttpServer {
                             sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(cached));
                             return;
                         }
-                        final AtomicReference<JsonObject> ref = new AtomicReference<JsonObject>(null);
+                        final AtomicReference<JsonObject> ref = new AtomicReference<>(null);
                         final CountDownLatch latch = new CountDownLatch(1);
                         manager.getMod().queueMain(new Runnable() {
                             @Override
@@ -99,7 +100,7 @@ public class DroneHttpServer {
                             sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(cached));
                             return;
                         }
-                        final AtomicReference<JsonObject> ref = new AtomicReference<JsonObject>(null);
+                        final AtomicReference<JsonObject> ref = new AtomicReference<>(null);
                         final CountDownLatch latch = new CountDownLatch(1);
                         manager.getMod().queueMain(new Runnable() {
                             @Override
@@ -143,7 +144,7 @@ public class DroneHttpServer {
                         // executeOnMainThread has its own per-method budget; the
                         // socket read adds ~1s. Log + 504 instead of silently hanging.
                         long rpcT0 = System.currentTimeMillis();
-                        final AtomicReference<JsonObject> rpcRef = new AtomicReference<JsonObject>(null);
+                        final AtomicReference<JsonObject> rpcRef = new AtomicReference<>(null);
                         final CountDownLatch rpcLatch = new CountDownLatch(1);
                         CortexDroneMod.HTTP_POOL.submit(new Runnable() {
                             @Override
@@ -195,7 +196,7 @@ public class DroneHttpServer {
                             final EntityPlayerMP p = pName != null ? CortexDroneMod.findPlayer(pName) : null;
                             final String code = req.has("code") ? req.get("code").getAsString() : "";
                             // Bounded: never block the HTTP thread forever on a wedged node.
-                            final AtomicReference<JsonObject> jsRef = new AtomicReference<JsonObject>(null);
+                            final AtomicReference<JsonObject> jsRef = new AtomicReference<>(null);
                             final CountDownLatch jsLatch = new CountDownLatch(1);
                             CortexDroneMod.HTTP_POOL.submit(new Runnable() {
                                 @Override
@@ -226,7 +227,7 @@ public class DroneHttpServer {
                             sendJsonResponse(exchange, 200, CortexDroneMod.GSON.toJson(jsRes));
                             return;
                         }
-                        final AtomicReference<JsonObject> respRef = new AtomicReference<JsonObject>(null);
+                        final AtomicReference<JsonObject> respRef = new AtomicReference<>(null);
                         final CountDownLatch latch = new CountDownLatch(1);
                         manager.getMod().queueMain(new Runnable() {
                             @Override
@@ -317,7 +318,7 @@ public class DroneHttpServer {
         if (player == null) {
             MinecraftServer srv = MinecraftServer.getServer();
             if (srv != null && srv.getConfigurationManager() != null && srv.getConfigurationManager().playerEntityList != null
-                && !srv.getConfigurationManager().playerEntityList.isEmpty()) {
+                    && !srv.getConfigurationManager().playerEntityList.isEmpty()) {
                 Object first = srv.getConfigurationManager().playerEntityList.get(0);
                 if (first instanceof EntityPlayerMP) {
                     player = (EntityPlayerMP) first;

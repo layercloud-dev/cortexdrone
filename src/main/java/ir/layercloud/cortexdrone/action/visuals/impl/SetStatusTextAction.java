@@ -6,7 +6,9 @@ import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
 import ir.layercloud.cortexdrone.context.impl.VisualsContext;
 import lombok.RequiredArgsConstructor;
 
-/** Single-use command: set the drone status text. */
+/**
+ * Single-use command: set the drone status text.
+ */
 @RequiredArgsConstructor
 public final class SetStatusTextAction implements Action<VisualsContext> {
     private final VisualsRequest request;

@@ -16,7 +16,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
-/** Single-use command: use one held item. */
+/**
+ * Single-use command: use one held item.
+ */
 @RequiredArgsConstructor
 public final class UseItemAction implements Action<InteractionContext> {
     private final InteractionRequest request;
@@ -38,21 +40,21 @@ public final class UseItemAction implements Action<InteractionContext> {
         }
 
         int slot = request.hasSlot()
-            ? request.getSlot()
-            : fakePlayer.inventory.currentItem;
+                ? request.getSlot()
+                : fakePlayer.inventory.currentItem;
         String filter = request.getItem();
         if (filter != null) {
             int found = findItemSlot(fakePlayer, filter);
             if (found < 0) {
                 context.result(InteractionResult.failure(
-                    "No matching item in drone inventory for filter: " + filter, "used", false));
+                        "No matching item in drone inventory for filter: " + filter, "used", false));
                 return;
             }
             slot = found;
         }
 
         ItemStack stack = slot >= 0 && slot < fakePlayer.inventory.getSizeInventory()
-            ? fakePlayer.inventory.getStackInSlot(slot) : null;
+                ? fakePlayer.inventory.getStackInSlot(slot) : null;
         if (stack == null || stack.getItem() == null) {
             context.result(InteractionResult.failure("No item in slot " + slot, "used", false));
             return;
@@ -73,7 +75,7 @@ public final class UseItemAction implements Action<InteractionContext> {
         if (request.isCoordinates()) {
             try {
                 used = item.onItemUse(stack, fakePlayer, world, x, y, z,
-                    request.getSide(), 0.5f, 0.5f, 0.5f);
+                        request.getSide(), 0.5f, 0.5f, 0.5f);
                 method = "onItemUse";
             } catch (Throwable failure) {
                 method = "onItemUse:error:" + failure.getClass().getSimpleName();
@@ -82,8 +84,8 @@ public final class UseItemAction implements Action<InteractionContext> {
             try {
                 ItemStack after = item.onItemRightClick(stack, world, fakePlayer);
                 used = after != null && (after != stack
-                    || after.stackSize != beforeCount
-                    || after.getItemDamage() != beforeDamage);
+                        || after.stackSize != beforeCount
+                        || after.getItemDamage() != beforeDamage);
                 method = "onItemRightClick";
             } catch (Throwable failure) {
                 method = "onItemRightClick:error:" + failure.getClass().getSimpleName();
@@ -92,16 +94,16 @@ public final class UseItemAction implements Action<InteractionContext> {
 
         Block targetBlock = world.getBlock(x, y, z);
         context.result(InteractionResult.success(
-            "used", used,
-            "method", method,
-            "slot", slot,
-            "item", stack.getDisplayName(),
-            "x", x,
-            "y", y,
-            "z", z,
-            "side", request.getSide(),
-            "block", ItemClassifier.getBlockDisplayName(
-                targetBlock, world.getBlockMetadata(x, y, z))));
+                "used", used,
+                "method", method,
+                "slot", slot,
+                "item", stack.getDisplayName(),
+                "x", x,
+                "y", y,
+                "z", z,
+                "side", request.getSide(),
+                "block", ItemClassifier.getBlockDisplayName(
+                        targetBlock, world.getBlockMetadata(x, y, z))));
     }
 
     private static int findItemSlot(EntityPlayer fakePlayer, String filter) {
@@ -113,8 +115,8 @@ public final class UseItemAction implements Action<InteractionContext> {
                 ItemStack candidate = fakePlayer.inventory.getStackInSlot(i);
                 if (candidate == null || candidate.getItem() == null) continue;
                 if (filter.isEmpty() || ItemClassifier.scoreBlockOrItemMatch(
-                    candidate.getDisplayName(), ItemClassifier.getItemIdentifier(candidate),
-                    candidate.getItemDamage(), filter) > 0) {
+                        candidate.getDisplayName(), ItemClassifier.getItemIdentifier(candidate),
+                        candidate.getItemDamage(), filter) > 0) {
                     return i;
                 }
             }

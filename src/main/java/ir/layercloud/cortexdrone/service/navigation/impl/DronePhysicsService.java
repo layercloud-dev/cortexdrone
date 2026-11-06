@@ -7,7 +7,6 @@ import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
-import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 
 /**
@@ -64,14 +63,14 @@ public final class DronePhysicsService {
      * - Avoids Vec3 allocation (zero-pressure tick path).
      * - Uses controller's integrated velocity estimate (velX/Y/Z) for anti-overshoot braking.
      * - Distance-dependent max velocity: full cruise far away, ease-in near the target so the
-     *   drone arrives without oscillation and never walks into the floor (target is 3D, not ground-hugging).
+     * drone arrives without oscillation and never walks into the floor (target is 3D, not ground-hugging).
      */
     public static void runServerSidePhysicsStep(Drone d, double maxVelOverride, DroneController ctrl) {
         World w = d.worldObj;
         boolean inLiquid = d.isInWater() || d.handleLavaMovement() || (w != null && ItemClassifier.isLiquidBlock(w.getBlock(
-            MathHelper.floor_double(d.posX),
-            MathHelper.floor_double(d.posY),
-            MathHelper.floor_double(d.posZ)
+                MathHelper.floor_double(d.posX),
+                MathHelper.floor_double(d.posY),
+                MathHelper.floor_double(d.posZ)
         )));
         double dx = (double) d.targetX() - d.posX;
         double dy = (double) d.targetY() - d.posY;
@@ -169,7 +168,7 @@ public final class DronePhysicsService {
                     int by = MathHelper.floor_double(cy);
                     int bz = MathHelper.floor_double(cz);
                     if (ItemClassifier.isPassableVoxel(world, bx, by, bz)
-                        && FlightPathfinder.isFlightLineClear(world, px, py + 0.3, pz, cx, cy, cz)) {
+                            && FlightPathfinder.isFlightLineClear(world, px, py + 0.3, pz, cx, cy, cz)) {
                         return new double[]{cx, cy, cz};
                     }
                 }
@@ -180,7 +179,7 @@ public final class DronePhysicsService {
 
     private static boolean hasHeadroom(World world, int x, int y, int z) {
         return ItemClassifier.isPassableVoxel(world, x, y, z)
-            && ItemClassifier.isPassableVoxel(world, x, y + 1, z);
+                && ItemClassifier.isPassableVoxel(world, x, y + 1, z);
     }
 
     public static double[] findMiningStandoff(World world, Drone d, int bx, int by, int bz) {
@@ -192,7 +191,7 @@ public final class DronePhysicsService {
         double[] best = null;
 
         int[][] cardinals = new int[][]{
-            {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}
+                {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}
         };
         for (int[] c : cardinals) {
             int ax = bx + c[0];
@@ -258,9 +257,9 @@ public final class DronePhysicsService {
                 break;
             }
             int[][] cands = new int[][]{
-                {remX > 0 ? 1 : (remX < 0 ? -1 : 0), 0, 0, Math.abs(remX)},
-                {0, remY > 0 ? 1 : (remY < 0 ? -1 : 0), 0, Math.abs(remY)},
-                {0, 0, remZ > 0 ? 1 : (remZ < 0 ? -1 : 0), Math.abs(remZ)}
+                    {remX > 0 ? 1 : (remX < 0 ? -1 : 0), 0, 0, Math.abs(remX)},
+                    {0, remY > 0 ? 1 : (remY < 0 ? -1 : 0), 0, Math.abs(remY)},
+                    {0, 0, remZ > 0 ? 1 : (remZ < 0 ? -1 : 0), Math.abs(remZ)}
             };
             for (int i = 0; i < 2; i++) {
                 for (int j = i + 1; j < 3; j++) {

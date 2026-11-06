@@ -1,11 +1,8 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import lombok.experimental.UtilityClass;
+
+import java.util.*;
 
 /**
  * Word-boundary lexical & structural item/block matcher and relevance scorer.
@@ -16,18 +13,18 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class LexicalItemMatcher {
     private static final Set<String> DERIVATIVE_SHAPE_TOKENS = new HashSet<String>(Arrays.asList(
-        "stairs", "stair", "slab", "slabs", "wall", "walls", "fence", "gate",
-        "brick", "bricks", "pillar", "chiseled", "pane", "bars", "nugget",
-        "dust", "tiny", "powder", "crushed", "gear", "plate", "wire", "cable",
-        "chestplate", "leggings", "helmet", "boots", "tunic", "cap", "pants"
+            "stairs", "stair", "slab", "slabs", "wall", "walls", "fence", "gate",
+            "brick", "bricks", "pillar", "chiseled", "pane", "bars", "nugget",
+            "dust", "tiny", "powder", "crushed", "gear", "plate", "wire", "cable",
+            "chestplate", "leggings", "helmet", "boots", "tunic", "cap", "pants"
     ));
 
     private static final Set<String> SPECIAL_CONTAINER_QUALIFIERS = new HashSet<String>(Arrays.asList(
-        "ender", "sky", "skystone", "trapped", "personal", "void"
+            "ender", "sky", "skystone", "trapped", "personal", "void"
     ));
 
     private static final Set<String> FILLED_LIQUID_MODIFIERS = new HashSet<String>(Arrays.asList(
-        "water", "lava", "milk", "oil", "fuel", "acid", "blood", "sludge", "toxic", "coolant", "cryotheum", "pyrotheum"
+            "water", "lava", "milk", "oil", "fuel", "acid", "blood", "sludge", "toxic", "coolant", "cryotheum", "pyrotheum"
     ));
 
     /**
@@ -90,8 +87,8 @@ public final class LexicalItemMatcher {
             for (int j = 1; j <= lenB; j++) {
                 int cost = (a.charAt(i - 1) == b.charAt(j - 1)) ? 0 : 1;
                 dp[i][j] = Math.min(
-                    Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
-                    dp[i - 1][j - 1] + cost
+                        Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
+                        dp[i - 1][j - 1] + cost
                 );
                 if (i > 1 && j > 1 && a.charAt(i - 1) == b.charAt(j - 2) && a.charAt(i - 2) == b.charAt(j - 1)) {
                     dp[i][j] = Math.min(dp[i][j], dp[i - 2][j - 2] + 1);
@@ -110,9 +107,7 @@ public final class LexicalItemMatcher {
         // Typo-tolerant Damerau-Levenshtein matching when first letter matches and length >= 4
         if (cSing.length() >= 4 && qSing.length() >= 4 && cSing.charAt(0) == qSing.charAt(0)) {
             int maxDist = (cSing.length() >= 7 && qSing.length() >= 7) ? 2 : 1;
-            if (damerauLevenshteinDistance(cSing, qSing) <= maxDist) {
-                return true;
-            }
+            return damerauLevenshteinDistance(cSing, qSing) <= maxDist;
         }
         return false;
     }
@@ -170,7 +165,7 @@ public final class LexicalItemMatcher {
         }
         for (String it : idTokens) {
             if (("chestplate".equals(it) || "leggings".equals(it) || "helmet".equals(it) || "boots".equals(it))
-                && !tokenListContains(queryTokens, it)) {
+                    && !tokenListContains(queryTokens, it)) {
                 return 0;
             }
         }

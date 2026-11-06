@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.action.interact;
 import lombok.Builder;
 import lombok.Value;
 
-/** Immutable request data for one interaction action. */
+/**
+ * Immutable request data for one interaction action.
+ */
 @Value
 @Builder
 public class InteractionRequest {

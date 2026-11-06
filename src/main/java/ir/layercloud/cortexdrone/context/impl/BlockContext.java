@@ -8,7 +8,9 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/** Mutable state for one block action. */
+/**
+ * Mutable state for one block action.
+ */
 @Getter
 @Accessors(fluent = true)
 public final class BlockContext extends ActionContextBase {
@@ -31,9 +33,9 @@ public final class BlockContext extends ActionContextBase {
 
     public boolean matchesTarget(int[] current) {
         return this.target != null && current != null
-            && current[0] == this.target[0]
-            && current[1] == this.target[1]
-            && current[2] == this.target[2];
+                && current[0] == this.target[0]
+                && current[1] == this.target[1]
+                && current[2] == this.target[2];
     }
 
     public void countTick() {

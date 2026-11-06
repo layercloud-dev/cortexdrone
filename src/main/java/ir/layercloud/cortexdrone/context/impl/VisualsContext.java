@@ -8,7 +8,9 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/** Mutable state for one visuals action. Visuals complete synchronously. */
+/**
+ * Mutable state for one visuals action. Visuals complete synchronously.
+ */
 @Getter
 @Accessors(fluent = true)
 public final class VisualsContext extends ActionContextBase {

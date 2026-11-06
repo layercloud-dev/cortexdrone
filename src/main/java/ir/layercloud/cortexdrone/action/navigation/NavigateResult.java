@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.action.navigation;
 import lombok.Builder;
 import lombok.Value;
 
-/** Result of one executable navigation step. */
+/**
+ * Result of one executable navigation step.
+ */
 @Value
 @Builder
 public class NavigateResult {

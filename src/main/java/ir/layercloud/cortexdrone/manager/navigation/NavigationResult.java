@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.manager.navigation;
 import lombok.Builder;
 import lombok.Value;
 
-/** Immediate acknowledgement of a navigation goal request. */
+/**
+ * Immediate acknowledgement of a navigation goal request.
+ */
 @Value
 @Builder
 public class NavigationResult {

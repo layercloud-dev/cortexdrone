@@ -4,13 +4,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
-import ir.layercloud.cortexdrone.service.machine.FurnaceScanner;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
-import ir.layercloud.cortexdrone.service.machine.MachineTileInspector;
 import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.machine.FurnaceScanner;
+import ir.layercloud.cortexdrone.service.machine.MachineTileInspector;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
-import java.util.List;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
@@ -22,6 +21,8 @@ import net.minecraft.tileentity.TileEntityFurnace;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
+import java.util.List;
+
 /**
  * Read-only inventory RPCs: player, chest, furnace, crafting and machine
  * inspection. Mutating transfer/craft operations are actions in
@@ -30,10 +31,10 @@ import net.minecraft.world.World;
 @RequiredArgsConstructor
 public class InventoryRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
-        "get_player", "get_player_inventory", "scan_chests",
-        "find_item_in_chests", "find_item", "get_chest", "get_recipes",
-        "scan_furnaces", "get_machine_recipes", "get_machine_recipe",
-        "scan_machines", "machine_ingredients"
+            "get_player", "get_player_inventory", "scan_chests",
+            "find_item_in_chests", "find_item", "get_chest", "get_recipes",
+            "scan_furnaces", "get_machine_recipes", "get_machine_recipe",
+            "scan_machines", "machine_ingredients"
     };
 
     private final InventoryService inventoryService;
@@ -80,8 +81,8 @@ public class InventoryRpcHandler implements RpcHandler {
             res.addProperty("blockZ", bz);
             res.addProperty("footBlock", world.isAirBlock(bx, by, bz) ? "Air" : ItemClassifier.getBlockDisplayName(foot, world.getBlockMetadata(bx, by, bz)));
             String underName = world.isAirBlock(bx, by - 1, bz)
-                ? (supportBlock != null && supportBlock.has("name") ? supportBlock.get("name").getAsString() : "Air")
-                : ItemClassifier.getBlockDisplayName(under, world.getBlockMetadata(bx, by - 1, bz));
+                    ? (supportBlock != null && supportBlock.has("name") ? supportBlock.get("name").getAsString() : "Air")
+                    : ItemClassifier.getBlockDisplayName(under, world.getBlockMetadata(bx, by - 1, bz));
             res.addProperty("underBlock", underName);
             if (supportBlock != null) res.add("supportBlock", supportBlock);
             if (lookBlock != null) res.add("lookBlock", lookBlock);
@@ -127,16 +128,16 @@ public class InventoryRpcHandler implements RpcHandler {
 
         if (m.equals("find_item")) {
             String query = args.has("filter") ? args.get("filter").getAsString()
-                : (args.has("query") ? args.get("query").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "all"));
+                    : (args.has("query") ? args.get("query").getAsString()
+                    : (args.has("item") ? args.get("item").getAsString() : "all"));
             int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
             return this.inventoryService.getContainerSearchService().findItemEverywhere(world, ctrl, player, query, radius);
         }
 
         if (m.equals("find_item_in_chests") || m.equals("scan_chests")) {
             String query = args.has("filter") ? args.get("filter").getAsString()
-                : (args.has("query") ? args.get("query").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "all"));
+                    : (args.has("query") ? args.get("query").getAsString()
+                    : (args.has("item") ? args.get("item").getAsString() : "all"));
             int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 28;
             return this.inventoryService.getContainerSearchService().searchChestsForItem(world, ctrl, player, query, radius);
         }
@@ -173,7 +174,7 @@ public class InventoryRpcHandler implements RpcHandler {
 
         if (m.equals("get_recipes")) {
             String filter = args.has("filter") ? args.get("filter").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "chest");
+                    : (args.has("item") ? args.get("item").getAsString() : "chest");
             return this.inventoryService.getRecipesForFilter(filter);
         }
 
@@ -212,27 +213,27 @@ public class InventoryRpcHandler implements RpcHandler {
 
         if (m.equals("get_machine_recipes")) {
             String filter = args.has("filter") ? args.get("filter").getAsString()
-                : (args.has("target") ? args.get("target").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : ""));
+                    : (args.has("target") ? args.get("target").getAsString()
+                    : (args.has("item") ? args.get("item").getAsString() : ""));
             String machine = args.has("machine") ? args.get("machine").getAsString()
-                : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
+                    : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
             return this.inventoryService.getMachineRecipeService().getMachineRecipesForFilter(filter, machine);
         }
 
         if (m.equals("get_machine_recipe")) {
             String filter = args.has("filter") ? args.get("filter").getAsString()
-                : (args.has("target") ? args.get("target").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "plate_iron"));
+                    : (args.has("target") ? args.get("target").getAsString()
+                    : (args.has("item") ? args.get("item").getAsString() : "plate_iron"));
             String machine = args.has("machine") ? args.get("machine").getAsString()
-                : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
+                    : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
             int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
             return this.inventoryService.getMachineRecipeService().getBestMachineRecipe(world, player, filter, machine, radius);
         }
 
         if (m.equals("scan_machines")) {
             String machine = args.has("machine") ? args.get("machine").getAsString()
-                : (args.has("machineKind") ? args.get("machineKind").getAsString()
-                : (args.has("filter") ? args.get("filter").getAsString() : ""));
+                    : (args.has("machineKind") ? args.get("machineKind").getAsString()
+                    : (args.has("filter") ? args.get("filter").getAsString() : ""));
             int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
             String want = MachineTileInspector.normalizeMachineAlias(machine);
             double refX = player != null && player.worldObj == world ? player.posX : d.posX;
@@ -248,10 +249,10 @@ public class InventoryRpcHandler implements RpcHandler {
 
         if (m.equals("machine_ingredients")) {
             String filter = args.has("filter") ? args.get("filter").getAsString()
-                : (args.has("target") ? args.get("target").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "plate_iron"));
+                    : (args.has("target") ? args.get("target").getAsString()
+                    : (args.has("item") ? args.get("item").getAsString() : "plate_iron"));
             String machine = args.has("machine") ? args.get("machine").getAsString()
-                : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
+                    : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
             int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
             JsonObject best = this.inventoryService.getMachineRecipeService().getBestMachineRecipe(world, player, filter, machine, radius);
             if (!best.has("recipe")) return best;
@@ -266,8 +267,8 @@ public class InventoryRpcHandler implements RpcHandler {
                 for (int i = 0; i < ins.size(); i++) {
                     JsonObject io = ins.get(i).getAsJsonObject();
                     String probe = io.has("displayName") ? io.get("displayName").getAsString()
-                        : (io.has("registryName") ? io.get("registryName").getAsString()
-                        : (io.has("dict") ? io.get("dict").getAsString() : "ingredient"));
+                            : (io.has("registryName") ? io.get("registryName").getAsString()
+                            : (io.has("dict") ? io.get("dict").getAsString() : "ingredient"));
                     JsonObject search = this.inventoryService.getContainerSearchService().findItemEverywhere(world, ctrl, player, probe, radius);
                     JsonObject entry = new JsonObject();
                     entry.add("ingredient", io);

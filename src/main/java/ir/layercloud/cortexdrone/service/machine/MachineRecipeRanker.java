@@ -1,18 +1,19 @@
 package ir.layercloud.cortexdrone.service.machine;
 
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import lombok.Value;
+import lombok.experimental.UtilityClass;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
-import lombok.experimental.UtilityClass;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * Ranking, filtering, and ingredient-availability assessment for HBM
@@ -53,7 +54,7 @@ final class MachineRecipeRanker {
         String key = dimId + "|" + droneX / 16 + "|" + droneZ / 16 + "|" + bucket + "|" + (player != null ? player.getCommandSenderName() : "null");
         java.util.Map<String, Integer> hitCache = COUNT_CACHE.get(key);
         Long expiry = COUNT_CACHE_EXPIRY.get(key);
-        if (hitCache != null && expiry != null && expiry.longValue() > now) {
+        if (hitCache != null && expiry != null && expiry > now) {
             return new java.util.LinkedHashMap<String, Integer>(hitCache);
         }
         java.util.Map<String, Integer> totals = countAllNearbyUncached(inventoryService, world, player, radius);
@@ -64,7 +65,7 @@ final class MachineRecipeRanker {
             while (it.hasNext()) {
                 String k = it.next();
                 Long exp = COUNT_CACHE_EXPIRY.get(k);
-                if (exp == null || exp.longValue() <= now) {
+                if (exp == null || exp <= now) {
                     it.remove();
                     COUNT_CACHE.remove(k);
                 }

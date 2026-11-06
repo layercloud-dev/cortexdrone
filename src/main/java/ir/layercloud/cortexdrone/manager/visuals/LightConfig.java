@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.manager.visuals;
 import lombok.Builder;
 import lombok.Value;
 
-/** Typed lighting configuration request. */
+/**
+ * Typed lighting configuration request.
+ */
 @Value
 @Builder
 public class LightConfig {

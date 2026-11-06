@@ -6,11 +6,6 @@ import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -24,6 +19,12 @@ import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
 import net.minecraftforge.oredict.ShapedOreRecipe;
 import net.minecraftforge.oredict.ShapelessOreRecipe;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * Dynamic Forge CraftingManager recipe introspection, relevance ranking, and 3-pass crafting engine.
@@ -154,7 +155,8 @@ public class CraftingService {
             // bound growth under pathological filter churn; ConcurrentHashMap purge is approximate
             java.util.Iterator<String> it = recipeRankCache.keySet().iterator();
             for (int i = 0; i < 16 && it.hasNext(); i++) {
-                it.next(); it.remove();
+                it.next();
+                it.remove();
             }
         }
         return capped;

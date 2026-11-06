@@ -5,10 +5,13 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 
-/** JSON boundary for the read-only breadcrumb service. */
+import java.util.List;
+
+/**
+ * JSON boundary for the read-only breadcrumb service.
+ */
 @RequiredArgsConstructor
 public final class BreadcrumbRpcTranslator {
     private final BreadcrumbService service;

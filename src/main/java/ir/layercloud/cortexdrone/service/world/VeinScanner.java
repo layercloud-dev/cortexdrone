@@ -2,22 +2,14 @@ package ir.layercloud.cortexdrone.service.world;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
+
+import java.util.*;
 
 /**
  * 3D 26-connected ore and resource vein clustering scanner backed by ChunkCacheContext.
@@ -81,11 +73,11 @@ public final class VeinScanner {
                 sumZ += cur[2];
                 if (!exposed) {
                     if (bsi.isPassable(cur[0] + 1, cur[1], cur[2])
-                        || bsi.isPassable(cur[0] - 1, cur[1], cur[2])
-                        || bsi.isPassable(cur[0], cur[1] + 1, cur[2])
-                        || bsi.isPassable(cur[0], cur[1] - 1, cur[2])
-                        || bsi.isPassable(cur[0], cur[1], cur[2] + 1)
-                        || bsi.isPassable(cur[0], cur[1], cur[2] - 1)) {
+                            || bsi.isPassable(cur[0] - 1, cur[1], cur[2])
+                            || bsi.isPassable(cur[0], cur[1] + 1, cur[2])
+                            || bsi.isPassable(cur[0], cur[1] - 1, cur[2])
+                            || bsi.isPassable(cur[0], cur[1], cur[2] + 1)
+                            || bsi.isPassable(cur[0], cur[1], cur[2] - 1)) {
                         exposed = true;
                     }
                 }

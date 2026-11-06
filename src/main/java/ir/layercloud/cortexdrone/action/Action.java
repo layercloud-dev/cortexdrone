@@ -14,11 +14,15 @@ import ir.layercloud.cortexdrone.context.ActionContext;
 public interface Action<C extends ActionContext> {
     void execute(C context);
 
-    /** Called once per server tick while the service retains this action. */
+    /**
+     * Called once per server tick while the service retains this action.
+     */
     default void tick(C context) {
     }
 
-    /** Called when the service cancels this action. */
+    /**
+     * Called when the service cancels this action.
+     */
     default void cancel(C context) {
     }
 }

@@ -81,7 +81,7 @@ public class ChunkCacheContext {
         if (y <= 1 || y >= 255) return false;
         long key = pack(x, y, z);
         Boolean cached = this.passableCache.get(key);
-        if (cached != null) return cached.booleanValue();
+        if (cached != null) return cached;
         Block b = getBlock(x, y, z);
         boolean pass;
         if (b == null || b == Blocks.air) pass = true;

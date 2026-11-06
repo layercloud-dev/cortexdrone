@@ -3,18 +3,14 @@ package ir.layercloud.cortexdrone.service.machine;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+
+import java.util.*;
 
 /**
  * Discovers HBM/modified processing machines by scanning loaded TileEntities
@@ -26,16 +22,16 @@ import net.minecraft.world.World;
 public final class MachineTileInspector {
 
     public static final String[] MACHINE_KEYWORDS = new String[]{
-        "anvil", "assembly", "chemical", "blast", "arc", "press", "shredder",
-        "centrifuge", "compressor", "mixer", "coker", "pyrolysis", "electrolyser",
-        "electrolyzer", "crystallizer", "semiconductor", "soldering", "rockmill",
-        "rock_mill", "rotary", "combination", "assembler", "chemplant", "plant",
-        "fabricator", "constructor", "crucible", "electrolyse", "pedestal",
-        "plasma", "fusion", "breeder", "cyclotron", "pyro", "cracking", "alkyl",
-        "fraction", "refinery", "vacuum", "distill", "hydrotreat", "liquefact",
-        "irradiat", "solidif", "supercomputer", "space", "combination", "ferment",
-        "ammo", "autocraft", "annihilat", "atmosphere", "custom", "particle",
-        "gascent", "pyrooven", "purex", "exposure"
+            "anvil", "assembly", "chemical", "blast", "arc", "press", "shredder",
+            "centrifuge", "compressor", "mixer", "coker", "pyrolysis", "electrolyser",
+            "electrolyzer", "crystallizer", "semiconductor", "soldering", "rockmill",
+            "rock_mill", "rotary", "combination", "assembler", "chemplant", "plant",
+            "fabricator", "constructor", "crucible", "electrolyse", "pedestal",
+            "plasma", "fusion", "breeder", "cyclotron", "pyro", "cracking", "alkyl",
+            "fraction", "refinery", "vacuum", "distill", "hydrotreat", "liquefact",
+            "irradiat", "solidif", "supercomputer", "space", "combination", "ferment",
+            "ammo", "autocraft", "annihilat", "atmosphere", "custom", "particle",
+            "gascent", "pyrooven", "purex", "exposure"
     };
 
     public static boolean isMachineTile(World world, TileEntity te) {
@@ -43,20 +39,20 @@ public final class MachineTileInspector {
         if (!(te instanceof IInventory)) return false;
         String cls = te.getClass().getName().toLowerCase();
         if (cls.contains("tileentitymachine") || cls.contains("tileentitycrucible")
-            || cls.contains("tileentityelectrolyser") || cls.contains("tileentitypedestal")
-            || cls.contains("tileentityfusionplas") || cls.contains("anvil")
-            || cls.contains("assemblymachine") || cls.contains("chemicalplant")
-            || cls.contains("blastfurnace") || cls.contains("arcwelder")
-            || cls.contains("arcfurnace") || cls.contains("press") || cls.contains("shredder")
-            || cls.contains("centrifuge") || cls.contains("compressor") || cls.contains("mixer")
-            || cls.contains("coker") || cls.contains("electrolyser") || cls.contains("electrolyzer")
-            || cls.contains("crystallizer") || cls.contains("pyrolysis") || cls.contains("rockmill")
-            || cls.contains("soldering") || cls.contains("rotary") || cls.contains("vacuum")
-            || cls.contains("distill") || cls.contains("refinery") || cls.contains("fraction")
-            || cls.contains("cracker") || cls.contains("reformer") || cls.contains("alkyl")
-            || cls.contains("hydrotreat") || cls.contains("liquefact") || cls.contains("irradiat")
-            || cls.contains("solidif") || cls.contains("breeder") || cls.contains("cyclotron")
-            || cls.contains("gascent") || cls.contains("solidifier") || cls.contains("pyrooven")) {
+                || cls.contains("tileentityelectrolyser") || cls.contains("tileentitypedestal")
+                || cls.contains("tileentityfusionplas") || cls.contains("anvil")
+                || cls.contains("assemblymachine") || cls.contains("chemicalplant")
+                || cls.contains("blastfurnace") || cls.contains("arcwelder")
+                || cls.contains("arcfurnace") || cls.contains("press") || cls.contains("shredder")
+                || cls.contains("centrifuge") || cls.contains("compressor") || cls.contains("mixer")
+                || cls.contains("coker") || cls.contains("electrolyser") || cls.contains("electrolyzer")
+                || cls.contains("crystallizer") || cls.contains("pyrolysis") || cls.contains("rockmill")
+                || cls.contains("soldering") || cls.contains("rotary") || cls.contains("vacuum")
+                || cls.contains("distill") || cls.contains("refinery") || cls.contains("fraction")
+                || cls.contains("cracker") || cls.contains("reformer") || cls.contains("alkyl")
+                || cls.contains("hydrotreat") || cls.contains("liquefact") || cls.contains("irradiat")
+                || cls.contains("solidif") || cls.contains("breeder") || cls.contains("cyclotron")
+                || cls.contains("gascent") || cls.contains("solidifier") || cls.contains("pyrooven")) {
             return true;
         }
         if (world != null) {
@@ -150,12 +146,12 @@ public final class MachineTileInspector {
     private static String mapAlias(String m) {
         if (m.equals("anvil") || m.equals("anvil_craft") || m.equals("smithing")) return "anvil";
         if ((m.equals("assembly") || m.equals("assembler") || m.equals("assembler_machine") || m.equals("assembly_machine")
-            || m.equals("assemblymachine") || m.equals("assembly_factory") || m.equals("assemblyfactory")
-            || m.equals("machine_assembly") || m.equals("machine_assembly_machine") || m.equals("machine_assembly_factory"))) {
+                || m.equals("assemblymachine") || m.equals("assembly_factory") || m.equals("assemblyfactory")
+                || m.equals("machine_assembly") || m.equals("machine_assembly_machine") || m.equals("machine_assembly_factory"))) {
             return "assembly_machine";
         }
         if (m.equals("chemical") || m.equals("chem") || m.equals("chem_plant") || m.equals("chemical_plant")
-            || m.equals("chemicalplant") || m.equals("machine_chemical_plant") || m.equals("chemplant")) {
+                || m.equals("chemicalplant") || m.equals("machine_chemical_plant") || m.equals("chemplant")) {
             return "chemical_plant";
         }
         if (m.equals("blast") || m.equals("blast_furnace") || m.equals("blastfurnace") || m.equals("blast_furnace_legacy")) {
@@ -182,7 +178,7 @@ public final class MachineTileInspector {
         }
         if (m.equals("crucible") || m.equals("smelting") || m.equals("crucible_smelting")) return "crucible";
         if (m.equals("electrolyser") || m.equals("electrolyzer") || m.equals("electrolyse")
-            || m.equals("electrolyser_fluid") || m.equals("electrolyser_metal")) return "electrolyser";
+                || m.equals("electrolyser_fluid") || m.equals("electrolyser_metal")) return "electrolyser";
         if (m.equals("pedestal") || m.equals("machine_pedestal")) return "pedestal";
         if (m.equals("plasma") || m.equals("plasma_forge") || m.equals("plasmaforge")) return "plasma_forge";
         if (m.equals("fusion")) return "fusion";
@@ -192,7 +188,7 @@ public final class MachineTileInspector {
         if (m.equals("alkylation") || m.equals("alkyl")) return "alkylation";
         if (m.equals("fractions") || m.equals("fraction") || m.equals("fractions_tower")) return "fractions";
         if (m.equals("refinery") || m.equals("vacuum_refinery") || m.equals("vacrefinery") || m.equals("distill")
-            || m.equals("vacuum_distill") || m.equals("vacuumdistill")) return "refinery";
+                || m.equals("vacuum_distill") || m.equals("vacuumdistill")) return "refinery";
         if (m.equals("cryodistillator") || m.equals("cryo") || m.equals("cryodistill")) return "cryodistillator";
         if (m.equals("hydrotreating") || m.equals("hydrotreat") || m.equals("hydrotreater")) return "hydrotreating";
         if (m.equals("liquefactor") || m.equals("liquefact") || m.equals("liquefier")) return "liquefactor";
@@ -234,10 +230,12 @@ public final class MachineTileInspector {
         if (base.contains("crystallizer")) return "crystallizer";
         if (base.contains("pyrolysis")) return "pyrolysis";
         if (base.contains("rockmill") || base.contains("rock_mill")) return "rock_mill";
-        if (base.contains("soldering") || base.contains("vacuumcircuit") || base.contains("vacuum_circuit")) return "soldering_station";
+        if (base.contains("soldering") || base.contains("vacuumcircuit") || base.contains("vacuum_circuit"))
+            return "soldering_station";
         if (base.contains("rotary")) return "rotary_furnace";
         if (base.contains("crucible") || base.contains("smelting")) return "crucible";
-        if (base.contains("electrolyser") || base.contains("electrolyzer") || base.contains("electrolyse") && !base.contains("electrolyser_fluid") && !base.contains("electrolyser_metal")) return "electrolyser";
+        if (base.contains("electrolyser") || base.contains("electrolyzer") || base.contains("electrolyse") && !base.contains("electrolyser_fluid") && !base.contains("electrolyser_metal"))
+            return "electrolyser";
         if (base.contains("electrolyser_fluid") || base.contains("electrolyser_metal")) return "electrolyser";
         if (base.contains("crystallizer")) return "crystallizer";
         if (base.contains("pyro")) return "pyrolysis";
@@ -252,7 +250,8 @@ public final class MachineTileInspector {
         if (base.contains("fraction")) return "fractions";
         if (base.contains("refinery")) return "refinery";
         if (base.contains("vacuum") && !base.contains("vacuumcircuit")) return "refinery";
-        if (base.contains("distill") || base.contains("cryodistillator") || base.contains("cryo")) return "cryodistillator";
+        if (base.contains("distill") || base.contains("cryodistillator") || base.contains("cryo"))
+            return "cryodistillator";
         if (base.contains("hydrotreat")) return "hydrotreating";
         if (base.contains("liquefact")) return "liquefactor";
         if (base.contains("irradiat")) return "irradiation";
@@ -302,7 +301,7 @@ public final class MachineTileInspector {
                     } catch (Throwable ignored) {
                     }
                     boolean match = want.equals(kind) || normalizeMachineAlias(blockReg != null ? blockReg : "").equals(want)
-                        || invName.contains(want) || te.getClass().getName().toLowerCase().contains(want.replace("_", ""));
+                            || invName.contains(want) || te.getClass().getName().toLowerCase().contains(want.replace("_", ""));
                     if (!match) {
                         boolean partial = false;
                         for (String kw : MACHINE_KEYWORDS) {
@@ -329,7 +328,7 @@ public final class MachineTileInspector {
                         int bz = cz + dz;
                         if (by < 1 || by > 254) continue;
                         TileEntity te = world.getTileEntity(bx, by, bz);
-                        if (te == null || !isMachineTile(world, te)) continue;
+                        if (!isMachineTile(world, te)) continue;
                         if (!want.isEmpty() && !want.equals(machineKind(te))) continue;
                         out.add(te);
                     }
@@ -343,11 +342,11 @@ public final class MachineTileInspector {
             @Override
             public int compare(TileEntity a, TileEntity b) {
                 double da = (a.xCoord + 0.5 - fx) * (a.xCoord + 0.5 - fx)
-                    + (a.yCoord + 0.5 - fy) * (a.yCoord + 0.5 - fy)
-                    + (a.zCoord + 0.5 - fz) * (a.zCoord + 0.5 - fz);
+                        + (a.yCoord + 0.5 - fy) * (a.yCoord + 0.5 - fy)
+                        + (a.zCoord + 0.5 - fz) * (a.zCoord + 0.5 - fz);
                 double db = (b.xCoord + 0.5 - fx) * (b.xCoord + 0.5 - fx)
-                    + (b.yCoord + 0.5 - fy) * (b.yCoord + 0.5 - fy)
-                    + (b.zCoord + 0.5 - fz) * (b.zCoord + 0.5 - fz);
+                        + (b.yCoord + 0.5 - fy) * (b.yCoord + 0.5 - fy)
+                        + (b.zCoord + 0.5 - fz) * (b.zCoord + 0.5 - fz);
                 return Double.compare(da, db);
             }
         });
@@ -389,12 +388,12 @@ public final class MachineTileInspector {
 
     public static boolean hasPower(TileEntity te) {
         return implementsInterface(te, "IEnergyReceiver") || implementsInterface(te, "IEnergyHandler")
-            || implementsInterface(te, "IEnergyReceiverMK2") || hasMethod(te, "getPower") || hasMethod(te, "getMaxPower");
+                || implementsInterface(te, "IEnergyReceiverMK2") || hasMethod(te, "getPower") || hasMethod(te, "getMaxPower");
     }
 
     public static boolean hasFluid(TileEntity te) {
         return implementsInterface(te, "IFluidStandardTransceiver") || implementsInterface(te, "IFluidStandardTransceiverMK2")
-            || implementsInterface(te, "IFluidHandler") || hasMethod(te, "getReceivingTanks") || hasMethod(te, "getSendingTanks");
+                || implementsInterface(te, "IFluidHandler") || hasMethod(te, "getReceivingTanks") || hasMethod(te, "getSendingTanks");
     }
 
     private static boolean implementsInterface(Object o, String suffix) {

@@ -3,16 +3,17 @@ package ir.layercloud.cortexdrone.service.world;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.model.BuildTask;
 import ir.layercloud.cortexdrone.model.DroneController;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Intelligent 3D terrain analyzer and parametric architectural blueprint planner.
@@ -38,7 +39,7 @@ public class StructureArchitect {
         public void addTask(int x, int y, int z, String blockFilter, int meta, boolean replace) {
             this.buildTasks.add(new BuildTask(x, y, z, blockFilter, meta, replace));
             Integer prev = this.materialCounts.get(blockFilter);
-            this.materialCounts.put(blockFilter, (prev != null ? prev.intValue() : 0) + 1);
+            this.materialCounts.put(blockFilter, (prev != null ? prev : 0) + 1);
         }
 
         public JsonObject toJson() {
@@ -220,13 +221,13 @@ public class StructureArchitect {
         boolean includeWindows = !spec.has("windows") || spec.get("windows").getAsBoolean();
 
         String floorBlock = spec.has("floor") ? spec.get("floor").getAsString()
-            : (spec.has("wall") ? spec.get("wall").getAsString()
-            : (spec.has("block") ? spec.get("block").getAsString() : "cobblestone"));
+                : (spec.has("wall") ? spec.get("wall").getAsString()
+                : (spec.has("block") ? spec.get("block").getAsString() : "cobblestone"));
         String wallBlock = spec.has("walls") ? spec.get("walls").getAsString()
-            : (spec.has("wall") ? spec.get("wall").getAsString()
-            : (spec.has("block") ? spec.get("block").getAsString() : "cobblestone"));
+                : (spec.has("wall") ? spec.get("wall").getAsString()
+                : (spec.has("block") ? spec.get("block").getAsString() : "cobblestone"));
         String cornerBlock = spec.has("corners") ? spec.get("corners").getAsString()
-            : (spec.has("corner") ? spec.get("corner").getAsString() : wallBlock);
+                : (spec.has("corner") ? spec.get("corner").getAsString() : wallBlock);
         String roofBlock = spec.has("roof") ? spec.get("roof").getAsString() : cornerBlock;
 
         int x1, z1, x2, z2, floorY;
@@ -240,11 +241,11 @@ public class StructureArchitect {
             depth = z2 - z1 + 1;
             int refY = player != null ? MathHelper.floor_double(player.posY) : MathHelper.floor_double(ctrl.drone.posY);
             floorY = spec.has("y") ? spec.get("y").getAsInt()
-                : (spec.has("floorY") ? spec.get("floorY").getAsInt() : getSolidGroundY(world, (x1 + x2) / 2, (z1 + z2) / 2, refY));
+                    : (spec.has("floorY") ? spec.get("floorY").getAsInt() : getSolidGroundY(world, (x1 + x2) / 2, (z1 + z2) / 2, refY));
             double px = player != null ? player.posX : ctrl.drone.posX;
             double pz = player != null ? player.posZ : ctrl.drone.posZ;
             doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase()
-                : resolveDoorSideTowardPlayer(px, pz, (x1 + x2) * 0.5, (z1 + z2) * 0.5);
+                    : resolveDoorSideTowardPlayer(px, pz, (x1 + x2) * 0.5, (z1 + z2) * 0.5);
         } else if (spec.has("x") && spec.has("z")) {
             int cx = spec.get("x").getAsInt();
             int cz = spec.get("z").getAsInt();
@@ -254,11 +255,11 @@ public class StructureArchitect {
             z2 = z1 + depth - 1;
             int refY = player != null ? MathHelper.floor_double(player.posY) : MathHelper.floor_double(ctrl.drone.posY);
             floorY = spec.has("y") ? spec.get("y").getAsInt()
-                : (spec.has("floorY") ? spec.get("floorY").getAsInt() : getSolidGroundY(world, cx, cz, refY));
+                    : (spec.has("floorY") ? spec.get("floorY").getAsInt() : getSolidGroundY(world, cx, cz, refY));
             double px = player != null ? player.posX : ctrl.drone.posX;
             double pz = player != null ? player.posZ : ctrl.drone.posZ;
             doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase()
-                : resolveDoorSideTowardPlayer(px, pz, cx, cz);
+                    : resolveDoorSideTowardPlayer(px, pz, cx, cz);
         } else {
             JsonObject site = findBestBuildSite(world, player, ctrl, width, depth, 22);
             x1 = site.get("x1").getAsInt();
@@ -329,9 +330,9 @@ public class StructureArchitect {
                     // Optional window openings at eye level (relY == 2) on non-door wall centers for footprints >= 5
                     if (includeWindows && relY == 2 && wallHeight >= 3) {
                         boolean isWin = (!"north".equals(doorSide) && z == z1 && x == midX && width >= 5)
-                            || (!"south".equals(doorSide) && z == z2 && x == midX && width >= 5)
-                            || (!"west".equals(doorSide) && x == x1 && z == midZ && depth >= 5)
-                            || (!"east".equals(doorSide) && x == x2 && z == midZ && depth >= 5);
+                                || (!"south".equals(doorSide) && z == z2 && x == midX && width >= 5)
+                                || (!"west".equals(doorSide) && x == x1 && z == midZ && depth >= 5)
+                                || (!"east".equals(doorSide) && x == x2 && z == midZ && depth >= 5);
                         if (isWin) continue;
                     }
 

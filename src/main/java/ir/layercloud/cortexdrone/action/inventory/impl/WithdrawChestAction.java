@@ -4,8 +4,8 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,9 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityChest;
 import net.minecraft.world.World;
 
-/** Single-use inventory action: withdraw matching items from a chest. */
+/**
+ * Single-use inventory action: withdraw matching items from a chest.
+ */
 @RequiredArgsConstructor
 public final class WithdrawChestAction implements Action<InventoryContext> {
     private final InventoryService inventoryService;
@@ -33,10 +35,10 @@ public final class WithdrawChestAction implements Action<InventoryContext> {
 
         if (request.isHasSource()) {
             TileEntity tile = world.getTileEntity(
-                request.getSourceX(), request.getSourceY(), request.getSourceZ());
+                    request.getSourceX(), request.getSourceY(), request.getSourceZ());
             if (!(tile instanceof IInventory)) {
                 context.result(InventoryResult.failure(
-                    "No chest found at specified coordinates", "withdrawn", 0));
+                        "No chest found at specified coordinates", "withdrawn", 0));
                 return;
             }
             IInventory inventory = (IInventory) tile;
@@ -46,19 +48,19 @@ public final class WithdrawChestAction implements Action<InventoryContext> {
                 TileEntityChest chest = (TileEntityChest) tile;
                 chest.checkForAdjacentChests();
                 TileEntityChest[] adjacent = new TileEntityChest[]{
-                    chest.adjacentChestZNeg, chest.adjacentChestXPos,
-                    chest.adjacentChestXNeg, chest.adjacentChestZPos
+                        chest.adjacentChestZNeg, chest.adjacentChestXPos,
+                        chest.adjacentChestXNeg, chest.adjacentChestZPos
                 };
                 for (TileEntityChest neighbor : adjacent) {
                     if (neighbor != null && moved < count) {
                         moved += InventoryService.withdrawFromInventory(
-                            neighbor, drone.mainInventory(), resolved, count - moved);
+                                neighbor, drone.mainInventory(), resolved, count - moved);
                     }
                 }
             }
         } else {
             moved = this.inventoryService.withdrawMatchingFromNearbyChests(
-                world, controller, player, filter, count);
+                    world, controller, player, filter, count);
         }
         context.result(InventoryResult.success("withdrawn", moved));
     }

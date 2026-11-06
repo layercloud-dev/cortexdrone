@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.harness;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -73,14 +74,14 @@ final class PromptCompactor {
         JsonObject sys = new JsonObject();
         sys.addProperty("role", "system");
         sys.addProperty("content", system
-            + "\n\n[CONTEXT COMPACTED: earlier intermediate output was summarized. Continue the same task.]");
+                + "\n\n[CONTEXT COMPACTED: earlier intermediate output was summarized. Continue the same task.]");
         rebuilt.add(sys);
 
         JsonObject usr = new JsonObject();
         usr.addProperty("role", "user");
         usr.addProperty("content", user
-            + "\n\n[HEARTBEAT PROGRESS DIGEST - continue from here, do not repeat completed steps]\n"
-            + digest.toString());
+                + "\n\n[HEARTBEAT PROGRESS DIGEST - continue from here, do not repeat completed steps]\n"
+                + digest);
         rebuilt.add(usr);
         return rebuilt;
     }

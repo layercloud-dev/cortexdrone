@@ -1,15 +1,11 @@
 package ir.layercloud.cortexdrone.model;
 
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.atomic.AtomicInteger;
 import ir.layercloud.cortexdrone.harness.TaskSession;
 import li.cil.oc.common.entity.Drone;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class DroneController {
     public final int id;
@@ -83,6 +79,7 @@ public class DroneController {
         // drained, so "mine 8 iron" never stopped at 8.
         public List<int[]> mineQueue;
     }
+
     public String lastPathLogKey = "";
     public int lastPathLogTick = -10000;
 
@@ -188,7 +185,7 @@ public class DroneController {
     public int cancelOtherLoops(int keepLoopId) {
         int count = 0;
         for (Integer id : this.runningLoopIds) {
-            if (id != null && id.intValue() != keepLoopId && this.cancelledLoopIds.add(id)) {
+            if (id != null && id != keepLoopId && this.cancelledLoopIds.add(id)) {
                 count++;
             }
         }
@@ -197,12 +194,12 @@ public class DroneController {
 
     public boolean hasActiveTaskOrLoop(int excludeLoopId) {
         for (Integer id : this.runningLoopIds) {
-            if (id != null && id.intValue() != excludeLoopId && !this.cancelledLoopIds.contains(id)) {
+            if (id != null && id != excludeLoopId && !this.cancelledLoopIds.contains(id)) {
                 return true;
             }
         }
         return this.activeScriptCount.get() > 0 || !this.mineQueue.isEmpty()
-            || (this.mode != Mode.FOLLOW && this.mode != Mode.STAY);
+                || (this.mode != Mode.FOLLOW && this.mode != Mode.STAY);
     }
 
     public static int hsvToRgbInt(float hDeg, float s, float v) {
@@ -260,7 +257,7 @@ public class DroneController {
             boolean duplicate = false;
             for (int[] q : this.mineQueue) {
                 if (q != null && q[0] == snap.mineTarget[0]
-                    && q[1] == snap.mineTarget[1] && q[2] == snap.mineTarget[2]) {
+                        && q[1] == snap.mineTarget[1] && q[2] == snap.mineTarget[2]) {
                     duplicate = true;
                     break;
                 }

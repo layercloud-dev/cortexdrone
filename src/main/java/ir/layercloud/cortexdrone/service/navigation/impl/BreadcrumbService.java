@@ -1,19 +1,14 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
+import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+
+import java.util.*;
 
 /**
  * Read-only owner of the traversal trail.
@@ -29,9 +24,11 @@ public final class BreadcrumbService {
     private static final int MIN_BACKTRACK = 4;
 
     private final Map<DroneController, Trail> trails =
-        new IdentityHashMap<DroneController, Trail>();
+            new IdentityHashMap<DroneController, Trail>();
 
-    /** Samples the drone position. Call once per server tick; the service throttles itself. */
+    /**
+     * Samples the drone position. Call once per server tick; the service throttles itself.
+     */
     public void observe(DroneController controller, World world) {
         if (controller == null || controller.drone == null || world == null) return;
         Trail trail = trail(controller);
@@ -95,16 +92,16 @@ public final class BreadcrumbService {
         double currentY = controller.drone.posY;
         double currentZ = controller.drone.posZ;
         if (VoxelRaycaster3D.isFatLineClear(world, currentX, currentY, currentZ,
-            targetX, targetY, targetZ)) {
+                targetX, targetY, targetZ)) {
             return null; // already flyable; no trail detour needed
         }
         double currentToTarget = distance(currentX, currentY, currentZ, targetX, targetY, targetZ);
         int targetHeight = world.getHeightValue(MathHelper.floor_double(targetX),
-            MathHelper.floor_double(targetZ));
+                MathHelper.floor_double(targetZ));
         boolean targetAtOrAboveSurface = targetY >= targetHeight - 3;
         boolean currentUnderground = !world.canBlockSeeTheSky(
-            MathHelper.floor_double(currentX), MathHelper.floor_double(currentY),
-            MathHelper.floor_double(currentZ));
+                MathHelper.floor_double(currentX), MathHelper.floor_double(currentY),
+                MathHelper.floor_double(currentZ));
 
         TrailPlan reconnect = null;
         TrailPlan surface = null;
@@ -122,7 +119,7 @@ public final class BreadcrumbService {
             if (waypoints.isEmpty()) continue;
             double trailCost = pathLength(world, currentX, currentY, currentZ, waypoints);
             double pointToTarget = distance(point.getX() + 0.5, point.getY() + 0.65,
-                point.getZ() + 0.5, targetX, targetY, targetZ);
+                    point.getZ() + 0.5, targetX, targetY, targetZ);
             double progress = currentToTarget - pointToTarget;
 
             if (reconnect == null && FlightLine.clear(world, point, targetX, targetY, targetZ)) {
@@ -147,7 +144,7 @@ public final class BreadcrumbService {
             return reconnect;
         }
         if (goalward != null
-            && progressOf(currentToTarget, goalward, targetX, targetY, targetZ) > 1.5) {
+                && progressOf(currentToTarget, goalward, targetX, targetY, targetZ) > 1.5) {
             return goalward;
         }
         return null;
@@ -157,7 +154,7 @@ public final class BreadcrumbService {
                                      double targetX, double targetY, double targetZ) {
         Breadcrumb endpoint = plan.getEndpoint();
         double pointToTarget = distance(endpoint.getX() + 0.5, endpoint.getY() + 0.65,
-            endpoint.getZ() + 0.5, targetX, targetY, targetZ);
+                endpoint.getZ() + 0.5, targetX, targetY, targetZ);
         return currentToTarget - pointToTarget;
     }
 
@@ -204,8 +201,8 @@ public final class BreadcrumbService {
         for (int i = searchStart; i < snapshot.size() - 1; i++) {
             Breadcrumb point = snapshot.get(i);
             if (Math.abs(point.getX() - x) <= 1
-                && Math.abs(point.getY() - y) <= 1
-                && Math.abs(point.getZ() - z) <= 1) {
+                    && Math.abs(point.getY() - y) <= 1
+                    && Math.abs(point.getZ() - z) <= 1) {
                 int toPop = snapshot.size() - 1 - i;
                 for (int p = 0; p < toPop; p++) trail.points.pollLast();
                 return;
@@ -239,13 +236,15 @@ public final class BreadcrumbService {
         private int cooldown;
     }
 
-    /** Keeps the service free of a dependency on the manager-oriented path classes. */
+    /**
+     * Keeps the service free of a dependency on the manager-oriented path classes.
+     */
     private static final class FlightLine {
         private static boolean clear(World world, Breadcrumb point,
                                      double targetX, double targetY, double targetZ) {
             return VoxelRaycaster3D.isFatLineClear(world,
-                point.getX() + 0.5, point.getY() + 0.65, point.getZ() + 0.5,
-                targetX, targetY, targetZ);
+                    point.getX() + 0.5, point.getY() + 0.65, point.getZ() + 0.5,
+                    targetX, targetY, targetZ);
         }
     }
 }

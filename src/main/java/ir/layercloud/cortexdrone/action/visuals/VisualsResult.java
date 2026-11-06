@@ -1,11 +1,14 @@
 package ir.layercloud.cortexdrone.action.visuals;
 
-import java.util.Map;
 import lombok.Builder;
 import lombok.Singular;
 import lombok.Value;
 
-/** Immutable result of one visuals action. */
+import java.util.Map;
+
+/**
+ * Immutable result of one visuals action.
+ */
 @Value
 @Builder
 public class VisualsResult {

@@ -2,11 +2,12 @@ package ir.layercloud.cortexdrone.service.navigation;
 
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
-import java.util.ArrayList;
-import java.util.List;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Immutable snapshot of one navigation request plus the live controller it
@@ -43,16 +44,16 @@ public final class NavContext {
         this.goalZ = goalZ;
         this.route = route == null || route.isEmpty() ? "auto" : route;
         this.cache = this.world != null
-            ? new ChunkCacheContext(this.world, MathHelper.floor_double(this.startX),
+                ? new ChunkCacheContext(this.world, MathHelper.floor_double(this.startX),
                 MathHelper.floor_double(this.startZ), cacheRadius)
-            : null;
+                : null;
     }
 
     public static NavContext of(DroneController controller) {
         return of(controller, controller != null ? controller.goalX : Double.NaN,
-            controller != null ? controller.goalY : Double.NaN,
-            controller != null ? controller.goalZ : Double.NaN,
-            "auto");
+                controller != null ? controller.goalY : Double.NaN,
+                controller != null ? controller.goalZ : Double.NaN,
+                "auto");
     }
 
     public static NavContext of(DroneController controller, double gx, double gy, double gz, String route) {
@@ -75,16 +76,37 @@ public final class NavContext {
         return this.world;
     }
 
-    public double startX() { return this.startX; }
-    public double startY() { return this.startY; }
-    public double startZ() { return this.startZ; }
+    public double startX() {
+        return this.startX;
+    }
 
-    public double goalX() { return this.goalX; }
-    public double goalY() { return this.goalY; }
-    public double goalZ() { return this.goalZ; }
+    public double startY() {
+        return this.startY;
+    }
 
-    public double[] start() { return new double[]{this.startX, this.startY, this.startZ}; }
-    public double[] goal() { return new double[]{this.goalX, this.goalY, this.goalZ}; }
+    public double startZ() {
+        return this.startZ;
+    }
+
+    public double goalX() {
+        return this.goalX;
+    }
+
+    public double goalY() {
+        return this.goalY;
+    }
+
+    public double goalZ() {
+        return this.goalZ;
+    }
+
+    public double[] start() {
+        return new double[]{this.startX, this.startY, this.startZ};
+    }
+
+    public double[] goal() {
+        return new double[]{this.goalX, this.goalY, this.goalZ};
+    }
 
     public boolean hasGoal() {
         return !Double.isNaN(this.goalX) && !Double.isNaN(this.goalY) && !Double.isNaN(this.goalZ);

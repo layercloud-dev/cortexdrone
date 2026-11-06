@@ -74,8 +74,8 @@ public class FluidOpsService {
         if (fluid != null && emptyContainer != null) {
             try {
                 ItemStack filled = FluidContainerRegistry.fillFluidContainer(
-                    new FluidStack(fluid, FluidContainerRegistry.BUCKET_VOLUME),
-                    emptyContainer
+                        new FluidStack(fluid, FluidContainerRegistry.BUCKET_VOLUME),
+                        emptyContainer
                 );
                 if (filled != null && filled.getItem() != null) {
                     return filled;

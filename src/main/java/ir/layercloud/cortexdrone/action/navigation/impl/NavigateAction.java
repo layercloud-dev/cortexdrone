@@ -4,15 +4,16 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.model.DroneController;
-import ir.layercloud.cortexdrone.service.navigation.NavContext;
-import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
+import ir.layercloud.cortexdrone.service.navigation.NavContext;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.List;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+
+import java.util.List;
 
 /**
  * Executes one no-dig flight leg. It only plans and follows safe waypoints; it
@@ -50,9 +51,9 @@ public final class NavigateAction implements Action<NavigationContext> {
         int curBz = MathHelper.floor_double(drone.posZ);
         int topCur = world.getHeightValue(curBx, curBz);
         boolean inOpenSky = world.canBlockSeeTheSky(curBx, curBy, curBz)
-            || drone.posY >= topCur - 1;
+                || drone.posY >= topCur - 1;
         int topGoal = world.getHeightValue(MathHelper.floor_double(context.targetX()),
-            MathHelper.floor_double(context.targetZ()));
+                MathHelper.floor_double(context.targetZ()));
         boolean goalOnSurface = context.targetY() >= topGoal - 3;
 
         double gx = context.targetX();
@@ -67,9 +68,9 @@ public final class NavigateAction implements Action<NavigationContext> {
             Breadcrumb anchor = this.breadcrumbService.surfaceAnchor(ctrl);
             boolean anchorUsable = false;
             if (anchor != null
-                && Math.hypot(anchor.getX() - drone.posX, anchor.getZ() - drone.posZ) <= 24.0
-                && ItemClassifier.isPassableVoxel(world, anchor.getX(), anchor.getY(), anchor.getZ())
-                && ItemClassifier.isPassableVoxel(world, anchor.getX(), anchor.getY() + 1, anchor.getZ())) {
+                    && Math.hypot(anchor.getX() - drone.posX, anchor.getZ() - drone.posZ) <= 24.0
+                    && ItemClassifier.isPassableVoxel(world, anchor.getX(), anchor.getY(), anchor.getZ())
+                    && ItemClassifier.isPassableVoxel(world, anchor.getX(), anchor.getY() + 1, anchor.getZ())) {
                 effGx = anchor.getX() + 0.5;
                 effGy = anchor.getY() + 1.0;
                 effGz = anchor.getZ() + 0.5;
@@ -77,7 +78,7 @@ public final class NavigateAction implements Action<NavigationContext> {
             }
             if (!anchorUsable) {
                 int[] openAbove = FlightPathfinder.findNearestPassableVoxel(
-                    world, curBx, Math.min(250, topCur + 2), curBz, 4);
+                        world, curBx, Math.min(250, topCur + 2), curBz, 4);
                 if (openAbove != null) {
                     effGx = openAbove[0] + 0.5;
                     effGy = openAbove[1] + 0.35;
@@ -94,7 +95,7 @@ public final class NavigateAction implements Action<NavigationContext> {
             effGz = drone.posZ + (gz - drone.posZ) / horizDist * step;
             if (inOpenSky) {
                 int topSub = world.getHeightValue(MathHelper.floor_double(effGx),
-                    MathHelper.floor_double(effGz));
+                        MathHelper.floor_double(effGz));
                 effGy = Math.max(gy, Math.max(topSub, topCur) + 4.5);
             } else {
                 effGy = drone.posY + (gy - drone.posY) * (step / horizDist);
@@ -104,17 +105,17 @@ public final class NavigateAction implements Action<NavigationContext> {
         NavContext nav = NavContext.of(ctrl, effGx, effGy, effGz, "auto");
         nav.setGoal(effGx, effGy, effGz);
         double distGoalMove = Double.isNaN(ctrl.pathGoalX) ? 999.0 : Math.sqrt(
-            (effGx - ctrl.pathGoalX) * (effGx - ctrl.pathGoalX)
-                + (effGy - ctrl.pathGoalY) * (effGy - ctrl.pathGoalY)
-                + (effGz - ctrl.pathGoalZ) * (effGz - ctrl.pathGoalZ));
+                (effGx - ctrl.pathGoalX) * (effGx - ctrl.pathGoalX)
+                        + (effGy - ctrl.pathGoalY) * (effGy - ctrl.pathGoalY)
+                        + (effGz - ctrl.pathGoalZ) * (effGz - ctrl.pathGoalZ));
 
         boolean needsRepath = nav.path().isEmpty()
-            || (nav.pathIndex() >= nav.path().size() && ctrl.repathCooldown <= 0)
-            || (distGoalMove > 0.85 && ctrl.repathCooldown <= 0)
-            || (ctrl.stuckTicks >= 12 && ctrl.repathCooldown <= 0);
+                || (nav.pathIndex() >= nav.path().size() && ctrl.repathCooldown <= 0)
+                || (distGoalMove > 0.85 && ctrl.repathCooldown <= 0)
+                || (ctrl.stuckTicks >= 12 && ctrl.repathCooldown <= 0);
         if (needsRepath) {
             List<double[]> waypoints = this.pathfinder.findFlightPath(
-                world, ctrl, drone.posX, drone.posY, drone.posZ, effGx, effGy, effGz);
+                    world, ctrl, drone.posX, drone.posY, drone.posZ, effGx, effGy, effGz);
             nav.setPath(waypoints, effGx, effGy, effGz);
             ctrl.repathCooldown = horizDist > 18.0 ? 8 : 12;
         }
@@ -124,13 +125,13 @@ public final class NavigateAction implements Action<NavigationContext> {
             double distWp = drone.getDistance(waypoint[0], waypoint[1], waypoint[2]);
             boolean last = nav.pathIndex() == nav.path().size() - 1;
             double distWpToGoal = Math.sqrt(
-                (waypoint[0] - effGx) * (waypoint[0] - effGx)
-                    + (waypoint[1] - effGy) * (waypoint[1] - effGy)
-                    + (waypoint[2] - effGz) * (waypoint[2] - effGz));
+                    (waypoint[0] - effGx) * (waypoint[0] - effGx)
+                            + (waypoint[1] - effGy) * (waypoint[1] - effGy)
+                            + (waypoint[2] - effGz) * (waypoint[2] - effGz));
             if (distWp <= 0.75 && !last) {
                 nav.advanceWaypoint();
             } else if (distWp <= 0.75 && last
-                && (ctrl.lastPathPartial || distWpToGoal > 0.90) && ctrl.repathCooldown <= 0) {
+                    && (ctrl.lastPathPartial || distWpToGoal > 0.90) && ctrl.repathCooldown <= 0) {
                 nav.advanceWaypoint();
                 break;
             } else {
@@ -140,13 +141,13 @@ public final class NavigateAction implements Action<NavigationContext> {
 
         boolean exhausted = !nav.hasWaypoint();
         double[] activeWp = exhausted
-            ? new double[]{effGx, effGy, effGz}
-            : nav.currentWaypoint();
+                ? new double[]{effGx, effGy, effGz}
+                : nav.currentWaypoint();
         int awx = MathHelper.floor_double(activeWp[0]);
         int away = MathHelper.floor_double(activeWp[1]);
         int awz = MathHelper.floor_double(activeWp[2]);
         if (!ItemClassifier.isPassableVoxel(world, awx, away, awz)
-            || !ItemClassifier.isPassableVoxel(world, awx, away + 1, awz)) {
+                || !ItemClassifier.isPassableVoxel(world, awx, away + 1, awz)) {
             FlightPathfinder.setDroneFlightTarget(drone, drone.posX, drone.posY, drone.posZ, 0.05f);
             drone.motionX *= 0.3;
             drone.motionY *= 0.3;

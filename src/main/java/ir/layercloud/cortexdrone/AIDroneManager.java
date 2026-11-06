@@ -1,44 +1,28 @@
 package ir.layercloud.cortexdrone;
 
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import ir.layercloud.cortexdrone.manager.ActionRegistry;
-import ir.layercloud.cortexdrone.harness.rpc.translate.ActionRpcTranslator;
-import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
-import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
-import ir.layercloud.cortexdrone.harness.CodeModeRuntime;
-import ir.layercloud.cortexdrone.harness.LlmAgentService;
-import ir.layercloud.cortexdrone.harness.RpcDispatcher;
-import ir.layercloud.cortexdrone.harness.SkillLibrary;
 import ir.layercloud.cortexdrone.command.impl.DroneCommand;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.harness.TaskCoordinator;
+import ir.layercloud.cortexdrone.harness.*;
+import ir.layercloud.cortexdrone.harness.rpc.translate.ActionRpcTranslator;
 import ir.layercloud.cortexdrone.http.DroneHttpServer;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.manager.ActionRegistry;
+import ir.layercloud.cortexdrone.manager.TickManager;
+import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
+import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
+import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
+import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
+import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
-import ir.layercloud.cortexdrone.manager.TickManager;
-import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
-import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
-import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.DocLookupService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import li.cil.oc.common.entity.Drone;
 import lombok.Getter;
 import net.minecraft.command.ICommandSender;
@@ -51,11 +35,20 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.ServerChatEvent;
 
+import java.io.File;
+import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
 @Getter
 public class AIDroneManager {
     private final CortexDroneMod mod;
     private File configFile;
-    private AIConfig config = new AIConfig();
+    private final AIConfig config = new AIConfig();
 
     private final DroneLogger logger = new DroneLogger();
     private final FlightPathfinder pathfinder;
@@ -80,11 +73,12 @@ public class AIDroneManager {
     private final TaskCoordinator taskCoordinator;
 
     private final AtomicInteger nextDroneId = new AtomicInteger(1);
-    private final Map<Integer, DroneController> controllersById = new ConcurrentHashMap<Integer, DroneController>();
-    private final Map<String, DroneController> controllersByOwner = new ConcurrentHashMap<String, DroneController>();
+    private final Map<Integer, DroneController> controllersById = new ConcurrentHashMap<>();
+    private final Map<String, DroneController> controllersByOwner = new ConcurrentHashMap<>();
     private int tickCounter = 0;
     private final OcHardwareBridge ocHardwareBridge = new OcHardwareBridge();
-    private final java.util.Set<UUID> despawnedUuids = java.util.Collections.synchronizedSet(new java.util.HashSet<UUID>());
+    private final java.util.Set<UUID> despawnedUuids = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+
     public AIDroneManager(CortexDroneMod mod) {
         this.mod = mod;
         this.pathfinder = new FlightPathfinder(this.logger);
@@ -96,7 +90,7 @@ public class AIDroneManager {
         this.inventoryManager = new InventoryManager(this, this.inventoryService);
         this.buildingManager = new BuildingManager(this, this.logger, this.inventoryService);
         this.navigationManager = new NavigationManager(this, this.logger,
-            this.pathfinder, this.breadcrumbService);
+                this.pathfinder, this.breadcrumbService);
         this.actionRegistry = new ActionRegistry();
         this.actionRegistry.register(this.buildingManager);
         this.actionRegistry.register(this.interactionManager);
@@ -108,20 +102,20 @@ public class AIDroneManager {
         this.codeModeRuntime = new CodeModeRuntime(this.logger, this.config);
         this.rpcDispatcher = new RpcDispatcher(this);
         this.agentService = new LlmAgentService(
-            this,
-            this.logger,
-            this.worldScanner,
-            this.codeModeRuntime,
-            this.rpcDispatcher
+                this,
+                this.logger,
+                this.worldScanner,
+                this.codeModeRuntime,
+                this.rpcDispatcher
         );
         this.tickManager = new TickManager(
-            this,
-            this.logger,
-            this.inventoryService,
-            this.buildingManager,
-            this.visualsManager,
-            this.navigationManager,
-            this.breadcrumbService
+                this,
+                this.logger,
+                this.inventoryService,
+                this.buildingManager,
+                this.visualsManager,
+                this.navigationManager,
+                this.breadcrumbService
         );
         this.tickProfiler = new TickProfiler(this.logger);
         this.httpServer = new DroneHttpServer(this, this.logger);
@@ -171,8 +165,8 @@ public class AIDroneManager {
         if (Thread.currentThread().getName().contains("Server thread")) {
             return callable.call();
         }
-        final AtomicReference<T> resRef = new AtomicReference<T>(null);
-        final AtomicReference<Exception> errRef = new AtomicReference<Exception>(null);
+        final AtomicReference<T> resRef = new AtomicReference<>(null);
+        final AtomicReference<Exception> errRef = new AtomicReference<>(null);
         final CountDownLatch latch = new CountDownLatch(1);
         this.mod.queueMain(new Runnable() {
             @Override
@@ -193,7 +187,9 @@ public class AIDroneManager {
         return resRef.get();
     }
 
-    /** Clears controller task state and every live action context. */
+    /**
+     * Clears controller task state and every live action context.
+     */
     public void clearActionState(DroneController ctrl) {
         if (ctrl == null) return;
         this.actionRegistry.cancelAll(ctrl);
@@ -219,11 +215,11 @@ public class AIDroneManager {
         }
         if (newMode != Mode.MINE && ctrl.currentMineTarget != null && ctrl.drone != null && ctrl.drone.worldObj != null) {
             ctrl.drone.worldObj.destroyBlockInWorldPartially(
-                ctrl.drone.getEntityId(),
-                ctrl.currentMineTarget[0],
-                ctrl.currentMineTarget[1],
-                ctrl.currentMineTarget[2],
-                -1
+                    ctrl.drone.getEntityId(),
+                    ctrl.currentMineTarget[0],
+                    ctrl.currentMineTarget[1],
+                    ctrl.currentMineTarget[2],
+                    -1
             );
             ctrl.currentMineTarget = null;
         }
@@ -289,8 +285,8 @@ public class AIDroneManager {
                 this.tickManager.tickController(ctrl);
             } catch (Throwable t) {
                 if (this.tickCounter % 40 == 0) {
-                    this.logger.log("ERROR", ctrl, "Exception in tickController: " + t.toString(),
-                        t.getStackTrace().length > 0 ? t.getStackTrace()[0].toString() : "");
+                    this.logger.log("ERROR", ctrl, "Exception in tickController: " + t,
+                            t.getStackTrace().length > 0 ? t.getStackTrace()[0].toString() : "");
                 }
             }
         }
@@ -344,8 +340,10 @@ public class AIDroneManager {
                             }
                         }
                         if (matchedSaved != null) {
-                            if (matchedSaved.getName() != null && !matchedSaved.getName().isEmpty()) name = matchedSaved.getName();
-                            if (matchedSaved.getOwner() != null && !matchedSaved.getOwner().isEmpty()) owner = matchedSaved.getOwner();
+                            if (matchedSaved.getName() != null && !matchedSaved.getName().isEmpty())
+                                name = matchedSaved.getName();
+                            if (matchedSaved.getOwner() != null && !matchedSaved.getOwner().isEmpty())
+                                owner = matchedSaved.getOwner();
                             if (matchedSaved.getMode() != null) {
                                 try {
                                     restoredMode = Mode.valueOf(matchedSaved.getMode());
@@ -378,7 +376,7 @@ public class AIDroneManager {
                     ctrl.ledEffect = restoredLedEffect;
                     ctrl.customLedColor = restoredCustomLed;
                     this.logger.log("LINK", ctrl, "Auto-reconnected world drone",
-                        String.format("owner=%s pos=(%.1f,%.1f,%.1f) mode=%s", owner, d.posX, d.posY, d.posZ, restoredMode.name()));
+                            String.format("owner=%s pos=(%.1f,%.1f,%.1f) mode=%s", owner, d.posX, d.posY, d.posZ, restoredMode.name()));
                 }
             }
         }
@@ -440,8 +438,8 @@ public class AIDroneManager {
         World world = player.worldObj;
         Drone drone = new Drone(world);
         String dName = (customName != null && !customName.trim().isEmpty())
-            ? customName.trim()
-            : (player.getCommandSenderName() + "-AI");
+                ? customName.trim()
+                : (player.getCommandSenderName() + "-AI");
 
         drone.setName(dName);
         drone.ownerName_$eq(player.getCommandSenderName());
@@ -472,7 +470,7 @@ public class AIDroneManager {
         DroneController ctrl = registerDroneController(drone, dName, player.getCommandSenderName());
         saveConfig();
         this.logger.log("SPAWN", ctrl, "Spawned new AI drone for " + player.getCommandSenderName(),
-            String.format("pos=(%.1f,%.1f,%.1f)", sx, sy, sz));
+                String.format("pos=(%.1f,%.1f,%.1f)", sx, sy, sz));
         return ctrl;
     }
 
@@ -506,8 +504,8 @@ public class AIDroneManager {
 
         if (ctrl == null) {
             String dName = best.getCommandSenderName() != null && !best.getCommandSenderName().isEmpty()
-                ? best.getCommandSenderName()
-                : (pName + "-AI");
+                    ? best.getCommandSenderName()
+                    : (pName + "-AI");
             ctrl = registerDroneController(best, dName, pName);
         } else {
             ctrl.ownerName = pName;
@@ -522,6 +520,7 @@ public class AIDroneManager {
     private boolean wasDespawned(Drone d) {
         return d != null && d.getUniqueID() != null && this.despawnedUuids.contains(d.getUniqueID());
     }
+
     public int despawnDrone(DroneController ctrl, EntityPlayerMP dropTargetPlayer) {
         if (ctrl == null || ctrl.drone == null) return 0;
         Drone d = ctrl.drone;
@@ -554,7 +553,7 @@ public class AIDroneManager {
             this.controllersByOwner.remove(key, ctrl);
             for (DroneController other : this.controllersById.values()) {
                 if (other != null && other.drone != null && !other.drone.isDead
-                    && ctrl.ownerName.equalsIgnoreCase(other.ownerName)) {
+                        && ctrl.ownerName.equalsIgnoreCase(other.ownerName)) {
                     this.controllersByOwner.put(key, other);
                     break;
                 }
@@ -585,18 +584,18 @@ public class AIDroneManager {
         Drone d = ctrl.drone;
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== AI Drone Status [" + EnumChatFormatting.AQUA + ctrl.name + EnumChatFormatting.GOLD + "] ===");
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "ID: " + EnumChatFormatting.WHITE + "#" + ctrl.id
-            + EnumChatFormatting.YELLOW + " | Owner: " + EnumChatFormatting.WHITE + ctrl.ownerName
-            + EnumChatFormatting.YELLOW + " | Mode: " + EnumChatFormatting.GREEN + ctrl.mode.name()
-            + (ctrl.playerLookHold ? EnumChatFormatting.AQUA + " [LOOK-HOLD]" : ""));
+                + EnumChatFormatting.YELLOW + " | Owner: " + EnumChatFormatting.WHITE + ctrl.ownerName
+                + EnumChatFormatting.YELLOW + " | Mode: " + EnumChatFormatting.GREEN + ctrl.mode.name()
+                + (ctrl.playerLookHold ? EnumChatFormatting.AQUA + " [LOOK-HOLD]" : ""));
         CortexDroneMod.sendMsg(sender, String.format(EnumChatFormatting.YELLOW + "Pos: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
-            + EnumChatFormatting.YELLOW + " -> Target: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
-            + EnumChatFormatting.GRAY + " [Waypoints: %d/%d]",
-            d.posX, d.posY, d.posZ, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ(),
-            ctrl.pathIndex, ctrl.pathWaypoints.size()));
+                        + EnumChatFormatting.YELLOW + " -> Target: " + EnumChatFormatting.WHITE + "(%.1f, %.1f, %.1f)"
+                        + EnumChatFormatting.GRAY + " [Waypoints: %d/%d]",
+                d.posX, d.posY, d.posZ, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ(),
+                ctrl.pathIndex, ctrl.pathWaypoints.size()));
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "LED: " + EnumChatFormatting.AQUA + String.format("#%06X", d.lightColor() & 0xFFFFFF)
-            + EnumChatFormatting.YELLOW + " | Light Aura: " + EnumChatFormatting.WHITE + (ctrl.autoTorch ? "ON" : "OFF")
-            + (ctrl.autoTorch ? " (#" + String.format("%06X", ctrl.lightColor & 0xFFFFFF) + ", r=" + ctrl.lightRadius + ", level=" + ctrl.lightIntensity + ")" : "")
-            + EnumChatFormatting.YELLOW + " | Energy: " + EnumChatFormatting.GREEN + d.globalBuffer() + "/" + d.globalBufferSize());
+                + EnumChatFormatting.YELLOW + " | Light Aura: " + EnumChatFormatting.WHITE + (ctrl.autoTorch ? "ON" : "OFF")
+                + (ctrl.autoTorch ? " (#" + String.format("%06X", ctrl.lightColor & 0xFFFFFF) + ", r=" + ctrl.lightRadius + ", level=" + ctrl.lightIntensity + ")" : "")
+                + EnumChatFormatting.YELLOW + " | Energy: " + EnumChatFormatting.GREEN + d.globalBuffer() + "/" + d.globalBufferSize());
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "Inventory (8 slots): " + EnumChatFormatting.WHITE + InventoryService.formatInventorySummary(d.mainInventory()));
     }
 
@@ -634,7 +633,9 @@ public class AIDroneManager {
         this.taskCoordinator.handle(player, ctrl, prompt);
     }
 
-    /** World reads, chunk access and drone mutation all belong on the server thread. */
+    /**
+     * World reads, chunk access and drone mutation all belong on the server thread.
+     */
     private static boolean isServerThread() {
         return Thread.currentThread().getName().contains("Server thread");
     }

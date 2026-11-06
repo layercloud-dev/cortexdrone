@@ -5,8 +5,8 @@ import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
 import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.action.interact.InteractionSupport;
 import ir.layercloud.cortexdrone.context.impl.InteractionContext;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,9 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
-/** Single-use command: activate exactly one block. */
+/**
+ * Single-use command: activate exactly one block.
+ */
 @RequiredArgsConstructor
 public final class InteractBlockAction implements Action<InteractionContext> {
     private final InventoryService inventoryService;
@@ -41,8 +43,8 @@ public final class InteractBlockAction implements Action<InteractionContext> {
         if (ItemClassifier.isLiquidBlock(block) && world.getBlockMetadata(x, y, z) == 0) {
             boolean scooped = this.inventoryService.scoopLiquidAt(world, controller, player, x, y, z);
             context.result(InteractionResult.success(
-                "activated", scooped,
-                "scooped", scooped));
+                    "activated", scooped,
+                    "scooped", scooped));
             return;
         }
 
@@ -54,10 +56,10 @@ public final class InteractBlockAction implements Action<InteractionContext> {
         InteractionSupport.syncFakePlayerToDrone(fakePlayer, drone);
 
         boolean activated = block != null && block.onBlockActivated(
-            world, x, y, z, fakePlayer, request.getSide(), 0.5f, 0.5f, 0.5f);
+                world, x, y, z, fakePlayer, request.getSide(), 0.5f, 0.5f, 0.5f);
         context.result(InteractionResult.success(
-            "activated", activated,
-            "block", ItemClassifier.getBlockDisplayName(
-                world.getBlock(x, y, z), world.getBlockMetadata(x, y, z))));
+                "activated", activated,
+                "block", ItemClassifier.getBlockDisplayName(
+                        world.getBlock(x, y, z), world.getBlockMetadata(x, y, z))));
     }
 }

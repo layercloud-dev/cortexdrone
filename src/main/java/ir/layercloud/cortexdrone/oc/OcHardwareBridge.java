@@ -1,14 +1,15 @@
 package ir.layercloud.cortexdrone.oc;
 
+import ir.layercloud.cortexdrone.oc.impl.InertMachineArchitecture;
+import li.cil.oc.api.network.Connector;
+import li.cil.oc.common.entity.Drone;
+import scala.Enumeration;
+import scala.collection.mutable.Stack;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import li.cil.oc.api.network.Connector;
-import ir.layercloud.cortexdrone.oc.impl.InertMachineArchitecture;
-import li.cil.oc.common.entity.Drone;
-import scala.Enumeration;
-import scala.collection.mutable.Stack;
 
 /**
  * Encapsulates OpenComputers Drone machine reflection, energy buffer management,
@@ -114,21 +115,21 @@ public class OcHardwareBridge {
             drone.setRunning(true);
 
             if (drone.control() == null && !drone.worldObj.isRemote
-                && this.componentNodeField != null && this.droneControlField != null) {
+                    && this.componentNodeField != null && this.droneControlField != null) {
                 Object compProxy = Proxy.newProxyInstance(
-                    li.cil.oc.api.network.Component.class.getClassLoader(),
-                    new Class<?>[]{li.cil.oc.api.network.Component.class},
-                    new InvocationHandler() {
-                        @Override
-                        public Object invoke(Object proxy, Method method, Object[] args) {
-                            String name = method.getName();
-                            if ("changeBuffer".equals(name)) return Double.valueOf(0.0);
-                            if ("tryChangeBuffer".equals(name)) return Boolean.TRUE;
-                            if ("address".equals(name)) return "00000000-0000-0000-0000-000000000000";
-                            if ("canBeSeenFrom".equals(name) || "canConnect".equals(name)) return Boolean.TRUE;
-                            return null;
+                        li.cil.oc.api.network.Component.class.getClassLoader(),
+                        new Class<?>[]{li.cil.oc.api.network.Component.class},
+                        new InvocationHandler() {
+                            @Override
+                            public Object invoke(Object proxy, Method method, Object[] args) {
+                                String name = method.getName();
+                                if ("changeBuffer".equals(name)) return Double.valueOf(0.0);
+                                if ("tryChangeBuffer".equals(name)) return Boolean.TRUE;
+                                if ("address".equals(name)) return "00000000-0000-0000-0000-000000000000";
+                                if ("canBeSeenFrom".equals(name) || "canConnect".equals(name)) return Boolean.TRUE;
+                                return null;
+                            }
                         }
-                    }
                 );
                 li.cil.oc.server.component.Drone ctrlComp = new li.cil.oc.server.component.Drone(drone);
                 this.componentNodeField.set(ctrlComp, compProxy);

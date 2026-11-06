@@ -6,19 +6,13 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.config.AIConfig;
+import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.StructureArchitect;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
@@ -32,6 +26,8 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 
+import java.util.*;
+
 /**
  * Handles spatial world queries, 3D room/vein scans, build-site & blueprint planning,
  * entities, item drops, named locations, and registry/wiki documentation lookups.
@@ -39,10 +35,10 @@ import net.minecraft.world.biome.BiomeGenBase;
 @RequiredArgsConstructor
 public class WorldRpcHandler implements RpcHandler {
     private static final String[] METHODS = new String[]{
-        "get_block", "get_blocks_in_box", "get_top_y", "scan_room", "scan_blocks",
-        "scan_veins", "find_distant", "get_entities", "get_drops", "raycast_player",
-        "find_base", "get_location", "list_locations", "lookup_doc",
-        "find_build_site", "plan_structure"
+            "get_block", "get_blocks_in_box", "get_top_y", "scan_room", "scan_blocks",
+            "scan_veins", "find_distant", "get_entities", "get_drops", "raycast_player",
+            "find_base", "get_location", "list_locations", "lookup_doc",
+            "find_build_site", "plan_structure"
     };
 
     private final AIDroneManager manager;
@@ -62,8 +58,8 @@ public class WorldRpcHandler implements RpcHandler {
         World world = d.worldObj;
 
         if (!world.isRemote && !ChunkAccess.isBlockLoaded(world,
-            MathHelper.floor_double(d.posX),
-            MathHelper.floor_double(d.posZ))) {
+                MathHelper.floor_double(d.posX),
+                MathHelper.floor_double(d.posZ))) {
             return chunkNotLoaded("drone chunk");
         }
 
@@ -169,11 +165,11 @@ public class WorldRpcHandler implements RpcHandler {
 
         if (m.equals("scan_room")) {
             int sx = args.has("x") ? args.get("x").getAsInt()
-                : MathHelper.floor_double(player != null ? player.posX : d.posX);
+                    : MathHelper.floor_double(player != null ? player.posX : d.posX);
             int sy = args.has("y") ? args.get("y").getAsInt()
-                : MathHelper.floor_double((player != null ? player.posY : d.posY) + 0.5);
+                    : MathHelper.floor_double((player != null ? player.posY : d.posY) + 0.5);
             int sz = args.has("z") ? args.get("z").getAsInt()
-                : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
+                    : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
             int maxR = args.has("maxRadius") ? args.get("maxRadius").getAsInt() : 18;
             if (!ChunkAccess.isBlockLoaded(world, sx, sz)) {
                 return chunkNotLoaded("scan_room");
@@ -188,7 +184,7 @@ public class WorldRpcHandler implements RpcHandler {
             final int cy = args.has("y") ? args.get("y").getAsInt() : MathHelper.floor_double(player != null ? player.posY : d.posY);
             final int cz = args.has("z") ? args.get("z").getAsInt() : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
             int minY = args.has("minY") ? Math.max(1, args.get("minY").getAsInt())
-                : (!args.has("y") && ItemClassifier.isLikelyUndergroundQuery(filter) ? 1 : Math.max(1, cy - radius));
+                    : (!args.has("y") && ItemClassifier.isLikelyUndergroundQuery(filter) ? 1 : Math.max(1, cy - radius));
             int maxY = args.has("maxY") ? Math.min(254, args.get("maxY").getAsInt()) : Math.min(254, cy + radius);
 
             List<int[]> matched = new ArrayList<int[]>();
@@ -321,8 +317,8 @@ public class WorldRpcHandler implements RpcHandler {
             String filter = args.has("filter") ? args.get("filter").getAsString() : "all";
             boolean matchAll = filter.equalsIgnoreCase("all") || filter.equalsIgnoreCase("any") || filter.equals("*");
             AxisAlignedBB box = AxisAlignedBB.getBoundingBox(
-                d.posX - radius, Math.max(1.0, d.posY - 24.0), d.posZ - radius,
-                d.posX + radius, Math.min(254.0, d.posY + 24.0), d.posZ + radius
+                    d.posX - radius, Math.max(1.0, d.posY - 24.0), d.posZ - radius,
+                    d.posX + radius, Math.min(254.0, d.posY + 24.0), d.posZ + radius
             );
             List<?> list = world.getEntitiesWithinAABB(EntityItem.class, box);
             JsonArray arr = new JsonArray();
@@ -377,7 +373,7 @@ public class WorldRpcHandler implements RpcHandler {
             EntityPlayerMP p = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
             String ownerKey = p != null ? p.getCommandSenderName() : ctrl.ownerName;
             String name = args.has("name") ? args.get("name").getAsString()
-                : (args.has("query") ? args.get("query").getAsString() : "base");
+                    : (args.has("query") ? args.get("query").getAsString() : "base");
             AIConfig.SavedLocation loc = this.manager.getConfig().getLocation(ownerKey, name);
             if (loc != null) {
                 res.addProperty("found", true);
@@ -425,7 +421,7 @@ public class WorldRpcHandler implements RpcHandler {
 
         if (m.equals("lookup_doc")) {
             String query = args.has("query") ? args.get("query").getAsString()
-                : (args.has("item") ? args.get("item").getAsString() : "");
+                    : (args.has("item") ? args.get("item").getAsString() : "");
             String modId = args.has("modId") && !args.get("modId").isJsonNull() ? args.get("modId").getAsString() : null;
             boolean includeWeb = args.has("includeWeb") && args.get("includeWeb").getAsBoolean();
             return this.manager.getDocLookupService().lookup(query, modId, includeWeb);

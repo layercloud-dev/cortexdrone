@@ -1,17 +1,11 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
-import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
+import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import net.minecraft.block.Block;
 import net.minecraft.world.World;
+
+import java.util.*;
 
 /**
  * Read-only weighted A* dig-path planner.
@@ -22,22 +16,22 @@ import net.minecraft.world.World;
  */
 public final class DigPathService {
     private static final int[][] DIRECTIONS = new int[][]{
-        {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}
+            {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}
     };
 
     public List<int[]> findPath(World world, int sx, int sy, int sz,
                                 int gx, int gy, int gz, boolean toOpenSky) {
         ChunkCacheContext bsi = new ChunkCacheContext(world, sx, sz, 2);
         PriorityQueue<FlightPathfinder.AStarNode> open =
-            new PriorityQueue<FlightPathfinder.AStarNode>();
+                new PriorityQueue<FlightPathfinder.AStarNode>();
         Map<Long, Double> bestG = new HashMap<Long, Double>();
         Set<Long> closed = new HashSet<Long>();
 
         double h0 = toOpenSky
-            ? Math.max(0, 75 - sy)
-            : Math.sqrt((gx - sx) * (gx - sx) + (gy - sy) * (gy - sy) + (gz - sz) * (gz - sz));
+                ? Math.max(0, 75 - sy)
+                : Math.sqrt((gx - sx) * (gx - sx) + (gy - sy) * (gy - sy) + (gz - sz) * (gz - sz));
         FlightPathfinder.AStarNode start =
-            new FlightPathfinder.AStarNode(sx, sy, sz, 0.0, h0, h0, false, null);
+                new FlightPathfinder.AStarNode(sx, sy, sz, 0.0, h0, h0, false, null);
         open.add(start);
         bestG.put(FlightPathfinder.packBlockPos(sx, sy, sz), 0.0);
 
@@ -54,12 +48,12 @@ public final class DigPathService {
 
             if (toOpenSky) {
                 if (bsi.isPassable(current.x, current.y, current.z)
-                    && world.canBlockSeeTheSky(current.x, current.y, current.z)) {
+                        && world.canBlockSeeTheSky(current.x, current.y, current.z)) {
                     reached = current;
                     break;
                 }
             } else if (Math.abs(current.x - gx) + Math.abs(current.y - gy)
-                + Math.abs(current.z - gz) <= 1) {
+                    + Math.abs(current.z - gz) <= 1) {
                 reached = current;
                 break;
             }
@@ -91,15 +85,15 @@ public final class DigPathService {
 
                 double nextG = current.g + stepCost;
                 Double previousG = bestG.get(nextKey);
-                if (previousG != null && nextG >= previousG.doubleValue()) continue;
+                if (previousG != null && nextG >= previousG) continue;
 
                 bestG.put(nextKey, nextG);
                 double nextH = toOpenSky
-                    ? Math.max(0.0, (world.getHeightValue(nx, nz) - ny) * 1.2)
-                    : Math.sqrt((gx - nx) * (gx - nx) + (gy - ny) * (gy - ny)
+                        ? Math.max(0.0, (world.getHeightValue(nx, nz) - ny) * 1.2)
+                        : Math.sqrt((gx - nx) * (gx - nx) + (gy - ny) * (gy - ny)
                         + (gz - nz) * (gz - nz));
                 FlightPathfinder.AStarNode child = new FlightPathfinder.AStarNode(
-                    nx, ny, nz, nextG, nextH, nextG + nextH * 1.2, dig, current);
+                        nx, ny, nz, nextG, nextH, nextG + nextH * 1.2, dig, current);
                 open.add(child);
                 double metric = nextH + nextG / 3.0;
                 if (metric < bestMetric && (nx != sx || ny != sy || nz != sz)) {
@@ -123,7 +117,7 @@ public final class DigPathService {
     private static boolean hasAdjacentLiquid(ChunkCacheContext cache, int x, int y, int z) {
         for (int[] direction : DIRECTIONS) {
             if (ItemClassifier.isLiquidBlock(cache.getBlock(
-                x + direction[0], y + direction[1], z + direction[2]))) {
+                    x + direction[0], y + direction[1], z + direction[2]))) {
                 return true;
             }
         }

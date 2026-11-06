@@ -56,8 +56,8 @@ public class PlayerInventoryOps {
             String disp = st.getDisplayName();
             String combined = ItemClassifier.getItemIdentifier(st);
             boolean ok = matchAny
-                ? (f.equals("all") || f.equals("*") || st.getItem() instanceof ItemBlock)
-                : ItemClassifier.matchesBlockOrItemName(disp, combined, meta, f);
+                    ? (f.equals("all") || f.equals("*") || st.getItem() instanceof ItemBlock)
+                    : ItemClassifier.matchesBlockOrItemName(disp, combined, meta, f);
             if (!ok) continue;
 
             int take = Math.min(st.stackSize, maxCount - moved);

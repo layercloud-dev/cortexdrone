@@ -9,7 +9,9 @@ import ir.layercloud.cortexdrone.model.LedEffectEngine;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 
-/** Single-use command: change the drone LED color or effect. */
+/**
+ * Single-use command: change the drone LED color or effect.
+ */
 @RequiredArgsConstructor
 public final class SetLedAction implements Action<VisualsContext> {
     private final VisualsRequest request;
@@ -22,8 +24,8 @@ public final class SetLedAction implements Action<VisualsContext> {
         if (effect != null) {
             String normalized = effect.trim().toUpperCase();
             if ("OFF".equals(normalized) || "NONE".equals(normalized)
-                || "DEFAULT".equals(normalized) || "AUTO".equals(normalized)
-                || "RESET".equals(normalized)) {
+                    || "DEFAULT".equals(normalized) || "AUTO".equals(normalized)
+                    || "RESET".equals(normalized)) {
                 controller.ledEffect = "NONE";
                 controller.customLedColor = null;
             } else {
@@ -31,8 +33,8 @@ public final class SetLedAction implements Action<VisualsContext> {
                 drone.lightColor_$eq(controller.resolveEffectiveLedColor(drone.lightColor()));
             }
             context.result(VisualsResult.success(
-                "effect", controller.ledEffect,
-                "color", color(drone)));
+                    "effect", controller.ledEffect,
+                    "color", color(drone)));
             return;
         }
 
@@ -66,8 +68,8 @@ public final class SetLedAction implements Action<VisualsContext> {
                 controller.ledEffect = upper;
                 drone.lightColor_$eq(controller.resolveEffectiveLedColor(drone.lightColor()));
                 context.result(VisualsResult.success(
-                    "effect", controller.ledEffect,
-                    "color", color(drone)));
+                        "effect", controller.ledEffect,
+                        "color", color(drone)));
                 return;
             }
             if ("DEFAULT".equals(upper) || "AUTO".equals(upper) || "RESET".equals(upper)) {
@@ -77,7 +79,7 @@ public final class SetLedAction implements Action<VisualsContext> {
                 return;
             }
             Integer parsed = DroneController.parseNamedOrHexColor(raw);
-            int packed = parsed != null ? parsed.intValue() : 0x00FFFF;
+            int packed = parsed != null ? parsed : 0x00FFFF;
             controller.customLedColor = packed;
             controller.ledEffect = "NONE";
             drone.lightColor_$eq(packed);

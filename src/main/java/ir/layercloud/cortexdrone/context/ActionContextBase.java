@@ -65,11 +65,15 @@ public abstract class ActionContextBase implements ActionContext {
         onCancel();
     }
 
-    /** Called once when the action finishes normally. */
+    /**
+     * Called once when the action finishes normally.
+     */
     protected void onComplete() {
     }
 
-    /** Called once when the action is cancelled or replaced. */
+    /**
+     * Called once when the action is cancelled or replaced.
+     */
     protected void onCancel() {
     }
 }

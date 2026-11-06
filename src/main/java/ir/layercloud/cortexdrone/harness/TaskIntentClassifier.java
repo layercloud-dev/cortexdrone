@@ -16,42 +16,42 @@ import java.util.List;
  */
 public final class TaskIntentClassifier {
     private static final List<String> CANCEL_PREFIXES = Arrays.asList(
-        "stop", "cancel", "abort", "halt", "quit", "cease", "stand down",
-        "never mind", "nevermind", "forget it", "belay that", "shut it down"
+            "stop", "cancel", "abort", "halt", "quit", "cease", "stand down",
+            "never mind", "nevermind", "forget it", "belay that", "shut it down"
     );
 
     private static final List<String> QUESTION_PREFIXES = Arrays.asList(
-        "what", "how", "where", "when", "why", "who", "which",
-        "are you", "is it", "do you", "does it", "did you",
-        "status", "report", "progress", "update me", "tell me",
-        "any update", "how's", "hows", "what's", "whats"
+            "what", "how", "where", "when", "why", "who", "which",
+            "are you", "is it", "do you", "does it", "did you",
+            "status", "report", "progress", "update me", "tell me",
+            "any update", "how's", "hows", "what's", "whats"
     );
 
     private static final List<String> BY_THE_WAY_PREFIXES = Arrays.asList(
-        "by the way", "btw", "also", "fyi", "just so you know",
-        "just a note", "note that", "heads up", "one more thing",
-        "while you're at it", "while youre at it"
+            "by the way", "btw", "also", "fyi", "just so you know",
+            "just a note", "note that", "heads up", "one more thing",
+            "while you're at it", "while youre at it"
     );
 
     private static final List<String> MODIFY_PREFIXES = Arrays.asList(
-        "actually", "instead", "change", "modify", "adjust", "add",
-        "remove", "make it", "not that", "rather", "wait", "hold on",
-        "keep going but", "continue but", "switch", "redo", "on second thought",
-        "one change", "small change", "new plan"
+            "actually", "instead", "change", "modify", "adjust", "add",
+            "remove", "make it", "not that", "rather", "wait", "hold on",
+            "keep going but", "continue but", "switch", "redo", "on second thought",
+            "one change", "small change", "new plan"
     );
 
     private static final List<String> POLITE_PREFIXES = Arrays.asList(
-        "can you", "could you", "would you", "will you", "please", "kindly"
+            "can you", "could you", "would you", "will you", "please", "kindly"
     );
 
     private static final List<String> ACTION_WORDS = Arrays.asList(
-        "mine", "dig", "break", "place", "build", "craft", "smelt", "cook",
-        "farm", "harvest", "replant", "plant", "hunt", "kill", "attack",
-        "go", "fly", "move", "travel", "bring", "take", "give", "drop",
-        "store", "deposit", "collect", "gather", "chop", "cut", "clear",
-        "fill", "plug", "scoop", "interact", "use", "equip", "light",
-        "explore", "scan", "find", "return", "come", "follow", "guard",
-        "patrol", "deliver", "pick", "put", "get", "fetch", "make"
+            "mine", "dig", "break", "place", "build", "craft", "smelt", "cook",
+            "farm", "harvest", "replant", "plant", "hunt", "kill", "attack",
+            "go", "fly", "move", "travel", "bring", "take", "give", "drop",
+            "store", "deposit", "collect", "gather", "chop", "cut", "clear",
+            "fill", "plug", "scoop", "interact", "use", "equip", "light",
+            "explore", "scan", "find", "return", "come", "follow", "guard",
+            "patrol", "deliver", "pick", "put", "get", "fetch", "make"
     );
 
     private TaskIntentClassifier() {

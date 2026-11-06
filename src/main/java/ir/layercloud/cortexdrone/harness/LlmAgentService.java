@@ -7,10 +7,16 @@ import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
+import lombok.RequiredArgsConstructor;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.MathHelper;
+import net.minecraft.world.World;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -21,11 +27,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.World;
-import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class LlmAgentService {
@@ -42,6 +43,7 @@ public class LlmAgentService {
     private volatile String lastLlmError = null;
 
     private static volatile boolean llmKeyLogged = false;
+
     static String maskKey(String key) {
         return LoopTracer.maskKey(key);
     }
@@ -51,7 +53,7 @@ public class LlmAgentService {
             String envKey = System.getenv("CORTEXDRONE_API_KEY");
             logger.log("LLM", ctrl, "API-key diagnostics (" + reason + "): env=" + (envKey == null || envKey.isEmpty() ? "<unset>" : maskKey(envKey)) + " key=" + maskKey((new AIConfig()).getApiKey()), "reason=" + reason);
         } catch (Throwable t) {
-            logger.log("LLM", ctrl, "API-key diagnostics failed: " + t.toString(), "");
+            logger.log("LLM", ctrl, "API-key diagnostics failed: " + t, "");
         }
     }
 
@@ -60,6 +62,7 @@ public class LlmAgentService {
         llmKeyLogged = true;
         logKeyDiagnostics(ctrl, logger, "once");
     }
+
     public JsonObject buildDroneContextForLlm(EntityPlayerMP player, DroneController ctrl) {
         JsonObject ctx = new JsonObject();
         World world = ctrl.drone.worldObj;
@@ -81,11 +84,12 @@ public class LlmAgentService {
                 if (lookBlock != null) ctx.add("playerCrosshairLookBlock", lookBlock);
                 JsonObject supportBlock = WorldScanner.findPlayerSupportBlock(world, player);
                 if (supportBlock != null) ctx.add("playerStandingOnBlock", supportBlock);
-            } catch (Throwable ignored) {}
+            } catch (Throwable ignored) {
+            }
             ItemStack held = player.getCurrentEquippedItem();
             ctx.addProperty("playerHeldItem", (held != null && held.stackSize > 0)
-                ? (held.getDisplayName() + ":" + held.getItemDamage() + " x" + held.stackSize)
-                : "Empty");
+                    ? (held.getDisplayName() + ":" + held.getItemDamage() + " x" + held.stackSize)
+                    : "Empty");
         }
         ctx.addProperty("droneName", ctrl.name);
         ctx.addProperty("droneX", Math.round(ctrl.drone.posX * 10.0) / 10.0);
@@ -95,14 +99,15 @@ public class LlmAgentService {
         boolean canSeeSky = false;
         try {
             canSeeSky = world.canBlockSeeTheSky(MathHelper.floor_double(ctrl.drone.posX), MathHelper.floor_double(ctrl.drone.posY), MathHelper.floor_double(ctrl.drone.posZ));
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+        }
         ctx.addProperty("droneCanSeeSky", canSeeSky);
         ctx.addProperty("breadcrumbCount", this.manager.getBreadcrumbService().count(ctrl));
         ctx.addProperty("droneInventory", InventoryService.formatInventorySummary(ctrl.drone.mainInventory()));
         ctx.addProperty("playerInventory", player != null ? InventoryService.formatInventorySummary(player.inventory) : "Offline");
 
         ctx.addProperty("distToPlayerM", Math.round(Math.hypot(
-            ctrl.drone.posX - refX, ctrl.drone.posY - refY) * 10.0) / 10.0);
+                ctrl.drone.posX - refX, ctrl.drone.posY - refY) * 10.0) / 10.0);
         ctx.addProperty("droneMode", ctrl.mode.name());
         ctx.addProperty("activeTaskRunning", ctrl.task.isActive() || ctrl.hasActiveTaskOrLoop(0));
         ctx.addProperty("activeScriptCount", ctrl.activeScriptCount.get());
@@ -116,7 +121,7 @@ public class LlmAgentService {
         taskState.addProperty("mode", ctrl.mode.name());
         taskState.addProperty("navigationActive", this.manager.getNavigationManager().isActive(ctrl));
         taskState.addProperty("activeBreakTarget", ctrl.currentMineTarget != null
-            ? (ctrl.currentMineTarget[0] + "," + ctrl.currentMineTarget[1] + "," + ctrl.currentMineTarget[2]) : "");
+                ? (ctrl.currentMineTarget[0] + "," + ctrl.currentMineTarget[1] + "," + ctrl.currentMineTarget[2]) : "");
         ctx.add("task", taskState);
 
         String ownerKey = player != null ? player.getCommandSenderName() : ctrl.ownerName;
@@ -125,7 +130,7 @@ public class LlmAgentService {
             JsonObject locsObj = new JsonObject();
             for (AIConfig.SavedLocation loc : savedLocs) {
                 locsObj.addProperty(loc.getName(), "(" + loc.getX() + "," + loc.getY() + "," + loc.getZ() + ")"
-                    + (loc.getTags() != null && !loc.getTags().isEmpty() ? " [" + loc.getTags() + "]" : ""));
+                        + (loc.getTags() != null && !loc.getTags().isEmpty() ? " [" + loc.getTags() + "]" : ""));
             }
             ctx.add("savedLocations", locsObj);
         }
@@ -137,7 +142,8 @@ public class LlmAgentService {
                 int[] v = e.getValue();
                 resources.addProperty(e.getKey(), v[0] + " (nearest: " + v[1] + "," + v[2] + "," + v[3] + ")");
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+        }
         ctx.add("nearbyBlocks24m", resources);
         return ctx;
     }
@@ -200,18 +206,29 @@ public class LlmAgentService {
                 }
                 if (System.currentTimeMillis() > loopDeadline) {
                     this.logger.log("LLM", ctrl, "Agent loop hit wall-clock deadline (" + (AGENT_DEADLINE_MS / 60000) + " min) at Turn " + turn
-                        + " loopId=" + myLoopId + " — reporting partial progress", "hadProgress=" + hadProgress);
+                            + " loopId=" + myLoopId + " — reporting partial progress", "hadProgress=" + hadProgress);
                     final String deadlineReply = AgentLoopHeuristics.progressReplyFor(
-                        "Stopped at the time limit. No further progress was possible without more info.",
-                        hadProgress, ctrl.lastThought);
+                            "Stopped at the time limit. No further progress was possible without more info.",
+                            hadProgress, ctrl.lastThought);
                     this.manager.getMod().queueMain(new Runnable() {
-                        @Override public void run() { manager.droneSay(player, ctrl, deadlineReply); }
+                        @Override
+                        public void run() {
+                            manager.droneSay(player, ctrl, deadlineReply);
+                        }
                     });
                     return;
                 }
 
                 final int curTurn = turn;
-                this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW) { ctrl.drone.lightColor_$eq(0xAA55FF); ctrl.drone.statusText_$eq("Thinking...\nTurn " + curTurn); } } });
+                this.manager.getMod().queueMain(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW) {
+                            ctrl.drone.lightColor_$eq(0xAA55FF);
+                            ctrl.drone.statusText_$eq("Thinking...\nTurn " + curTurn);
+                        }
+                    }
+                });
 
                 final long turnStartMs = System.currentTimeMillis();
                 JsonObject plan;
@@ -221,7 +238,7 @@ public class LlmAgentService {
                 } catch (Throwable ex) {
                     lastLlmError = "LLM gateway exception: " + ex.toString();
                     this.logger.log("LLM", ctrl, lastLlmError + " loopId=" + myLoopId + " turn=" + turn,
-                        "url=" + this.manager.getConfig().getApiUrl() + " key=" + maskKey(this.manager.getConfig().getApiKey()));
+                            "url=" + this.manager.getConfig().getApiUrl() + " key=" + maskKey(this.manager.getConfig().getApiKey()));
                     plan = null;
                 }
                 if (PromptCompactor.consumeContextOverflow()) {
@@ -242,14 +259,17 @@ public class LlmAgentService {
                     }
                     String detail = lastLlmError != null ? lastLlmError : "no response from LLM gateway";
                     this.logger.log("LLM", ctrl, "LLM backend failed on Turn " + turn
-                        + " loopId=" + myLoopId + " elapsedMs=" + elapsedMs
-                        + " — reporting the error to the player and stopping",
-                        "detail=" + detail + " key=" + maskKey(this.manager.getConfig().getApiKey()));
+                                    + " loopId=" + myLoopId + " elapsedMs=" + elapsedMs
+                                    + " — reporting the error to the player and stopping",
+                            "detail=" + detail + " key=" + maskKey(this.manager.getConfig().getApiKey()));
                     final String partialMsg = AgentLoopHeuristics.progressReplyFor(
-                        "AI backend error: " + detail + ". Fix the API key / gateway then re-send your instruction.",
-                        hadProgress, ctrl.lastThought);
+                            "AI backend error: " + detail + ". Fix the API key / gateway then re-send your instruction.",
+                            hadProgress, ctrl.lastThought);
                     this.manager.getMod().queueMain(new Runnable() {
-                        @Override public void run() { manager.droneSay(player, ctrl, partialMsg); }
+                        @Override
+                        public void run() {
+                            manager.droneSay(player, ctrl, partialMsg);
+                        }
                     });
                     return;
                 }
@@ -260,7 +280,13 @@ public class LlmAgentService {
                 if (!thought.isEmpty()) {
                     ctrl.recordThought(turn, thought);
                     this.logger.log("THINK", ctrl, "Turn " + turn + ": " + thought, "");
-                    this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW) ctrl.drone.statusText_$eq("Think T" + curTurn + "\n" + AIDroneManager.trimStatus(thought)); } });
+                    this.manager.getMod().queueMain(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW)
+                                ctrl.drone.statusText_$eq("Think T" + curTurn + "\n" + AIDroneManager.trimStatus(thought));
+                        }
+                    });
                 }
 
                 boolean isMalformed = plan.has("malformed") && plan.get("malformed").getAsBoolean();
@@ -269,33 +295,40 @@ public class LlmAgentService {
 
                 boolean done = !isMalformed && plan.has("done") && !plan.get("done").isJsonNull() && plan.get("done").getAsBoolean();
                 final String reply = (!isMalformed && plan.has("reply") && !plan.get("reply").isJsonNull())
-                    ? plan.get("reply").getAsString().trim()
-                    : "";
+                        ? plan.get("reply").getAsString().trim()
+                        : "";
                 LoopTracer.traceTurn(this.logger, ctrl, myLoopId, turn, System.currentTimeMillis() - turnStartMs,
-                    false, isMalformed, thought, code);
-                if (isMalformed) this.logger.log("LLM", ctrl, "Malformed LLM response on Turn " + turn + " loopId=" + myLoopId, "thought=\"" + LoopTracer.snippet(thought, 200) + "\" codeLen=" + code.length() + " raw=" + LoopTracer.snippet(plan.toString(), 600));
+                        false, isMalformed, thought, code);
+                if (isMalformed)
+                    this.logger.log("LLM", ctrl, "Malformed LLM response on Turn " + turn + " loopId=" + myLoopId, "thought=\"" + LoopTracer.snippet(thought, 200) + "\" codeLen=" + code.length() + " raw=" + LoopTracer.snippet(plan.toString(), 600));
                 if (AgentLoopHeuristics.shouldForceFinal(plan, messages)) {
                     final String earlyReply = "Blocked: the searched recipe/item path is machine-config-only or empty. "
-                        + "Next step: provide the exact machine + missing ingredient, or pick the cheap vanilla "
-                        + "alternative, then re-request.";
+                            + "Next step: provide the exact machine + missing ingredient, or pick the cheap vanilla "
+                            + "alternative, then re-request.";
                     completedOk = true;
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn + " early-final forced done:true", "loopId=" + myLoopId);
                     this.manager.getMod().queueMain(new Runnable() {
-                        @Override public void run() { manager.droneSay(player, ctrl, earlyReply); }
+                        @Override
+                        public void run() {
+                            manager.droneSay(player, ctrl, earlyReply);
+                        }
                     });
                     return;
                 }
                 if (AgentLoopHeuristics.isMachineBlockerResult(lastMachineBlocker) && !AgentLoopHeuristics.codeMentionsPhysicalAction(code)
-                    && !done && !plan.has("malformed")) {
+                        && !done && !plan.has("malformed")) {
                     final String blockerReply = "Blocked on an HBM machine config — the only recipe path is "
-                        + "machine-gated (AssemblyMachine/ChemicalPlant/BlastFurnace/Anvil GUI-only). "
-                        + "Next step: set up/bring that machine + power/fuel and the missing ingredient(s), "
-                        + "then re-request. (Last tool result named the exact machine/ingredient.)";
+                            + "machine-gated (AssemblyMachine/ChemicalPlant/BlastFurnace/Anvil GUI-only). "
+                            + "Next step: set up/bring that machine + power/fuel and the missing ingredient(s), "
+                            + "then re-request. (Last tool result named the exact machine/ingredient.)";
                     completedOk = true;
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn
-                        + " machine-config blocker seen -> immediate done:true (no re-query)", "");
+                            + " machine-config blocker seen -> immediate done:true (no re-query)", "");
                     this.manager.getMod().queueMain(new Runnable() {
-                        @Override public void run() { manager.droneSay(player, ctrl, blockerReply); }
+                        @Override
+                        public void run() {
+                            manager.droneSay(player, ctrl, blockerReply);
+                        }
                     });
                     return;
                 }
@@ -309,10 +342,10 @@ public class LlmAgentService {
                     this.logger.log("CODEMODE", ctrl, "Turn " + turn + " malformed or missing JS code -> self-correcting", "thought=" + LoopTracer.snippet(thought, 200));
                     if (turn < MAX_AGENT_TURNS) {
                         AgentLoopHeuristics.appendTurnFeedback(
-                            messages,
-                            thought,
-                            "",
-                            "FORMAT ERROR: Your response was malformed or missing executable JavaScript `\"code\"`. Do NOT output plain text or stop without executing the task! Respond ONLY with a valid JSON object:\n{\"thought\": \"...\", \"code\": \"await ...\", \"done\": true, \"reply\": \"...\"}"
+                                messages,
+                                thought,
+                                "",
+                                "FORMAT ERROR: Your response was malformed or missing executable JavaScript `\"code\"`. Do NOT output plain text or stop without executing the task! Respond ONLY with a valid JSON object:\n{\"thought\": \"...\", \"code\": \"await ...\", \"done\": true, \"reply\": \"...\"}"
                         );
                         continue;
                     }
@@ -320,7 +353,13 @@ public class LlmAgentService {
 
                 if (!code.isEmpty()) {
                     executedAnyAction = true;
-                    this.manager.getMod().queueMain(new Runnable() { @Override public void run() { if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW) ctrl.drone.lightColor_$eq(0xAA55FF); } });
+                    this.manager.getMod().queueMain(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (ctrl.drone != null && !ctrl.drone.isDead && ctrl.mode == Mode.FOLLOW)
+                                ctrl.drone.lightColor_$eq(0xAA55FF);
+                        }
+                    });
 
                     final AtomicBoolean jsFinished = new AtomicBoolean(false);
                     if (done && !thought.isEmpty()) {
@@ -361,7 +400,11 @@ public class LlmAgentService {
                     boolean ok = execRes.has("ok") && execRes.get("ok").getAsBoolean();
                     if (ok) {
                         hadProgress = hadProgress || AgentLoopHeuristics.hasConcreteProgress(execRes, code);
-                        if (hadProgress) { inspectionTurns = 0; sameQueryStreak = 0; emptySearchStreak = 0; }
+                        if (hadProgress) {
+                            inspectionTurns = 0;
+                            sameQueryStreak = 0;
+                            emptySearchStreak = 0;
+                        }
                         if (AgentLoopHeuristics.isMachineBlockerResult(execRes)) {
                             lastMachineBlocker = execRes;
                         }
@@ -376,9 +419,9 @@ public class LlmAgentService {
                         hadSelfCorrection = true;
                         this.logger.log("CODEMODE", ctrl, "Turn " + turn + " JS Error -> Self-Correcting", execRes.toString());
                         AgentLoopHeuristics.appendTurnFeedback(
-                            messages, thought, code,
-                            "JS FAILED: " + AgentLoopHeuristics.truncateForPrompt(execRes.toString(), 1800)
-                                + "\nFix the bug in ONE corrected JS \"code\" step and re-run it. Do NOT re-query kb.lookup/getRecipes/findItemInChests for the same target.");
+                                messages, thought, code,
+                                "JS FAILED: " + AgentLoopHeuristics.truncateForPrompt(execRes.toString(), 1800)
+                                        + "\nFix the bug in ONE corrected JS \"code\" step and re-run it. Do NOT re-query kb.lookup/getRecipes/findItemInChests for the same target.");
                         continue;
                     }
 
@@ -387,12 +430,12 @@ public class LlmAgentService {
                         hadSelfCorrection = true;
                         this.logger.log("CODEMODE", ctrl, "Turn " + turn + " suspicious 0-queued result -> prompting self-correction", execRes.toString());
                         AgentLoopHeuristics.appendTurnFeedback(
-                            messages,
-                            thought,
-                            code,
-                            "JS Execution SUCCEEDED:\n"
-                                + AgentLoopHeuristics.truncateForPrompt(execRes.toString(), 1800)
-                                + "\nWarning: your code queued/affected 0 blocks/items. Inspect the coordinates/names in the result above and fix your code so the task actually executes!"
+                                messages,
+                                thought,
+                                code,
+                                "JS Execution SUCCEEDED:\n"
+                                        + AgentLoopHeuristics.truncateForPrompt(execRes.toString(), 1800)
+                                        + "\nWarning: your code queued/affected 0 blocks/items. Inspect the coordinates/names in the result above and fix your code so the task actually executes!"
                         );
                         continue;
                     }
@@ -405,9 +448,9 @@ public class LlmAgentService {
                     if (!done && turn < MAX_AGENT_TURNS) {
                         JsonObject droneStatus = this.rpcDispatcher.executeOnMainThread(ctrl, player, "state", new JsonObject());
                         String feedback = "JS OK:\n"
-                            + AgentLoopHeuristics.truncateForPrompt(execRes.toString(), 1800)
-                            + "\nStatus:\n" + AgentLoopHeuristics.truncateForPrompt(droneStatus.toString(), 1200)
-                            + "\nNext JS \"code\" step, or \"done\":true + final \"reply\" if complete.";
+                                + AgentLoopHeuristics.truncateForPrompt(execRes.toString(), 1800)
+                                + "\nStatus:\n" + AgentLoopHeuristics.truncateForPrompt(droneStatus.toString(), 1200)
+                                + "\nNext JS \"code\" step, or \"done\":true + final \"reply\" if complete.";
                         String codeFingerprint = AgentLoopHeuristics.fingerprintCode(code);
                         if (lastReactionKey != null && lastReactionKey.equals(codeFingerprint)) {
                             this.logger.log("CODEMODE", ctrl, "Turn " + turn + " repeated code detected -> deterministic different step", "");
@@ -433,20 +476,20 @@ public class LlmAgentService {
                         lastQueryKey = qk.isEmpty() ? lastQueryKey : qk;
                         if (sameQueryStreak >= 2) {
                             feedback += "\n\nANTI-RE-QUERY: you have re-queried '" + qk + "' " + (sameQueryStreak + 1)
-                                + "x with no progress. Record what you know and act: withdraw/craft with "
-                                + "found items, or — if every search returns empty/not-found — finish done:true "
-                                + "with the exact blocker and next step. Do NOT call " + qk + " again this task.";
+                                    + "x with no progress. Record what you know and act: withdraw/craft with "
+                                    + "found items, or — if every search returns empty/not-found — finish done:true "
+                                    + "with the exact blocker and next step. Do NOT call " + qk + " again this task.";
                             this.logger.log("CODEMODE", ctrl, "Turn " + turn + " same-query streak=" + sameQueryStreak
-                                + " qk=" + qk + " -> anti-requery nudge", "");
+                                    + " qk=" + qk + " -> anti-requery nudge", "");
                         }
                         if (emptySearchStreak >= 2) {
                             feedback += "\n\nEMPTY-SEARCH: last results were empty (found:false/count:0). "
-                                + "Do NOT keep scanning wider radii for the same target. Either act on the "
-                                + "nearest alternative (different ore/block/registry name from kb.lookup) or "
-                                + "finish done:true: state what was searched, the exact blocker, and the next "
-                                + "concrete step (e.g. fly to a known biome/chunk, change filter).";
+                                    + "Do NOT keep scanning wider radii for the same target. Either act on the "
+                                    + "nearest alternative (different ore/block/registry name from kb.lookup) or "
+                                    + "finish done:true: state what was searched, the exact blocker, and the next "
+                                    + "concrete step (e.g. fly to a known biome/chunk, change filter).";
                             this.logger.log("CODEMODE", ctrl, "Turn " + turn + " emptySearchStreak=" + emptySearchStreak
-                                + " -> empty-search nudge", "");
+                                    + " -> empty-search nudge", "");
                         }
                         boolean repeated = AgentLoopHeuristics.isRepeatedToolResult(AgentLoopHeuristics.lastUserContent(messages), feedback);
                         if (repeated) {
@@ -456,7 +499,10 @@ public class LlmAgentService {
                         if (!hadProgress && AgentLoopHeuristics.hasConcreteProgress(execRes, code)) {
                             final String relayMsg = "Progress: first step done. Continuing with next step.";
                             this.manager.getMod().queueMain(new Runnable() {
-                                @Override public void run() { manager.droneSay(player, ctrl, relayMsg); }
+                                @Override
+                                public void run() {
+                                    manager.droneSay(player, ctrl, relayMsg);
+                                }
                             });
                             hadProgress = true;
                         }
@@ -480,9 +526,10 @@ public class LlmAgentService {
                     return;
                 } else {
                     if (done || turn == MAX_AGENT_TURNS) {
-                        completedOk = done; final String fallbackReply = reply.isEmpty()
-                            ? "I couldn't form a valid action plan for that. Please rephrase or simplify the task."
-                            : reply;
+                        completedOk = done;
+                        final String fallbackReply = reply.isEmpty()
+                                ? "I couldn't form a valid action plan for that. Please rephrase or simplify the task."
+                                : reply;
                         this.manager.getMod().queueMain(new Runnable() {
                             @Override
                             public void run() {
@@ -492,31 +539,36 @@ public class LlmAgentService {
                         return;
                     }
                     AgentLoopHeuristics.appendTurnFeedback(
-                        messages, thought, "",
-                        "Next step: emit one JS \"code\" step (physical action preferred) or \"done\":true with final \"reply\" (partial reply OK: state what was delivered, the exact blocker, and the next concrete step).") ;
+                            messages, thought, "",
+                            "Next step: emit one JS \"code\" step (physical action preferred) or \"done\":true with final \"reply\" (partial reply OK: state what was delivered, the exact blocker, and the next concrete step).");
                 }
             }
             this.logger.log("LLM", ctrl, "Agent loop hit turn cap (" + MAX_AGENT_TURNS + ") loopId=" + myLoopId
-                + " elapsedMs=" + (System.currentTimeMillis() - loopStartMs)
-                + " — reporting partial progress", "lastThought=\"" + LoopTracer.snippet(ctrl.lastThought, 200) + "\"");
+                    + " elapsedMs=" + (System.currentTimeMillis() - loopStartMs)
+                    + " — reporting partial progress", "lastThought=\"" + LoopTracer.snippet(ctrl.lastThought, 200) + "\"");
             final String capReply = AgentLoopHeuristics.progressReplyFor(
-                "Stopped at the turn cap (" + MAX_AGENT_TURNS + "). What stands so far is in the last status/checkpoint above; "
-                    + "the blocker (missing item/machine) is named there.",
-                hadProgress, ctrl.lastThought);
+                    "Stopped at the turn cap (" + MAX_AGENT_TURNS + "). What stands so far is in the last status/checkpoint above; "
+                            + "the blocker (missing item/machine) is named there.",
+                    hadProgress, ctrl.lastThought);
             this.manager.getMod().queueMain(new Runnable() {
-                @Override public void run() { manager.droneSay(player, ctrl, capReply); }
+                @Override
+                public void run() {
+                    manager.droneSay(player, ctrl, capReply);
+                }
             });
-            return;
         } catch (Throwable e) {
             // Catch Throwable, not Exception: an Error (OOM/NoClassDefFound/...) on a
             // pool thread otherwise dies silently after TRACE turn=0. Always log + speak.
             this.logger.log("LLM", ctrl, "Pure Code Mode agent loop error loopId=" + myLoopId,
-                "error=" + e.toString() + " key=" + maskKey(this.manager.getConfig().getApiKey()));
+                    "error=" + e.toString() + " key=" + maskKey(this.manager.getConfig().getApiKey()));
             final String errDetail = e.toString();
             final String errReply = "Stopped due to an internal error (" + errDetail + "). Re-send the instruction to retry.";
             try {
                 this.manager.getMod().queueMain(new Runnable() {
-                    @Override public void run() { manager.droneSay(player, ctrl, errReply); }
+                    @Override
+                    public void run() {
+                        manager.droneSay(player, ctrl, errReply);
+                    }
                 });
             } catch (Throwable ignored) {
                 LoopTracer.sayError(this.manager, player, ctrl, errDetail);
@@ -545,8 +597,8 @@ public class LlmAgentService {
             URL url = new URL(cfg.getApiUrl());
             boolean isLocal = cfg.getApiUrl().contains("127.0.0.1") || cfg.getApiUrl().contains("localhost");
             HttpURLConnection conn = (HttpURLConnection) (isLocal
-                ? url.openConnection(Proxy.NO_PROXY)
-                : url.openConnection());
+                    ? url.openConnection(Proxy.NO_PROXY)
+                    : url.openConnection());
             conn.setUseCaches(false);
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(10000);
@@ -596,9 +648,10 @@ public class LlmAgentService {
                     lastLlmError = errDetail;
                     String lowerErr = errDetail.toLowerCase();
                     if (lowerErr.contains("context length") || lowerErr.contains("maximum context")
-                        || lowerErr.contains("too many tokens") || lowerErr.contains("context_length_exceeded")
-                        || lowerErr.contains("prompt is too long")) {
-                        PromptCompactor.markContextOverflow(); return lastMalformed;
+                            || lowerErr.contains("too many tokens") || lowerErr.contains("context_length_exceeded")
+                            || lowerErr.contains("prompt is too long")) {
+                        PromptCompactor.markContextOverflow();
+                        return lastMalformed;
                     }
                     this.logger.log("LLM", ctrl, errDetail, "url=" + cfg.getApiUrl() + " key=" + maskKey(cfg.getApiKey()));
                     if (attempt < 3) continue;
@@ -638,7 +691,7 @@ public class LlmAgentService {
                 return parsed;
             } catch (Throwable ex) {
                 String exMsg = ex.getMessage();
-                String exDetail = "LLM gateway exception: " + ex.toString();
+                String exDetail = "LLM gateway exception: " + ex;
                 lastLlmError = exDetail;
                 this.logger.log("LLM", ctrl, exDetail, "url=" + cfg.getApiUrl() + " key=" + maskKey(cfg.getApiKey()));
                 boolean connectFailure = ex instanceof java.net.ConnectException || ex instanceof java.net.SocketTimeoutException || (exMsg != null && (exMsg.contains("Connection refused") || exMsg.contains("timed out")));
@@ -650,7 +703,10 @@ public class LlmAgentService {
                 }
                 if (attempt >= 3) throw ex instanceof Exception ? (Exception) ex : new RuntimeException(ex);
             } finally {
-                try { conn.disconnect(); } catch (Throwable ignored) {}
+                try {
+                    conn.disconnect();
+                } catch (Throwable ignored) {
+                }
             }
         }
         return lastMalformed;

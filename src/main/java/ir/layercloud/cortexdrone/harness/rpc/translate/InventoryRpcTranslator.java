@@ -3,12 +3,14 @@ package ir.layercloud.cortexdrone.harness.rpc.translate;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
-import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
+import ir.layercloud.cortexdrone.model.DroneController;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/** JSON translation boundary for inventory actions. */
+/**
+ * JSON translation boundary for inventory actions.
+ */
 @RequiredArgsConstructor
 public final class InventoryRpcTranslator {
     private final InventoryManager service;
@@ -16,7 +18,7 @@ public final class InventoryRpcTranslator {
     public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {
         InventoryResult result = this.service.handle(
-            controller, player, operation, parse(operation, args));
+                controller, player, operation, parse(operation, args));
         return serialize(result);
     }
 
@@ -24,10 +26,10 @@ public final class InventoryRpcTranslator {
         if ("craft".equals(operation)) {
             String filter = first(args, "filter", "item", "target");
             return InventoryRequest.builder()
-                .operation("craft")
-                .filter(filter != null ? filter : "planks")
-                .count(RpcArgs.integer(args, "count", 1))
-                .build();
+                    .operation("craft")
+                    .filter(filter != null ? filter : "planks")
+                    .count(RpcArgs.integer(args, "count", 1))
+                    .build();
         }
 
         String op = RpcArgs.string(args, "op", "move").trim().toLowerCase();
@@ -64,32 +66,32 @@ public final class InventoryRpcTranslator {
         }
 
         return InventoryRequest.builder()
-            .operation(op)
-            .filter(filter)
-            .item(item)
-            .count(RpcArgs.integer(args, "count", 0))
-            .playerName(RpcArgs.string(args, "player", null))
-            .fromType(fromType)
-            .toType(toType)
-            .fromSlot(RpcArgs.integer(args, "fromSlot", -1))
-            .toSlot(RpcArgs.integer(args, "toSlot", -1))
-            .hasSource(source != null)
-            .sourceX(source != null ? source[0] : 0)
-            .sourceY(source != null ? source[1] : 0)
-            .sourceZ(source != null ? source[2] : 0)
-            .hasTarget(target != null)
-            .targetX(target != null ? target[0] : 0)
-            .targetY(target != null ? target[1] : 0)
-            .targetZ(target != null ? target[2] : 0)
-            .radius(RpcArgs.decimal(args, "radius", 0.0))
-            .build();
+                .operation(op)
+                .filter(filter)
+                .item(item)
+                .count(RpcArgs.integer(args, "count", 0))
+                .playerName(RpcArgs.string(args, "player", null))
+                .fromType(fromType)
+                .toType(toType)
+                .fromSlot(RpcArgs.integer(args, "fromSlot", -1))
+                .toSlot(RpcArgs.integer(args, "toSlot", -1))
+                .hasSource(source != null)
+                .sourceX(source != null ? source[0] : 0)
+                .sourceY(source != null ? source[1] : 0)
+                .sourceZ(source != null ? source[2] : 0)
+                .hasTarget(target != null)
+                .targetX(target != null ? target[0] : 0)
+                .targetY(target != null ? target[1] : 0)
+                .targetZ(target != null ? target[2] : 0)
+                .radius(RpcArgs.decimal(args, "radius", 0.0))
+                .build();
     }
 
     private static JsonObject serialize(InventoryResult result) {
         if (result == null) return RpcJson.error("Inventory action produced no result");
         JsonObject response = result.isOk()
-            ? RpcJson.ok()
-            : RpcJson.error(result.getError());
+                ? RpcJson.ok()
+                : RpcJson.error(result.getError());
         RpcJson.addAll(response, result.getFields());
         return response;
     }
@@ -106,14 +108,14 @@ public final class InventoryRpcTranslator {
             return null;
         }
         return new int[]{
-            args.get(xKey).getAsInt(),
-            args.get(yKey).getAsInt(),
-            args.get(zKey).getAsInt()
+                args.get(xKey).getAsInt(),
+                args.get(yKey).getAsInt(),
+                args.get(zKey).getAsInt()
         };
     }
 
     private static boolean isContainer(String type) {
         return "chest".equals(type) || "crate".equals(type)
-            || "container".equals(type) || "furnace".equals(type);
+                || "container".equals(type) || "furnace".equals(type);
     }
 }

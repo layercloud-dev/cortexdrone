@@ -1,11 +1,14 @@
 package ir.layercloud.cortexdrone.action.inventory;
 
-import java.util.Map;
 import lombok.Builder;
 import lombok.Singular;
 import lombok.Value;
 
-/** Immutable result of one inventory action. */
+import java.util.Map;
+
+/**
+ * Immutable result of one inventory action.
+ */
 @Value
 @Builder
 public class InventoryResult {

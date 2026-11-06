@@ -3,11 +3,12 @@ package ir.layercloud.cortexdrone.service.machine;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import java.util.ArrayList;
-import java.util.List;
+import lombok.experimental.UtilityClass;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import lombok.experimental.UtilityClass;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * JSON schema parsing for HBM machine recipes. Moved verbatim from
@@ -28,13 +29,18 @@ final class MachineRecipeParser {
             r.name = o.has("name") ? o.get("name").getAsString() : fileName.replace(".json", "") + "." + r.inputs.size();
             r.displayName = o.has("nameWrapper") ? o.get("nameWrapper").getAsString() : r.name;
             if (o.has("duration")) r.duration = o.get("duration").getAsInt();
-            if (o.has("frequency") && o.get("frequency").isJsonPrimitive() && o.get("frequency").getAsJsonPrimitive().isNumber()) r.duration = Math.max(r.duration, o.get("frequency").getAsInt());
+            if (o.has("frequency") && o.get("frequency").isJsonPrimitive() && o.get("frequency").getAsJsonPrimitive().isNumber())
+                r.duration = Math.max(r.duration, o.get("frequency").getAsInt());
             if (o.has("power")) r.power = o.get("power").getAsLong();
             if (o.has("consumption")) r.power = Math.max(r.power, o.get("consumption").getAsLong());
-            if (o.has("momentum") && o.get("momentum").isJsonPrimitive() && o.get("momentum").getAsJsonPrimitive().isNumber()) r.power = Math.max(r.power, o.get("momentum").getAsLong());
-            if (o.has("steam") && o.get("steam").isJsonPrimitive() && o.get("steam").getAsJsonPrimitive().isNumber()) r.power = Math.max(r.power, o.get("steam").getAsLong());
-            if (o.has("flux") && o.get("flux").isJsonPrimitive() && o.get("flux").getAsJsonPrimitive().isNumber()) r.power = Math.max(r.power, o.get("flux").getAsLong());
-            if (o.has("antimatter") && o.get("antimatter").isJsonPrimitive() && o.get("antimatter").getAsJsonPrimitive().isNumber()) r.power = Math.max(r.power, o.get("antimatter").getAsLong());
+            if (o.has("momentum") && o.get("momentum").isJsonPrimitive() && o.get("momentum").getAsJsonPrimitive().isNumber())
+                r.power = Math.max(r.power, o.get("momentum").getAsLong());
+            if (o.has("steam") && o.get("steam").isJsonPrimitive() && o.get("steam").getAsJsonPrimitive().isNumber())
+                r.power = Math.max(r.power, o.get("steam").getAsLong());
+            if (o.has("flux") && o.get("flux").isJsonPrimitive() && o.get("flux").getAsJsonPrimitive().isNumber())
+                r.power = Math.max(r.power, o.get("flux").getAsLong());
+            if (o.has("antimatter") && o.get("antimatter").isJsonPrimitive() && o.get("antimatter").getAsJsonPrimitive().isNumber())
+                r.power = Math.max(r.power, o.get("antimatter").getAsLong());
             if (o.has("tierLower")) r.tierLower = o.get("tierLower").getAsInt();
             if (o.has("tierUpper")) r.tierUpper = o.get("tierUpper").getAsInt();
             if (o.has("overlay")) r.overlay = o.get("overlay").getAsString();
@@ -81,7 +87,8 @@ final class MachineRecipeParser {
                         }
                     }
                     for (MachineRecipeService.NormalizedRecipe e : expanded) {
-                        if (e.inputs.isEmpty() && e.outputs.isEmpty() && e.inputFluids.isEmpty() && e.outputFluids.isEmpty()) continue;
+                        if (e.inputs.isEmpty() && e.outputs.isEmpty() && e.inputFluids.isEmpty() && e.outputFluids.isEmpty())
+                            continue;
                         if (e.displayName == null || e.displayName.isEmpty()) e.displayName = e.name;
                         return e;
                     }
@@ -212,7 +219,7 @@ final class MachineRecipeParser {
                 } else if (el.isJsonArray()) {
                     JsonArray arr = el.getAsJsonArray();
                     boolean fluidLike = arr.size() >= 2 && arr.get(0).isJsonPrimitive() && arr.get(1).isJsonPrimitive() && arr.get(1).getAsJsonPrimitive().isNumber()
-                        && !arr.get(0).getAsString().contains(":") && !arr.get(0).getAsString().startsWith("hbm:") && !arr.get(0).getAsString().startsWith("minecraft:");
+                            && !arr.get(0).getAsString().contains(":") && !arr.get(0).getAsString().startsWith("hbm:") && !arr.get(0).getAsString().startsWith("minecraft:");
                     // Fluid outputs occur under output/output1..output4 (electrolyser,
                     // fractions, crucible molten, hydrotreating): the bare name plus
                     // mB amount is a FluidStack, not an ItemStack. Item outputs always
@@ -337,7 +344,10 @@ final class MachineRecipeParser {
                                     boolean dup = false;
                                     for (JsonObject ex : r.inputs) {
                                         if (ex.has("dict") && io.has("dict") && ex.get("dict").getAsString().equals(io.get("dict").getAsString())
-                                            && ex.has("amount") && io.has("amount") && ex.get("amount").getAsInt() == io.get("amount").getAsInt()) { dup = true; break; }
+                                                && ex.has("amount") && io.has("amount") && ex.get("amount").getAsInt() == io.get("amount").getAsInt()) {
+                                            dup = true;
+                                            break;
+                                        }
                                     }
                                     if (!dup) r.inputs.add(io);
                                 }
@@ -346,7 +356,8 @@ final class MachineRecipeParser {
                     }
                 }
             }
-            if (r.inputs.isEmpty() && r.outputs.isEmpty() && r.inputFluids.isEmpty() && r.outputFluids.isEmpty()) return null;
+            if (r.inputs.isEmpty() && r.outputs.isEmpty() && r.inputFluids.isEmpty() && r.outputFluids.isEmpty())
+                return null;
             if (r.displayName == null || r.displayName.isEmpty()) {
                 r.displayName = r.name;
             }
@@ -393,7 +404,8 @@ final class MachineRecipeParser {
             String name = a.get(0).getAsString();
             if (name == null || name.isEmpty()) return null;
             if (name.contains(":") || name.startsWith("hbm:") || name.startsWith("minecraft:")) return null;
-            if ("dict".equals(name) || "item".equals(name) || "nbt".equals(name) || "dictframe".equals(name)) return null;
+            if ("dict".equals(name) || "item".equals(name) || "nbt".equals(name) || "dictframe".equals(name))
+                return null;
             if (!isFluidNameHeuristic(name)) return null;
             return parseFluidEntryJson(name, a.get(1).getAsInt());
         } catch (Throwable ignored) {
@@ -506,7 +518,7 @@ final class MachineRecipeParser {
         try {
             String reg = a.get(0).getAsString();
             int amt = (a.size() > 1 && a.get(1).isJsonPrimitive() && a.get(1).getAsJsonPrimitive().isNumber())
-                ? a.get(1).getAsInt() : 1;
+                    ? a.get(1).getAsInt() : 1;
             if (a.size() > 1 && a.size() < 3 && a.get(1).isJsonPrimitive()) {
                 try {
                     float f = a.get(1).getAsFloat();

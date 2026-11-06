@@ -8,7 +8,9 @@ import ir.layercloud.cortexdrone.model.DroneController;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/** JSON boundary for the goal-driven navigation manager. */
+/**
+ * JSON boundary for the goal-driven navigation manager.
+ */
 @RequiredArgsConstructor
 public final class NavigationRpcTranslator {
     private final NavigationManager manager;
@@ -27,26 +29,26 @@ public final class NavigationRpcTranslator {
     }
 
     private static NavigationRequest parseRequest(DroneController controller, EntityPlayerMP player,
-                                                   JsonObject args) {
+                                                  JsonObject args) {
         boolean coordinates = RpcArgs.has(args, "x")
-            && RpcArgs.has(args, "y")
-            && RpcArgs.has(args, "z");
+                && RpcArgs.has(args, "y")
+                && RpcArgs.has(args, "z");
         JsonObject standoff = RpcArgs.object(args, "standoffOf");
         if (standoff == null) standoff = RpcArgs.object(args, "nearBlock");
         boolean hasStandoff = standoff != null
-            && standoff.has("x") && standoff.has("y") && standoff.has("z");
+                && standoff.has("x") && standoff.has("y") && standoff.has("z");
         return NavigationRequest.builder()
-            .controller(controller)
-            .player(player)
-            .coordinates(coordinates)
-            .x(coordinates ? args.get("x").getAsDouble() : 0.0)
-            .y(coordinates ? args.get("y").getAsDouble() : 0.0)
-            .z(coordinates ? args.get("z").getAsDouble() : 0.0)
-            .standoff(hasStandoff)
-            .standoffX(hasStandoff ? standoff.get("x").getAsInt() : 0)
-            .standoffY(hasStandoff ? standoff.get("y").getAsInt() : 0)
-            .standoffZ(hasStandoff ? standoff.get("z").getAsInt() : 0)
-            .build();
+                .controller(controller)
+                .player(player)
+                .coordinates(coordinates)
+                .x(coordinates ? args.get("x").getAsDouble() : 0.0)
+                .y(coordinates ? args.get("y").getAsDouble() : 0.0)
+                .z(coordinates ? args.get("z").getAsDouble() : 0.0)
+                .standoff(hasStandoff)
+                .standoffX(hasStandoff ? standoff.get("x").getAsInt() : 0)
+                .standoffY(hasStandoff ? standoff.get("y").getAsInt() : 0)
+                .standoffZ(hasStandoff ? standoff.get("z").getAsInt() : 0)
+                .build();
     }
 
     private static JsonObject serialize(NavigationResult result) {

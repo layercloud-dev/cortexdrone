@@ -2,15 +2,15 @@ package ir.layercloud.cortexdrone.manager;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
+import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
+import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
-import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
-import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -51,8 +51,8 @@ public class TickManager {
         if (ctrl.repathCooldown > 0) ctrl.repathCooldown--;
 
         double movedSq = (d.posX - ctrl.lastX) * (d.posX - ctrl.lastX)
-            + (d.posY - ctrl.lastY) * (d.posY - ctrl.lastY)
-            + (d.posZ - ctrl.lastZ) * (d.posZ - ctrl.lastZ);
+                + (d.posY - ctrl.lastY) * (d.posY - ctrl.lastY)
+                + (d.posZ - ctrl.lastZ) * (d.posZ - ctrl.lastZ);
         ctrl.lastX = d.posX;
         ctrl.lastY = d.posY;
         ctrl.lastZ = d.posZ;
@@ -69,13 +69,13 @@ public class TickManager {
             if (ctrl.stuckTicks == 18 || ctrl.stuckTicks % 30 == 0) {
                 ctrl.lastStuckReason = FlightPathfinder.describeNearestObstruction(world, d.posX, d.posY, d.posZ);
                 // Throttle identical STUCK spam: same obstruction + same waypoint = log once per 240 ticks (12s).
-                String stuckKey = ctrl.id + "|" + ctrl.lastStuckReason + "|" + (int) (d.posX * 4) + "," + (int) (d.posY * 4) + "," + (int) (d.posZ * 4)
-                    + "->" + (int) ((double) d.targetX() * 4) + "," + (int) ((double) d.targetY() * 4) + "," + (int) ((double) d.targetZ() * 4);
+                String stuckKey = ctrl.id + "|" + ctrl.lastStuckReason + "|" + (d.posX * 4) + "," + (d.posY * 4) + "," + (d.posZ * 4)
+                        + "->" + (int) ((double) d.targetX() * 4) + "," + (int) ((double) d.targetY() * 4) + "," + (int) ((double) d.targetZ() * 4);
                 if (!stuckKey.equals(ctrl.lastStuckKey) || ctrl.tickClock - ctrl.lastStuckLogTick >= 240) {
                     this.logger.log("STUCK", ctrl,
-                        String.format("Velocity blocked at (%.2f,%.2f,%.2f) -> wp(%.2f,%.2f,%.2f)",
-                            d.posX, d.posY, d.posZ, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ()),
-                        "obstruction=" + ctrl.lastStuckReason);
+                            String.format("Velocity blocked at (%.2f,%.2f,%.2f) -> wp(%.2f,%.2f,%.2f)",
+                                    d.posX, d.posY, d.posZ, (double) d.targetX(), (double) d.targetY(), (double) d.targetZ()),
+                            "obstruction=" + ctrl.lastStuckReason);
                     ctrl.lastStuckKey = stuckKey;
                     ctrl.lastStuckLogTick = ctrl.tickClock;
                 }
@@ -128,7 +128,7 @@ public class TickManager {
         switch (ctrl.mode) {
             case FOLLOW: {
                 EntityPlayerMP target = CortexDroneMod.findPlayer(
-                    ctrl.targetPlayerName != null ? ctrl.targetPlayerName : ctrl.ownerName
+                        ctrl.targetPlayerName != null ? ctrl.targetPlayerName : ctrl.ownerName
                 );
                 if (target != null && target.worldObj == world) {
                     if (FlightPathfinder.isPlayerLookingAtDrone(target, d)) {
@@ -144,15 +144,15 @@ public class TickManager {
                     ctrl.playerLookHold = false;
 
                     double anchorPlayerDist = Math.sqrt(
-                        (ctrl.anchorX - target.posX) * (ctrl.anchorX - target.posX)
-                            + (ctrl.anchorY - (target.posY + 1.15)) * (ctrl.anchorY - (target.posY + 1.15))
-                            + (ctrl.anchorZ - target.posZ) * (ctrl.anchorZ - target.posZ)
+                            (ctrl.anchorX - target.posX) * (ctrl.anchorX - target.posX)
+                                    + (ctrl.anchorY - (target.posY + 1.15)) * (ctrl.anchorY - (target.posY + 1.15))
+                                    + (ctrl.anchorZ - target.posZ) * (ctrl.anchorZ - target.posZ)
                     );
                     boolean anchorPassable = ItemClassifier.isPassableVoxel(
-                        world,
-                        MathHelper.floor_double(ctrl.anchorX),
-                        MathHelper.floor_double(ctrl.anchorY),
-                        MathHelper.floor_double(ctrl.anchorZ)
+                            world,
+                            MathHelper.floor_double(ctrl.anchorX),
+                            MathHelper.floor_double(ctrl.anchorY),
+                            MathHelper.floor_double(ctrl.anchorZ)
                     );
 
                     // Anchor solve is expensive (raycast walk + candidate scan); amortize over 6 ticks and
@@ -188,7 +188,7 @@ public class TickManager {
                 break;
             }
             case STAY: {
-                if (owner != null && FlightPathfinder.isPlayerLookingAtDrone(owner, d)) {
+                if (FlightPathfinder.isPlayerLookingAtDrone(owner, d)) {
                     ctrl.playerLookHold = true;
                     d.statusText_$eq("Ready\n[Right-Click]");
                 } else {
@@ -286,8 +286,8 @@ public class TickManager {
             ctrl.targetDepositChestPos = null;
             world.playSoundEffect(chestTe.xCoord + 0.5, chestTe.yCoord + 0.5, chestTe.zCoord + 0.5, "random.chestclosed", 0.5f, 1.0f);
             this.logger.log("MINE", ctrl, "Deposited items into chest",
-                String.format("count=%d chest=(%d,%d,%d) remainingMineQueue=%d",
-                    deposited, chestTe.xCoord, chestTe.yCoord, chestTe.zCoord, ctrl.mineQueue.size()));
+                    String.format("count=%d chest=(%d,%d,%d) remainingMineQueue=%d",
+                            deposited, chestTe.xCoord, chestTe.yCoord, chestTe.zCoord, ctrl.mineQueue.size()));
             if (!ctrl.mineQueue.isEmpty() && !InventoryService.isInventoryFull(d.mainInventory())) {
                 if (!ctrl.isScriptRunning() && owner != null) {
                     this.manager.droneSay(owner, ctrl, String.format("Deposited %d item(s) into chest! Resuming mining (%d blocks left).", deposited, ctrl.mineQueue.size()));
@@ -296,7 +296,7 @@ public class TickManager {
             } else {
                 if (!ctrl.isScriptRunning()) {
                     this.manager.droneSay(owner, ctrl, String.format("Deposited %d item(s) into chest at (%d, %d, %d).",
-                        deposited, chestTe.xCoord, chestTe.yCoord, chestTe.zCoord));
+                            deposited, chestTe.xCoord, chestTe.yCoord, chestTe.zCoord));
                 }
                 this.manager.setDroneMode(ctrl, Mode.FOLLOW, "Finished chest deposit");
             }

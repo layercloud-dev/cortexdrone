@@ -5,27 +5,21 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.harness.rpc.impl.MasterRpcHandler;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
+import ir.layercloud.cortexdrone.harness.rpc.impl.MasterRpcHandler;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import net.minecraft.entity.player.EntityPlayerMP;
+
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
  * Main-thread synchronous RPC router that dispatches Code Mode SDK calls
  * to modular domain handlers (World, Navigation, Inventory, Action, Visuals).
- *
+ * <p>
  * Large cube scans are special: they must stay on the server (main) thread for
  * 1.7.10 world safety (chunk/world objects are not thread-safe off-thread), but
  * they are also the only RPCs that can eat a whole 50ms tick when run as one
@@ -33,12 +27,12 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * to Y=1). So this router time-slices them across server ticks:
  * - RpcDispatcher owns a single pending large-scan job (one at a time).
  * - A large-scan request arriving while a job is already queued/running is
- *   rejected immediately (busy) instead of piling up behind it on the main
- *   thread, mirroring the existing LLM circuit-breaker / 8s-latch posture.
+ * rejected immediately (busy) instead of piling up behind it on the main
+ * thread, mirroring the existing LLM circuit-breaker / 8s-latch posture.
  * - The job advances in bounded per-tick slices (bounded voxels and bounded
- *   elapsed ms), then drains across ticks (RpcDispatcher.onServerTickEnd) and
- *   delivers partial results with capped radius confirmation, a truncated
- *   marker, and scanned voxel/cell counts.
+ * elapsed ms), then drains across ticks (RpcDispatcher.onServerTickEnd) and
+ * delivers partial results with capped radius confirmation, a truncated
+ * marker, and scanned voxel/cell counts.
  */
 public class RpcDispatcher {
     private static final int LARGE_RADIUS_THRESHOLD = 32;
@@ -76,7 +70,9 @@ public class RpcDispatcher {
         }
     }
 
-    /** Drain active large-scan work; called from the server tick END phase. */
+    /**
+     * Drain active large-scan work; called from the server tick END phase.
+     */
     public void onServerTickEnd() {
         // Check the clock before each step so MAX_SLICE_MS is actually honoured;
         // the old post-hoc drain did up to 90k single-voxel iterator steps per
@@ -162,7 +158,9 @@ public class RpcDispatcher {
         }
     }
 
-    /** Poll (main-thread safe) whether the active large scan has finished. */
+    /**
+     * Poll (main-thread safe) whether the active large scan has finished.
+     */
     public JsonObject pollScanResult(String jobId) {
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);
@@ -212,13 +210,13 @@ public class RpcDispatcher {
 
     private boolean isAlreadyOnServerThread() {
         return Thread.currentThread().getName() != null
-            && Thread.currentThread().getName().contains("Server thread");
+                && Thread.currentThread().getName().contains("Server thread");
     }
 
     private static boolean isLargeScan(String method, JsonObject args) {
         if (!"inspect".equals(method)) return false;
         String op = args != null && args.has("op") && !args.get("op").isJsonNull()
-            ? args.get("op").getAsString().trim().toLowerCase() : "";
+                ? args.get("op").getAsString().trim().toLowerCase() : "";
         if (!"blocks".equals(op) && !"scanblocks".equals(op)) return false;
         int radius = parseIntField(args, "radius", -1);
         // Radius > default cap counts as large. The WorldRpcHandler also
@@ -231,13 +229,13 @@ public class RpcDispatcher {
         // tight budget while world-mutating primitives keep their longer horizon.
         if ("inspect".equals(method)) {
             String op = args != null && args.has("op") && !args.get("op").isJsonNull()
-                ? args.get("op").getAsString().trim().toLowerCase() : "";
+                    ? args.get("op").getAsString().trim().toLowerCase() : "";
             if ("blocks".equals(op) || "scanblocks".equals(op) || "box".equals(op)
-                || "veins".equals(op) || "scanveins".equals(op)
-                || "room".equals(op) || "scanroom".equals(op)
-                || "distant".equals(op) || "finddistant".equals(op)
-                || "entities".equals(op) || "getentities".equals(op)
-                || "drops".equals(op) || "getdrops".equals(op)) {
+                    || "veins".equals(op) || "scanveins".equals(op)
+                    || "room".equals(op) || "scanroom".equals(op)
+                    || "distant".equals(op) || "finddistant".equals(op)
+                    || "entities".equals(op) || "getentities".equals(op)
+                    || "drops".equals(op) || "getdrops".equals(op)) {
                 return 2500L;
             }
         }
@@ -342,14 +340,18 @@ public class RpcDispatcher {
         }
     }
 
-    /** Single-running large-scan gate (no hard-coded method list needed). */
+    /**
+     * Single-running large-scan gate (no hard-coded method list needed).
+     */
     private static final class AtomicScanLock {
         private boolean held;
+
         synchronized boolean tryAcquire() {
             if (this.held) return false;
             this.held = true;
             return true;
         }
+
         synchronized void release() {
             this.held = false;
         }
@@ -396,7 +398,7 @@ public class RpcDispatcher {
             this.id = "scan-" + System.nanoTime();
             this.createdAtMs = System.currentTimeMillis();
             this.filter = args.has("filter") && !args.get("filter").isJsonNull()
-                ? args.get("filter").getAsString() : "ores";
+                    ? args.get("filter").getAsString() : "ores";
             int px = args.has("x") ? args.get("x").getAsInt() : 0;
             int py = args.has("y") ? args.get("y").getAsInt() : 0;
             int pz = args.has("z") ? args.get("z").getAsInt() : 0;
@@ -439,7 +441,9 @@ public class RpcDispatcher {
             this.truncated = false;
         }
 
-        /** Advance the cursor by at most one voxel; returns 1. */
+        /**
+         * Advance the cursor by at most one voxel; returns 1.
+         */
         long stepSlice() {
             if (this.done) return 0L;
             // Clamp to world height for safety; cursor starts within bounds.
@@ -485,8 +489,8 @@ public class RpcDispatcher {
                 net.minecraft.block.Block b = world.getBlock(x, y, z);
                 int meta = world.getBlockMetadata(x, y, z);
                 boolean match = this.liquidOnly
-                    ? ItemClassifier.isLiquidBlock(b)
-                    : ItemClassifier.matchesMineFilter(b, meta, this.filter);
+                        ? ItemClassifier.isLiquidBlock(b)
+                        : ItemClassifier.matchesMineFilter(b, meta, this.filter);
                 if (match) {
                     int distSq = (x - this.cx) * (x - this.cx) + (y - this.cy) * (y - this.cy) + (z - this.cz) * (z - this.cz);
                     this.results.add(new int[]{x, y, z, meta, distSq});
@@ -532,7 +536,7 @@ public class RpcDispatcher {
         String pre = method != null ? method.trim().toLowerCase() : "";
         if (pre.equals("poll_scan")) {
             String jobId = args != null && args.has("jobId") && !args.get("jobId").isJsonNull()
-                ? args.get("jobId").getAsString() : null;
+                    ? args.get("jobId").getAsString() : null;
             return this.pollScanResult(jobId);
         }
         if (ctrl == null || ctrl.drone == null || ctrl.drone.isDead) {

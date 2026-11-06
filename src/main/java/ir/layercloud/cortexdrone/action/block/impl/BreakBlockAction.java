@@ -4,12 +4,14 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
+import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import lombok.RequiredArgsConstructor;
 
-/** Single-use command: break exactly one explicit block. */
+/**
+ * Single-use command: break exactly one explicit block.
+ */
 @RequiredArgsConstructor
 public final class BreakBlockAction implements Action<BlockContext> {
     private final BuildingManager buildingManager;
@@ -18,9 +20,9 @@ public final class BreakBlockAction implements Action<BlockContext> {
     @Override
     public void execute(BlockContext context) {
         boolean started = this.buildingManager.startBreak(
-            context.controller(), this.request.getX(), this.request.getY(), this.request.getZ());
+                context.controller(), this.request.getX(), this.request.getY(), this.request.getZ());
         context.result(BlockResult.breakStarted(started,
-            this.request.getX(), this.request.getY(), this.request.getZ()));
+                this.request.getX(), this.request.getY(), this.request.getZ()));
         if (started) {
             context.trackBreak(this.request.getX(), this.request.getY(), this.request.getZ());
         }
@@ -30,9 +32,9 @@ public final class BreakBlockAction implements Action<BlockContext> {
     public void tick(BlockContext context) {
         DroneController controller = context.controller();
         if (!context.breakOperation() || controller == null || controller.drone == null
-            || controller.drone.isDead || controller.mode != Mode.MINE
-            || controller.currentMineTarget == null
-            || !context.matchesTarget(controller.currentMineTarget)) {
+                || controller.drone.isDead || controller.mode != Mode.MINE
+                || controller.currentMineTarget == null
+                || !context.matchesTarget(controller.currentMineTarget)) {
             context.complete();
             return;
         }

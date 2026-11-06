@@ -1,24 +1,20 @@
 package ir.layercloud.cortexdrone.manager.building.impl;
 
+import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.action.block.impl.BreakBlockAction;
 import ir.layercloud.cortexdrone.action.block.impl.PlaceBlockAction;
+import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
 import ir.layercloud.cortexdrone.manager.ActionManager;
-import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
-import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
@@ -32,6 +28,11 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 /**
  * Long-lived building manager. It owns block break/place behavior, the mining
  * loop and block-drop calculations used by block actions and navigation
@@ -44,9 +45,9 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
     private Method blockGetDropsMethod = null;
 
     public BuildingManager(
-        AIDroneManager manager,
-        DroneLogger logger,
-        InventoryService inventoryService
+            AIDroneManager manager,
+            DroneLogger logger,
+            InventoryService inventoryService
     ) {
         super("block", "break_block", "place_block");
         this.manager = manager;
@@ -54,7 +55,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         this.inventoryService = inventoryService;
         try {
             this.blockGetDropsMethod = Block.class.getMethod(
-                "getDrops", World.class, int.class, int.class, int.class, int.class, int.class
+                    "getDrops", World.class, int.class, int.class, int.class, int.class, int.class
             );
         } catch (Throwable ignored) {
         }
@@ -67,7 +68,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         int by = MathHelper.floor_double(st[1]);
         int bz = MathHelper.floor_double(st[2]);
         return ItemClassifier.isPassableVoxel(world, bx, by, bz)
-            && ItemClassifier.isPassableVoxel(world, bx, by + 1, bz);
+                && ItemClassifier.isPassableVoxel(world, bx, by + 1, bz);
     }
 
     @SuppressWarnings("unchecked")
@@ -174,7 +175,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
                     double dist = d.getDistance(st[0], st[1], st[2]);
                     boolean losKnown = checked < 32 && dist <= 18.0;
                     boolean hasLos = losKnown && FlightPathfinder.isFlightLineClear(
-                        world, d.posX, d.posY, d.posZ, st[0], st[1], st[2]);
+                            world, d.posX, d.posY, d.posZ, st[0], st[1], st[2]);
                     if (losKnown) checked++;
                     // An exposed cell is not reachable just because it has air next
                     // to it. Underground, a target 20 blocks up with no line of sight
@@ -204,9 +205,9 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
                 Block cb = world.getBlock(bestExposed[0], bestExposed[1], bestExposed[2]);
                 int cbMeta = world.getBlockMetadata(bestExposed[0], bestExposed[1], bestExposed[2]);
                 this.logger.log("MINE", ctrl,
-                    String.format("Selected mine target %s at (%d,%d,%d)",
-                        cb != null ? ItemClassifier.getBlockDisplayName(cb, cbMeta) : "block", bestExposed[0], bestExposed[1], bestExposed[2]),
-                    String.format("standoff=(%.1f,%.1f,%.1f) queue=%d", bestStandoff[0], bestStandoff[1], bestStandoff[2], ctrl.mineQueue.size()));
+                        String.format("Selected mine target %s at (%d,%d,%d)",
+                                cb != null ? ItemClassifier.getBlockDisplayName(cb, cbMeta) : "block", bestExposed[0], bestExposed[1], bestExposed[2]),
+                        String.format("standoff=(%.1f,%.1f,%.1f) queue=%d", bestStandoff[0], bestStandoff[1], bestStandoff[2], ctrl.mineQueue.size()));
             } else if (!ctrl.mineQueue.isEmpty()) {
                 int[] nearestBuried = null;
                 double nearestDistSq = Double.MAX_VALUE;
@@ -231,18 +232,18 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
                         Block tb = world.getBlock(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
                         int tbMeta = world.getBlockMetadata(tunnelBlock[0], tunnelBlock[1], tunnelBlock[2]);
                         this.logger.log("MINE", ctrl,
-                            String.format("Tunneling through %s at (%d,%d,%d) to reach buried (%d,%d,%d)",
-                                tb != null ? ItemClassifier.getBlockDisplayName(tb, tbMeta) : "block",
-                                tunnelBlock[0], tunnelBlock[1], tunnelBlock[2],
-                                nearestBuried[0], nearestBuried[1], nearestBuried[2]),
-                            "queue=" + ctrl.mineQueue.size());
+                                String.format("Tunneling through %s at (%d,%d,%d) to reach buried (%d,%d,%d)",
+                                        tb != null ? ItemClassifier.getBlockDisplayName(tb, tbMeta) : "block",
+                                        tunnelBlock[0], tunnelBlock[1], tunnelBlock[2],
+                                        nearestBuried[0], nearestBuried[1], nearestBuried[2]),
+                                "queue=" + ctrl.mineQueue.size());
                     } else {
                         ctrl.mineQueue.remove(nearestBuried);
                         ctrl.currentMineTarget = nearestBuried;
                         int[] nearAir = FlightPathfinder.findNearestPassableVoxel(world, nearestBuried[0], nearestBuried[1], nearestBuried[2], 6);
                         ctrl.currentMineStandoff = nearAir != null
-                            ? new double[]{nearAir[0] + 0.5, nearAir[1] + 0.35, nearAir[2] + 0.5}
-                            : new double[]{nearestBuried[0] + 0.5, nearestBuried[1] + 1.0, nearestBuried[2] + 0.5};
+                                ? new double[]{nearAir[0] + 0.5, nearAir[1] + 0.35, nearAir[2] + 0.5}
+                                : new double[]{nearestBuried[0] + 0.5, nearestBuried[1] + 1.0, nearestBuried[2] + 0.5};
                         ctrl.mineProgressTicks = 0;
                         ctrl.stuckTicks = 0;
                         ctrl.pathWaypoints.clear();
@@ -276,7 +277,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
             return;
         }
 
-        if (ctrl.currentMineStandoff == null || !hasPassableHeadroom(world, ctrl.currentMineStandoff)) {
+        if (!hasPassableHeadroom(world, ctrl.currentMineStandoff)) {
             ctrl.currentMineStandoff = FlightPathfinder.findMiningStandoff(world, d, bx, by, bz);
             if (ctrl.currentMineStandoff == null) {
                 // Entombed/adjacent target: the drone is inside (or flush against)
@@ -345,9 +346,9 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
                 ctrl.lastPathPartial = false;
                 ctrl.pathWaypoints.clear();
                 this.logger.log("MINE", ctrl,
-                    String.format("Path obstructed; tunneling through (%d,%d,%d) toward (%d,%d,%d)",
-                        blocking[0], blocking[1], blocking[2], bx, by, bz),
-                    "");
+                        String.format("Path obstructed; tunneling through (%d,%d,%d) toward (%d,%d,%d)",
+                                blocking[0], blocking[1], blocking[2], bx, by, bz),
+                        "");
                 return;
             }
         }
@@ -366,8 +367,8 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
 
             if (world instanceof WorldServer && ctrl.mineProgressTicks % 2 == 0) {
                 ((WorldServer) world).func_147487_a(
-                    "blockcrack_" + blockId + "_" + meta,
-                    tx, ty, tz, 4, 0.25, 0.25, 0.25, 0.05
+                        "blockcrack_" + blockId + "_" + meta,
+                        tx, ty, tz, 4, 0.25, 0.25, 0.25, 0.05
                 );
             }
             String blockDisp = ItemClassifier.getBlockDisplayName(block, meta);
@@ -398,8 +399,8 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
                     }
                     InventoryService.suckNearbyItems(d, tx, ty, tz, 3.8);
                     this.logger.log("MINE", ctrl,
-                        String.format("Harvested %s at (%d,%d,%d)", blockDisp, bx, by, bz),
-                        "insertedItems=" + insertedTotal + " totalMined=" + ctrl.minedCount);
+                            String.format("Harvested %s at (%d,%d,%d)", blockDisp, bx, by, bz),
+                            "insertedItems=" + insertedTotal + " totalMined=" + ctrl.minedCount);
                 }
                 ctrl.currentMineTarget = null;
                 ctrl.currentMineStandoff = null;
@@ -449,7 +450,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
             boolean duplicate = false;
             for (int[] p : ctrl.mineQueue) {
                 if (p != null && p[0] == snap.mineTarget[0]
-                    && p[1] == snap.mineTarget[1] && p[2] == snap.mineTarget[2]) {
+                        && p[1] == snap.mineTarget[1] && p[2] == snap.mineTarget[2]) {
                     duplicate = true;
                     break;
                 }
@@ -459,7 +460,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
 
         if (snap.mode == Mode.MINE && !ctrl.mineQueue.isEmpty()) {
             this.logger.log("ESCAPE", ctrl, "Self-rescue complete; resuming mining",
-                "remaining=" + ctrl.mineQueue.size() + " mined=" + ctrl.minedCount);
+                    "remaining=" + ctrl.mineQueue.size() + " mined=" + ctrl.minedCount);
             this.manager.setDroneMode(ctrl, Mode.MINE, "Resumed mining after self-rescue");
             return;
         }
@@ -468,7 +469,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
             ctrl.goalY = snap.goalY;
             ctrl.goalZ = snap.goalZ;
             this.logger.log("ESCAPE", ctrl, "Self-rescue complete; resuming " + snap.mode.name(),
-                String.format("goal=(%.1f,%.1f,%.1f)", ctrl.goalX, ctrl.goalY, ctrl.goalZ));
+                    String.format("goal=(%.1f,%.1f,%.1f)", ctrl.goalX, ctrl.goalY, ctrl.goalZ));
             this.manager.setDroneMode(ctrl, snap.mode, "Resumed " + snap.mode.name() + " after self-rescue");
             return;
         }
@@ -489,8 +490,8 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
 
         if (controller.currentMineTarget != null) {
             world.destroyBlockInWorldPartially(drone.getEntityId(),
-                controller.currentMineTarget[0], controller.currentMineTarget[1],
-                controller.currentMineTarget[2], -1);
+                    controller.currentMineTarget[0], controller.currentMineTarget[1],
+                    controller.currentMineTarget[2], -1);
         }
         controller.clearSelfRescue(false);
         controller.mineQueue.clear();
@@ -516,13 +517,15 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         controller.repathCooldown = 0;
 
         this.manager.setDroneMode(controller, Mode.MINE,
-            "Master break_block (" + x + "," + y + "," + z + ")");
+                "Master break_block (" + x + "," + y + "," + z + ")");
         drone.lightColor_$eq(0x00FF66);
         drone.statusText_$eq("Break block\n" + x + "," + y + "," + z);
         return true;
     }
 
-    /** Places exactly one explicit block from drone/chest/player inventory. */
+    /**
+     * Places exactly one explicit block from drone/chest/player inventory.
+     */
     public boolean placeBlock(DroneController controller, EntityPlayerMP player,
                               int x, int y, int z, String filter, int metaOverride) {
         if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
@@ -536,11 +539,11 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         int slot = InventoryService.findPlaceableItemSlot(inventory, filter);
         if (slot < 0) {
             int pulled = this.inventoryService.withdrawMatchingFromNearbyChests(
-                world, controller, player, filter, 64);
+                    world, controller, player, filter, 64);
             if (pulled > 0) slot = InventoryService.findPlaceableItemSlot(inventory, filter);
             if (slot < 0 && player != null) {
                 int taken = this.inventoryService.takeFromPlayerInventory(
-                    controller, player, filter, 64);
+                        controller, player, filter, 64);
                 if (taken > 0) slot = InventoryService.findPlaceableItemSlot(inventory, filter);
             }
         }
@@ -561,7 +564,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
             inventory.markDirty();
             controller.builtCount++;
             this.logger.log("BUILD", controller,
-                String.format("Placed %s at (%d,%d,%d)", block.getLocalizedName(), x, y, z), "");
+                    String.format("Placed %s at (%d,%d,%d)", block.getLocalizedName(), x, y, z), "");
         }
         return placed;
     }
@@ -574,7 +577,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
      */
     public int startDigRoute(DroneController ctrl, List<int[]> blocks, String label) {
         if (ctrl == null || ctrl.drone == null || ctrl.drone.worldObj == null
-            || ctrl.escapeResume != null || blocks == null || blocks.isEmpty()) {
+                || ctrl.escapeResume != null || blocks == null || blocks.isEmpty()) {
             return 0;
         }
         World world = ctrl.drone.worldObj;
@@ -623,7 +626,7 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         this.manager.setDroneMode(ctrl, Mode.MINE, label);
         ctrl.escapeResume = pending;
         this.logger.log("PATH", ctrl, "Dig route queued",
-            "queuedDigs=" + queued + " label=" + label);
+                "queuedDigs=" + queued + " label=" + label);
         return queued;
     }
 

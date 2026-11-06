@@ -10,7 +10,7 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class LedEffectEngine {
     private static final int[] DISCO_PALETTE = new int[]{
-        0xFF0055, 0x00FFCC, 0xFFEE00, 0xAA00FF, 0x00FF44, 0xFF6600, 0xFF00AA
+            0xFF0055, 0x00FFCC, 0xFFEE00, 0xAA00FF, 0x00FF44, 0xFF6600, 0xFF00AA
     };
 
     public static int hsvToRgbInt(float hDeg, float s, float v) {
@@ -19,12 +19,31 @@ public final class LedEffectEngine {
         float x = c * (1.0f - Math.abs(((h / 60.0f) % 2.0f) - 1.0f));
         float m = v - c;
         float r1 = 0, g1 = 0, b1 = 0;
-        if (h < 60) { r1 = c; g1 = x; b1 = 0; }
-        else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
-        else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
-        else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
-        else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
-        else { r1 = c; g1 = 0; b1 = x; }
+        if (h < 60) {
+            r1 = c;
+            g1 = x;
+            b1 = 0;
+        } else if (h < 120) {
+            r1 = x;
+            g1 = c;
+            b1 = 0;
+        } else if (h < 180) {
+            r1 = 0;
+            g1 = c;
+            b1 = x;
+        } else if (h < 240) {
+            r1 = 0;
+            g1 = x;
+            b1 = c;
+        } else if (h < 300) {
+            r1 = x;
+            g1 = 0;
+            b1 = c;
+        } else {
+            r1 = c;
+            g1 = 0;
+            b1 = x;
+        }
         int r = Math.min(255, Math.max(0, Math.round((r1 + m) * 255.0f)));
         int g = Math.min(255, Math.max(0, Math.round((g1 + m) * 255.0f)));
         int b = Math.min(255, Math.max(0, Math.round((b1 + m) * 255.0f)));
@@ -60,8 +79,8 @@ public final class LedEffectEngine {
         if (raw == null) return false;
         String u = raw.trim().toUpperCase();
         return u.equals("RAINBOW") || u.equals("DISCO") || u.equals("POLICE")
-            || u.equals("PULSE") || u.equals("BREATHE") || u.equals("STROBE")
-            || u.equals("FIRE") || u.equals("OCEAN") || u.equals("HEARTBEAT") || u.equals("MATRIX");
+                || u.equals("PULSE") || u.equals("BREATHE") || u.equals("STROBE")
+                || u.equals("FIRE") || u.equals("OCEAN") || u.equals("HEARTBEAT") || u.equals("MATRIX");
     }
 
     public static int resolveEffectiveLedColor(String ledEffect, int tick, Integer customLedColor, int fallbackColor) {
@@ -76,7 +95,7 @@ public final class LedEffectEngine {
             return (tick % 8 < 4) ? 0xFF0000 : 0x0044FF;
         }
         if ("STROBE".equals(eff)) {
-            int base = customLedColor != null ? customLedColor.intValue() : 0xFFFFFF;
+            int base = customLedColor != null ? customLedColor : 0xFFFFFF;
             return (tick % 4 < 2) ? base : 0x111111;
         }
         if ("FIRE".equals(eff)) {
@@ -98,7 +117,7 @@ public final class LedEffectEngine {
             return hsvToRgbInt(125.0f, 0.95f, v);
         }
         if ("PULSE".equals(eff) || "BREATHE".equals(eff)) {
-            int base = customLedColor != null ? customLedColor.intValue() : fallbackColor;
+            int base = customLedColor != null ? customLedColor : fallbackColor;
             double factor = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(tick * 0.22));
             int r = (int) Math.round(((base >> 16) & 0xFF) * factor);
             int g = (int) Math.round(((base >> 8) & 0xFF) * factor);
@@ -106,7 +125,7 @@ public final class LedEffectEngine {
             return (r << 16) | (g << 8) | b;
         }
         if (customLedColor != null) {
-            return customLedColor.intValue();
+            return customLedColor;
         }
         return fallbackColor;
     }

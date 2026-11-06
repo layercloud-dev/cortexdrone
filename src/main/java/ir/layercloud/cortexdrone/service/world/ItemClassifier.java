@@ -1,9 +1,6 @@
 package ir.layercloud.cortexdrone.service.world;
 
 import com.google.gson.JsonObject;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -16,6 +13,10 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * High-level block, item, container, and entity classifier facade backed by
@@ -194,8 +195,8 @@ public final class ItemClassifier {
             oreTags.append(' ').append(tag);
         }
         String result = ((reg != null ? reg : "") + " " + (reg != null ? reg + ":" + meta : "") + " "
-            + (unloc != null ? unloc : "") + " " + (loc != null ? loc : "") + " "
-            + disp + oreTags.toString()).toLowerCase();
+                + (unloc != null ? unloc : "") + " " + (loc != null ? loc : "") + " "
+                + disp + oreTags).toLowerCase();
         BLOCK_ID_CACHE.put(key, result);
         return result;
     }
@@ -216,7 +217,7 @@ public final class ItemClassifier {
             oreTags.append(' ').append(tag);
         }
         return ((reg != null ? reg : "") + " " + (reg != null ? reg + ":" + meta : "") + " "
-            + (unloc != null ? unloc : "") + " " + (disp != null ? disp : "") + oreTags.toString()).toLowerCase();
+                + (unloc != null ? unloc : "") + " " + (disp != null ? disp : "") + oreTags).toLowerCase();
     }
 
     public static String resolveHeldFilter(EntityPlayerMP player, String rawFilter) {
@@ -224,7 +225,7 @@ public final class ItemClassifier {
         String f = rawFilter.trim();
         String lower = f.toLowerCase();
         if (lower.equals("held") || lower.equals("selected") || lower.equals("selected block")
-            || lower.equals("held block") || lower.equals("held item") || lower.equals("hand") || lower.equals("equipped")) {
+                || lower.equals("held block") || lower.equals("held item") || lower.equals("hand") || lower.equals("equipped")) {
             if (player != null) {
                 ItemStack held = player.getCurrentEquippedItem();
                 if (held != null && held.stackSize > 0 && held.getItem() != null) {
@@ -265,7 +266,7 @@ public final class ItemClassifier {
                     if (neg.endsWith(" blocks")) neg = neg.substring(0, neg.length() - 7).trim();
                     if (!neg.isEmpty()) {
                         if (LexicalItemMatcher.scoreSingleMatch(displayName, fullId, meta, neg) > 0
-                            || (!neg.contains(":") && (disp.contains(neg) || id.contains(neg)))) {
+                                || (!neg.contains(":") && (disp.contains(neg) || id.contains(neg)))) {
                             return 0;
                         }
                     }
@@ -307,7 +308,7 @@ public final class ItemClassifier {
                     if (neg.endsWith(" blocks")) neg = neg.substring(0, neg.length() - 7).trim();
                     if (!neg.isEmpty()) {
                         if (matchesSingleMineFilter(b, meta, neg)
-                            || (!neg.contains(":") && (disp.contains(neg) || id.contains(neg)))) {
+                                || (!neg.contains(":") && (disp.contains(neg) || id.contains(neg)))) {
                             return false;
                         }
                     }
@@ -387,7 +388,7 @@ public final class ItemClassifier {
                 if (RegistryIntrospector.isPassiveEntity(el)) return true;
             }
             if (tok.equals("hostile") || tok.equals("hostiles") || tok.equals("monster") || tok.equals("monsters")
-                || LexicalItemMatcher.fuzzyTokenMatches("mutant", tok) || tok.equals("enemy") || tok.equals("enemies")) {
+                    || LexicalItemMatcher.fuzzyTokenMatches("mutant", tok) || tok.equals("enemy") || tok.equals("enemies")) {
                 if (RegistryIntrospector.isHostileEntity(el)) return true;
             }
             String sing = LexicalItemMatcher.singularize(tok);

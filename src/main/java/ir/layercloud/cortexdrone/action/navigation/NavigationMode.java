@@ -1,6 +1,8 @@
 package ir.layercloud.cortexdrone.action.navigation;
 
-/** One executable movement leg. */
+/**
+ * One executable movement leg.
+ */
 public enum NavigationMode {
     FLIGHT,
     HOLD,

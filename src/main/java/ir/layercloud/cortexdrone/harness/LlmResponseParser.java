@@ -4,12 +4,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
+import lombok.experimental.UtilityClass;
+
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import lombok.experimental.UtilityClass;
 
 /**
  * Resilient parser and salvager for LLM Code Mode responses.
@@ -30,35 +31,35 @@ public final class LlmResponseParser {
     // emits a ```json block or "code" field must be salvaged as done:true in
     // ONE turn instead of burning the 3 HTTP retries + self-correction turns.
     private static final Pattern BLOCKER_MACHINE_PATTERN = Pattern.compile(
-        "(?i)(assembly machine|assemblymachine|chemical plant|blast furnace|arc furnace|precision assembly|"
-        + "pyrolysis|crystallizer|electrolyser|rotary furnace|\\bmbt anvil\\b|hbm anvil|ntm anvil|"
-        + "centrifuge|compressor|mixer|coker|rock ?mill|soldering station|shredder|press|"
-        + "machine ?config|machine-config)");
+            "(?i)(assembly machine|assemblymachine|chemical plant|blast furnace|arc furnace|precision assembly|"
+                    + "pyrolysis|crystallizer|electrolyser|rotary furnace|\\bmbt anvil\\b|hbm anvil|ntm anvil|"
+                    + "centrifuge|compressor|mixer|coker|rock ?mill|soldering station|shredder|press|"
+                    + "machine ?config|machine-config)");
     // Extended blocker detection: the BlackSnow double-chest essay was pure prose with no
     // machine name; the meteor hunt essay never named a machine either. Catch general
     // "blocked / missing ingredient" prose too so it finishes done:true instead of
     // burning self-correction turns on essay-mode output.
     private static final Pattern BLOCKER_ACTION_PATTERN = Pattern.compile(
-        "(?i)(\\bneed(s|ed)?\\b|\\brequires?\\b|\\brequirement\\b|\\bmissing\\b|\\bnot found\\b|"
-        + "\\bnot available\\b|\\bnot in (chests|inventory)\\b|\\bnothing (found|nearby)\\b|"
-        + "\\bno (meteor|meteorite|block|item|recipe)[^.\\n]{0,60}(found|nearby|available)\\b|"
-        + "\\bbust\\b|\\bcan't\\b|\\bcannot\\b|\\bblocked\\b|"
-        + "\\bgui.only\\b|\\bgui only\\b|\\bhammer\\b|\\bcraft(?:ed|ing)?\\b[^.]{0,40}\\banvil\\b|"
-        + "\\bmachine.config\\b|\\bmachine config\\b)");
+            "(?i)(\\bneed(s|ed)?\\b|\\brequires?\\b|\\brequirement\\b|\\bmissing\\b|\\bnot found\\b|"
+                    + "\\bnot available\\b|\\bnot in (chests|inventory)\\b|\\bnothing (found|nearby)\\b|"
+                    + "\\bno (meteor|meteorite|block|item|recipe)[^.\\n]{0,60}(found|nearby|available)\\b|"
+                    + "\\bbust\\b|\\bcan't\\b|\\bcannot\\b|\\bblocked\\b|"
+                    + "\\bgui.only\\b|\\bgui only\\b|\\bhammer\\b|\\bcraft(?:ed|ing)?\\b[^.]{0,40}\\banvil\\b|"
+                    + "\\bmachine.config\\b|\\bmachine config\\b)");
     private static final Pattern GENERIC_BLOCKER_PATTERN = Pattern.compile(
-        "(?i)(\\bcannot\\b|\\bcan't\\b|\\bblocked\\b|\\bno (meteor|meteorite|block|item|chest|recipe)[^.\\n]{0,50}(found|nearby|available|in (chests|inventory))|"
-        + "\\bnot (found|available|in chests)(\\b[^.\\n]{0,60})?\\band (nothing|nowhere))");
+            "(?i)(\\bcannot\\b|\\bcan't\\b|\\bblocked\\b|\\bno (meteor|meteorite|block|item|chest|recipe)[^.\\n]{0,50}(found|nearby|available|in (chests|inventory))|"
+                    + "\\bnot (found|available|in chests)(\\b[^.\\n]{0,60})?\\band (nothing|nowhere))");
 
     public static String sanitizeThought(String rawThought, String fallbackReasoning) {
         String src = (rawThought != null && !rawThought.trim().isEmpty())
-            ? rawThought.trim()
-            : (fallbackReasoning != null ? fallbackReasoning.trim() : "");
+                ? rawThought.trim()
+                : (fallbackReasoning != null ? fallbackReasoning.trim() : "");
         if (src.isEmpty()) return "";
         src = src.replaceAll("(?s)<think>.*?</think>", " ")
-            .replaceAll("</?think>", " ")
-            .replaceAll("```[a-zA-Z]*", " ")
-            .replaceAll("\\s+", " ")
-            .trim();
+                .replaceAll("</?think>", " ")
+                .replaceAll("```[a-zA-Z]*", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
         if (src.length() > 220) {
             int dot = src.indexOf(". ");
             if (dot >= 25 && dot <= 200) {
@@ -71,7 +72,8 @@ public final class LlmResponseParser {
     }
 
     public static JsonObject tryParseJsonObject(String candidate) {
-        if (candidate == null || candidate.isEmpty()) return null;        try {
+        if (candidate == null || candidate.isEmpty()) return null;
+        try {
             JsonElement el = new JsonParser().parse(candidate);
             if (el != null && el.isJsonObject()) {
                 return el.getAsJsonObject();
@@ -98,13 +100,27 @@ public final class LlmResponseParser {
             if (c == '\\' && i + 1 < s.length()) {
                 char n = s.charAt(++i);
                 switch (n) {
-                    case 'n': sb.append('\n'); break;
-                    case 'r': sb.append('\r'); break;
-                    case 't': sb.append('\t'); break;
-                    case '"': sb.append('"'); break;
-                    case '\\': sb.append('\\'); break;
-                    case '/': sb.append('/'); break;
-                    default: sb.append(n); break;
+                    case 'n':
+                        sb.append('\n');
+                        break;
+                    case 'r':
+                        sb.append('\r');
+                        break;
+                    case 't':
+                        sb.append('\t');
+                        break;
+                    case '"':
+                        sb.append('"');
+                        break;
+                    case '\\':
+                        sb.append('\\');
+                        break;
+                    case '/':
+                        sb.append('/');
+                        break;
+                    default:
+                        sb.append(n);
+                        break;
                 }
             } else {
                 sb.append(c);
@@ -210,15 +226,15 @@ public final class LlmResponseParser {
         String machine = hasMachine ? mMachine.group(0).trim() : "";
         String safeMachine = machine.isEmpty() ? "HBM machine" : machine;
         String thought = "Machine-config blocker detected (" + safeMachine + "). "
-            + "Finished with an explicit blocker instead of re-querying.";
+                + "Finished with an explicit blocker instead of re-querying.";
         JsonObject o = new JsonObject();
         o.addProperty("thought", sanitizeThought(thought, reasoning));
         o.addProperty("code", "");
         o.addProperty("done", true);
         String reply = "Blocked on " + safeMachine
-            + ": this recipe is machine-config-only (no vanilla crafting-table recipe). "
-            + "Next step: set up/bring the " + safeMachine + " (and its power/fuel) or "
-            + "provide the missing ingredient, then re-request.";
+                + ": this recipe is machine-config-only (no vanilla crafting-table recipe). "
+                + "Next step: set up/bring the " + safeMachine + " (and its power/fuel) or "
+                + "provide the missing ingredient, then re-request.";
         String oneLine = hay.replace('\n', ' ').replaceAll("\\s+", " ").trim();
         if (oneLine.length() > 200) {
             oneLine = oneLine.substring(0, 197) + "…";
@@ -252,7 +268,7 @@ public final class LlmResponseParser {
             return null;
         }
         String thought = "Prose blocker detected (essay-mode, no executable code). "
-            + "Finished with a partial reply instead of re-querying.";
+                + "Finished with a partial reply instead of re-querying.";
         JsonObject o = new JsonObject();
         o.addProperty("thought", sanitizeThought(thought, reasoning));
         o.addProperty("code", "");
@@ -262,8 +278,8 @@ public final class LlmResponseParser {
             oneLine = oneLine.substring(0, 197) + "…";
         }
         o.addProperty("reply", "Blocked: " + oneLine
-            + " Next step: provide the exact target/coords/filter (or the missing item/machine), "
-            + "then re-request.");
+                + " Next step: provide the exact target/coords/filter (or the missing item/machine), "
+                + "then re-request.");
         if (reasoning != null && !reasoning.isEmpty()) {
             o.addProperty("_reasoning", reasoning);
         }
@@ -303,7 +319,7 @@ public final class LlmResponseParser {
             if (body.isEmpty()) continue;
             JsonObject fenced = tryParseJsonObject(body);
             if (fenced != null && (fenced.has("code") || fenced.has("thought") || fenced.has("done")
-                || fenced.has("reply") || fenced.has("tool_calls") || fenced.has("actions"))) {
+                    || fenced.has("reply") || fenced.has("tool_calls") || fenced.has("actions"))) {
                 if (!combinedReasoning.isEmpty()) fenced.addProperty("_reasoning", combinedReasoning);
                 return fenced;
             }

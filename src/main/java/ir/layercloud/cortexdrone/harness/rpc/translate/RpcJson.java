@@ -2,10 +2,13 @@ package ir.layercloud.cortexdrone.harness.rpc.translate;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import java.util.Map;
 import lombok.experimental.UtilityClass;
 
-/** Shared JSON response helpers for service boundaries. */
+import java.util.Map;
+
+/**
+ * Shared JSON response helpers for service boundaries.
+ */
 @UtilityClass
 public final class RpcJson {
     public static JsonObject ok() {

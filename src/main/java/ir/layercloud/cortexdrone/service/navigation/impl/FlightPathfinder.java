@@ -1,27 +1,20 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.NavContext;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
-import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
 import li.cil.oc.common.entity.Drone;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
-import lombok.RequiredArgsConstructor;
+
+import java.util.*;
 
 public class FlightPathfinder {
     // Baritone-inspired multi-coefficient backoff weights for partial path selection
@@ -108,8 +101,8 @@ public class FlightPathfinder {
         // waypoints across the world.
         long h = 1125899906842597L;
         int[] c = new int[]{
-            MathHelper.floor_double(sx), MathHelper.floor_double(sy), MathHelper.floor_double(sz),
-            MathHelper.floor_double(gx), MathHelper.floor_double(gy), MathHelper.floor_double(gz)
+                MathHelper.floor_double(sx), MathHelper.floor_double(sy), MathHelper.floor_double(sz),
+                MathHelper.floor_double(gx), MathHelper.floor_double(gy), MathHelper.floor_double(gz)
         };
         for (int v : c) {
             h = (h ^ (v & 0xFFFFFFFFL)) * 1099511628211L;
@@ -120,8 +113,8 @@ public class FlightPathfinder {
 
     public List<double[]> findFlightPath(NavContext nav) {
         return findFlightPath(nav.world(), nav.controller(),
-            nav.startX(), nav.startY(), nav.startZ(),
-            nav.goalX(), nav.goalY(), nav.goalZ());
+                nav.startX(), nav.startY(), nav.startZ(),
+                nav.goalX(), nav.goalY(), nav.goalZ());
     }
 
     public List<double[]> findFlightPath(World world, DroneController ctrl, double sx, double sy, double sz, double gx, double gy, double gz) {
@@ -171,9 +164,9 @@ public class FlightPathfinder {
         Set<Long> closed = new HashSet<Long>();
 
         double h0 = Math.sqrt(
-            (goalX - startX) * (goalX - startX)
-                + (goalY - startY) * (goalY - startY)
-                + (goalZ - startZ) * (goalZ - startZ)
+                (goalX - startX) * (goalX - startX)
+                        + (goalY - startY) * (goalY - startY)
+                        + (goalZ - startZ) * (goalZ - startZ)
         );
         AStarNode startNode = new AStarNode(startX, startY, startZ, 0.0, h0, h0, false, null);
         open.add(startNode);
@@ -249,14 +242,14 @@ public class FlightPathfinder {
                         AStarNode effectiveParent = cur;
                         double ng = cur.g + stepCost;
                         if (cur.parent != null && !inLiq && VoxelRaycaster3D.isFatLineClear(
-                            bsi,
-                            cur.parent.x + 0.5, cur.parent.y + 0.65, cur.parent.z + 0.5,
-                            nx + 0.5, ny + 0.65, nz + 0.5
+                                bsi,
+                                cur.parent.x + 0.5, cur.parent.y + 0.65, cur.parent.z + 0.5,
+                                nx + 0.5, ny + 0.65, nz + 0.5
                         )) {
                             double parentDist = Math.sqrt(
-                                (nx - cur.parent.x) * (nx - cur.parent.x)
-                                    + (ny - cur.parent.y) * (ny - cur.parent.y)
-                                    + (nz - cur.parent.z) * (nz - cur.parent.z)
+                                    (nx - cur.parent.x) * (nx - cur.parent.x)
+                                            + (ny - cur.parent.y) * (ny - cur.parent.y)
+                                            + (nz - cur.parent.z) * (nz - cur.parent.z)
                             ) + (!bsi.isPassable(nx, ny - 1, nz) ? 0.35 : 0.0);
                             if (cur.parent.g + parentDist <= ng) {
                                 effectiveParent = cur.parent;
@@ -265,12 +258,12 @@ public class FlightPathfinder {
                         }
 
                         Double prevG = bestG.get(nKey);
-                        if (prevG == null || ng < prevG.doubleValue()) {
+                        if (prevG == null || ng < prevG) {
                             bestG.put(nKey, ng);
                             double nh = Math.sqrt(
-                                (goalX - nx) * (goalX - nx)
-                                    + (goalY - ny) * (goalY - ny)
-                                    + (goalZ - nz) * (goalZ - nz)
+                                    (goalX - nx) * (goalX - nx)
+                                            + (goalY - ny) * (goalY - ny)
+                                            + (goalZ - nz) * (goalZ - nz)
                             );
                             AStarNode child = new AStarNode(nx, ny, nz, ng, nh, ng + nh * 1.15, false, effectiveParent);
                             open.add(child);
@@ -299,8 +292,8 @@ public class FlightPathfinder {
                 AStarNode cand = bestSoFar[i];
                 if (cand != null) {
                     int distSq = (cand.x - startX) * (cand.x - startX)
-                        + (cand.y - startY) * (cand.y - startY)
-                        + (cand.z - startZ) * (cand.z - startZ);
+                            + (cand.y - startY) * (cand.y - startY)
+                            + (cand.z - startZ) * (cand.z - startZ);
                     if (distSq >= 4) {
                         targetNode = cand;
                         break;
@@ -350,9 +343,9 @@ public class FlightPathfinder {
             String pathLogKey = ctrl.id + "|path:" + startX + "," + startY + "," + startZ + "->" + goalX + "," + goalY + "," + goalZ + "|" + (reached != null ? "C" : "P");
             if (!pathLogKey.equals(ctrl.lastPathLogKey) || ctrl.tickClock - ctrl.lastPathLogTick >= 240) {
                 this.logger.log("PATH", ctrl,
-                    String.format("3D A* (%d,%d,%d)->(%d,%d,%d) %s",
-                        startX, startY, startZ, goalX, goalY, goalZ, reached != null ? "COMPLETE" : "PARTIAL"),
-                    "expanded=" + expanded + " waypoints=" + result.size());
+                        String.format("3D A* (%d,%d,%d)->(%d,%d,%d) %s",
+                                startX, startY, startZ, goalX, goalY, goalZ, reached != null ? "COMPLETE" : "PARTIAL"),
+                        "expanded=" + expanded + " waypoints=" + result.size());
                 ctrl.lastPathLogKey = pathLogKey;
                 ctrl.lastPathLogTick = ctrl.tickClock;
             }

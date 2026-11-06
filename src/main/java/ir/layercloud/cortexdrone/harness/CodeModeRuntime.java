@@ -6,15 +6,12 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 public class CodeModeRuntime {
@@ -25,8 +22,8 @@ public class CodeModeRuntime {
 
     private static String loadSdkBundle() {
         String[] modules = new String[]{
-            "/sdk/core-rpc.mjs",
-            "/sdk/drone-actions.mjs"
+                "/sdk/core-rpc.mjs",
+                "/sdk/drone-actions.mjs"
         };
         StringBuilder sb = new StringBuilder();
         for (String mod : modules) {
@@ -78,37 +75,37 @@ public class CodeModeRuntime {
             int port = (this.config != null && this.config.getHttpPort() > 0) ? this.config.getHttpPort() : 25580;
 
             String script = "const DRONE_ID = " + ctrl.id + ";\n"
-                + "const LOOP_ID = " + loopId + ";\n"
-                + "const IS_FINAL_TURN = " + isFinalTurn + ";\n"
-                + "const PLAYER_NAME = " + CortexDroneMod.GSON.toJson(pName) + ";\n"
-                + "const HTTP_PORT = " + port + ";\n"
-                + HARNESS_TEMPLATE + "\n"
-                + "(async () => {\n"
-                + "  try {\n"
-                + "    let result = await (async () => {\n"
-                + safeJsCode + "\n"
-                + "    })();\n"
-                + "    await _finalizeScript();\n"
-                + "    process.stdout.write(JSON.stringify({ ok: true, result: result ?? null, logs }) + '\\n', () => process.exit(0));\n"
-                + "  } catch (err) {\n"
-                + "    const msg = String(err && err.message || err);\n"
-                + "    if (msg === 'SUPERSEDED') {\n"
-                + "      process.stdout.write(JSON.stringify({ ok: true, superseded: true, result: null, logs }) + '\\n', () => process.exit(0));\n"
-                + "    } else {\n"
-                + "      process.stdout.write(JSON.stringify({ ok: false, error: String(err && err.stack || err), logs }) + '\\n', () => process.exit(0));\n"
-                + "    }\n"
-                + "  }\n"
-                + "})();\n";
+                    + "const LOOP_ID = " + loopId + ";\n"
+                    + "const IS_FINAL_TURN = " + isFinalTurn + ";\n"
+                    + "const PLAYER_NAME = " + CortexDroneMod.GSON.toJson(pName) + ";\n"
+                    + "const HTTP_PORT = " + port + ";\n"
+                    + HARNESS_TEMPLATE + "\n"
+                    + "(async () => {\n"
+                    + "  try {\n"
+                    + "    let result = await (async () => {\n"
+                    + safeJsCode + "\n"
+                    + "    })();\n"
+                    + "    await _finalizeScript();\n"
+                    + "    process.stdout.write(JSON.stringify({ ok: true, result: result ?? null, logs }) + '\\n', () => process.exit(0));\n"
+                    + "  } catch (err) {\n"
+                    + "    const msg = String(err && err.message || err);\n"
+                    + "    if (msg === 'SUPERSEDED') {\n"
+                    + "      process.stdout.write(JSON.stringify({ ok: true, superseded: true, result: null, logs }) + '\\n', () => process.exit(0));\n"
+                    + "    } else {\n"
+                    + "      process.stdout.write(JSON.stringify({ ok: false, error: String(err && err.stack || err), logs }) + '\\n', () => process.exit(0));\n"
+                    + "    }\n"
+                    + "  }\n"
+                    + "})();\n";
 
             try (FileWriter fw = new FileWriter(scriptFile)) {
                 fw.write(script);
             }
 
             ProcessBuilder pb = new ProcessBuilder(
-                "/usr/local/bin/node",
-                "--max-old-space-size=256",
-                "--no-warnings",
-                scriptFile.getAbsolutePath()
+                    "/usr/local/bin/node",
+                    "--max-old-space-size=256",
+                    "--no-warnings",
+                    scriptFile.getAbsolutePath()
             );
             pb.redirectErrorStream(true);
             final Process proc = pb.start();
@@ -176,7 +173,7 @@ public class CodeModeRuntime {
                 if (fb >= 0 && lb > fb) {
                     try {
                         JsonObject parsedOut = new JsonParser().parse(rawOut.substring(fb, lb + 1)).getAsJsonObject();
-                        boolean parsedOk = parsedOut.has("ok") ? parsedOut.get("ok").getAsBoolean() : true;
+                        boolean parsedOk = !parsedOut.has("ok") || parsedOut.get("ok").getAsBoolean();
                         out.addProperty("ok", parsedOk);
                         if (parsedOut.has("superseded") && parsedOut.get("superseded").getAsBoolean()) {
                             out.addProperty("superseded", true);
@@ -187,9 +184,9 @@ public class CodeModeRuntime {
                         if (!parsedOk && parsedOut.has("rawOutput")) out.add("rawOutput", parsedOut.get("rawOutput"));
                     } catch (Exception parseEx) {
                         out.addProperty("ok", false);
-                        out.addProperty("error", "JS output parse failed: " + parseEx.toString());
+                        out.addProperty("error", "JS output parse failed: " + parseEx);
                         out.addProperty("rawOutput", rawOut);
-                        this.logger.log("CODEMODE", ctrl, "JS Code Mode OUTPUT PARSE ERROR (" + elapsed + "ms)", parseEx.toString() + " raw=" + rawOut.substring(0, Math.min(400, rawOut.length())));
+                        this.logger.log("CODEMODE", ctrl, "JS Code Mode OUTPUT PARSE ERROR (" + elapsed + "ms)", parseEx + " raw=" + rawOut.substring(0, Math.min(400, rawOut.length())));
                     }
                 } else {
                     out.addProperty("ok", false);

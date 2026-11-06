@@ -23,12 +23,18 @@ public interface ActionContext {
 
     boolean isRetained();
 
-    /** Keeps the action alive across ticks after the call returns. */
+    /**
+     * Keeps the action alive across ticks after the call returns.
+     */
     void retain();
 
-    /** Finish the action normally and release the context. */
+    /**
+     * Finish the action normally and release the context.
+     */
     void complete();
 
-    /** Cancel the action and release the context. */
+    /**
+     * Cancel the action and release the context.
+     */
     void cancel();
 }

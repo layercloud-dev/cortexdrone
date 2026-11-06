@@ -3,12 +3,14 @@ package ir.layercloud.cortexdrone.harness.rpc.translate;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
-import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
+import ir.layercloud.cortexdrone.model.DroneController;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/** JSON translation boundary for block/building actions. */
+/**
+ * JSON translation boundary for block/building actions.
+ */
 @RequiredArgsConstructor
 public final class BuildingRpcTranslator {
     private final BuildingManager service;
@@ -21,20 +23,20 @@ public final class BuildingRpcTranslator {
         BlockRequest request;
         if ("place_block".equals(operation)) {
             String filter = RpcArgs.string(args, "block",
-                RpcArgs.string(args, "with", RpcArgs.string(args, "item", "any")));
+                    RpcArgs.string(args, "with", RpcArgs.string(args, "item", "any")));
             request = BlockRequest.builder()
-                .x(args.get("x").getAsInt())
-                .y(args.get("y").getAsInt())
-                .z(args.get("z").getAsInt())
-                .filter(filter)
-                .meta(RpcArgs.integer(args, "meta", -1))
-                .build();
+                    .x(args.get("x").getAsInt())
+                    .y(args.get("y").getAsInt())
+                    .z(args.get("z").getAsInt())
+                    .filter(filter)
+                    .meta(RpcArgs.integer(args, "meta", -1))
+                    .build();
         } else {
             request = BlockRequest.builder()
-                .x(args.get("x").getAsInt())
-                .y(args.get("y").getAsInt())
-                .z(args.get("z").getAsInt())
-                .build();
+                    .x(args.get("x").getAsInt())
+                    .y(args.get("y").getAsInt())
+                    .z(args.get("z").getAsInt())
+                    .build();
         }
 
         BlockResult result = this.service.handle(controller, player, operation, request);

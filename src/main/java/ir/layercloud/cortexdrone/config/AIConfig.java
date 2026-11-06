@@ -3,18 +3,14 @@ package ir.layercloud.cortexdrone.config;
 import com.google.gson.Gson;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.util.*;
 
 @Getter
 @Setter
@@ -23,9 +19,9 @@ public class AIConfig {
     private String model = envOrDefault("CORTEXDRONE_MODEL", "deepseek/deepseek-v4.1-flash");
     private String apiKey = envOrDefault("CORTEXDRONE_API_KEY", "");
     private int httpPort = 25580;
-    private List<SavedDroneInfo> savedDrones = new ArrayList<SavedDroneInfo>();
-    private Map<String, double[]> playerBases = new HashMap<String, double[]>();
-    private Map<String, SavedLocation> savedLocations = new LinkedHashMap<String, SavedLocation>();
+    private List<SavedDroneInfo> savedDrones = new ArrayList<>();
+    private Map<String, double[]> playerBases = new HashMap<>();
+    private Map<String, SavedLocation> savedLocations = new LinkedHashMap<>();
 
     @Data
     public static class SavedDroneInfo {
@@ -86,13 +82,13 @@ public class AIConfig {
                 loaded.setApiKey(envOrDefault("CORTEXDRONE_API_KEY", ""));
             }
             if (loaded.getSavedDrones() == null) {
-                loaded.setSavedDrones(new ArrayList<SavedDroneInfo>());
+                loaded.setSavedDrones(new ArrayList<>());
             }
             if (loaded.getPlayerBases() == null) {
-                loaded.setPlayerBases(new HashMap<String, double[]>());
+                loaded.setPlayerBases(new HashMap<>());
             }
             if (loaded.getSavedLocations() == null) {
-                loaded.setSavedLocations(new LinkedHashMap<String, SavedLocation>());
+                loaded.setSavedLocations(new LinkedHashMap<>());
             }
             if (loaded.getHttpPort() <= 0) {
                 loaded.setHttpPort(25580);
@@ -107,7 +103,7 @@ public class AIConfig {
     public synchronized void save(File configFile, Gson gson, Collection<DroneController> controllers) {
         if (configFile == null) return;
         try {
-            Map<String, SavedDroneInfo> byUuid = new LinkedHashMap<String, SavedDroneInfo>();
+            Map<String, SavedDroneInfo> byUuid = new LinkedHashMap<>();
             if (this.savedDrones != null) {
                 for (SavedDroneInfo old : this.savedDrones) {
                     if (old != null && old.getUuid() != null && !"Server".equalsIgnoreCase(old.getOwner())) {
@@ -117,14 +113,15 @@ public class AIConfig {
             }
             if (controllers != null) {
                 for (DroneController c : controllers) {
-                    if (c.drone == null || c.drone.isDead || c.entityUuid == null || "Server".equalsIgnoreCase(c.ownerName)) continue;
+                    if (c.drone == null || c.drone.isDead || c.entityUuid == null || "Server".equalsIgnoreCase(c.ownerName))
+                        continue;
                     SavedDroneInfo info = new SavedDroneInfo();
                     info.setUuid(c.entityUuid.toString());
                     info.setName(c.name);
                     info.setOwner(c.ownerName);
                     info.setMode((c.mode == Mode.MINE || c.mode == Mode.DROP || c.mode == Mode.DEPOSIT)
-                        ? Mode.FOLLOW.name()
-                        : c.mode.name());
+                            ? Mode.FOLLOW.name()
+                            : c.mode.name());
                     info.setAutoTorch(c.autoTorch);
                     info.setLedEffect(c.ledEffect);
                     info.setCustomLedColor(c.customLedColor);
@@ -135,7 +132,7 @@ public class AIConfig {
                     byUuid.put(info.getUuid(), info);
                 }
             }
-            this.savedDrones = new ArrayList<SavedDroneInfo>(byUuid.values());
+            this.savedDrones = new ArrayList<>(byUuid.values());
             try (FileWriter writer = new FileWriter(configFile)) {
                 gson.toJson(this, writer);
             }
@@ -180,9 +177,9 @@ public class AIConfig {
     }
 
     public synchronized List<SavedLocation> listLocations(String owner) {
-        List<SavedLocation> out = new ArrayList<SavedLocation>();
+        List<SavedLocation> out = new ArrayList<>();
         if (this.savedLocations == null) return out;
-        Map<String, SavedLocation> dedup = new LinkedHashMap<String, SavedLocation>();
+        Map<String, SavedLocation> dedup = new LinkedHashMap<>();
         for (SavedLocation loc : this.savedLocations.values()) {
             if (loc == null || loc.getName() == null) continue;
             String key = loc.getName().toLowerCase();
@@ -197,7 +194,7 @@ public class AIConfig {
     public synchronized void setPlayerBase(String playerName, double x, double y, double z) {
         if (playerName == null || playerName.trim().isEmpty()) return;
         if (this.playerBases == null) {
-            this.playerBases = new HashMap<String, double[]>();
+            this.playerBases = new HashMap<>();
         }
         this.playerBases.put(playerName.trim().toLowerCase(), new double[]{x, y, z});
     }

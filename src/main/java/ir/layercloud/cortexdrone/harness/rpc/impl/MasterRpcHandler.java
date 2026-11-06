@@ -4,15 +4,14 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.harness.MasterToolCatalog;
 import ir.layercloud.cortexdrone.harness.rpc.RpcHandler;
 import ir.layercloud.cortexdrone.harness.rpc.translate.BreadcrumbRpcTranslator;
-import ir.layercloud.cortexdrone.harness.MasterToolCatalog;
+import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
-import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
@@ -84,7 +83,7 @@ public class MasterRpcHandler implements RpcHandler {
         for (String note : ctrl.task.getNotes()) notes.add(new JsonPrimitive(note));
         res.add("taskNotes", notes);
         double distGoal = Double.isNaN(ctrl.goalX) ? -1.0
-            : Math.sqrt((ctrl.drone.posX - ctrl.goalX) * (ctrl.drone.posX - ctrl.goalX)
+                : Math.sqrt((ctrl.drone.posX - ctrl.goalX) * (ctrl.drone.posX - ctrl.goalX)
                 + (ctrl.drone.posY - ctrl.goalY) * (ctrl.drone.posY - ctrl.goalY)
                 + (ctrl.drone.posZ - ctrl.goalZ) * (ctrl.drone.posZ - ctrl.goalZ));
         res.addProperty("distanceToGoal", Math.round(distGoal * 100.0) / 100.0);
@@ -94,7 +93,7 @@ public class MasterRpcHandler implements RpcHandler {
         res.addProperty("navigationReason", navigation.getReason());
         res.addProperty("navigationError", ctrl.navigationError != null ? ctrl.navigationError : "");
         res.addProperty("arrived", !navigation.isActive()
-            && (ctrl.mode != Mode.GOTO || (distGoal >= 0.0 && distGoal <= 1.0)));
+                && (ctrl.mode != Mode.GOTO || (distGoal >= 0.0 && distGoal <= 1.0)));
         if (ctrl.currentMineTarget != null) {
             JsonObject target = new JsonObject();
             target.addProperty("x", ctrl.currentMineTarget[0]);
@@ -109,36 +108,92 @@ public class MasterRpcHandler implements RpcHandler {
         String op = str(args, "op", "block").trim().toLowerCase();
         String method;
         RpcHandler handler;
-        if (op.equals("block") || op.equals("getblock")) { method = "get_block"; handler = this.worldReader; }
-        else if (op.equals("box") || op.equals("blocksinbox")) { method = "get_blocks_in_box"; handler = this.worldReader; }
-        else if (op.equals("top") || op.equals("topy")) { method = "get_top_y"; handler = this.worldReader; }
-        else if (op.equals("room") || op.equals("scanroom")) { method = "scan_room"; handler = this.worldReader; }
-        else if (op.equals("blocks") || op.equals("scanblocks")) { method = "scan_blocks"; handler = this.worldReader; }
-        else if (op.equals("veins") || op.equals("scanveins")) { method = "scan_veins"; handler = this.worldReader; }
-        else if (op.equals("distant") || op.equals("finddistant")) { method = "find_distant"; handler = this.worldReader; }
-        else if (op.equals("entities") || op.equals("getentities")) { method = "get_entities"; handler = this.worldReader; }
-        else if (op.equals("drops") || op.equals("getdrops")) { method = "get_drops"; handler = this.worldReader; }
-        else if (op.equals("raycast")) { method = "raycast_player"; handler = this.worldReader; }
-        else if (op.equals("base") || op.equals("findbase")) { method = "find_base"; handler = this.worldReader; }
-        else if (op.equals("locations") || op.equals("listlocations")) { method = "list_locations"; handler = this.worldReader; }
-        else if (op.equals("location") || op.equals("getlocation")) { method = "get_location"; handler = this.worldReader; }
-        else if (op.equals("buildsite") || op.equals("findbuildsite")) { method = "find_build_site"; handler = this.worldReader; }
-        else if (op.equals("plan") || op.equals("planstructure")) { method = "plan_structure"; handler = this.worldReader; }
-        else if (op.equals("player") || op.equals("getplayer")) { method = "get_player"; handler = this.inventoryReader; }
-        else if (op.equals("playerinventory")) { method = "get_player_inventory"; handler = this.inventoryReader; }
-        else if (op.equals("recipe") || op.equals("recipes") || op.equals("getrecipes")) { method = "get_recipes"; handler = this.inventoryReader; }
-        else if (op.equals("chest") || op.equals("getchest")) { method = "get_chest"; handler = this.inventoryReader; }
-        else if (op.equals("chests") || op.equals("scanchests")) { method = "scan_chests"; handler = this.inventoryReader; }
-        else if (op.equals("finditem")) { method = "find_item"; handler = this.inventoryReader; }
-        else if (op.equals("finditeminchests")) { method = "find_item_in_chests"; handler = this.inventoryReader; }
-        else if (op.equals("furnaces") || op.equals("scanfurnaces")) { method = "scan_furnaces"; handler = this.inventoryReader; }
-        else if (op.equals("machinerecipes")) { method = "get_machine_recipes"; handler = this.inventoryReader; }
-        else if (op.equals("machinerecipe")) { method = "get_machine_recipe"; handler = this.inventoryReader; }
-        else if (op.equals("machines") || op.equals("scanmachines")) { method = "scan_machines"; handler = this.inventoryReader; }
-        else if (op.equals("machineingredients")) { method = "machine_ingredients"; handler = this.inventoryReader; }
-        else if (op.equals("breadcrumbs")) return this.breadcrumbReader.read(ctrl, args);
-        else if (op.equals("doc") || op.equals("lookup") || op.equals("lookupdoc")) { method = "lookup_doc"; handler = this.worldReader; }
-        else return error("Unknown inspect op: " + op);
+        if (op.equals("block") || op.equals("getblock")) {
+            method = "get_block";
+            handler = this.worldReader;
+        } else if (op.equals("box") || op.equals("blocksinbox")) {
+            method = "get_blocks_in_box";
+            handler = this.worldReader;
+        } else if (op.equals("top") || op.equals("topy")) {
+            method = "get_top_y";
+            handler = this.worldReader;
+        } else if (op.equals("room") || op.equals("scanroom")) {
+            method = "scan_room";
+            handler = this.worldReader;
+        } else if (op.equals("blocks") || op.equals("scanblocks")) {
+            method = "scan_blocks";
+            handler = this.worldReader;
+        } else if (op.equals("veins") || op.equals("scanveins")) {
+            method = "scan_veins";
+            handler = this.worldReader;
+        } else if (op.equals("distant") || op.equals("finddistant")) {
+            method = "find_distant";
+            handler = this.worldReader;
+        } else if (op.equals("entities") || op.equals("getentities")) {
+            method = "get_entities";
+            handler = this.worldReader;
+        } else if (op.equals("drops") || op.equals("getdrops")) {
+            method = "get_drops";
+            handler = this.worldReader;
+        } else if (op.equals("raycast")) {
+            method = "raycast_player";
+            handler = this.worldReader;
+        } else if (op.equals("base") || op.equals("findbase")) {
+            method = "find_base";
+            handler = this.worldReader;
+        } else if (op.equals("locations") || op.equals("listlocations")) {
+            method = "list_locations";
+            handler = this.worldReader;
+        } else if (op.equals("location") || op.equals("getlocation")) {
+            method = "get_location";
+            handler = this.worldReader;
+        } else if (op.equals("buildsite") || op.equals("findbuildsite")) {
+            method = "find_build_site";
+            handler = this.worldReader;
+        } else if (op.equals("plan") || op.equals("planstructure")) {
+            method = "plan_structure";
+            handler = this.worldReader;
+        } else if (op.equals("player") || op.equals("getplayer")) {
+            method = "get_player";
+            handler = this.inventoryReader;
+        } else if (op.equals("playerinventory")) {
+            method = "get_player_inventory";
+            handler = this.inventoryReader;
+        } else if (op.equals("recipe") || op.equals("recipes") || op.equals("getrecipes")) {
+            method = "get_recipes";
+            handler = this.inventoryReader;
+        } else if (op.equals("chest") || op.equals("getchest")) {
+            method = "get_chest";
+            handler = this.inventoryReader;
+        } else if (op.equals("chests") || op.equals("scanchests")) {
+            method = "scan_chests";
+            handler = this.inventoryReader;
+        } else if (op.equals("finditem")) {
+            method = "find_item";
+            handler = this.inventoryReader;
+        } else if (op.equals("finditeminchests")) {
+            method = "find_item_in_chests";
+            handler = this.inventoryReader;
+        } else if (op.equals("furnaces") || op.equals("scanfurnaces")) {
+            method = "scan_furnaces";
+            handler = this.inventoryReader;
+        } else if (op.equals("machinerecipes")) {
+            method = "get_machine_recipes";
+            handler = this.inventoryReader;
+        } else if (op.equals("machinerecipe")) {
+            method = "get_machine_recipe";
+            handler = this.inventoryReader;
+        } else if (op.equals("machines") || op.equals("scanmachines")) {
+            method = "scan_machines";
+            handler = this.inventoryReader;
+        } else if (op.equals("machineingredients")) {
+            method = "machine_ingredients";
+            handler = this.inventoryReader;
+        } else if (op.equals("breadcrumbs")) return this.breadcrumbReader.read(ctrl, args);
+        else if (op.equals("doc") || op.equals("lookup") || op.equals("lookupdoc")) {
+            method = "lookup_doc";
+            handler = this.worldReader;
+        } else return error("Unknown inspect op: " + op);
         return handler.handle(ctrl, player, method, args);
     }
 
@@ -176,7 +231,7 @@ public class MasterRpcHandler implements RpcHandler {
             if (res != null) return res;
         }
         String filter = args.has("block") ? str(args, "block", "any")
-            : (args.has("with") ? str(args, "with", "any") : str(args, "item", "any"));
+                : (args.has("with") ? str(args, "with", "any") : str(args, "item", "any"));
         JsonObject res = this.manager.getActionRpcTranslator().handle(ctrl, player, "place_block", args);
         res.addProperty("block", filter);
         res.add("target", point(x, y, z));
@@ -294,11 +349,19 @@ public class MasterRpcHandler implements RpcHandler {
 
     private static String str(JsonObject args, String key, String fallback) {
         if (args == null || !args.has(key) || args.get(key).isJsonNull()) return fallback;
-        try { return args.get(key).getAsString(); } catch (Exception e) { return fallback; }
+        try {
+            return args.get(key).getAsString();
+        } catch (Exception e) {
+            return fallback;
+        }
     }
 
     private static int intValue(JsonObject args, String key, int fallback) {
         if (args == null || !args.has(key) || args.get(key).isJsonNull()) return fallback;
-        try { return args.get(key).getAsInt(); } catch (Exception e) { return fallback; }
+        try {
+            return args.get(key).getAsInt();
+        } catch (Exception e) {
+            return fallback;
+        }
     }
 }

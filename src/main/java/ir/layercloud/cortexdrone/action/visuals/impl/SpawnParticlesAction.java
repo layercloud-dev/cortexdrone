@@ -9,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
-/** Single-use command: spawn a particle burst. */
+/**
+ * Single-use command: spawn a particle burst.
+ */
 @RequiredArgsConstructor
 public final class SpawnParticlesAction implements Action<VisualsContext> {
     private final VisualsRequest request;
@@ -23,12 +25,12 @@ public final class SpawnParticlesAction implements Action<VisualsContext> {
         double z = request.isCoordinates() ? request.getZ() : drone.posZ;
         if (world instanceof WorldServer) {
             ((WorldServer) world).func_147487_a(
-                request.getType(), x, y, z,
-                request.getCount(), request.getSpread(), request.getSpread(),
-                request.getSpread(), request.getSpeed());
+                    request.getType(), x, y, z,
+                    request.getCount(), request.getSpread(), request.getSpread(),
+                    request.getSpread(), request.getSpeed());
         }
         context.result(VisualsResult.success(
-            "spawned", request.getCount(),
-            "type", request.getType()));
+                "spawned", request.getCount(),
+                "type", request.getType()));
     }
 }

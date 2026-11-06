@@ -5,7 +5,9 @@ import lombok.Builder;
 import lombok.Value;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/** One goal request. The navigation manager chooses the route internally. */
+/**
+ * One goal request. The navigation manager chooses the route internally.
+ */
 @Value
 @Builder
 public class NavigationRequest {

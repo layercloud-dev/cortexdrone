@@ -3,12 +3,9 @@ package ir.layercloud.cortexdrone.manager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.context.ActionContext;
 import ir.layercloud.cortexdrone.model.DroneController;
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import net.minecraft.entity.player.EntityPlayerMP;
+
+import java.util.*;
 
 /**
  * Long-lived manager for one action category.
@@ -22,7 +19,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
     private final String category;
     private final String[] operations;
     private final Map<DroneController, Map<String, Execution<C>>> active =
-        new IdentityHashMap<DroneController, Map<String, Execution<C>>>();
+            new IdentityHashMap<DroneController, Map<String, Execution<C>>>();
 
     protected ActionManager(String category, String... operations) {
         this.category = category;
@@ -48,7 +45,7 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
                           String operation, R request) {
         if (!supports(operation)) {
             throw new IllegalArgumentException("Unsupported " + this.category
-                + " action: " + operation);
+                    + " action: " + operation);
         }
 
         C context = createContext(controller, player, operation);
@@ -70,7 +67,9 @@ public abstract class ActionManager<C extends ActionContext, R, T> {
         }
     }
 
-    /** Typed execution used by internal entry points that already built the action. */
+    /**
+     * Typed execution used by internal entry points that already built the action.
+     */
     protected final void run(DroneController controller, EntityPlayerMP player,
                              String operation, C context, Action<C> action) {
         try {

@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.service.inventory;
 import lombok.Builder;
 import lombok.Value;
 
-/** Typed result of a crafting action. */
+/**
+ * Typed result of a crafting action.
+ */
 @Value
 @Builder
 public class CraftResult {

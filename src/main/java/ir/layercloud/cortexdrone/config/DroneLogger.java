@@ -6,20 +6,16 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.model.ChatRecord;
 import ir.layercloud.cortexdrone.model.DebugEntry;
 import ir.layercloud.cortexdrone.model.DroneController;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumChatFormatting;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DroneLogger {
     private static final int MAX_DEBUG_ENTRIES = 400;
@@ -32,21 +28,21 @@ public class DroneLogger {
     private long lastLogRotationCheckMs = 0L;
     private boolean logFlushScheduled = false;
 
-    private final Deque<DebugEntry> debugLog = new ArrayDeque<DebugEntry>();
-    private final Deque<ChatRecord> recentChat = new ArrayDeque<ChatRecord>();
+    private final Deque<DebugEntry> debugLog = new ArrayDeque<>();
+    private final Deque<ChatRecord> recentChat = new ArrayDeque<>();
     @Getter
-    private final Set<String> subscribers = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+    private final Set<String> subscribers = Collections.newSetFromMap(new ConcurrentHashMap<>());
     @Getter
     @Setter
     private volatile File debugLogFile;
 
     public void log(String category, DroneController ctrl, String message, String details) {
         final DebugEntry entry = new DebugEntry(
-            category,
-            ctrl != null ? ctrl.id : 0,
-            ctrl != null ? ctrl.name : "System",
-            message,
-            details
+                category,
+                ctrl != null ? ctrl.id : 0,
+                ctrl != null ? ctrl.name : "System",
+                message,
+                details
         );
 
         synchronized (this.debugLog) {
@@ -58,9 +54,9 @@ public class DroneLogger {
 
         if (!this.subscribers.isEmpty()) {
             String chatLine = EnumChatFormatting.DARK_GRAY + "[DroneDebug:" + category + "] "
-                + EnumChatFormatting.AQUA + (ctrl != null ? ctrl.name : "Sys") + ": "
-                + EnumChatFormatting.GRAY + truncateForChat(message)
-                + (details != null && !details.isEmpty() ? EnumChatFormatting.DARK_GRAY + " (" + truncateForChat(details) + ")" : "");
+                    + EnumChatFormatting.AQUA + (ctrl != null ? ctrl.name : "Sys") + ": "
+                    + EnumChatFormatting.GRAY + truncateForChat(message)
+                    + (details != null && !details.isEmpty() ? EnumChatFormatting.DARK_GRAY + " (" + truncateForChat(details) + ")" : "");
             for (String subPlayer : this.subscribers) {
                 EntityPlayerMP p = CortexDroneMod.findPlayer(subPlayer);
                 if (p != null) {
@@ -122,8 +118,8 @@ public class DroneLogger {
         maybeRotateDebugLog(f);
         try (FileWriter fw = new FileWriter(f, true)) {
             String capped = snapshot.length() > MAX_LOG_FLUSH_BYTES
-                ? snapshot.substring(0, MAX_LOG_FLUSH_BYTES) + "\n...[log flush truncated +" + (snapshot.length() - MAX_LOG_FLUSH_BYTES) + " chars]\n"
-                : snapshot;
+                    ? snapshot.substring(0, MAX_LOG_FLUSH_BYTES) + "\n...[log flush truncated +" + (snapshot.length() - MAX_LOG_FLUSH_BYTES) + " chars]\n"
+                    : snapshot;
             fw.write(capped);
         } catch (Exception ignored) {
         }
@@ -182,7 +178,7 @@ public class DroneLogger {
     }
 
     public List<DebugEntry> getRecentDebugEntries(int maxCount) {
-        List<DebugEntry> snap = new ArrayList<DebugEntry>();
+        List<DebugEntry> snap = new ArrayList<>();
         synchronized (this.debugLog) {
             snap.addAll(this.debugLog);
         }

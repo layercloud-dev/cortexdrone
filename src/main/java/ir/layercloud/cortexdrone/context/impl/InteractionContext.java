@@ -8,7 +8,9 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/** Mutable state for one interaction action. Interactions are synchronous. */
+/**
+ * Mutable state for one interaction action. Interactions are synchronous.
+ */
 @Getter
 @Accessors(fluent = true)
 public final class InteractionContext extends ActionContextBase {

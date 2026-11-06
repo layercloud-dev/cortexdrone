@@ -1,42 +1,15 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.experimental.UtilityClass;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockChest;
-import net.minecraft.block.BlockCrops;
-import net.minecraft.block.BlockLeaves;
-import net.minecraft.block.BlockLiquid;
-import net.minecraft.block.BlockLog;
-import net.minecraft.block.BlockOre;
-import net.minecraft.block.BlockReed;
-import net.minecraft.block.BlockRotatedPillar;
+import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.EnumCreatureType;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.ISidedInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemArmor;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemBow;
-import net.minecraft.item.ItemFood;
-import net.minecraft.item.ItemHoe;
-import net.minecraft.item.ItemShears;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemSword;
-import net.minecraft.item.ItemTool;
+import net.minecraft.item.*;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityChest;
 import net.minecraft.tileentity.TileEntityEnderChest;
@@ -44,15 +17,14 @@ import net.minecraft.tileentity.TileEntityFurnace;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
-import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.IPlantable;
 import net.minecraftforge.common.IShearable;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidContainerRegistry;
-import net.minecraftforge.fluids.FluidRegistry;
-import net.minecraftforge.fluids.IFluidBlock;
-import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraftforge.fluids.*;
 import net.minecraftforge.oredict.OreDictionary;
+
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Dynamic runtime introspection over Forge's OreDictionary, FluidRegistry, BiomeDictionary,
@@ -218,13 +190,13 @@ public final class RegistryIntrospector {
         if (b == null || b == Blocks.air) return false;
         int key = Block.getIdFromBlock(b);
         Boolean cached = LOG_BLOCK_CACHE.get(key);
-        if (cached != null) return cached.booleanValue();
+        if (cached != null) return cached;
 
         boolean result = (b instanceof BlockLog);
         if (!result && blockIsWoodMethod != null) {
             try {
                 Object r = blockIsWoodMethod.invoke(b, null, 0, 0, 0);
-                if (r instanceof Boolean && ((Boolean) r).booleanValue()) {
+                if (r instanceof Boolean && (Boolean) r) {
                     result = true;
                 }
             } catch (Throwable ignored) {
@@ -247,14 +219,14 @@ public final class RegistryIntrospector {
         if (b == null || b == Blocks.air) return false;
         int key = Block.getIdFromBlock(b);
         Boolean cached = LEAF_BLOCK_CACHE.get(key);
-        if (cached != null) return cached.booleanValue();
+        if (cached != null) return cached;
 
         boolean result = (b instanceof BlockLeaves) || (b.getMaterial() == Material.leaves)
-            || ((b instanceof IShearable) && b.getMaterial() == Material.plants);
+                || ((b instanceof IShearable) && b.getMaterial() == Material.plants);
         if (!result && blockIsLeavesMethod != null) {
             try {
                 Object r = blockIsLeavesMethod.invoke(b, null, 0, 0, 0);
-                if (r instanceof Boolean && ((Boolean) r).booleanValue()) {
+                if (r instanceof Boolean && (Boolean) r) {
                     result = true;
                 }
             } catch (Throwable ignored) {
@@ -277,11 +249,11 @@ public final class RegistryIntrospector {
         if (b == null || b == Blocks.air) return false;
         int key = blockCacheKey(b, meta);
         Boolean cached = ORE_BLOCK_CACHE.get(key);
-        if (cached != null) return cached.booleanValue();
+        if (cached != null) return cached;
 
         boolean res = (b instanceof BlockOre)
-            || b == Blocks.redstone_ore
-            || hasOreDictPrefix(b, meta, "ore", "denseore", "poorore", "cluster");
+                || b == Blocks.redstone_ore
+                || hasOreDictPrefix(b, meta, "ore", "denseore", "poorore", "cluster");
 
         if (!res) {
             // Check what item the block drops when mined: if a rock/mineral block drops an ore/gem/crystal/cluster/raw/dust/coal item, it's an ore!
@@ -306,7 +278,7 @@ public final class RegistryIntrospector {
             String unloc = b.getUnlocalizedName();
             String disp = ItemClassifier.getBlockDisplayName(b, meta);
             List<String> tokens = LexicalItemMatcher.tokenize(
-                (reg != null ? reg : "") + " " + (unloc != null ? unloc : "") + " " + (disp != null ? disp : "")
+                    (reg != null ? reg : "") + " " + (unloc != null ? unloc : "") + " " + (disp != null ? disp : "")
             );
             if (tokens.contains("ore") || tokens.contains("cluster") || tokens.contains("resource")) {
                 res = true;
@@ -455,7 +427,7 @@ public final class RegistryIntrospector {
 
         Class<?> cls = te.getClass();
         Boolean cached = STORAGE_TILE_CLASS_CACHE.get(cls);
-        if (cached != null) return cached.booleanValue();
+        if (cached != null) return cached;
 
         String clsName = cls.getName().toLowerCase();
         // OpenComputers internal components/cases/racks/assemblers are not general storage chests
@@ -472,7 +444,7 @@ public final class RegistryIntrospector {
         }
         String combined = clsName + " " + invName;
         boolean explicitContainer = combined.contains("chest") || combined.contains("crate") || combined.contains("barrel")
-            || combined.contains("locker") || combined.contains("cabinet") || combined.contains("safe") || combined.contains("backpack");
+                || combined.contains("locker") || combined.contains("cabinet") || combined.contains("safe") || combined.contains("backpack");
 
         if (!explicitContainer) {
             // Processing machines implement ISidedInventory (for separate input/fuel/output sides) or IFluidHandler
@@ -544,8 +516,8 @@ public final class RegistryIntrospector {
             return 1; // Ingots, Plates, Wires & Metal Blocks
         }
         if (item instanceof ItemTool || item instanceof ItemSword || item instanceof ItemArmor
-            || item instanceof ItemBow || item instanceof ItemHoe || item instanceof ItemShears
-            || !item.isDamageable() && st.getMaxStackSize() == 1) {
+                || item instanceof ItemBow || item instanceof ItemHoe || item instanceof ItemShears
+                || !item.isDamageable() && st.getMaxStackSize() == 1) {
             return 2; // Tools, Weapons, Armor & Non-Stackable Equipment
         }
         if (item instanceof ItemBlock) {

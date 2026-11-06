@@ -2,14 +2,11 @@ package ir.layercloud.cortexdrone.service.inventory;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.service.machine.MachineRecipeService;
 import ir.layercloud.cortexdrone.model.DroneController;
+import ir.layercloud.cortexdrone.service.machine.MachineRecipeService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
 import li.cil.oc.common.entity.Drone;
+import lombok.Getter;
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -23,7 +20,11 @@ import net.minecraft.tileentity.TileEntityChest;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
-import lombok.Getter;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * Core inventory service handling slot transfers, multi-chest discovery,
@@ -211,11 +212,11 @@ public class InventoryService {
                 boolean cb = b instanceof TileEntityChest;
                 if (ca != cb) return ca ? -1 : 1;
                 double da = (a.xCoord + 0.5 - x) * (a.xCoord + 0.5 - x)
-                    + (a.yCoord + 0.5 - y) * (a.yCoord + 0.5 - y)
-                    + (a.zCoord + 0.5 - z) * (a.zCoord + 0.5 - z);
+                        + (a.yCoord + 0.5 - y) * (a.yCoord + 0.5 - y)
+                        + (a.zCoord + 0.5 - z) * (a.zCoord + 0.5 - z);
                 double db = (b.xCoord + 0.5 - x) * (b.xCoord + 0.5 - x)
-                    + (b.yCoord + 0.5 - y) * (b.yCoord + 0.5 - y)
-                    + (b.zCoord + 0.5 - z) * (b.zCoord + 0.5 - z);
+                        + (b.yCoord + 0.5 - y) * (b.yCoord + 0.5 - y)
+                        + (b.zCoord + 0.5 - z) * (b.zCoord + 0.5 - z);
                 return Double.compare(da, db);
             }
         });
@@ -270,8 +271,8 @@ public class InventoryService {
             String disp = st.getDisplayName();
             String combined = ItemClassifier.getItemIdentifier(st);
             boolean ok = matchAny
-                ? (f.equals("all") || f.equals("*") || st.getItem() instanceof ItemBlock)
-                : ItemClassifier.matchesBlockOrItemName(disp, combined, meta, f);
+                    ? (f.equals("all") || f.equals("*") || st.getItem() instanceof ItemBlock)
+                    : ItemClassifier.matchesBlockOrItemName(disp, combined, meta, f);
             if (!ok) continue;
 
             int take = Math.min(st.stackSize, maxCount - moved);
@@ -313,7 +314,7 @@ public class InventoryService {
                 break;
             }
             if (ItemClassifier.matchesBlockOrItemName(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), resolved)
-                && st.stackSize < st.getMaxStackSize()) {
+                    && st.stackSize < st.getMaxStackSize()) {
                 hasFreeSlot = true;
                 break;
             }
@@ -378,7 +379,7 @@ public class InventoryService {
                 TileEntityChest tc = (TileEntityChest) te;
                 tc.checkForAdjacentChests();
                 TileEntityChest[] adj = new TileEntityChest[]{
-                    tc.adjacentChestZNeg, tc.adjacentChestXPos, tc.adjacentChestXNeg, tc.adjacentChestZPos
+                        tc.adjacentChestZNeg, tc.adjacentChestXPos, tc.adjacentChestXNeg, tc.adjacentChestZPos
                 };
                 for (TileEntityChest a : adj) {
                     if (a != null && working.stackSize > 0) {
@@ -398,11 +399,11 @@ public class InventoryService {
 
         if (countInventoryItems(droneInv) > 0 && d.worldObj != null) {
             List<TileEntity> nearby = findAllInventoryTiles(
-                d.worldObj,
-                te.xCoord + 0.5,
-                te.yCoord + 0.5,
-                te.zCoord + 0.5,
-                8
+                    d.worldObj,
+                    te.xCoord + 0.5,
+                    te.yCoord + 0.5,
+                    te.zCoord + 0.5,
+                    8
             );
             for (TileEntity other : nearby) {
                 if (other == te || !(other instanceof IInventory)) continue;
@@ -442,8 +443,8 @@ public class InventoryService {
         IInventory inv = d.mainInventory();
         if (world == null || inv == null) return;
         AxisAlignedBB box = AxisAlignedBB.getBoundingBox(
-            x - radius, y - radius, z - radius,
-            x + radius, y + radius, z + radius
+                x - radius, y - radius, z - radius,
+                x + radius, y + radius, z + radius
         );
         List<?> items = world.getEntitiesWithinAABB(EntityItem.class, box);
         if (items == null || items.isEmpty()) return;

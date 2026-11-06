@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.action.inventory;
 import lombok.Builder;
 import lombok.Value;
 
-/** Immutable request data for one inventory action. */
+/**
+ * Immutable request data for one inventory action.
+ */
 @Value
 @Builder
 public class InventoryRequest {

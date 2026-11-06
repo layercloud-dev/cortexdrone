@@ -62,7 +62,9 @@ final class AgentLoopHeuristics {
             JsonObject last = messages.get(messages.size() - 1).getAsJsonObject();
             if (last == null) return "";
             return last.has("content") && !last.get("content").isJsonNull() ? last.get("content").getAsString() : "";
-        } catch (Exception ignored) { return ""; }
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     static String fingerprintCode(String code) {
@@ -73,28 +75,33 @@ final class AgentLoopHeuristics {
     static boolean shouldStopBeforeExecute(JsonObject plan, String code, boolean isMalformed) {
         if (isMalformed || plan == null) return false;
         if (plan.has("stop") && !plan.get("stop").isJsonNull() && plan.get("stop").getAsBoolean()) return true;
-        if (plan.has("stopPrevious") && !plan.get("stopPrevious").isJsonNull() && plan.get("stopPrevious").getAsBoolean()) return true;
+        if (plan.has("stopPrevious") && !plan.get("stopPrevious").isJsonNull() && plan.get("stopPrevious").getAsBoolean())
+            return true;
         return codeCallsStop(code);
     }
 
     static void executePreCodeModeStop(
-        ir.layercloud.cortexdrone.model.DroneController ctrl,
-        net.minecraft.entity.player.EntityPlayerMP player,
-        int myLoopId,
-        int turn,
-        ir.layercloud.cortexdrone.config.DroneLogger logger,
-        RpcDispatcher rpcDispatcher
+            ir.layercloud.cortexdrone.model.DroneController ctrl,
+            net.minecraft.entity.player.EntityPlayerMP player,
+            int myLoopId,
+            int turn,
+            ir.layercloud.cortexdrone.config.DroneLogger logger,
+            RpcDispatcher rpcDispatcher
     ) {
         int cancelledLoops = ctrl.cancelOtherLoops(myLoopId);
         JsonObject stopArgs = new JsonObject();
         stopArgs.addProperty("loopId", myLoopId);
         rpcDispatcher.executeOnMainThread(ctrl, player, "cancel", stopArgs);
         logger.log("CODEMODE", ctrl, "Harness executed pre-CodeMode cancel before Turn " + turn,
-            "loopId=" + myLoopId + " cancelledLoops=" + cancelledLoops);
+                "loopId=" + myLoopId + " cancelledLoops=" + cancelledLoops);
         if (cancelledLoops > 0) {
             long waitUntil = System.currentTimeMillis() + 350L;
             while (ctrl.activeScriptCount.get() > 0 && System.currentTimeMillis() < waitUntil) {
-                try { Thread.sleep(50L); } catch (InterruptedException ignored) { break; }
+                try {
+                    Thread.sleep(50L);
+                } catch (InterruptedException ignored) {
+                    break;
+                }
             }
         }
     }
@@ -103,15 +110,15 @@ final class AgentLoopHeuristics {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();
         return c.contains("drone.cancel(") || c.contains("drone.stop(")
-            || c.contains("rpc('cancel'") || c.contains("rpc(\"cancel\"");
+                || c.contains("rpc('cancel'") || c.contains("rpc(\"cancel\"");
     }
 
     static boolean codeMentionsPhysicalAction(String code) {
         if (code == null || code.isEmpty()) return false;
         String c = code.toLowerCase();
         return c.contains(".goto(") || c.contains(".stop(") || c.contains(".breakblock(") || c.contains(".placeblock(")
-            || c.contains(".interactblock(") || c.contains(".useitem(")
-            || c.contains(".transfer(") || c.contains(".craft(");
+                || c.contains(".interactblock(") || c.contains(".useitem(")
+                || c.contains(".transfer(") || c.contains(".craft(");
     }
 
     static boolean codeMentionsProgressAction(String code) {
@@ -122,7 +129,7 @@ final class AgentLoopHeuristics {
         if (execRes == null || !execRes.has("result") || !execRes.get("result").isJsonObject()) return false;
         JsonObject res = execRes.getAsJsonObject("result");
         String[] counters = new String[]{"started", "placed", "used", "activated", "broken",
-            "transferred", "moved", "withdrawn", "deposited", "crafted", "builtCount", "minedCount"};
+                "transferred", "moved", "withdrawn", "deposited", "crafted", "builtCount", "minedCount"};
         for (String k : counters) {
             if (res.has(k) && !res.get(k).isJsonNull()) {
                 JsonElement v = res.get(k);
@@ -132,7 +139,8 @@ final class AgentLoopHeuristics {
         }
         // Movement alone (goto) is still meaningful progress for the
         // move-then-act contract, so treat a completed move as progress.
-        if (res.has("arrived") && res.get("arrived").isJsonPrimitive() && res.get("arrived").getAsBoolean()) return true;
+        if (res.has("arrived") && res.get("arrived").isJsonPrimitive() && res.get("arrived").getAsBoolean())
+            return true;
         return codeMentionsProgressAction(code);
     }
 
@@ -158,8 +166,8 @@ final class AgentLoopHeuristics {
         JsonObject r = result.getAsJsonObject("result");
         String s = r.toString().toLowerCase();
         boolean hasMachine = s.contains("machine_config") || s.contains("machine config")
-            || s.contains("assembly machine") || s.contains("chemical plant")
-            || s.contains("blast furnace") || s.contains("assemblymachine");
+                || s.contains("assembly machine") || s.contains("chemical plant")
+                || s.contains("blast furnace") || s.contains("assemblymachine");
         boolean noCrafting = !r.has("craftingRecipes") && !s.contains("craftingrecipes");
         // Machine-only signal: machine config found but no crafting-table source
         // in this tool result. Exact recipe shapes vary; this is heuristic.
@@ -173,17 +181,17 @@ final class AgentLoopHeuristics {
         boolean isDone = doneEl != null && doneEl.isJsonPrimitive() && doneEl.getAsBoolean();
         if (isDone) return false;
         boolean hasCode = plan.has("code") && !plan.get("code").isJsonNull()
-            && !plan.get("code").getAsString().trim().isEmpty();
+                && !plan.get("code").getAsString().trim().isEmpty();
         if (hasCode) return false;
         String thought = plan.has("thought") && !plan.get("thought").isJsonNull()
-            ? plan.get("thought").getAsString() : "";
+                ? plan.get("thought").getAsString() : "";
         String reply = plan.has("reply") && !plan.get("reply").isJsonNull()
-            ? plan.get("reply").getAsString() : "";
+                ? plan.get("reply").getAsString() : "";
         String s = (thought + " " + reply).toLowerCase();
         boolean machineOnly = s.contains("machine_config") || s.contains("machine config")
-            || s.contains("gui_only") || s.contains("gui only");
+                || s.contains("gui_only") || s.contains("gui only");
         boolean emptySearch = s.contains("\"found\":false") || s.contains("\"count\":0")
-            || s.contains("\"matchcount\":0");
+                || s.contains("\"matchcount\":0");
         if (machineOnly || emptySearch) return true;
         String lastUser = lastUserContent(messages);
         if (lastUser != null && lastUser.contains("STRICT FORMAT")) return false;
@@ -235,19 +243,19 @@ final class AgentLoopHeuristics {
 
     static String progressReplyFor(String base, boolean hadProgress, String lastThought) {
         String blocker = (lastThought != null && !lastThought.isEmpty())
-            ? " Last blocker: " + lastThought.substring(0, Math.min(160, lastThought.length())) + "."
-            : "";
+                ? " Last blocker: " + lastThought.substring(0, Math.min(160, lastThought.length())) + "."
+                : "";
         return base + (hadProgress ? " Partial progress was made earlier this session." : "") + blocker
-            + " Re-send the instruction to continue from here.";
+                + " Re-send the instruction to continue from here.";
     }
 
     static boolean promptExpectsPhysicalAction(String prompt) {
         if (prompt == null) return false;
         String p = prompt.toLowerCase();
         return p.contains("mine") || p.contains("dig") || p.contains("break") || p.contains("clear")
-            || p.contains("replace") || p.contains("build") || p.contains("place")
-            || p.contains("farm") || p.contains("harvest") || p.contains("replant")
-            || p.contains("plug") || p.contains("scoop") || p.contains("cook") || p.contains("smelt");
+                || p.contains("replace") || p.contains("build") || p.contains("place")
+                || p.contains("farm") || p.contains("harvest") || p.contains("replant")
+                || p.contains("plug") || p.contains("scoop") || p.contains("cook") || p.contains("smelt");
     }
 
     static boolean attemptHadNoEffect(JsonObject execRes) {
@@ -256,8 +264,8 @@ final class AgentLoopHeuristics {
         }
         JsonObject res = execRes.getAsJsonObject("result");
         boolean attempted = res.has("started") || res.has("placed") || res.has("used")
-            || res.has("activated") || res.has("transferred") || res.has("moved")
-            || res.has("withdrawn") || res.has("deposited") || res.has("crafted");
+                || res.has("activated") || res.has("transferred") || res.has("moved")
+                || res.has("withdrawn") || res.has("deposited") || res.has("crafted");
         if (!attempted) return false;
         boolean acted = res.has("arrived") && res.get("arrived").isJsonPrimitive() && res.get("arrived").getAsBoolean();
         String[] flags = new String[]{"started", "placed", "used", "activated", "broken"};

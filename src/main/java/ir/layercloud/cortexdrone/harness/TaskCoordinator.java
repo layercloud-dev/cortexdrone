@@ -27,14 +27,14 @@ public final class TaskCoordinator {
         if (active) {
             if (intent == TaskIntent.QUESTION) {
                 this.manager.getLogger().log("TASK", ctrl, "Message classified as QUESTION while a task is active",
-                    "prompt=\"" + cleanPrompt + "\"");
+                        "prompt=\"" + cleanPrompt + "\"");
                 this.manager.droneSay(player, ctrl, activeTaskReply(ctrl));
                 return;
             }
             if (intent == TaskIntent.BY_THE_WAY) {
                 ctrl.task.addNote(cleanPrompt);
                 this.manager.getLogger().log("TASK", ctrl, "Message classified as BY_THE_WAY; attached as note",
-                    "prompt=\"" + cleanPrompt + "\"");
+                        "prompt=\"" + cleanPrompt + "\"");
                 this.manager.droneSay(player, ctrl, "Noted - keeping the current task. " + shortTask(ctrl));
                 return;
             }
@@ -46,7 +46,7 @@ public final class TaskCoordinator {
             // MODIFY / NEW_TASK: replace the running session immediately.
             String previous = ctrl.task.getSummary();
             this.manager.getLogger().log("TASK", ctrl, "Message classified as " + intent.name() + "; replacing active task",
-                "prompt=\"" + cleanPrompt + "\"");
+                    "prompt=\"" + cleanPrompt + "\"");
             ctrl.cancelOtherLoops(0);
             this.manager.clearActionState(ctrl);
             ctrl.task.cancel();
@@ -66,8 +66,8 @@ public final class TaskCoordinator {
         ctrl.task.begin(myLoopId, cleanPrompt);
         String senderName = player != null ? player.getCommandSenderName() : ctrl.ownerName;
         this.manager.getLogger().log("CMD", ctrl,
-            "Master-tool session from " + senderName + " (loopId=" + myLoopId + ", intent=" + intent.name() + ")",
-            "prompt=\"" + cleanPrompt + "\"");
+                "Master-tool session from " + senderName + " (loopId=" + myLoopId + ", intent=" + intent.name() + ")",
+                "prompt=\"" + cleanPrompt + "\"");
 
         final JsonObject worldContext = this.manager.getAgentService().buildDroneContextForLlm(player, ctrl);
         worldContext.addProperty("taskPrompt", cleanPrompt);
@@ -104,11 +104,11 @@ public final class TaskCoordinator {
         sb.append(" Mode: ").append(ctrl.mode.name()).append('.');
         if (ctrl.drone != null) {
             sb.append(String.format(" Position: (%.1f, %.1f, %.1f).",
-                ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ));
+                    ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ));
         }
         if (ctrl.currentMineTarget != null) {
             sb.append(" Breaking block (").append(ctrl.currentMineTarget[0]).append(',')
-                .append(ctrl.currentMineTarget[1]).append(',').append(ctrl.currentMineTarget[2]).append("). ");
+                    .append(ctrl.currentMineTarget[1]).append(',').append(ctrl.currentMineTarget[2]).append("). ");
         }
         sb.append(" I keep working on it; ask again for status, say 'by the way ...' to note something, or say 'stop' to cancel.");
         return sb.toString();

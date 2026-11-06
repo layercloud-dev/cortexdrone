@@ -4,16 +4,11 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
-import ir.layercloud.cortexdrone.manager.visuals.impl.LightingAura;
-import ir.layercloud.cortexdrone.action.visuals.impl.PlaySoundAction;
-import ir.layercloud.cortexdrone.action.visuals.impl.SayAction;
-import ir.layercloud.cortexdrone.action.visuals.impl.SetLedAction;
-import ir.layercloud.cortexdrone.action.visuals.impl.SetStatusTextAction;
-import ir.layercloud.cortexdrone.action.visuals.impl.SpawnParticlesAction;
+import ir.layercloud.cortexdrone.action.visuals.impl.*;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.VisualsContext;
-import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.ActionManager;
+import ir.layercloud.cortexdrone.model.DroneController;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
@@ -26,20 +21,20 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
 
     public VisualsManager(AIDroneManager manager, DroneLogger logger) {
         super("visuals", "set_led", "led_effect", "spawn_particles",
-            "play_sound", "play_note", "say", "set_status_text");
+                "play_sound", "play_note", "say", "set_status_text");
         this.manager = manager;
         this.lightingAura = new LightingAura(logger);
     }
 
     @Override
     protected VisualsContext createContext(DroneController controller, EntityPlayerMP player,
-                                          String operation) {
+                                           String operation) {
         return new VisualsContext(controller, player, operation);
     }
 
     @Override
     protected Action<VisualsContext> createAction(VisualsContext context, String operation,
-                                                 VisualsRequest request) {
+                                                  VisualsRequest request) {
         if ("set_led".equals(operation) || "led_effect".equals(operation)) {
             return new SetLedAction(request);
         }

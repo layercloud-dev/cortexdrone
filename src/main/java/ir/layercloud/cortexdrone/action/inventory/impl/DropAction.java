@@ -5,13 +5,15 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.model.Mode;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 
-/** Single-use inventory action: drop the drone inventory. */
+/**
+ * Single-use inventory action: drop the drone inventory.
+ */
 @RequiredArgsConstructor
 public final class DropAction implements Action<InventoryContext> {
     private final AIDroneManager manager;

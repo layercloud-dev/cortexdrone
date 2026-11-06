@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.action.visuals;
 import lombok.Builder;
 import lombok.Value;
 
-/** Immutable request data for one visuals action. */
+/**
+ * Immutable request data for one visuals action.
+ */
 @Value
 @Builder
 public class VisualsRequest {

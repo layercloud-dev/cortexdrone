@@ -4,6 +4,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.world.World;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -11,11 +17,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import ir.layercloud.cortexdrone.service.inventory.InventoryService;
-import lombok.RequiredArgsConstructor;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.world.World;
-import lombok.Data;
 
 /**
  * Dynamic, zero-hardcoded HBM/modified machine recipe introspection.
@@ -57,6 +58,7 @@ public class MachineRecipeService {
         int tierUpper;
         String overlay;
         int constructionIndex = -1;
+
         NormalizedRecipe() {
             this.inputs = new ArrayList<JsonObject>();
             this.outputs = new ArrayList<JsonObject>();
@@ -114,7 +116,7 @@ public class MachineRecipeService {
         res.addProperty("ok", true);
         String f = targetFilter != null ? targetFilter.trim() : "plate_iron";
         String wantMachine = machineFilter != null && !machineFilter.trim().isEmpty()
-            ? MachineTileInspector.normalizeMachineAlias(machineFilter) : "";
+                ? MachineTileInspector.normalizeMachineAlias(machineFilter) : "";
         List<NormalizedRecipe> all = loadAllRecipes();
         List<NormalizedRecipe> ranked = MachineRecipeRanker.rankAndFilter(all, f, wantMachine);
         if (ranked.isEmpty()) {

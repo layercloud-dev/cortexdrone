@@ -1,11 +1,14 @@
 package ir.layercloud.cortexdrone.action.interact;
 
-import java.util.Map;
 import lombok.Builder;
 import lombok.Singular;
 import lombok.Value;
 
-/** Immutable result of one interaction action. */
+import java.util.Map;
+
+/**
+ * Immutable result of one interaction action.
+ */
 @Value
 @Builder
 public class InteractionResult {

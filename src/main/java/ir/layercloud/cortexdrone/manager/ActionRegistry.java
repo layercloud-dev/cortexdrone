@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.manager;
 
 import ir.layercloud.cortexdrone.model.DroneController;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,9 +16,9 @@ import java.util.Map;
  */
 public final class ActionRegistry {
     private final Map<String, ActionManager<?, ?, ?>> byOperation =
-        new LinkedHashMap<String, ActionManager<?, ?, ?>>();
+            new LinkedHashMap<String, ActionManager<?, ?, ?>>();
     private final List<ActionManager<?, ?, ?>> managers =
-        new ArrayList<ActionManager<?, ?, ?>>();
+            new ArrayList<ActionManager<?, ?, ?>>();
 
     public void register(ActionManager<?, ?, ?> manager) {
         if (manager == null) return;
@@ -25,7 +26,7 @@ public final class ActionRegistry {
             ActionManager<?, ?, ?> previous = this.byOperation.put(operation, manager);
             if (previous != null && previous != manager) {
                 throw new IllegalStateException("Duplicate action operation '" + operation
-                    + "' in " + previous.category() + " and " + manager.category());
+                        + "' in " + previous.category() + " and " + manager.category());
             }
         }
         this.managers.add(manager);

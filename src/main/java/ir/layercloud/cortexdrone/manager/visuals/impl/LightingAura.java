@@ -1,13 +1,10 @@
 package ir.layercloud.cortexdrone.manager.visuals.impl;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.manager.visuals.LightConfig;
 import ir.layercloud.cortexdrone.manager.visuals.LightResult;
+import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -16,6 +13,10 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * Torch-free illumination aura.
@@ -40,34 +41,36 @@ public class LightingAura {
 
     private final DroneLogger logger;
 
-    /** Handles {@code torch} / {@code light} RPC: toggle, or set colour/radius/level. */
+    /**
+     * Handles {@code torch} / {@code light} RPC: toggle, or set colour/radius/level.
+     */
     public LightResult configure(DroneController ctrl, LightConfig config) {
         if (ctrl == null || ctrl.drone == null) {
             return LightResult.failure("No active drone");
         }
         boolean wasActive = ctrl.autoTorch;
         if (config.getEnabled() != null) {
-            ctrl.autoTorch = config.getEnabled().booleanValue();
+            ctrl.autoTorch = config.getEnabled();
         } else if (config.isToggle()) {
             ctrl.autoTorch = !ctrl.autoTorch;
         }
         if (config.getRadius() != null) {
-            ctrl.lightRadius = clamp(config.getRadius().intValue(), MIN_RADIUS, MAX_RADIUS);
+            ctrl.lightRadius = clamp(config.getRadius(), MIN_RADIUS, MAX_RADIUS);
         }
         if (config.getLevel() != null) {
-            ctrl.lightIntensity = clamp(config.getLevel().intValue(), MIN_LEVEL, MAX_LEVEL);
+            ctrl.lightIntensity = clamp(config.getLevel(), MIN_LEVEL, MAX_LEVEL);
         }
         if (config.getColor() != null) {
-            ctrl.lightColor = config.getColor().intValue();
+            ctrl.lightColor = config.getColor();
         }
 
         if (ctrl.autoTorch) {
             ctrl.lightCooldown = 0;
             ctrl.lightAnchor = Long.MIN_VALUE;
-            if (config.getColor() != null && (config.getColor().intValue() & 0xFFFFFF) != 0xFFFFFF) {
-                ctrl.customLedColor = Integer.valueOf(config.getColor().intValue() & 0xFFFFFF);
+            if (config.getColor() != null && (config.getColor() & 0xFFFFFF) != 0xFFFFFF) {
+                ctrl.customLedColor = Integer.valueOf(config.getColor() & 0xFFFFFF);
                 ctrl.ledEffect = "NONE";
-                ctrl.drone.lightColor_$eq(config.getColor().intValue() & 0xFFFFFF);
+                ctrl.drone.lightColor_$eq(config.getColor() & 0xFFFFFF);
             }
             applyAura(ctrl);
         } else if (wasActive) {
@@ -75,17 +78,19 @@ public class LightingAura {
         }
 
         return LightResult.builder()
-            .ok(true)
-            .active(ctrl.autoTorch)
-            .radius(ctrl.lightRadius)
-            .level(ctrl.lightIntensity)
-            .color(ctrl.lightColor)
-            .cells(ctrl.lightCells.size())
-            .torchFree(true)
-            .build();
+                .ok(true)
+                .active(ctrl.autoTorch)
+                .radius(ctrl.lightRadius)
+                .level(ctrl.lightIntensity)
+                .color(ctrl.lightColor)
+                .cells(ctrl.lightCells.size())
+                .torchFree(true)
+                .build();
     }
 
-    /** Called every server tick by the coordinator for each active controller. */
+    /**
+     * Called every server tick by the coordinator for each active controller.
+     */
     public void tick(DroneController ctrl) {
         if (ctrl == null || ctrl.drone == null) return;
         World world = ctrl.drone.worldObj;
@@ -106,7 +111,9 @@ public class LightingAura {
         applyAura(ctrl);
     }
 
-    /** Restores every voxel this aura touched. Safe to call repeatedly. */
+    /**
+     * Restores every voxel this aura touched. Safe to call repeatedly.
+     */
     public void clearAura(DroneController ctrl) {
         if (ctrl == null) return;
         if (ctrl.drone == null || ctrl.drone.worldObj == null) {
@@ -117,11 +124,11 @@ public class LightingAura {
         World world = ctrl.drone.worldObj;
         Map<Long, Integer> chunkMasks = new HashMap<Long, Integer>();
         for (Map.Entry<Long, Integer> e : ctrl.lightCells.entrySet()) {
-            long key = e.getKey().longValue();
+            long key = e.getKey();
             int x = unpackX(key);
             int y = unpackY(key);
             int z = unpackZ(key);
-            world.setLightValue(EnumSkyBlock.Block, x, y, z, e.getValue().intValue());
+            world.setLightValue(EnumSkyBlock.Block, x, y, z, e.getValue());
             addChunkMask(chunkMasks, x, y, z);
         }
         int restored = ctrl.lightCells.size();
@@ -163,10 +170,10 @@ public class LightingAura {
                     long key = pack(x, y, z);
                     Integer original = previous.remove(key);
                     int before = original != null
-                        ? original.intValue()
-                        : world.getSavedLightValue(EnumSkyBlock.Block, x, y, z);
+                            ? original.intValue()
+                            : world.getSavedLightValue(EnumSkyBlock.Block, x, y, z);
                     ctrl.lightCells.put(key, Integer.valueOf(before));
-                    int want = Math.max(1, level - (int) Math.sqrt((double) d2));
+                    int want = Math.max(1, level - (int) Math.sqrt(d2));
                     if (before < want) {
                         world.setLightValue(EnumSkyBlock.Block, x, y, z, want);
                         addChunkMask(chunkMasks, x, y, z);
@@ -178,11 +185,11 @@ public class LightingAura {
         // Anything left in `previous` fell out of the aura: put the world back.
         for (Iterator<Map.Entry<Long, Integer>> it = previous.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<Long, Integer> e = it.next();
-            long key = e.getKey().longValue();
+            long key = e.getKey();
             int x = unpackX(key);
             int y = unpackY(key);
             int z = unpackZ(key);
-            world.setLightValue(EnumSkyBlock.Block, x, y, z, e.getValue().intValue());
+            world.setLightValue(EnumSkyBlock.Block, x, y, z, e.getValue());
             addChunkMask(chunkMasks, x, y, z);
         }
 
@@ -201,9 +208,9 @@ public class LightingAura {
         if (world.playerEntities == null || world.playerEntities.isEmpty()) return;
 
         for (Map.Entry<Long, Integer> ce : chunkMasks.entrySet()) {
-            int cx = unpackChunkX(ce.getKey().longValue());
-            int cz = unpackChunkZ(ce.getKey().longValue());
-            int mask = ce.getValue().intValue() & 0xFFFF;
+            int cx = unpackChunkX(ce.getKey());
+            int cz = unpackChunkZ(ce.getKey());
+            int mask = ce.getValue() & 0xFFFF;
             if (mask == 0) continue;
             if (!ChunkAccess.isLoaded(world, cx, cz)) continue;
             Chunk chunk = world.getChunkFromChunkCoords(cx, cz);
@@ -228,7 +235,7 @@ public class LightingAura {
         long key = chunkKey(x, z);
         int bit = 1 << (y >> 4);
         Integer old = chunkMasks.get(Long.valueOf(key));
-        chunkMasks.put(Long.valueOf(key), Integer.valueOf((old == null ? 0 : old.intValue()) | bit));
+        chunkMasks.put(Long.valueOf(key), Integer.valueOf((old == null ? 0 : old) | bit));
     }
 
 

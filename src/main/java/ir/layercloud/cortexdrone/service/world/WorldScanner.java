@@ -5,13 +5,6 @@ import ir.layercloud.cortexdrone.config.AIConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.model.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -23,6 +16,8 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.biome.BiomeGenBase;
+
+import java.util.*;
 
 /**
  * Spatial world discovery service coordinating room scans (RoomScanner),
@@ -47,9 +42,9 @@ public class WorldScanner {
     private final AIConfig config;
 
     private final java.util.Map<Long, java.util.Map<String, int[]>> nearbyResourceCache =
-        new java.util.HashMap<Long, java.util.Map<String, int[]>>();
+            new java.util.HashMap<Long, java.util.Map<String, int[]>>();
     private final java.util.Map<Long, Long> nearbyResourceExpiry =
-        new java.util.HashMap<Long, Long>();
+            new java.util.HashMap<Long, Long>();
 
     public JsonObject scanRoom3D(World world, int startX, int startY, int startZ, int maxRadius) {
         return RoomScanner.scanRoom3D(world, startX, startY, startZ, maxRadius);
@@ -91,7 +86,7 @@ public class WorldScanner {
                     int sz = iz + (int) Math.round(Math.sin(ang) * r);
 
                     boolean isLoaded = !(world instanceof WorldServer)
-                        || ((WorldServer) world).theChunkProviderServer.chunkExists(sx >> 4, sz >> 4);
+                            || ((WorldServer) world).theChunkProviderServer.chunkExists(sx >> 4, sz >> 4);
                     if (loadedOnly && !isLoaded) continue;
                     if (!loadedOnly && isLoaded) continue;
 
@@ -127,8 +122,8 @@ public class WorldScanner {
                                         found.add(new int[]{bx, by, bz});
                                         if (found.size() >= 96) {
                                             this.logger.log("PATH", ctrl,
-                                                String.format("Located distant '%s' at (%d,%d,%d) [dist=%dm]", target, bx, by, bz, r),
-                                                "count=" + found.size());
+                                                    String.format("Located distant '%s' at (%d,%d,%d) [dist=%dm]", target, bx, by, bz, r),
+                                                    "count=" + found.size());
                                             return found;
                                         }
                                     }
@@ -138,8 +133,8 @@ public class WorldScanner {
                     }
                     if (found.size() >= 48) {
                         this.logger.log("PATH", ctrl,
-                            String.format("Located distant '%s' at (%d,%d,%d) [dist=%dm]", target, found.get(0)[0], found.get(0)[1], found.get(0)[2], r),
-                            "count=" + found.size());
+                                String.format("Located distant '%s' at (%d,%d,%d) [dist=%dm]", target, found.get(0)[0], found.get(0)[1], found.get(0)[2], r),
+                                "count=" + found.size());
                         return found;
                     }
                 }
@@ -149,8 +144,8 @@ public class WorldScanner {
             int[] first = found.get(0);
             int distM = (int) Math.round(Math.hypot(first[0] - ix, first[2] - iz));
             this.logger.log("PATH", ctrl,
-                String.format("Located distant '%s' at (%d,%d,%d) [dist=%dm]", target, first[0], first[1], first[2], distM),
-                "count=" + found.size());
+                    String.format("Located distant '%s' at (%d,%d,%d) [dist=%dm]", target, first[0], first[1], first[2], distM),
+                    "count=" + found.size());
         }
         return found;
     }
@@ -179,7 +174,7 @@ public class WorldScanner {
             long now = System.currentTimeMillis();
             Long expiry = this.nearbyResourceExpiry.get(cacheKey);
             if (expiry != null) {
-                if (expiry.longValue() > now) {
+                if (expiry > now) {
                     Map<String, int[]> hit = this.nearbyResourceCache.get(cacheKey);
                     if (hit != null) {
                         return copySummary(hit);
@@ -203,7 +198,7 @@ public class WorldScanner {
                 while (it.hasNext()) {
                     Long k = it.next();
                     Long exp = this.nearbyResourceExpiry.get(k);
-                    if (exp == null || exp.longValue() <= now) {
+                    if (exp == null || exp <= now) {
                         it.remove();
                         this.nearbyResourceCache.remove(k);
                     }
@@ -214,7 +209,7 @@ public class WorldScanner {
     }
 
     private static long cacheKey(int bx, int by, int bz, int dimId, int radius) {
-        long k = (long) dimId;
+        long k = dimId;
         k = k * 1315423911L ^ (bx & 0xFFFFFFFFL);
         k = k * 1315423911L ^ (by & 0xFFFFFFFFL);
         k = k * 1315423911L ^ (bz & 0xFFFFFFFFL);

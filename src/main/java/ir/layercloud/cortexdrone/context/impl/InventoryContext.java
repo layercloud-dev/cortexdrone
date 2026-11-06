@@ -8,7 +8,9 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-/** Mutable state for one inventory action. */
+/**
+ * Mutable state for one inventory action.
+ */
 @Getter
 @Accessors(fluent = true)
 public final class InventoryContext extends ActionContextBase {

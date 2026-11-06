@@ -1,11 +1,16 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import lombok.RequiredArgsConstructor;
+import net.minecraft.block.Block;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemFood;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.ItemTool;
+import net.minecraft.item.crafting.FurnaceRecipes;
+import net.minecraft.tileentity.TileEntityFurnace;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -17,14 +22,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import lombok.RequiredArgsConstructor;
-import net.minecraft.block.Block;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemFood;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemTool;
-import net.minecraft.item.crafting.FurnaceRecipes;
-import net.minecraft.tileentity.TileEntityFurnace;
 
 @RequiredArgsConstructor
 public class DocLookupService {
@@ -63,8 +60,8 @@ public class DocLookupService {
                         String disp = st.getDisplayName();
                         String combined = ItemClassifier.getItemIdentifier(st);
                         if (ItemClassifier.matchesBlockOrItemName(disp, combined, meta, qLower)
-                            || (disp != null && disp.toLowerCase().contains(qLower))
-                            || regName.toLowerCase().replace('_', ' ').contains(qLower)) {
+                                || (disp != null && disp.toLowerCase().contains(qLower))
+                                || regName.toLowerCase().replace('_', ' ').contains(qLower)) {
                             JsonObject io = new JsonObject();
                             io.addProperty("name", disp != null ? disp : regName);
                             io.addProperty("registryName", regName);
@@ -201,13 +198,13 @@ public class DocLookupService {
             return this.webDocCache.get(cacheKey);
         }
         String[] endpoints = (modId != null && modId.contains("hbm"))
-            ? new String[]{"https://ntm.fandom.com/api.php", "https://minecraft.wiki/api.php"}
-            : new String[]{"https://minecraft.wiki/api.php", "https://ntm.fandom.com/api.php"};
+                ? new String[]{"https://ntm.fandom.com/api.php", "https://minecraft.wiki/api.php"}
+                : new String[]{"https://minecraft.wiki/api.php", "https://ntm.fandom.com/api.php"};
 
         for (String baseApi : endpoints) {
             try {
                 String urlStr = baseApi + "?action=query&list=search&srsearch="
-                    + URLEncoder.encode(query, "UTF-8") + "&utf8=1&format=json&srlimit=2";
+                        + URLEncoder.encode(query, "UTF-8") + "&utf8=1&format=json&srlimit=2";
                 HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("User-Agent", "CortexDrone/1.4 (Minecraft 1.7.10 AI Engine)");
@@ -230,8 +227,8 @@ public class DocLookupService {
                                 JsonObject first = sArr.get(0).getAsJsonObject();
                                 String title = first.has("title") ? first.get("title").getAsString() : query;
                                 String snippet = first.has("snippet")
-                                    ? first.get("snippet").getAsString().replaceAll("<[^>]+>", "").trim()
-                                    : "";
+                                        ? first.get("snippet").getAsString().replaceAll("<[^>]+>", "").trim()
+                                        : "";
                                 String summary = title + ": " + snippet;
                                 this.webDocCache.put(cacheKey, summary);
                                 return summary;

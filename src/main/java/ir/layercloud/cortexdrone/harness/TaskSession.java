@@ -18,7 +18,7 @@ public final class TaskSession {
     private String summary = "";
     private long startedAtMs;
     private long lastUpdateMs;
-    private final List<String> notes = new ArrayList<String>();
+    private final List<String> notes = new ArrayList<>();
     private static final int MAX_NOTES = 8;
 
     public synchronized void begin(int loopId, String prompt) {
@@ -74,7 +74,7 @@ public final class TaskSession {
     }
 
     public synchronized List<String> getNotes() {
-        return Collections.unmodifiableList(new ArrayList<String>(this.notes));
+        return Collections.unmodifiableList(new ArrayList<>(this.notes));
     }
 
     public synchronized long getAgeMs() {

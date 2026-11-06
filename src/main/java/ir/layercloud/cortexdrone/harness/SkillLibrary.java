@@ -5,18 +5,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import lombok.Data;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 public class SkillLibrary {
     @Data
@@ -47,7 +40,7 @@ public class SkillLibrary {
     private synchronized void loadBundledSkills() {
         InputStream indexStream = SkillLibrary.class.getResourceAsStream("/skills/index.json");
         if (indexStream == null) return;
-        try (InputStreamReader indexReader = new InputStreamReader(indexStream, "UTF-8")) {
+        try (InputStreamReader indexReader = new InputStreamReader(indexStream, StandardCharsets.UTF_8)) {
             JsonElement index = new JsonParser().parse(indexReader);
             if (index == null || !index.isJsonArray()) return;
             for (JsonElement item : index.getAsJsonArray()) {
@@ -55,7 +48,7 @@ public class SkillLibrary {
                 String file = item.getAsString();
                 InputStream skillStream = SkillLibrary.class.getResourceAsStream("/skills/" + file);
                 if (skillStream == null) continue;
-                try (InputStreamReader skillReader = new InputStreamReader(skillStream, "UTF-8")) {
+                try (InputStreamReader skillReader = new InputStreamReader(skillStream, StandardCharsets.UTF_8)) {
                     SkillEntry skill = CortexDroneMod.GSON.fromJson(skillReader, SkillEntry.class);
                     if (skill == null || skill.getName() == null || skill.getName().trim().isEmpty()) continue;
                     String key = skill.getName().trim().toLowerCase().replace(' ', '_');
@@ -89,7 +82,8 @@ public class SkillLibrary {
     }
 
     public synchronized void recordSelfCorrectedSkill(String userPrompt, String thought, String workingCode) {
-        if (userPrompt == null || workingCode == null || workingCode.length() < 15 || workingCode.length() > 1400) return;
+        if (userPrompt == null || workingCode == null || workingCode.length() < 15 || workingCode.length() > 1400)
+            return;
         String slug = "learned_" + userPrompt.trim().toLowerCase().replaceAll("[^a-z0-9]+", "_");
         if (slug.length() > 36) slug = slug.substring(0, 36);
         saveSkill(slug, (thought != null && !thought.isEmpty()) ? thought : userPrompt, workingCode, userPrompt.toLowerCase());
@@ -108,7 +102,7 @@ public class SkillLibrary {
 
         for (SkillEntry s : all) {
             List<String> dToks = ir.layercloud.cortexdrone.service.world.LexicalItemMatcher.tokenize(
-                s.getName() + " " + s.getName() + " " + (s.getTags() != null ? s.getTags() + " " + s.getTags() : "") + " " + s.getDescription()
+                    s.getName() + " " + s.getName() + " " + (s.getTags() != null ? s.getTags() + " " + s.getTags() : "") + " " + s.getDescription()
             );
             docTokensMap.put(s.getName(), dToks);
             totalDocLen += dToks.size();
@@ -144,7 +138,7 @@ public class SkillLibrary {
                     double docLen = dToks.size();
                     double termScore = idf * ((tf * (k1 + 1.0)) / (tf + k1 * (1.0 - b + b * (docLen / avgDocLen))));
                     Double prev = bm25Scores.get(s.getName());
-                    bm25Scores.put(s.getName(), (prev != null ? prev.doubleValue() : 0.0) + termScore);
+                    bm25Scores.put(s.getName(), (prev != null ? prev : 0.0) + termScore);
                 }
             }
         }

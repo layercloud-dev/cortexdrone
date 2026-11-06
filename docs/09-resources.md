@@ -56,7 +56,7 @@ Infrastructure injected before the model's code:
 | `rpc(method,args,opts)` | POST `/rpc`, 3 attempts, JSON cap unless `raw` |
 | `_state()` | `/rpc state` |
 | `_waitUntil(predicate,maxWaitMs)` | poll state with backoff; throws `SUPERSEDED` on aborted |
-| `_waitIdle(maxWaitMs)` | wait for `busy === false` and no break target |
+| `_waitIdle(maxWaitMs)` | wait for `busy === false` |
 | `_isPendingScan` / `_normalizeScanResult` | large-scan handling |
 | `_awaitScanJob(jobId,radius)` | poll `poll_scan` with backoff until done/timeout |
 | `_finalizeScript` | no-op hook before output |

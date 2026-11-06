@@ -10,10 +10,6 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public final class RpcArgs {
-    public static JsonObject safe(JsonObject args) {
-        return args != null ? args : new JsonObject();
-    }
-
     public static boolean has(JsonObject args, String key) {
         return args != null && args.has(key) && !args.get(key).isJsonNull();
     }
@@ -37,10 +33,6 @@ public final class RpcArgs {
 
     public static float decimalFloat(JsonObject args, String key, float fallback) {
         return has(args, key) ? args.get(key).getAsFloat() : fallback;
-    }
-
-    public static boolean flag(JsonObject args, String key, boolean fallback) {
-        return has(args, key) ? args.get(key).getAsBoolean() : fallback;
     }
 
     public static JsonObject object(JsonObject args, String key) {

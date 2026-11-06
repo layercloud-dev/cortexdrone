@@ -54,11 +54,14 @@ It constructs and owns:
 
 ### `MachineRecipeService`
 
-Dynamic HBM/modified machine recipe introspection:
+Read-only HBM/modified machine recipe introspection. HBM access is optional and
+isolated behind `MachineRecipeHook` implementations:
 
-- parses every flat or live-edited HBM recipe JSON under the server config
-  `hbmRecipes` directory (directory listing, not a hardcoded file list);
-- falls back to live `GenericRecipes` / `AnvilRecipes` via reflection;
+- `HbmRecipeFileHook` — parses every flat or live-edited HBM recipe JSON under
+  `config/hbmRecipes` (directory listing, not a hardcoded file list);
+- `HbmRecipeLiveHook` — reads live `GenericRecipes` / `AnvilRecipes` objects via
+  reflection, only when the HBM classes are present;
+- with no HBM both hooks report unavailable and the service returns no recipes;
 - normalizes recipe shapes into `NormalizedRecipe` and computes `Availability`;
 - `getMachineRecipesForFilter(filter, machine)` — ranked/filtered recipes;
 - `getBestMachineRecipe(world, player, filter, machine, radius)` — best recipe by
@@ -228,20 +231,7 @@ Low-level motion/physics: server-side physics step, obstruction description,
 nearby leaf clearing, stable follow anchor, block standoff search, player-look
 test, headroom.
 
-## 5. Machine services (`service/machine`)
-
-`MachineRecipeService` is read-only and composes optional `MachineRecipeHook`
-implementations:
-
-- `hbm-json` — reads `config/hbmRecipes/*.json` when the directory exists;
-- `hbm-live` — reads live HBM recipe objects by reflection when the HBM classes
-  exist.
-
-With no HBM present both hooks are unavailable and the service simply returns no
-recipes. There is no action for machines: nothing here mutates the world, so
-`action/hbm` does not exist.
-
-## 6. Service boundaries and caches
+## 5. Service boundaries and caches
 
 | Service | Cache/state |
 | --- | --- |

@@ -17,11 +17,6 @@ import java.util.List;
  */
 public final class HbmRecipeFileHook implements MachineRecipeHook {
     @Override
-    public String id() {
-        return "hbm-json";
-    }
-
-    @Override
     public boolean isAvailable() {
         File dir = new File(resolveConfigDirectory(), "hbmRecipes");
         return dir.isDirectory();

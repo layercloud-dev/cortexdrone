@@ -11,9 +11,6 @@ import java.util.List;
  * the hook reports itself unavailable and the service simply has no recipes.</p>
  */
 public interface MachineRecipeHook {
-    /** Stable identifier used in logs and diagnostics. */
-    String id();
-
     /** True when the mod/config this hook reads is present. */
     boolean isAvailable();
 

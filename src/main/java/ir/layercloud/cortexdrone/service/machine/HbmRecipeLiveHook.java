@@ -14,11 +14,6 @@ public final class HbmRecipeLiveHook implements MachineRecipeHook {
     private static final String PROBE_CLASS = "com.hbm.inventory.recipes.anvil.AnvilRecipes";
 
     @Override
-    public String id() {
-        return "hbm-live";
-    }
-
-    @Override
     public boolean isAvailable() {
         try {
             Class.forName(PROBE_CLASS);

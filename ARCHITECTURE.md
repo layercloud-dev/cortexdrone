@@ -86,7 +86,7 @@ src/main/java/ir/layercloud/cortexdrone/
     tool/                   ToolSpec, ToolRegistry, ToolInvoker, ScanJobs, schemas
     tools/                  one provider per domain + view/ JSON boundaries
     skill/                  Skill, SkillLibrary, SkillSearch, SkillRefiner
-    session/                DroneSession, SessionManager
+    session/                DroneSession, SessionManager, SessionJournal
     task/                   TaskCoordinator, TaskIntentClassifier
 
   command/                  /drone command
@@ -205,6 +205,13 @@ them with the `lesson` tool after a failure or non-obvious success and they are
 injected next to memory. Skills stay executable code; the harness also
 auto-saves a successful script when the model skips `skill_refine`.
 
+`SessionJournal` writes one JSON + Markdown transcript per task under
+`config/cortexdrone/sessions/<outcome>/` and appends an index line. Outcomes
+are `success`, `failure`, `cancelled`, `interrupted`, `incomplete` and `error`;
+the index also stores a derived topic (mining, building, navigation, inventory,
+combat, survival, general). Runs are written exactly once, including runs cut
+short by a new task, despawn, config reload or server shutdown.
+
 ## 7. Tool surface
 
 Each domain provider owns its declarations and handlers. Duplicate names or
@@ -262,6 +269,7 @@ config/cortexdrone/
   skills.json   learned/refined skill overrides
   memory.json   player facts and named locations
   lessons.json  learned procedural rules
+  sessions/     per-task JSON+Markdown transcripts grouped by outcome
   logs/         debug log
 ```
 

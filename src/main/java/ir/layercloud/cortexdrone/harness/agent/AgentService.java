@@ -13,6 +13,8 @@ import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
+import ir.layercloud.cortexdrone.harness.session.SessionJournal;
+import ir.layercloud.cortexdrone.harness.session.SessionOutcome;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
 import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
@@ -46,12 +48,13 @@ public final class AgentService {
     private final SkillLibrary skills;
     private final MemoryStore memory;
     private final LessonStore lessons;
+    private final SessionJournal journal;
     private final ModConfig config;
 
     public AgentService(AIDroneManager manager, DroneLogger logger, WorldScanner worldScanner,
                         LlmClient llm, ToolInvoker invoker, ToolRegistry registry,
                         SkillLibrary skills, MemoryStore memory, LessonStore lessons,
-                        ModConfig config) {
+                        SessionJournal journal, ModConfig config) {
         this.manager = manager;
         this.logger = logger;
         this.worldScanner = worldScanner;
@@ -61,6 +64,7 @@ public final class AgentService {
         this.skills = skills;
         this.memory = memory;
         this.lessons = lessons;
+        this.journal = journal;
         this.config = config;
     }
 
@@ -77,10 +81,11 @@ public final class AgentService {
 
     public void runAgentLoop(final EntityPlayerMP player, final DroneController controller,
                              final String userPrompt, final String contextMessage,
-                             final int loopId) {
+                             final int loopId, final String intent) {
         DroneSession session = this.manager.getSessionManager().session(controller);
         Conversation conversation = new Conversation(SYSTEM_PROMPT, contextMessage, userPrompt,
                 this.config.getMaxContextChars(), this.config.getMaxToolResultChars());
+        SessionJournal.SessionRun run = beginSession(controller, player, userPrompt, intent, loopId);
         long deadline = System.currentTimeMillis() + Math.max(30, this.config.getTaskDeadlineSeconds()) * 1000L;
         int emptyResponses = 0;
         String lastWorkflowScript = null;
@@ -96,10 +101,13 @@ public final class AgentService {
                 if (superseded(controller, session, loopId)) {
                     LoopTracer.logSuperseded(this.logger, controller, loopId, turn, userPrompt,
                             session.activeLoopId());
+                    finishInterrupted(run, session, loopId);
                     return;
                 }
                 if (System.currentTimeMillis() > deadline) {
-                    speak(player, controller, partialMessage("time limit", session));
+                    String message = partialMessage("time limit", session);
+                    finishRun(run, SessionOutcome.INCOMPLETE, "deadline", message);
+                    speak(player, controller, message);
                     return;
                 }
                 conversation.compactIfNeeded();
@@ -113,8 +121,10 @@ public final class AgentService {
                 } catch (Throwable t) {
                     this.logger.log("LLM", controller, "LLM request failed on turn " + turn,
                             t.toString() + " key=" + LoopTracer.maskKey(this.config.getApiKey()));
-                    speak(player, controller, "AI backend error: " + LoopTracer.snippet(t.toString(), 220)
-                            + ". Fix the gateway/key and re-send the task.");
+                    String message = "AI backend error: " + LoopTracer.snippet(t.toString(), 220)
+                            + ". Fix the gateway/key and re-send the task.";
+                    finishRun(run, SessionOutcome.ERROR, "llm_error", message);
+                    speak(player, controller, message);
                     return;
                 }
 
@@ -122,6 +132,7 @@ public final class AgentService {
                         ? response.reasoning() : response.content();
                 if (!thought.trim().isEmpty()) {
                     session.recordThought(turn, LoopTracer.snippet(thought, 400));
+                    if (run != null) run.thought(turn, thought);
                     this.logger.log("THINK", controller, "Turn " + turn + ": "
                             + LoopTracer.snippet(thought, 600), "");
                 }
@@ -139,10 +150,17 @@ public final class AgentService {
                                     + "or give a short final answer with what is done and what is blocked.");
                             continue;
                         }
-                        speak(player, controller, partialMessage("empty model response", session));
+                        String message = partialMessage("empty model response", session);
+                        finishRun(run, SessionOutcome.INCOMPLETE, "empty_model_response", message);
+                        speak(player, controller, message);
                         return;
                     }
                     maybeAutoSaveSkill(controller, userPrompt, lastWorkflowScript, refinedSkill);
+                    SessionOutcome outcome = SessionOutcome.fromReply(response.content());
+                    if (outcome == SessionOutcome.SUCCESS && run != null && run.allToolsFailed()) {
+                        outcome = SessionOutcome.FAILURE;
+                    }
+                    finishRun(run, outcome, "final_answer", response.content());
                     speak(player, controller, response.content());
                     return;
                 }
@@ -152,13 +170,15 @@ public final class AgentService {
                     if (superseded(controller, session, loopId)) {
                         LoopTracer.logSuperseded(this.logger, controller, loopId, turn, userPrompt,
                                 session.activeLoopId());
+                        finishInterrupted(run, session, loopId);
                         return;
                     }
                     JsonObject arguments = call.argumentsAsJson();
                     if (arguments == null) {
-                        conversation.toolError(call,
-                                "Arguments for '" + call.name() + "' are not valid JSON: "
-                                        + LoopTracer.snippet(call.arguments(), 400));
+                        String message = "Arguments for '" + call.name() + "' are not valid JSON: "
+                                + LoopTracer.snippet(call.arguments(), 400);
+                        conversation.toolError(call, message);
+                        if (run != null) run.toolError(turn, call.name(), call.arguments(), message);
                         continue;
                     }
                     this.logger.log("TOOL", controller, "Turn " + turn + " -> " + call.name(),
@@ -167,25 +187,95 @@ public final class AgentService {
                             controller, player, loopId);
                     JsonObject result = this.invoker.invoke(context, call.name(), arguments);
                     conversation.toolResult(call, result);
+                    boolean ok = isOk(result);
+                    if (run != null) {
+                        run.tool(turn, call.name(), arguments.toString(), ok, result.toString());
+                        if ("cancel".equals(call.name())) run.cancelRequested("model_cancel");
+                    }
                     if ("skill_refine".equals(call.name())) refinedSkill = true;
-                    if ("execute".equals(call.name()) && isOk(result) && arguments.has("code")) {
+                    if ("execute".equals(call.name()) && ok && arguments.has("code")) {
                         String code = arguments.get("code").getAsString();
                         if (code != null && code.trim().length() >= 200) lastWorkflowScript = code;
                     }
                     this.logger.log("TOOL", controller, "Turn " + turn + " <- " + call.name()
-                                    + (result.has("ok") && result.get("ok").getAsBoolean() ? " ok" : " error"),
+                                    + (ok ? " ok" : " error"),
                             LoopTracer.snippet(result.toString(), 700));
                 }
             }
-            speak(player, controller, partialMessage("turn limit", session));
+            String message = partialMessage("turn limit", session);
+            finishRun(run, SessionOutcome.INCOMPLETE, "turn_limit", message);
+            speak(player, controller, message);
         } catch (Throwable t) {
             this.logger.log("AGENT", controller, "Agent loop failed",
                     t.toString() + " key=" + LoopTracer.maskKey(this.config.getApiKey()));
-            speak(player, controller, "Stopped due to an internal error ("
-                    + LoopTracer.snippet(t.toString(), 200) + "). Re-send the task to retry.");
+            String message = "Stopped due to an internal error ("
+                    + LoopTracer.snippet(t.toString(), 200) + "). Re-send the task to retry.";
+            finishRun(run, SessionOutcome.ERROR, "internal_error:" + t, message);
+            speak(player, controller, message);
         } finally {
             session.unregisterLoop(loopId);
         }
+    }
+
+    private SessionJournal.SessionRun beginSession(DroneController controller, EntityPlayerMP player,
+                                                   String prompt, String intent, int loopId) {
+        if (this.journal == null) return null;
+        double x = 0.0D;
+        double y = 0.0D;
+        double z = 0.0D;
+        int dimension = 0;
+        try {
+            if (controller != null && controller.drone != null) {
+                x = controller.drone.posX;
+                y = controller.drone.posY;
+                z = controller.drone.posZ;
+                dimension = controller.drone.dimension;
+            } else if (player != null) {
+                x = player.posX;
+                y = player.posY;
+                z = player.posZ;
+                dimension = player.dimension;
+            }
+        } catch (Exception ignored) {
+            // Journaling must never break the task.
+        }
+        try {
+            return this.journal.begin(loopId,
+                    controller != null ? controller.name : "unknown",
+                    controller != null ? controller.id : 0,
+                    controller != null ? controller.ownerName : "",
+                    player != null ? player.getCommandSenderName() : "",
+                    intent, this.config.getModel(), dimension, x, y, z, prompt);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static void finishRun(SessionJournal.SessionRun run, SessionOutcome outcome,
+                                  String reason, String reply) {
+        if (run == null) return;
+        try {
+            run.finish(outcome, reason, reply);
+        } catch (Exception ignored) {
+            // Session logging is best effort; the task result is what matters.
+        }
+    }
+
+    private static void finishInterrupted(SessionJournal.SessionRun run, DroneSession session,
+                                          int loopId) {
+        if (run == null) return;
+        String cancelReason = session != null ? session.cancelReason(loopId) : null;
+        SessionOutcome outcome = SessionOutcome.INTERRUPTED;
+        String reason;
+        if (cancelReason != null) {
+            reason = "cancelled:" + cancelReason;
+            if ("player_cancel".equals(cancelReason) || "model_cancel".equals(cancelReason)) {
+                outcome = SessionOutcome.CANCELLED;
+            }
+        } else {
+            reason = "interrupted:drone_unavailable";
+        }
+        finishRun(run, outcome, reason, null);
     }
 
     /**

@@ -61,6 +61,7 @@ config/cortexdrone/
   skills.json   learned/refined skills
   memory.json   player facts and named locations
   lessons.json  learned procedural rules
+  sessions/     task transcripts grouped by outcome + index.jsonl
   logs/         cortexdrone.log (+ .1 rotation)
 ```
 

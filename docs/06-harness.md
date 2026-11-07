@@ -5,6 +5,7 @@
 ```text
 TaskCoordinator          intent + single-session policy
 SessionManager           per-drone session state
+SessionJournal           durable per-task transcript, grouped by outcome
 AgentService             the tool-calling loop
 LlmClient                OpenAI-compatible HTTP client
 Conversation             bounded message log + compaction
@@ -152,6 +153,39 @@ lesson action=forget id=les_...
 ```
 
 Relevant and pinned lessons are injected into the task context next to memory.
+
+## Session journal
+
+Every `@drone` task creates one `SessionJournal.SessionRun`. The run records
+the prompt, live context metadata, every thought, tool call/result and the
+final reply. When the loop ends, `SessionJournal` writes:
+
+```text
+config/cortexdrone/sessions/
+  index.jsonl          one compact line per run (outcome, topic, counts, file)
+  success/<id>.json    full transcript + <id>.md readable copy
+  failure/
+  cancelled/
+  interrupted/
+  incomplete/
+  error/
+```
+
+Categories:
+
+- `success` — final answer did not report a problem;
+- `failure` — final answer reports that the task was blocked/impossible;
+- `cancelled` — player or model cancelled the task;
+- `interrupted` — replaced by a new task, drone despawned, config reload or
+  server shutdown;
+- `incomplete` — turn/time budget or an empty model response ended the loop;
+- `error` — LLM/backend/internal exception.
+
+The `topic` field (`mining`, `building`, `navigation`, `inventory`, `combat`,
+`survival`, `general`) is derived from the prompt and the tools used. A run is
+written exactly once even if the loop and a shutdown hook both finish it.
+Inspect with `/drone sessions list`, `/drone sessions stats` or
+`/drone sessions show <id>`.
 
 ## Skills
 

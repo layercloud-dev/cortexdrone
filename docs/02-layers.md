@@ -56,7 +56,7 @@ ir.layercloud.cortexdrone
     tool/                ToolSpec, ToolRegistry, ToolInvoker, ScanJobs, ToolSchema
     tools/               providers + view/ JSON boundaries
     skill/               Skill, SkillLibrary, SkillSearch, SkillRefiner
-    session/             DroneSession, SessionManager
+    session/             DroneSession, SessionManager, SessionJournal
     task/                TaskCoordinator, TaskIntentClassifier
 
   command/               /drone

@@ -45,6 +45,8 @@
 | `harness.skill.SkillRefiner` | Recursive skill compiler (RLM) |
 | `harness.session.DroneSession` | Active task, loop generation, notes, thoughts |
 | `harness.session.SessionManager` | One session per controller |
+| `harness.session.SessionJournal` | Per-task transcript files, outcome/topic index |
+| `harness.session.SessionOutcome` | success/failure/cancelled/interrupted/incomplete/error |
 | `harness.task.TaskCoordinator` | Single-session intent policy |
 | `harness.task.TaskIntentClassifier` / `TaskIntent` | Deterministic intent |
 
@@ -126,4 +128,5 @@
 `harness/memory/MemoryStoreTest`, `harness/memory/MemoryCaptureTest`,
 `service/world/BlockSightTest`,
 `harness/skill/SkillLibraryTest`, `harness/session/DroneSessionTest`,
+`harness/session/SessionJournalTest`,
 `harness/task/TaskIntentClassifierTest`, `action/ActionRegistryTest`.

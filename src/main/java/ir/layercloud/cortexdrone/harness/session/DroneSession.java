@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -34,6 +35,7 @@ public final class DroneSession {
             Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Integer> cancelledLoopIds =
             Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Map<Integer, String> cancelReasons = new ConcurrentHashMap<>();
     private volatile String lastThought = "";
     private final Deque<String> thoughtHistory = new ConcurrentLinkedDeque<>();
 
@@ -125,6 +127,7 @@ public final class DroneSession {
         if (loopId > 0) {
             this.runningLoopIds.remove(loopId);
             this.cancelledLoopIds.remove(loopId);
+            this.cancelReasons.remove(loopId);
         }
     }
 
@@ -132,10 +135,22 @@ public final class DroneSession {
         return loopId > 0 && this.cancelledLoopIds.contains(loopId);
     }
 
+    /** Why a loop was cancelled: player_cancel, model_cancel, replaced_by_new_task, drone_despawned. */
+    public String cancelReason(int loopId) {
+        return loopId > 0 ? this.cancelReasons.get(loopId) : null;
+    }
+
     public int cancelOtherLoops(int keepLoopId) {
+        return cancelOtherLoops(keepLoopId, "cancelled");
+    }
+
+    public int cancelOtherLoops(int keepLoopId, String reason) {
+        String cleanReason = reason != null && !reason.trim().isEmpty()
+                ? reason.trim() : "cancelled";
         int count = 0;
         for (Integer id : this.runningLoopIds) {
             if (id != null && id != keepLoopId && this.cancelledLoopIds.add(id)) {
+                this.cancelReasons.put(id, cleanReason);
                 count++;
             }
         }

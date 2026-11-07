@@ -67,7 +67,7 @@ public final class SessionTools implements ToolProvider {
     private JsonObject cancel(DroneController controller, int loopId, JsonObject args) {
         if (controller == null) return ToolJson.error("no_drone", "No active drone.", null, false);
         DroneSession session = this.manager.getSessionManager().session(controller);
-        int cancelled = session.cancelOtherLoops(loopId);
+        int cancelled = session.cancelOtherLoops(loopId, "model_cancel");
         this.manager.clearActionState(controller);
         session.cancel();
         this.manager.getNavigationManager().stop(controller, null, "cancel");

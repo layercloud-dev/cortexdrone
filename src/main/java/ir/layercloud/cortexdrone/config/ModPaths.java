@@ -11,6 +11,7 @@ import java.io.File;
  *   skills.json   learned + bundled skill overrides
  *   memory.json   player facts and named locations
  *   lessons.json  learned procedural rules
+ *   sessions/     per-task transcripts grouped by outcome
  *   logs/         debug log
  * </pre>
  */

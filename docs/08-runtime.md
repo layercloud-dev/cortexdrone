@@ -74,7 +74,10 @@ Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
 file. Navigation recovery is not config: pass `allow_dig`, `max_dig_blocks` or
 `recovery_attempts` on the `goto` call. `config/cortexdrone/skills.json` holds learned/refined skills;
 `config/cortexdrone/memory.json` holds player facts and named locations;
-`config/cortexdrone/lessons.json` holds learned procedural rules.
+`config/cortexdrone/lessons.json` holds learned procedural rules;
+`config/cortexdrone/sessions/` holds one transcript per task, grouped by
+outcome (`success`, `failure`, `cancelled`, `interrupted`, `incomplete`,
+`error`) plus `index.jsonl`.
 
 Memory chat capture:
 
@@ -84,6 +87,7 @@ Memory chat capture:
 
 Commands: `/drone memory list|search <q>|remember <text>|here <name>|forget <id|name>`
 and `/drone lesson list|search <q>|forget <id|title>`.
+Session history: `/drone sessions [list [success|failure|...] [n]|stats|show <id>]`.
 
 ## Legacy migration
 

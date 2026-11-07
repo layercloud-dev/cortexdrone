@@ -63,7 +63,7 @@ public final class TaskCoordinator {
             String previous = session.getSummary();
             this.manager.getLogger().log("TASK", ctrl, "Message classified as " + intent.name() + "; replacing active task",
                     "prompt=\"" + cleanPrompt + "\"");
-            session.cancelOtherLoops(0);
+            session.cancelOtherLoops(0, "replaced_by_new_task");
             this.manager.clearActionState(ctrl);
             session.cancel();
             if (intent == TaskIntent.MODIFY && previous != null && !previous.isEmpty()) {
@@ -94,7 +94,7 @@ public final class TaskCoordinator {
         session.registerLoop(myLoopId);
         final String sessionPrompt = cleanPrompt;
         final int loopId = myLoopId;
-        CortexDroneMod.AGENT_POOL.submit(() -> agent.runAgentLoop(player, ctrl, sessionPrompt, contextMessage, loopId));
+        CortexDroneMod.AGENT_POOL.submit(() -> agent.runAgentLoop(player, ctrl, sessionPrompt, contextMessage, loopId, intent.name()));
     }
 
     /**
@@ -130,7 +130,7 @@ public final class TaskCoordinator {
     private void cancel(DroneController ctrl) {
         this.manager.getLogger().log("TASK", ctrl, "Message classified as CANCEL", "reason=Player cancelled active task");
         DroneSession session = session(ctrl);
-        session.cancelOtherLoops(0);
+        session.cancelOtherLoops(0, "player_cancel");
         this.manager.clearActionState(ctrl);
         session.cancel();
         this.manager.getNavigationManager().stop(ctrl, null, "Player cancelled active task");

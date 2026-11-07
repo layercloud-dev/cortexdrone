@@ -11,6 +11,8 @@ import ir.layercloud.cortexdrone.harness.lesson.Lesson;
 import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
+import ir.layercloud.cortexdrone.harness.session.SessionJournal;
+import ir.layercloud.cortexdrone.harness.session.SessionOutcome;
 import ir.layercloud.cortexdrone.config.DebugEntry;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
@@ -19,6 +21,7 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumChatFormatting;
 
+import java.io.File;
 import java.util.List;
 import java.util.Set;
 
@@ -35,7 +38,7 @@ public class DroneCommand extends BaseCommand {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/" + this.cmdName + " <spawn|link|despawn|list|status|debug|config|memory|js|help>";
+        return "/" + this.cmdName + " <spawn|link|despawn|list|status|debug|config|memory|lesson|sessions|js|help>";
     }
 
     @Override
@@ -54,7 +57,7 @@ public class DroneCommand extends BaseCommand {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
                     "spawn", "link", "despawn", "list", "status",
-                    "debug", "config", "memory", "lesson", "js", "help");
+                    "debug", "config", "memory", "lesson", "sessions", "js", "help");
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
@@ -70,6 +73,11 @@ public class DroneCommand extends BaseCommand {
             }
             if (sub.equals("lesson")) {
                 return getListOfStringsMatchingLastWord(args, "list", "search", "forget");
+            }
+            if (sub.equals("sessions")) {
+                return getListOfStringsMatchingLastWord(args,
+                        "list", "stats", "show", "success", "failure", "cancelled",
+                        "interrupted", "incomplete", "error");
             }
         }
         return null;
@@ -88,11 +96,13 @@ public class DroneCommand extends BaseCommand {
         }
 
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v2.0.0 (Tool Harness) Commands ===");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v"
+                    + CortexDroneMod.VERSION + " (Tool Harness) Commands ===");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear] | config");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone lesson [list|search <q>|forget <id|title>]");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone sessions [list [success|failure|...] [n]|stats|show <id>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
             return;
         }
@@ -154,6 +164,9 @@ public class DroneCommand extends BaseCommand {
                 return;
             case "lesson":
                 handleLesson(sender, args);
+                return;
+            case "sessions":
+                handleSessions(sender, args);
                 return;
             case "config":
                 boolean isOp = player == null || player.canCommandSenderUseCommand(2, "drone");
@@ -266,6 +279,164 @@ public class DroneCommand extends BaseCommand {
 
         String fullPrompt = joinArgs(args, 0);
         this.manager.handleNaturalInstruction(player, fullPrompt);
+    }
+
+    private void handleSessions(ICommandSender sender, String[] args) {
+        SessionJournal journal = this.manager.getHarness() != null
+                ? this.manager.getHarness().journal() : null;
+        if (journal == null) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                    + "[Drone] Session journal is not initialized yet.");
+            return;
+        }
+        String action = args.length >= 2 ? args[1].toLowerCase() : "list";
+
+        if (action.equals("stats")) {
+            java.util.Map<String, Integer> counts = journal.counts();
+            int total = 0;
+            for (Integer value : counts.values()) total += value;
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Session Journal ("
+                    + total + " recorded) ===");
+            for (java.util.Map.Entry<String, Integer> entry : counts.entrySet()) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + entry.getKey()
+                        + EnumChatFormatting.GRAY + ": " + EnumChatFormatting.WHITE + entry.getValue());
+            }
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "Folder: "
+                    + journal.sessionsRoot().getAbsolutePath());
+            return;
+        }
+
+        if (action.equals("show")) {
+            String key = args.length >= 3 ? joinArgs(args, 2) : "";
+            JsonObject entry = journal.find(key);
+            if (entry == null) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                        + "[Drone] No session matched '" + key + "'. Use /drone sessions list.");
+                return;
+            }
+            File file = journal.fileFor(entry);
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Session "
+                    + jsonString(entry, "id") + " ===");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "outcome: "
+                    + EnumChatFormatting.WHITE + jsonString(entry, "outcome")
+                    + EnumChatFormatting.AQUA + "  topic: " + EnumChatFormatting.WHITE
+                    + jsonString(entry, "topic")
+                    + EnumChatFormatting.AQUA + "  reason: " + EnumChatFormatting.WHITE
+                    + jsonString(entry, "reason"));
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "drone: "
+                    + EnumChatFormatting.WHITE + jsonString(entry, "drone")
+                    + EnumChatFormatting.AQUA + "  owner: " + EnumChatFormatting.WHITE
+                    + jsonString(entry, "owner")
+                    + EnumChatFormatting.AQUA + "  player: " + EnumChatFormatting.WHITE
+                    + jsonString(entry, "player"));
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "turns/tools/errors: "
+                    + EnumChatFormatting.WHITE + jsonInt(entry, "turns") + "/"
+                    + jsonInt(entry, "tool_calls") + "/" + jsonInt(entry, "tool_errors")
+                    + EnumChatFormatting.AQUA + "  world actions: "
+                    + EnumChatFormatting.WHITE + jsonInt(entry, "world_actions"));
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "prompt: "
+                    + EnumChatFormatting.WHITE + jsonString(entry, "prompt"));
+            JsonObject full = readSessionFile(file);
+            if (full != null && full.has("final_reply")) {
+                String reply = jsonString(full, "final_reply");
+                if (!reply.isEmpty()) {
+                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "final: "
+                            + EnumChatFormatting.WHITE + capChat(reply, 300));
+                }
+            }
+            if (file != null) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "file: "
+                        + file.getAbsolutePath());
+            }
+            return;
+        }
+
+        SessionOutcome filter = SessionOutcome.fromId(action);
+        int limit = 10;
+        if (filter != null) {
+            if (args.length >= 3) limit = parseInt(args[2], 10);
+        } else if (action.equals("list")) {
+            if (args.length >= 3) {
+                SessionOutcome maybe = SessionOutcome.fromId(args[2]);
+                if (maybe != null) {
+                    filter = maybe;
+                    if (args.length >= 4) limit = parseInt(args[3], 10);
+                } else {
+                    limit = parseInt(args[2], 10);
+                }
+            }
+        } else {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                    + "Usage: /drone sessions [list [success|failure|...] [n]|stats|show <id>]");
+            return;
+        }
+
+        java.util.List<JsonObject> entries = journal.recent(limit, filter);
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Sessions ("
+                + (filter != null ? filter.id() : "all") + ", last " + entries.size() + ") ===");
+        if (entries.isEmpty()) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY
+                    + "Nothing recorded yet. Sessions are written after each task.");
+            return;
+        }
+        long now = System.currentTimeMillis();
+        for (JsonObject entry : entries) {
+            long at = entry.has("at_ms") ? entry.get("at_ms").getAsLong() : 0L;
+            String prompt = jsonString(entry, "prompt");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "["
+                    + jsonString(entry, "outcome") + "/" + jsonString(entry, "topic") + "] "
+                    + EnumChatFormatting.GRAY + ago(now, at) + " "
+                    + EnumChatFormatting.WHITE + jsonString(entry, "drone")
+                    + EnumChatFormatting.GRAY + " " + jsonInt(entry, "turns") + "t/"
+                    + jsonInt(entry, "tool_calls") + "c/" + jsonInt(entry, "tool_errors") + "e \""
+                    + capChat(prompt, 90) + "\""
+                    + EnumChatFormatting.DARK_GRAY + " id=" + jsonString(entry, "id"));
+        }
+    }
+
+    private static JsonObject readSessionFile(File file) {
+        if (file == null || !file.isFile()) return null;
+        try (java.io.Reader reader = new java.io.FileReader(file)) {
+            com.google.gson.JsonElement parsed = new com.google.gson.JsonParser().parse(reader);
+            return parsed != null && parsed.isJsonObject() ? parsed.getAsJsonObject() : null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static String jsonString(JsonObject object, String key) {
+        return object != null && object.has(key) && !object.get(key).isJsonNull()
+                ? object.get(key).getAsString() : "";
+    }
+
+    private static int jsonInt(JsonObject object, String key) {
+        return object != null && object.has(key) ? object.get(key).getAsInt() : 0;
+    }
+
+    private static int parseInt(String value, int fallback) {
+        try {
+            return Math.max(1, Integer.parseInt(value));
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    private static String ago(long now, long then) {
+        if (then <= 0) return "?";
+        long seconds = Math.max(0L, (now - then) / 1000L);
+        if (seconds < 60) return seconds + "s ago";
+        long minutes = seconds / 60;
+        if (minutes < 60) return minutes + "m ago";
+        long hours = minutes / 60;
+        if (hours < 24) return hours + "h ago";
+        return (hours / 24) + "d ago";
+    }
+
+    private static String capChat(String value, int max) {
+        if (value == null) return "";
+        String clean = value.replace('\n', ' ').replace('\r', ' ')
+                .replaceAll("\\s+", " ").trim();
+        return clean.length() <= max ? clean : clean.substring(0, Math.max(0, max - 3)) + "...";
     }
 
     private void handleLesson(ICommandSender sender, String[] args) {

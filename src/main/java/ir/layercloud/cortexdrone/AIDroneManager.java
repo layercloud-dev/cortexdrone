@@ -10,7 +10,9 @@ import ir.layercloud.cortexdrone.harness.Harness;
 import ir.layercloud.cortexdrone.harness.agent.AgentService;
 import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.session.SessionManager;
+import ir.layercloud.cortexdrone.harness.session.SessionOutcome;
 import ir.layercloud.cortexdrone.harness.task.TaskCoordinator;
 import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
@@ -129,6 +131,9 @@ public class AIDroneManager {
 
     public void onServerStopping() {
         this.logger.log("SYSTEM", null, "Server stopping; saving AI drone config", "");
+        if (this.harness != null) {
+            this.harness.journal().closeActive(SessionOutcome.INTERRUPTED, "server_stopping");
+        }
         for (DroneController ctrl : this.controllersById.values()) {
             if (ctrl != null && !this.visualsManager.state(ctrl).lightCells.isEmpty()) {
                 this.visualsManager.clearLighting(ctrl);
@@ -138,6 +143,9 @@ public class AIDroneManager {
     }
 
     public synchronized void reloadConfig() {
+        if (this.harness != null) {
+            this.harness.journal().closeActive(SessionOutcome.INTERRUPTED, "config_reload");
+        }
         this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
         if (this.harness != null) {
             this.harness = Harness.create(this, this.config,
@@ -491,6 +499,8 @@ public class AIDroneManager {
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
         this.visualsManager.forget(ctrl);
         this.navigationManager.forget(ctrl);
+        DroneSession session = this.sessionManager.session(ctrl);
+        if (session != null) session.cancelOtherLoops(0, "drone_despawned");
         this.sessionManager.forget(ctrl);
         this.interactionManager.forget(ctrl);
         this.breadcrumbService.clear(ctrl);

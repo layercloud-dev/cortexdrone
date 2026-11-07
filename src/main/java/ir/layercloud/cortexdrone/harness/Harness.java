@@ -7,6 +7,7 @@ import ir.layercloud.cortexdrone.harness.agent.LlmClient;
 import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
+import ir.layercloud.cortexdrone.harness.session.SessionJournal;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.skill.SkillRefiner;
 import ir.layercloud.cortexdrone.harness.tool.ScanJobs;
@@ -50,6 +51,7 @@ public final class Harness {
     private final SkillLibrary skills;
     private final MemoryStore memory;
     private final LessonStore lessons;
+    private final SessionJournal journal;
     private final ToolRegistry registry;
     private final ScanJobs scans;
     private final ToolInvoker invoker;
@@ -65,6 +67,7 @@ public final class Harness {
         this.skills = skills;
         this.memory = new MemoryStore(manager.getConfigRoot());
         this.lessons = new LessonStore(manager.getConfigRoot());
+        this.journal = new SessionJournal(manager.getConfigRoot(), manager.getLogger());
         this.registry = new ToolRegistry();
         this.registry.declareAll(ToolCatalog.standard());
         this.scans = new ScanJobs(manager);
@@ -73,7 +76,7 @@ public final class Harness {
         this.llm = new LlmClient(config, manager.getLogger());
         this.refiner = new SkillRefiner(llm, skills, manager.getLogger());
         this.agent = new AgentService(manager, manager.getLogger(), manager.getWorldScanner(),
-                llm, invoker, registry, skills, memory, lessons, config);
+                llm, invoker, registry, skills, memory, lessons, journal, config);
 
         this.providers.addAll(Arrays.asList(
                 new SessionTools(manager),
@@ -118,6 +121,10 @@ public final class Harness {
 
     public LessonStore lessons() {
         return this.lessons;
+    }
+
+    public SessionJournal journal() {
+        return this.journal;
     }
 
     public ToolRegistry registry() {

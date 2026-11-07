@@ -73,8 +73,9 @@ serverStopping
 Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
 `CORTEXDRONE_API_KEY`.
 
-`/drone config <url|model|key> <value>` updates the live object and saves the
-file. `config/cortexdrone/skills.json` holds learned/refined skills;
+`/drone config <url|model|key|allowdig|maxdig> <value>` updates the live object
+and saves the file. `/drone config allowdig false` disables automatic
+navigation tunnelling (non-destructive navigation) without a restart. `config/cortexdrone/skills.json` holds learned/refined skills;
 `config/cortexdrone/memory.json` holds player facts and named locations.
 
 Memory chat capture:

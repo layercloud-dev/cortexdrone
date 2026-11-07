@@ -60,7 +60,7 @@ public class DroneCommand extends BaseCommand {
                 return getListOfStringsMatchingLastWord(args, "on", "off", "tail", "clear");
             }
             if (sub.equals("config")) {
-                return getListOfStringsMatchingLastWord(args, "url", "model", "key");
+                return getListOfStringsMatchingLastWord(args, "url", "model", "key", "allowdig", "maxdig");
             }
             if (sub.equals("memory")) {
                 return getListOfStringsMatchingLastWord(args,
@@ -160,7 +160,8 @@ public class DroneCommand extends BaseCommand {
                             + EnumChatFormatting.YELLOW + "URL: " + EnumChatFormatting.WHITE + config.getApiUrl()
                             + EnumChatFormatting.YELLOW + " | Model: " + EnumChatFormatting.WHITE + config.getModel()
                             + EnumChatFormatting.YELLOW + " | Key: " + EnumChatFormatting.WHITE + maskedKey);
-                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "Usage: /drone config <url|model|key> <value>");
+                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY
+                            + "Usage: /drone config <url|model|key|allowdig true|false|maxdig N> <value>");
                     return;
                 }
                 String key = args[1].toLowerCase();
@@ -175,8 +176,20 @@ public class DroneCommand extends BaseCommand {
                     case "key":
                         config.setApiKey(val.equalsIgnoreCase("clear") ? "" : val);
                         break;
+                    case "allowdig":
+                        config.setNavigationAllowDig(parseBoolean(val));
+                        break;
+                    case "maxdig":
+                        try {
+                            config.setNavigationMaxDigBlocks(Math.max(0, Integer.parseInt(val)));
+                        } catch (NumberFormatException e) {
+                            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                                    + "Usage: /drone config maxdig <blocks>");
+                            return;
+                        }
+                        break;
                     default:
-                        CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "Usage: /drone config <url|model|key> <value>");
+                        CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "Usage: /drone config <url|model|key|allowdig|maxdig> <value>");
                         return;
                 }
                 this.manager.saveConfig();
@@ -337,6 +350,13 @@ public class DroneCommand extends BaseCommand {
         }
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
                 + "Usage: /drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]");
+    }
+
+    private static boolean parseBoolean(String value) {
+        if (value == null) return true;
+        String clean = value.trim().toLowerCase();
+        return !(clean.equals("false") || clean.equals("off") || clean.equals("no")
+                || clean.equals("0") || clean.equals("disable") || clean.equals("disabled"));
     }
 
     private static String joinArgs(String[] args, int start) {

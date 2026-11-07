@@ -100,7 +100,7 @@
 | --- | --- |
 | `service.inventory` | `InventoryService`, `ContainerSearchService`, `CraftingService`, `PlayerInventoryOps`, `FluidOpsService`, `ToolInspector`, `CraftResult` |
 | `service.machine` | `MachineRecipeService`, hooks/parser/ranker/reflection, `MachineTileInspector`, `FurnaceScanner` |
-| `service.navigation` | `Breadcrumb`, `TrailPlan`, `BreadcrumbService`, `FlightPathfinder`, `DronePhysicsService` |
+| `service.navigation` | `Breadcrumb`, `TrailPlan`, `BreadcrumbService`, `FlightPathfinder`, `DronePhysicsService`, `TunnelPlanner` |
 | `service.world` | `WorldScanner`, `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `BlockSight`, `ChunkAccess`, `StructureArchitect`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`, `LexicalItemMatcher`, `EntityAndBiomeClassifier`, `DocLookupService`, `WebLookupService`, `raytrace/*` |
 
 ## Config, command, OC

@@ -135,8 +135,8 @@ public final class ToolInvoker {
                 merged.addProperty("ok", false);
                 merged.addProperty("code", "navigation_failed");
                 merged.addProperty("error", state.error);
-                merged.addProperty("hint", "The navigator could not find a safe route. Dig a tunnel with "
-                        + "break_block or choose a closer standoff, then retry.");
+                merged.addProperty("hint", "Automatic trail, tunnel and detour recovery were exhausted. "
+                        + "Pick a nearer goal or a different destination; do not repeat the same goto.");
             }
         }
         if (active && !failed) {

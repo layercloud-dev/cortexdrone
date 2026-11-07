@@ -40,7 +40,7 @@ Use them directly; never describe a tool call in prose and never emit a JSON
   `find_item_in_chests`, `get_block`, `get_blocks_in_box`, `get_top_y`,
   `scan_room`, `scan_blocks`, `scan_veins`, `find_distant`, `get_entities`,
   `get_drops`, `raycast_player`, `find_build_site`, `plan_structure`.
-- **Action primitives** — `goto`, `stop`, `break_block`, `place_block`,
+- **Action primitives** — `goto` (self-recovering), `stop`, `break_block`, `place_block`,
   `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity`,
   `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`,
   `deposit_chest`, `drop_items`, `suck_items`, `craft`.
@@ -136,6 +136,11 @@ progress.
   non-zero transfer count are evidence. A scan is not an action.
 - **Act on data you already have.** If a search returned what you need, use it
   instead of re-querying the same target.
+- **Navigation recovers itself.** One `goto` handles trail backtracking, A*
+  flight, automatic tunnelling (if the server allows damaging terrain) and
+  detours. Do not chain manual `break_block` calls after a navigation error and
+  do not repeat the same `goto`; only pick another destination or ask the
+  player when the drone truly cannot reach the area.
 - **Respect reach and line of sight.** A block is only interactable within 4.5
   blocks AND when the drone can actually see it. If a result says
   `block_occluded`, the target is behind another block: break the covering

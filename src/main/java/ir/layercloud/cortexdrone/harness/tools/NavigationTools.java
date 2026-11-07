@@ -20,17 +20,20 @@ import java.util.List;
 /**
  * Goal-driven navigation: fly to a point or to a safe standoff beside a block.
  *
- * <p>The manager chooses trail/flight/no-dig routes; it never breaks blocks.
- * Digging is composed by the model with `break_block`.</p>
+ * <p>The manager plans and recovers on its own: clear line, trail, A* flight,
+ * then optional automatic tunnelling and detours. The model only asks for the
+ * destination.</p>
  */
 public final class NavigationTools implements ToolProvider {
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("goto")
                     .description("Fly to a coordinate and resolve only on arrival or proven failure. "
                             + "Pass x/y/z for a point, or standoff_of:{x,y,z} to request a safe reachable "
-                            + "position beside a block (useful before break/place/interact). The navigator "
-                            + "uses the recorded trail, then a no-dig flight path; it never digs. If it "
-                            + "fails, read navigation_error, then dig a tunnel yourself and retry.")
+                            + "position beside a block (useful before break/place/interact). Navigation is "
+                            + "automatic: it tries a direct line, the recorded trail, A* flight, then "
+                            + "automatic tunnelling (when enabled) and detours. It only fails after all "
+                            + "recovery attempts are exhausted, so do not retry or dig manually on a single "
+                            + "navigation_error.")
                     .parameters(ToolSchema.object()
                             .optionalNumber("x", "Target X (omit when using standoff_of).", null)
                             .optionalNumber("y", "Target Y.", null)

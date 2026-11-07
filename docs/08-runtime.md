@@ -63,6 +63,9 @@ serverStopping
   "maxContextChars": 96000,
   "allowJavaReflection": true,
   "webSearchEnabled": true,
+  "navigationAllowDig": true,
+  "navigationMaxDigBlocks": 48,
+  "navigationRecoveryAttempts": 8,
   "savedDrones": []
 }
 ```

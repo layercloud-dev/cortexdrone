@@ -38,7 +38,7 @@ import java.util.logging.Logger;
 public class CortexDroneMod {
     public static final String MODID = "cortexdrone";
     public static final String NAME = "CortexDrone";
-    public static final String VERSION = "2.2.0";
+    public static final String VERSION = "2.3.0";
     private static final Logger LOG = Logger.getLogger("CortexDrone");
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();

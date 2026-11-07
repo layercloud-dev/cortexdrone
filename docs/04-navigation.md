@@ -28,14 +28,24 @@ The model only supplies the destination (or a standoff).
    - try detour goals above the goal, beside it, and around the drone;
    - fail only when the attempt budget is exhausted.
 
-## Automatic tunnelling rules
+## Per-call recovery arguments
 
-Auto-tunnelling is on by default and disabled with
-`navigationAllowDig=false` in `config/cortexdrone/config.json` ("damage
-environment" off). When enabled it is bounded by:
+Recovery policy belongs to the `goto` call, not to global config. The model
+chooses it for each destination:
 
-- `navigationMaxDigBlocks` (default 48) cleared voxels per session;
-- `navigationRecoveryAttempts` (default 8) dig/detour attempts per session;
+```js
+goto({ x, y, z, allow_dig: false })                 // never damage terrain
+goto({ x, y, z, max_dig_blocks: 16 })               // cheap tunnel budget
+goto({ x, y, z, recovery_attempts: 12 })            // stubborn cave
+```
+
+- `allow_dig` (default `true`) — permit automatic tunnelling;
+- `max_dig_blocks` (default `48`) — voxels this call may clear;
+- `recovery_attempts` (default `8`) — dig/detour attempts before failing.
+
+With `allow_dig:false` navigation stays non-destructive and uses only the direct
+line, trail, flight and detour recovery. When tunnelling is allowed it is also
+bounded by:
 - `TunnelPlanner.safeToDig`: never liquids, protected tile entities, the world
   floor/ceiling, blocks harder than 50, or anything within 2.5 blocks of the
   owner player;
@@ -43,8 +53,8 @@ environment" off). When enabled it is bounded by:
 - each rejected voxel is remembered for the session, so the drone never loops
   on the same wall.
 
-With digging disabled, navigation still uses the direct line, trail, flight and
-non-destructive detours, then fails with an explanation.
+`allow_dig` is decided by the model per request (for example the player says
+"don't break anything"), so no server-wide switch is needed.
 
 ## Waiting semantics
 

@@ -24,4 +24,9 @@ public class NavigationRequest {
     int standoffX;
     int standoffY;
     int standoffZ;
+
+    /** Per-call recovery policy chosen by the model. */
+    boolean allowDig;
+    int maxDigBlocks;
+    int recoveryAttempts;
 }

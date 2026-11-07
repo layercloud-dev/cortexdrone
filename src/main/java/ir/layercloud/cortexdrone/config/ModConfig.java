@@ -49,18 +49,6 @@ public class ModConfig {
     private boolean allowJavaReflection = true;
     private boolean webSearchEnabled = true;
 
-    // --- navigation recovery ----------------------------------------------
-    /**
-     * Allow automatic navigation to clear blocks when no no-dig route exists.
-     * Set to false to keep every route non-destructive; navigation then only
-     * uses trail/flight/detour recovery.
-     */
-    private boolean navigationAllowDig = true;
-    /** Upper bound of blocks one navigation session may clear. */
-    private int navigationMaxDigBlocks = 48;
-    /** Upper bound of recovery attempts (dig, detour) per session. */
-    private int navigationRecoveryAttempts = 8;
-
     // --- persisted drone bindings -----------------------------------------
     private List<SavedDroneInfo> savedDrones = new ArrayList<>();
 
@@ -114,8 +102,6 @@ public class ModConfig {
         if (this.executeTimeoutMs <= 0) this.executeTimeoutMs = 120_000;
         if (this.maxToolResultChars <= 0) this.maxToolResultChars = 8_000;
         if (this.maxContextChars <= 0) this.maxContextChars = 96_000;
-        if (this.navigationMaxDigBlocks <= 0) this.navigationMaxDigBlocks = 48;
-        if (this.navigationRecoveryAttempts <= 0) this.navigationRecoveryAttempts = 8;
         if (this.savedDrones == null) this.savedDrones = new ArrayList<>();
         return this;
     }

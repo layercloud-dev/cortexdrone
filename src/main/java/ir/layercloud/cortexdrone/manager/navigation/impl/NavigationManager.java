@@ -42,9 +42,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * backtracking is a service query, not an action.</p>
  *
  * <p>Navigation is self-healing: when a leg is blocked it retries the trail,
- * optionally auto-tunnels the obstruction ({@code TunnelPlanner}, gated by
- * {@code navigationAllowDig}) and then tries detours. The model only sees a
- * failure after every recovery attempt is exhausted.</p>
+ * optionally auto-tunnels the obstruction ({@code TunnelPlanner}, gated by the
+ * per-call {@code allow_dig} argument) and then tries detours. The model only
+ * sees a failure after every recovery attempt is exhausted.</p>
  *
  * <p>It also owns every per-drone navigation field (goal, error, path, stall
  * counters, path-cache signature and tick clock). The controller carries none
@@ -102,6 +102,9 @@ public final class NavigationManager {
         state.goalZ = target.getZ();
 
         Session session = new Session();
+        session.allowDig = request.isAllowDig();
+        session.maxDigBlocks = request.getMaxDigBlocks();
+        session.recoveryAttempts = request.getRecoveryAttempts();
         this.sessions.put(controller, session);
         return NavigationResult.started(target.getX(), target.getY(), target.getZ(), "planning");
     }
@@ -368,7 +371,7 @@ public final class NavigationManager {
             session.digTarget = null;
         }
 
-        if (session.recoveries++ >= this.manager.getConfig().getNavigationRecoveryAttempts()) {
+        if (session.recoveries++ >= session.recoveryAttempts) {
             fail(controller, reason + " (automatic recovery exhausted)");
             return;
         }
@@ -381,8 +384,7 @@ public final class NavigationManager {
             return;
         }
 
-        if (this.manager.getConfig().isNavigationAllowDig()
-                && session.dug < this.manager.getConfig().getNavigationMaxDigBlocks()
+        if (session.allowDig && session.dug < session.maxDigBlocks
                 && tryDig(controller, session, state, world, drone)) {
             return;
         }
@@ -396,8 +398,8 @@ public final class NavigationManager {
             return;
         }
 
-        fail(controller, reason + (this.manager.getConfig().isNavigationAllowDig()
-                ? "" : " (automatic digging is disabled)"));
+        fail(controller, reason + (session.allowDig
+                ? "" : " (this goto call disabled digging)"));
     }
 
     /** Finds the obstruction toward the goal and either digs it or flies to its standoff. */
@@ -452,7 +454,7 @@ public final class NavigationManager {
         this.logger.log("NAV", controller, "Auto-tunnelling",
                 String.format("broke %s at (%d,%d,%d) dug=%d/%d",
                         broken, target[0], target[1], target[2],
-                        session.dug, this.manager.getConfig().getNavigationMaxDigBlocks()));
+                        session.dug, session.maxDigBlocks));
         state.clearPath();
         state.stuckTicks = 0;
         session.phase = Phase.PLAN;
@@ -617,6 +619,9 @@ public final class NavigationManager {
         private int recoveries;
         private int detours;
         private int dug;
+        private boolean allowDig = true;
+        private int maxDigBlocks = 48;
+        private int recoveryAttempts = 8;
         private int[] digTarget;
         private final Set<Long> rejectedDigs = new HashSet<>();
         private final Set<Long> rejectedDetours = new HashSet<>();

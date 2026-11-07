@@ -20,6 +20,10 @@ public final class ToolArgs {
         return has(args, key) ? args.get(key).getAsString() : fallback;
     }
 
+    public static boolean bool(JsonObject args, String key, boolean fallback) {
+        return has(args, key) ? args.get(key).getAsBoolean() : fallback;
+    }
+
     public static int integer(JsonObject args, String key, int fallback) {
         return has(args, key) ? args.get(key).getAsInt() : fallback;
     }

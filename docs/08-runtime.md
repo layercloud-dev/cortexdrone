@@ -63,9 +63,6 @@ serverStopping
   "maxContextChars": 96000,
   "allowJavaReflection": true,
   "webSearchEnabled": true,
-  "navigationAllowDig": true,
-  "navigationMaxDigBlocks": 48,
-  "navigationRecoveryAttempts": 8,
   "savedDrones": []
 }
 ```
@@ -73,9 +70,9 @@ serverStopping
 Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
 `CORTEXDRONE_API_KEY`.
 
-`/drone config <url|model|key|allowdig|maxdig> <value>` updates the live object
-and saves the file. `/drone config allowdig false` disables automatic
-navigation tunnelling (non-destructive navigation) without a restart. `config/cortexdrone/skills.json` holds learned/refined skills;
+`/drone config <url|model|key> <value>` updates the live object and saves the
+file. Navigation recovery is not config: pass `allow_dig`, `max_dig_blocks` or
+`recovery_attempts` on the `goto` call. `config/cortexdrone/skills.json` holds learned/refined skills;
 `config/cortexdrone/memory.json` holds player facts and named locations;
 `config/cortexdrone/lessons.json` holds learned procedural rules.
 

@@ -176,10 +176,12 @@ Never store player secrets or one-off task progress.
 - **Act on data you already have.** If a search returned what you need, use it
   instead of re-querying the same target.
 - **Navigation recovers itself.** One `goto` handles trail backtracking, A*
-  flight, automatic tunnelling (if the server allows damaging terrain) and
-  detours. Do not chain manual `break_block` calls after a navigation error and
-  do not repeat the same `goto`; only pick another destination or ask the
-  player when the drone truly cannot reach the area.
+  flight, automatic tunnelling and detours. Tunnelling is controlled by the
+  call, not by config: set `allow_dig:false` when the player says not to damage
+  terrain, and tune `max_dig_blocks` / `recovery_attempts` for hard routes.
+  Do not chain manual `break_block` calls after a navigation error and do not
+  repeat the same `goto`; only pick another destination or ask the player when
+  the drone truly cannot reach the area.
 - **Respect reach and line of sight.** A block is only interactable within 4.5
   blocks AND when the drone can actually see it. If a result says
   `block_occluded`, the target is behind another block: break the covering

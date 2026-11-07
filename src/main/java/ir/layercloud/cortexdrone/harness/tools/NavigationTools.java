@@ -31,9 +31,10 @@ public final class NavigationTools implements ToolProvider {
                             + "Pass x/y/z for a point, or standoff_of:{x,y,z} to request a safe reachable "
                             + "position beside a block (useful before break/place/interact). Navigation is "
                             + "automatic: it tries a direct line, the recorded trail, A* flight, then "
-                            + "automatic tunnelling (when enabled) and detours. It only fails after all "
+                            + "automatic tunnelling (when allowed) and detours. It only fails after all "
                             + "recovery attempts are exhausted, so do not retry or dig manually on a single "
-                            + "navigation_error.")
+                            + "navigation_error. Pass allow_dig:false when the player forbids damaging "
+                            + "terrain, or tune max_dig_blocks / recovery_attempts per call.")
                     .parameters(ToolSchema.object()
                             .optionalNumber("x", "Target X (omit when using standoff_of).", null)
                             .optionalNumber("y", "Target Y.", null)
@@ -41,8 +42,12 @@ public final class NavigationTools implements ToolProvider {
                             .optionalObject("standoff_of", "Block to stand beside: {x,y,z}. Resolves to a "
                                     + "reachable position within interaction range.")
                             .optionalInt("max_wait_ms", "Upper bound for arrival, 5000..180000.", 5000, 180_000, 120_000)
-                            .optionalBoolean("allow_dig", "Compatibility field; navigation never digs. "
-                                    + "Dig with break_block and retry.", false))
+                            .optionalBoolean("allow_dig", "Allow this call to tunnel through obstructing "
+                                    + "blocks when no no-dig route exists. Default true; set false for "
+                                    + "non-destructive travel.", true)
+                            .optionalInt("max_dig_blocks", "Maximum blocks this call may clear, 0..512.", 0, 512, 48)
+                            .optionalInt("recovery_attempts", "Maximum dig/detour attempts for this call, "
+                                    + "0..32.", 0, 32, 8))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(180_000L)
                     .build(),

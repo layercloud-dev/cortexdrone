@@ -38,7 +38,7 @@ final class NavigationSession {
     double bestDistance = Double.MAX_VALUE;
     boolean lastLegMoved;
     boolean allowDig = true;
-    int maxDigBlocks = 64;
+    int maxDigBlocks = 128;
     int recoveryAttempts = 12;
     int[] digTarget;
     /** A block the caller asked to stand beside; enables tunnel-to-target. */

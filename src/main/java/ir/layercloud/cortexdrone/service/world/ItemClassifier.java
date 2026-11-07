@@ -73,7 +73,16 @@ public final class ItemClassifier {
         // false for an empty container, so automatic tunnelling happily broke
         // through an empty crate or chest.
         if (te instanceof IInventory) return true;
-        return true;
+        // A tile entity is not automatically property. Many decorative/modded
+        // stone and ore blocks carry a tile entity for rendering or drops; the
+        // old unconditional `return true` made them undiggable, which is what
+        // produced "no tunnel direction found" against HBM stone resources.
+        // Keep protecting things that are clearly containers or machines.
+        return cls.contains("chest") || cls.contains("crate") || cls.contains("barrel")
+                || cls.contains("cabinet") || cls.contains("container")
+                || cls.contains("machine") || cls.contains("tank")
+                || cls.contains("drawer") || cls.contains("hopper")
+                || cls.contains("safe") || cls.contains("spawner");
     }
 
     public static boolean isMineableBlock(World world, int x, int y, int z) {

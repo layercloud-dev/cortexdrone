@@ -95,6 +95,42 @@ public class NavigationRegressionTest {
                 planner.contains("target[1] - 1"));
     }
 
+    @Test
+    public void tunnellingIsAllowedNextToTheOwner() throws Exception {
+        String planner = read(MAIN + "service/navigation/impl/TunnelPlanner.java");
+        assertFalse("the old 2.5-block player bubble must be gone",
+                planner.contains("PLAYER_CLEARANCE"));
+        assertTrue("only falling blocks above the player are unsafe",
+                planner.contains("instanceof net.minecraft.block.BlockFalling"));
+    }
+
+    @Test
+    public void unknownTileEntitiesAreNotBlanketProtected() throws Exception {
+        String classifier = read(MAIN + "service/world/ItemClassifier.java");
+        assertFalse("an unknown tile entity must not become undiggable stone",
+                classifier.contains("if (te instanceof IInventory) return true;\n        return true;"));
+        assertTrue("containers and machines stay protected by name",
+                classifier.contains("cls.contains(\"machine\")"));
+        assertTrue("inventory tiles stay protected",
+                classifier.contains("if (te instanceof IInventory) return true;"));
+    }
+
+    @Test
+    public void localCornerObstructionsAreDiggable() throws Exception {
+        String planner = read(MAIN + "service/navigation/impl/TunnelPlanner.java");
+        assertTrue("a corner escape must exist", planner.contains("nextLocalObstruction("));
+        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        assertTrue("recovery must try the local corner escape",
+                manager.contains("TunnelPlanner.nextLocalObstruction("));
+    }
+
+    @Test
+    public void longTunnelsGetAUsableDefaultBudget() throws Exception {
+        String view = read(MAIN + "harness/tools/view/NavigationView.java");
+        assertTrue("the default dig budget must cover a long route",
+                view.contains("clampedInt(args, \"maxDigBlocks\", 128, 0, 512)"));
+    }
+
     private static String read(String path) throws Exception {
         return new String(Files.readAllBytes(new File(path).toPath()), StandardCharsets.UTF_8);
     }

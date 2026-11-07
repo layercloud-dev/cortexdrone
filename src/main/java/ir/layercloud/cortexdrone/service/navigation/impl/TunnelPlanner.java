@@ -25,8 +25,8 @@ public final class TunnelPlanner {
     /** Do not start a tunnel when the first obstruction is farther than this. */
     public static final double MAX_LOOKAHEAD = 8.0D;
 
-    /** Never mine closer than this to the player, in blocks. */
-    private static final double PLAYER_CLEARANCE = 2.5D;
+    /** Falling blocks this close above the player are never mined. */
+    private static final double FALLING_CLEARANCE = 1.5D;
 
     /**
      * First mineable voxel on the straight line from the drone's eye to the
@@ -100,14 +100,15 @@ public final class TunnelPlanner {
             return false;
         }
         if (block.getBlockHardness(world, x, y, z) > 50.0F) return false;
-        if (player != null) {
-            double cx = x + 0.5D;
-            double cy = y + 0.5D;
-            double cz = z + 0.5D;
-            double dx = player.posX - cx;
-            double dy = player.posY + player.getEyeHeight() - cy;
-            double dz = player.posZ - cz;
-            if (dx * dx + dy * dy + dz * dz < PLAYER_CLEARANCE * PLAYER_CLEARANCE) {
+        // Do not blanket-protect every block near the player: the drone is
+        // often standing next to the owner, or carrying them, and the old
+        // 2.5-block rule made every tunnel fail with "no tunnel direction
+        // found". Only falling blocks positioned above the player are unsafe.
+        if (player != null && block instanceof net.minecraft.block.BlockFalling) {
+            double hx = player.posX - (x + 0.5D);
+            double hz = player.posZ - (z + 0.5D);
+            if (hx * hx + hz * hz < FALLING_CLEARANCE * FALLING_CLEARANCE
+                    && player.posY >= y) {
                 return false;
             }
         }
@@ -182,6 +183,45 @@ public final class TunnelPlanner {
         // current head space) must be open. The old y+3/y+4 check rejected
         // perfectly valid one-block shafts.
         return ItemClassifier.isPassableVoxel(world, target[0], target[1] - 1, target[2]);
+    }
+
+    /**
+     * Nearest mineable block in the 3x3x3 shell around the drone's body.
+     *
+     * <p>Straight-line and vertical planners cannot see a corner that wedges
+     * the 0.75-wide drone. This is the local escape: clear the side block and
+     * let the next path plan from the freed cell. The drone's own column is
+     * skipped because its feet and head are already air.</p>
+     */
+    public static int[] nextLocalObstruction(World world, Drone drone,
+                                             double goalX, double goalZ) {
+        if (world == null || drone == null) return null;
+        int bx = (int) Math.floor(drone.posX);
+        int by = (int) Math.floor(drone.posY);
+        int bz = (int) Math.floor(drone.posZ);
+        double gx = goalX - drone.posX;
+        double gz = goalZ - drone.posZ;
+        int[] best = null;
+        double bestScore = Double.MAX_VALUE;
+        for (int dy = 0; dy <= 2; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dz == 0) continue;
+                    int x = bx + dx;
+                    int y = by + dy;
+                    int z = bz + dz;
+                    if (!world.blockExists(x, y, z)) continue;
+                    if (!ItemClassifier.isMineableBlock(world, x, y, z)) continue;
+                    double align = dx * gx + dz * gz;
+                    double score = dx * dx + dz * dz + dy * dy - 0.15D * align;
+                    if (score < bestScore) {
+                        bestScore = score;
+                        best = new int[]{x, y, z};
+                    }
+                }
+            }
+        }
+        return best;
     }
 
     /** True when the drone can break the voxel without moving. */

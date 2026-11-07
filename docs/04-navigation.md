@@ -42,15 +42,16 @@ goto({ x, y, z, recovery_attempts: 12 })            // stubborn cave
 ```
 
 - `allow_dig` (default `true`) — permit automatic tunnelling;
-- `max_dig_blocks` (default `64`) — voxels this call may clear;
+- `max_dig_blocks` (default `128`) — voxels this call may clear;
 - `recovery_attempts` (default `12`) — detours (and recovery cycles without progress) before failing.
 
 With `allow_dig:false` navigation stays non-destructive and uses only the direct
 line, trail, flight and detour recovery. When tunnelling is allowed it is also
 bounded by:
-- `TunnelPlanner.safeToDig`: never liquids, protected tile entities, the world
-  floor/ceiling, blocks harder than 50, or anything within 2.5 blocks of the
-  owner player;
+- `TunnelPlanner.safeToDig`: never liquids, protected containers/machines, the
+  world floor/ceiling, blocks harder than 50, or a falling block directly above
+  the owner player. It does not blanket-protect every block near the player,
+  because the drone often carries or stands beside them while tunnelling;
 - the same reach + line-of-sight rules as manual `break_block`;
 - each rejected voxel is remembered for the session, so the drone never loops
   on the same wall.
@@ -175,9 +176,11 @@ when *that* request reaches a terminal outcome (`arrived`, `failed`,
 `stopped`, `replaced`, `cancelled`). A session replaced by a newer task can no
 longer be reported as `arrived:true`.
 
-Tunnelling never touches a tile entity: chests, crates, furnaces, machines and
-OpenComputers blocks are property even when empty. Every block that is broken is
-recorded in `DamageJournal` for `repair_trail`.
+Tunnelling never touches a protected container or machine: chests, crates,
+furnaces, machines and OpenComputers blocks are property even when empty.
+Decorative/modded stone and ore blocks that merely carry a tile entity are
+mineable. Every block that is broken is recorded in `DamageJournal` for
+`repair_trail`.
 
-Defaults are `max_dig_blocks=64` and `recovery_attempts=12`; both are per-call
+Defaults are `max_dig_blocks=128` and `recovery_attempts=12`; both are per-call
 arguments on `goto`.

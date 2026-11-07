@@ -237,7 +237,6 @@ public final class NavigationManager implements FlightController {
             context.complete();
         }
     }
-
     public boolean isActive(DroneController controller) {
         return controller != null && this.sessions.containsKey(controller);
     }
@@ -507,6 +506,8 @@ public final class NavigationManager implements FlightController {
             // or take a vertical step toward the goal.
             if (tryDig(controller, session, state, world, drone)) return;
             if (tryDigVertical(controller, session, state, world, drone)) return;
+            if (startDig(controller, session,
+                    TunnelPlanner.nextLocalObstruction(world, drone, state.goalX, state.goalZ))) return;
             fail(controller, reason + " (no tunnel direction found)");
             return;
         }
@@ -678,7 +679,6 @@ public final class NavigationManager implements FlightController {
         }
         this.logger.log("NAV", controller, "Navigation failed", reason);
     }
-
     @Getter
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Status {

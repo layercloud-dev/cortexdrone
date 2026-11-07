@@ -50,9 +50,9 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
     /** Keep a chunk this long after it stops being needed (5s at 20 TPS). */
     private static final int RELEASE_GRACE_TICKS = 60;
     /** New chunk loads per 5-tick drone plan update. Prevents flight stutter. */
-    private static final int DRONE_LOAD_BUDGET = 4;
+    private static final int DRONE_LOAD_BUDGET = 3;
     /** Hard cap for synchronous ray/path reads in one server tick. */
-    private static final int RAYCAST_LOAD_BUDGET = 4;
+    private static final int RAYCAST_LOAD_BUDGET = 2;
 
     private final AIDroneManager manager;
     private final CortexDroneMod mod;

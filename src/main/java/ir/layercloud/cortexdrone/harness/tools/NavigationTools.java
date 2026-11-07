@@ -48,7 +48,7 @@ public final class NavigationTools implements ToolProvider {
                             .optionalBoolean("allow_dig", "Allow this call to tunnel through obstructing "
                                     + "blocks when no no-dig route exists. Default true; set false for "
                                     + "non-destructive travel.", true)
-                            .optionalInt("max_dig_blocks", "Maximum blocks this call may clear, 0..512.", 0, 512, 64)
+                            .optionalInt("max_dig_blocks", "Maximum blocks this call may clear, 0..512.", 0, 512, 128)
                             .optionalInt("recovery_attempts", "Maximum dig/detour attempts for this call, "
                                     + "0..32.", 0, 32, 12))
                     .affinity(ToolAffinity.MAIN)

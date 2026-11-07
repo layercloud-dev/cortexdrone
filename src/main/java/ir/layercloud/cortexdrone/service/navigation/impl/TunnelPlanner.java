@@ -149,8 +149,22 @@ public final class TunnelPlanner {
         }
 
         if (goalY > drone.posY + 1.25D) {
-            int[] above = {bx, feetY + 2, bz};
-            if (canAscend(world, player, above)) return above;
+            // Start at the first block that actually overlaps the body, not
+            // blindly at feetY+2. A drone whose head is inside the ceiling
+            // (feet 54.63, top 55.005) was told to dig y=56, which is air,
+            // and therefore never cleared the real obstruction at y=55.
+            int bodyTop = (int) Math.floor(drone.posY + 0.375D);
+            int firstSolid = -1;
+            for (int y = Math.max(feetY + 1, bodyTop); y <= feetY + 3; y++) {
+                if (!ItemClassifier.isPassableVoxel(world, bx, y, bz)) {
+                    firstSolid = y;
+                    break;
+                }
+            }
+            if (firstSolid > 0) {
+                int[] above = {bx, firstSolid, bz};
+                if (canAscend(world, player, above)) return above;
+            }
             int stepX = (int) Math.signum(goalX - drone.posX);
             int stepZ = (int) Math.signum(goalZ - drone.posZ);
             int[][] diagonals = {{stepX, stepZ}, {stepX, 0}, {0, stepZ}};
@@ -206,7 +220,9 @@ public final class TunnelPlanner {
         for (int dy = 0; dy <= 2; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {
-                    if (dx == 0 && dz == 0) continue;
+                    // The drone's own column is usually air, but a solid head
+                    // block is a real wedge. Only skip the feet block itself.
+                    if (dx == 0 && dz == 0 && dy == 0) continue;
                     int x = bx + dx;
                     int y = by + dy;
                     int z = bz + dz;

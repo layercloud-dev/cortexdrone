@@ -98,6 +98,10 @@ public final class DronePhysicsService {
     }
 
     public static boolean hasHeadroom(World world, int x, int y, int z) {
+        if (ItemClassifier.isDangerousLiquid(world.getBlock(x, y, z))
+                || ItemClassifier.isDangerousLiquid(world.getBlock(x, y + 1, z))) {
+            return false;
+        }
         return ItemClassifier.isPassableVoxel(world, x, y, z)
                 && ItemClassifier.isPassableVoxel(world, x, y + 1, z);
     }

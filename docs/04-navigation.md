@@ -95,9 +95,10 @@ drone is stuck, long-range flying, or the OC machine is not running.
 Water is a valid flight corridor: A* prices it but does not block it, and the
 physics step caps water speed at 0.34 without adding artificial upward
 buoyancy, so the drone enters or leaves a pool instead of bobbing on its
-surface. Lava is never a corridor: `isDangerousLiquid` makes it impassable for
-both `ItemClassifier.isPassableVoxel` and `ChunkCacheContext`, so paths and
-standoffs cannot route through it.
+surface. Lava is a **last-resort** corridor: A* prices it at 8.0 (water is 2.0)
+so dry routes win, but it stays passable so a drone in a lava-bound cave can
+escape. Lava is never a standoff or a dig target: `isDangerousLiquid` is checked
+by `DronePhysicsService.hasHeadroom` and `BlockSight.isOpenForDrone`.
 
 ## Chunks
 

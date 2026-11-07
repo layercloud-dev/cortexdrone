@@ -21,6 +21,21 @@ public class NavigationRegressionTest {
     private static final String MAIN = "src/main/java/ir/layercloud/cortexdrone/";
 
     @Test
+    public void navigationFailuresCarryAFullSnapshot() throws Exception {
+        String reporter = read(MAIN + "manager/navigation/impl/StallReporter.java");
+        assertTrue("failure snapshots need a stable marker",
+                reporter.contains("Navigation failure snapshot"));
+        assertTrue("the snapshot must include the blocked drone position",
+                reporter.contains("pos=("));
+        assertTrue("the snapshot must include the 3x3x3 neighbourhood",
+                reporter.contains("nearby="));
+        assertTrue("the snapshot must guess a cause",
+                reporter.contains("guess="));
+        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        assertTrue("fail() must use the snapshot", manager.contains("stallReporter.failure("));
+    }
+
+    @Test
     public void wedgedLegsAreAbandonedByAWatchdog() throws Exception {
         String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
         assertTrue("a leg watchdog must exist",
@@ -96,13 +111,28 @@ public class NavigationRegressionTest {
     }
 
     @Test
-    public void lavaIsNotAFlightCorridor() throws Exception {
+    public void lavaIsExpensiveButEscapable() throws Exception {
         String classifier = read(MAIN + "service/world/ItemClassifier.java");
         assertTrue("lava must be distinguished from water",
                 classifier.contains("isDangerousLiquid("));
-        String bsi = read(MAIN + "service/world/raytrace/ChunkCacheContext.java");
-        assertTrue("A* must not pass through lava",
-                bsi.contains("ItemClassifier.isDangerousLiquid(b)"));
+        String physics = read(MAIN + "service/navigation/impl/DronePhysicsService.java");
+        assertTrue("lava must never become a standoff",
+                physics.contains("isDangerousLiquid(world.getBlock(x, y, z))"));
+        String sight = read(MAIN + "service/world/BlockSight.java");
+        assertTrue("lava must not be an open drone position",
+                sight.contains("isDangerousLiquid(world.getBlock(x, y, z))"));
+        String pathfinder = read(MAIN + "service/navigation/impl/FlightPathfinder.java");
+        assertTrue("A* may cross lava only at a high cost",
+                pathfinder.contains("? 8.0 : 2.0"));
+    }
+
+    @Test
+    public void headHeightCeilingsAndCornerWedgesAreDug() throws Exception {
+        String planner = read(MAIN + "service/navigation/impl/TunnelPlanner.java");
+        assertTrue("the ascent ray must start at the real body top",
+                planner.contains("int bodyTop"));
+        assertTrue("the local escape must include the drone's own head column",
+                planner.contains("dx == 0 && dz == 0 && dy == 0"));
     }
 
     @Test

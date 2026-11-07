@@ -73,7 +73,10 @@ public class FlightPathfinder {
     }
 
     public static int[] findNearestPassableVoxel(World world, int cx, int cy, int cz, int maxRadius) {
-        if (ItemClassifier.isPassableVoxel(world, cx, cy, cz)) return new int[]{cx, cy, cz};
+        if (ItemClassifier.isPassableVoxel(world, cx, cy, cz)
+                && !ItemClassifier.isDangerousLiquid(world.getBlock(cx, cy, cz))) {
+            return new int[]{cx, cy, cz};
+        }
         for (int r = 1; r <= maxRadius; r++) {
             int[] best = null;
             int bestDistSq = Integer.MAX_VALUE;
@@ -83,7 +86,8 @@ public class FlightPathfinder {
                         int x = cx + dx;
                         int y = cy + dy;
                         int z = cz + dz;
-                        if (ItemClassifier.isPassableVoxel(world, x, y, z)) {
+                        if (ItemClassifier.isPassableVoxel(world, x, y, z)
+                                && !ItemClassifier.isDangerousLiquid(world.getBlock(x, y, z))) {
                             int dSq = dx * dx + dy * dy + dz * dz;
                             if (dSq < bestDistSq) {
                                 bestDistSq = dSq;
@@ -231,7 +235,7 @@ public class FlightPathfinder {
                         Block nb = bsi.getBlock(nx, ny, nz);
                         boolean inLiq = ItemClassifier.isLiquidBlock(nb);
                         if (inLiq) {
-                            stepCost += (nb.getMaterial() == Material.lava) ? 4.0 : 1.2;
+                            stepCost += (ItemClassifier.isDangerousLiquid(nb)) ? 8.0 : 2.0;
                         }
                         if (!bsi.isPassable(nx, ny - 1, nz)) {
                             stepCost += 0.35;

@@ -45,6 +45,10 @@ public final class BlockSight {
 
     /** Two passable voxels: the standoff body voxel and the one above it. */
     public static boolean isOpenForDrone(World world, int x, int y, int z) {
+        if (ItemClassifier.isDangerousLiquid(world.getBlock(x, y, z))
+                || ItemClassifier.isDangerousLiquid(world.getBlock(x, y + 1, z))) {
+            return false;
+        }
         return ItemClassifier.isPassableVoxel(world, x, y, z)
                 && ItemClassifier.isPassableVoxel(world, x, y + 1, z);
     }

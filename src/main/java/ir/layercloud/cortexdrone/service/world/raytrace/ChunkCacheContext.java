@@ -86,7 +86,6 @@ public class ChunkCacheContext {
         Block b = getBlock(x, y, z);
         boolean pass;
         if (b == null || b == Blocks.air) pass = true;
-        else if (ItemClassifier.isDangerousLiquid(b)) pass = false;
         else if (ItemClassifier.isLiquidBlock(b)) pass = true;
         else if (b.getBlocksMovement(this.world, x, y, z)) pass = true;
         else pass = b.getCollisionBoundingBoxFromPool(this.world, x, y, z) == null;

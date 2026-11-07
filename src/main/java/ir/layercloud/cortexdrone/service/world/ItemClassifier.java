@@ -68,8 +68,9 @@ public final class ItemClassifier {
         if (world.isAirBlock(bx, by, bz)) return true;
         Block b = world.getBlock(bx, by, bz);
         if (b == null) return true;
-        // Water is a valid corridor for a flying drone; lava is not.
-        if (isDangerousLiquid(b)) return false;
+        // Both water and lava are flight-passable: a drone must be able to
+        // escape a lava-bound cave. Lava is priced very high in A* and is
+        // rejected as a standoff by the callers that care about hovering.
         if (isLiquidBlock(b)) return true;
         if (b.getBlocksMovement(world, bx, by, bz)) return true;
         return b.getCollisionBoundingBoxFromPool(world, bx, by, bz) == null;

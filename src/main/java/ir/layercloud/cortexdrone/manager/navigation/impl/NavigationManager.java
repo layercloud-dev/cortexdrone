@@ -176,10 +176,11 @@ public final class NavigationManager implements FlightController {
         state.lastY = drone.posY;
         state.lastZ = drone.posZ;
         state.lastMoveSq = movedSq;
-        this.stallReporter.track(controller, state, drone, world, movedSq);
 
         NavigationSession session = this.sessions.get(controller);
         if (session == null) return;
+        // A stale flight target must not produce misleading STUCK lines.
+        this.stallReporter.track(controller, state, drone, world, movedSq);
 
         // Keep the rolling navigation corridor claimed before the pathfinder
         // reads it. This is also what lets a drone enter a fresh chunk without
@@ -661,7 +662,6 @@ public final class NavigationManager implements FlightController {
         controller.drone.statusText_$eq("Arrived\n"
                 + (int) Math.floor(state.goalX) + "," + (int) Math.floor(state.goalZ));
     }
-
     private void fail(DroneController controller, String reason) {
         if (controller == null) return;
         NavigationSession session = this.sessions.remove(controller);
@@ -677,7 +677,7 @@ public final class NavigationManager implements FlightController {
         if (controller.drone != null) {
             controller.drone.statusText_$eq("Route failed\n" + reason);
         }
-        this.logger.log("NAV", controller, "Navigation failed", reason);
+        this.stallReporter.failure(controller, state, session, reason);
     }
     @Getter
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)

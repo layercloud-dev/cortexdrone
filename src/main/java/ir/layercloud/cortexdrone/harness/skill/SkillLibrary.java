@@ -18,8 +18,10 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,27 +29,37 @@ import java.util.logging.Logger;
 /**
  * Skill memory: bundled workflows plus learned/refined skills.
  *
- * <p>Storage is {@code config/cortexdrone/skills.json} (not the world save).
- * Bundled skills are read from {@code resources/skills/} and can be overridden
- * by a saved skill with the same name. The library never decides when to use a
- * skill; it only stores, searches and versions them.</p>
+ * <p>Every skill is a directory in the normal {@code SKILL.md} layout:</p>
  *
- * <p>Bundled skills keep their metadata in a small JSON file and their
- * JavaScript in a sibling {@code .js} file referenced by {@code codeFile}. A
- * skill can declare {@code requires} and call those skills at runtime, so
- * compound workflows stay short instead of copy-pasting other workflows.</p>
+ * <pre>
+ * skills/guard/
+ *   SKILL.md   YAML frontmatter (name, description, tags, triggers, requires)
+ *              plus usage documentation
+ *   code.js    JavaScript function body run with `params` in scope
+ * </pre>
+ *
+ * <p>Bundled skills live under {@code resources/skills/} and are listed by
+ * {@code resources/skills/index.json}. Learned/refined skills live under
+ * {@code config/cortexdrone/skills/} and override a bundled skill with the same
+ * normalized name. The legacy single-file {@code skills.json} is imported once
+ * and archived. The library never decides when to use a skill; it only stores,
+ * searches, versions and composes them.</p>
  */
 public final class SkillLibrary {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
     private static final int MAX_SKILL_CODE_CHARS = 16_000;
+    private static final int MAX_DOCS_CHARS = 4_000;
 
-    private final File storageFile;
+    private final File skillsDir;
+    private final File legacyFile;
     private final Map<String, Skill> skills = new LinkedHashMap<>();
 
     public SkillLibrary(File configRoot) {
-        this.storageFile = ModPaths.skillsFile(configRoot);
+        this.skillsDir = ModPaths.skillsDir(configRoot);
+        this.legacyFile = ModPaths.skillsFile(configRoot);
         loadBundled();
-        loadFromDisk();
+        loadLearned();
+        importLegacyJson();
     }
 
     public synchronized List<Skill> all() {
@@ -70,6 +82,12 @@ public final class SkillLibrary {
     public synchronized Skill save(String name, String description, String tags,
                                    List<String> triggers, List<String> requires,
                                    String code, String source) {
+        return save(name, description, tags, triggers, requires, null, code, source);
+    }
+
+    public synchronized Skill save(String name, String description, String tags,
+                                   List<String> triggers, List<String> requires,
+                                   String docs, String code, String source) {
         if (name == null || name.trim().isEmpty() || code == null || code.trim().isEmpty()) return null;
         if (code.length() > MAX_SKILL_CODE_CHARS) return null;
         String key = normalize(name);
@@ -85,28 +103,38 @@ public final class SkillLibrary {
         skill.setTags(tags != null ? tags.trim() : "");
         skill.setTriggers(triggers != null ? new ArrayList<>(triggers) : new ArrayList<>());
         skill.setRequires(requires != null ? new ArrayList<>(requires) : new ArrayList<>());
+        if (docs != null && !docs.trim().isEmpty()) skill.setDocs(docs.trim());
         skill.setCodeFile(null);
         skill.setCode(code.trim());
         skill.setSource(source != null ? source : "saved");
         skill.touch();
         this.skills.put(key, skill);
-        saveToDisk();
+        persist(skill);
         return skill;
     }
 
-    /** Records that the model actually used a skill (retrieval ranking signal only). */
+    /**
+     * Records that the model actually used a skill. Bundled skills keep the
+     * counter in memory only; learned skills are rewritten so the count and
+     * timestamp survive a restart.
+     */
     public synchronized void recordUse(String name) {
         Skill skill = this.skills.get(normalize(name));
         if (skill == null) return;
         skill.setUses(skill.getUses() + 1);
         skill.touch();
-        saveToDisk();
+        if (!"bundled".equalsIgnoreCase(skill.getSource())) persist(skill);
     }
 
     public synchronized boolean delete(String name) {
-        Skill removed = this.skills.remove(normalize(name));
+        String key = normalize(name);
+        Skill removed = this.skills.remove(key);
         if (removed == null) return false;
-        saveToDisk();
+        File dir = new File(this.skillsDir, key);
+        boolean hadOverride = dir.isDirectory();
+        deleteRecursively(dir);
+        // Removing a learned override should reveal the bundled skill again.
+        if (hadOverride) loadBundledByName(key);
         return true;
     }
 
@@ -143,15 +171,24 @@ public final class SkillLibrary {
                 for (String dependency : skill.getRequires()) requires.add(new com.google.gson.JsonPrimitive(dependency));
             }
             object.add("requires", requires);
-            if (includeCode) object.addProperty("code", skill.getCode());
+            if (includeCode) {
+                object.addProperty("code", skill.getCode());
+                if (skill.getDocs() != null && !skill.getDocs().trim().isEmpty()) {
+                    object.addProperty("docs", cap(skill.getDocs().trim(), MAX_DOCS_CHARS));
+                }
+            }
             array.add(object);
         }
         return array;
     }
 
-    public File storageFile() {
-        return this.storageFile;
+    public File skillsDir() {
+        return this.skillsDir;
     }
+
+    // ------------------------------------------------------------------
+    // Loading
+    // ------------------------------------------------------------------
 
     private synchronized void loadBundled() {
         InputStream indexStream = SkillLibrary.class.getResourceAsStream("/skills/index.json");
@@ -161,42 +198,192 @@ public final class SkillLibrary {
             if (index == null || !index.isJsonArray()) return;
             for (JsonElement item : index.getAsJsonArray()) {
                 if (!item.isJsonPrimitive() || !item.getAsJsonPrimitive().isString()) continue;
-                loadBundledSkill(item.getAsString());
+                String entry = item.getAsString().trim();
+                // Tolerate an old index that listed "name.json" files.
+                if (entry.endsWith(".json")) entry = entry.substring(0, entry.length() - 5);
+                loadBundledByName(entry);
             }
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Could not read bundled skill index", e);
         }
     }
 
-    private void loadBundledSkill(String fileName) {
-        InputStream stream = SkillLibrary.class.getResourceAsStream("/skills/" + fileName);
-        if (stream == null) return;
-        try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
-            Skill skill = CortexDroneMod.GSON.fromJson(reader, Skill.class);
-            if (skill == null || skill.getName() == null || skill.getName().trim().isEmpty()) return;
+    private void loadBundledByName(String entry) {
+        String dirName = entry != null ? entry.trim() : "";
+        if (dirName.isEmpty()) return;
+        String meta = readResource("/skills/" + dirName + "/" + SkillMarkdown.FILE_NAME);
+        if (meta == null) {
+            LOG.warning("Bundled skill directory '" + dirName + "' has no " + SkillMarkdown.FILE_NAME);
+            return;
+        }
+        Skill skill = SkillMarkdown.read(meta, "bundled");
+        if (skill == null) return;
+        if (skill.getName() == null || skill.getName().trim().isEmpty()) {
+            skill.setName(normalize(dirName));
+        } else {
             skill.setName(normalize(skill.getName()));
-            skill.setSource("bundled");
-            if (skill.getDescription() == null) skill.setDescription("");
-            if (skill.getTags() == null) skill.setTags("");
-            if (skill.getTriggers() == null) skill.setTriggers(new ArrayList<>());
-            if (skill.getRequires() == null) skill.setRequires(new ArrayList<>());
-            if (skill.getCode() == null) skill.setCode("");
-            if (skill.getCodeFile() != null && !skill.getCodeFile().trim().isEmpty()) {
-                String bundledCode = readResource("/skills/" + skill.getCodeFile().trim());
-                if (bundledCode != null) skill.setCode(bundledCode);
+        }
+        String codeName = skill.getCodeFile() != null ? skill.getCodeFile().trim() : "";
+        if (codeName.isEmpty()) codeName = SkillMarkdown.DEFAULT_CODE_FILE;
+        if (safeFileName(codeName)) {
+            String code = readResource("/skills/" + dirName + "/" + codeName);
+            if (code != null) skill.setCode(code);
+        }
+        skill.setCodeFile(null);
+        skill.setSource("bundled");
+        if (skill.getVersion() <= 0) skill.setVersion(1);
+        if (skill.getCode().trim().isEmpty()) {
+            LOG.warning("Bundled skill '" + dirName + "' has no code; skipped.");
+            return;
+        }
+        skill.touch();
+        this.skills.put(skill.getName(), skill);
+    }
+
+    private synchronized void loadLearned() {
+        File[] dirs = this.skillsDir != null ? this.skillsDir.listFiles(File::isDirectory) : null;
+        if (dirs == null) return;
+        Arrays.sort(dirs, Comparator.comparing(File::getName));
+        for (File dir : dirs) loadLearnedSkill(dir);
+    }
+
+    private void loadLearnedSkill(File dir) {
+        File markdown = new File(dir, SkillMarkdown.FILE_NAME);
+        if (!markdown.isFile()) return;
+        String meta = readFile(markdown);
+        Skill skill = SkillMarkdown.read(meta, null);
+        if (skill == null) return;
+        if (skill.getName() == null || skill.getName().trim().isEmpty()) {
+            skill.setName(normalize(dir.getName()));
+        } else {
+            skill.setName(normalize(skill.getName()));
+        }
+        String codeName = skill.getCodeFile() != null ? skill.getCodeFile().trim() : "";
+        if (codeName.isEmpty()) codeName = SkillMarkdown.DEFAULT_CODE_FILE;
+        File codeFile = new File(dir, safeFileName(codeName) ? codeName : SkillMarkdown.DEFAULT_CODE_FILE);
+        if (!codeFile.isFile()) {
+            LOG.warning("Learned skill '" + skill.getName() + "' has no " + codeFile.getName());
+            return;
+        }
+        skill.setCode(readFile(codeFile));
+        skill.setCodeFile(null);
+        if (skill.getSource() == null || skill.getSource().trim().isEmpty()) skill.setSource("saved");
+        if (skill.getVersion() <= 0) skill.setVersion(1);
+        long stamp = Math.max(markdown.lastModified(), codeFile.lastModified());
+        if (skill.getCreatedAt() <= 0) skill.setCreatedAt(stamp);
+        skill.setUpdatedAt(stamp);
+        if (usesRemovedApi(skill.getCode())) {
+            LOG.info("Skipping legacy skill '" + skill.getName()
+                    + "': it uses a removed drone API and cannot run on the v2 harness.");
+            return;
+        }
+        this.skills.put(skill.getName(), skill);
+    }
+
+    /**
+     * Imports the old flat {@code skills.json} once, archives it, and writes a
+     * SKILL.md directory per learned skill. Stale bundled snapshots are ignored.
+     */
+    private synchronized void importLegacyJson() {
+        if (this.legacyFile == null || !this.legacyFile.isFile()) return;
+        int imported = 0;
+        try (Reader reader = new FileReader(this.legacyFile)) {
+            JsonElement parsed = new JsonParser().parse(reader);
+            if (parsed != null && parsed.isJsonArray()) {
+                for (JsonElement element : parsed.getAsJsonArray()) {
+                    if (!element.isJsonObject()) continue;
+                    Skill skill = CortexDroneMod.GSON.fromJson(element, Skill.class);
+                    if (skill == null || skill.getName() == null || skill.getName().trim().isEmpty()) continue;
+                    skill.setName(normalize(skill.getName()));
+                    if ("bundled".equalsIgnoreCase(skill.getSource())) continue;
+                    if (skill.getCode() == null || skill.getCode().trim().isEmpty()) continue;
+                    if (usesRemovedApi(skill.getCode())) continue;
+                    boolean hasDirectory = new File(this.skillsDir, skill.getName()).isDirectory();
+                    if (hasDirectory) continue;
+                    if (skill.getDescription() == null) skill.setDescription("");
+                    if (skill.getTags() == null) skill.setTags("");
+                    if (skill.getTriggers() == null) skill.setTriggers(new ArrayList<>());
+                    if (skill.getRequires() == null) skill.setRequires(new ArrayList<>());
+                    if (skill.getDocs() == null || skill.getDocs().trim().isEmpty()) {
+                        skill.setDocs("# " + skill.getName() + "\n\n" + skill.getDescription() + "\n");
+                    }
+                    skill.setCodeFile(null);
+                    if (skill.getSource() == null || skill.getSource().trim().isEmpty()) {
+                        skill.setSource("saved");
+                    }
+                    if (skill.getVersion() <= 0) skill.setVersion(1);
+                    skill.touch();
+                    this.skills.put(skill.getName(), skill);
+                    persist(skill);
+                    imported++;
+                }
             }
-            skill.setCodeFile(null);
-            if (skill.getVersion() <= 0) skill.setVersion(1);
-            if (skill.getCode().trim().isEmpty()) {
-                LOG.warning("Bundled skill '" + skill.getName() + "' has no code; skipped.");
-                return;
-            }
-            skill.touch();
-            this.skills.put(skill.getName(), skill);
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not read bundled skill " + fileName, e);
+            LOG.log(Level.WARNING, "Could not import legacy " + this.legacyFile.getAbsolutePath(), e);
+            return;
+        }
+        archiveLegacy();
+        if (imported > 0) {
+            LOG.info("Imported " + imported + " legacy skill(s) into "
+                    + this.skillsDir.getAbsolutePath());
         }
     }
+
+    private void archiveLegacy() {
+        File target = new File(this.legacyFile.getAbsolutePath() + ".migrated");
+        if (target.exists()) {
+            target = new File(this.legacyFile.getAbsolutePath() + ".migrated-"
+                    + System.currentTimeMillis());
+        }
+        if (!this.legacyFile.renameTo(target)) {
+            LOG.warning("Could not archive legacy skills file "
+                    + this.legacyFile.getAbsolutePath());
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Persistence
+    // ------------------------------------------------------------------
+
+    private void persist(Skill skill) {
+        File dir = new File(this.skillsDir, skill.getName());
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+            LOG.warning("Could not create skill directory " + dir.getAbsolutePath());
+            return;
+        }
+        writeFile(new File(dir, SkillMarkdown.FILE_NAME), SkillMarkdown.write(skill));
+        writeFile(new File(dir, SkillMarkdown.DEFAULT_CODE_FILE), skill.getCode());
+    }
+
+    private static void writeFile(File target, String content) {
+        File temp = new File(target.getAbsolutePath() + ".tmp");
+        try (Writer writer = new FileWriter(temp)) {
+            writer.write(content != null ? content : "");
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Could not write " + target.getAbsolutePath(), e);
+            return;
+        }
+        if (target.exists() && !target.delete()) {
+            LOG.warning("Could not replace " + target.getAbsolutePath());
+            return;
+        }
+        if (!temp.renameTo(target)) {
+            LOG.warning("Could not move " + temp.getAbsolutePath() + " into place");
+        }
+    }
+
+    private static void deleteRecursively(File file) {
+        if (file == null || !file.exists()) return;
+        File[] children = file.listFiles();
+        if (children != null) {
+            for (File child : children) deleteRecursively(child);
+        }
+        if (!file.delete()) LOG.warning("Could not delete " + file.getAbsolutePath());
+    }
+
+    // ------------------------------------------------------------------
+    // Resources
+    // ------------------------------------------------------------------
 
     private static String readResource(String path) {
         InputStream stream = SkillLibrary.class.getResourceAsStream(path);
@@ -212,72 +399,23 @@ public final class SkillLibrary {
         }
     }
 
-    private synchronized void loadFromDisk() {
-        if (this.storageFile == null || !this.storageFile.isFile()) return;
-        try (Reader reader = new FileReader(this.storageFile)) {
-            JsonElement parsed = new JsonParser().parse(reader);
-            if (parsed == null || !parsed.isJsonArray()) return;
-            for (JsonElement element : parsed.getAsJsonArray()) {
-                if (!element.isJsonObject()) continue;
-                Skill skill = CortexDroneMod.GSON.fromJson(element, Skill.class);
-                if (skill == null || skill.getName() == null) continue;
-                skill.setName(normalize(skill.getName()));
-                if (skill.getDescription() == null) skill.setDescription("");
-                if (skill.getTags() == null) skill.setTags("");
-                if (skill.getCode() == null) skill.setCode("");
-                if (skill.getRequires() == null) skill.setRequires(new ArrayList<>());
-                if (skill.getTriggers() == null) skill.setTriggers(deriveTriggers(skill.getTags()));
-                if (skill.getSource() == null) skill.setSource("saved");
-                if (skill.getVersion() <= 0) skill.setVersion(1);
-                skill.setCodeFile(null);
-                // A persisted "bundled" entry is a stale snapshot of a resource
-                // skill, not a user override. Ignoring it lets an upgraded jar
-                // ship corrected bundled workflows instead of being shadowed
-                // by an old copy on disk.
-                if ("bundled".equalsIgnoreCase(skill.getSource())) {
-                    continue;
-                }
-                if (usesRemovedApi(skill.getCode())) {
-                    LOG.info("Skipping legacy skill '" + skill.getName()
-                            + "': it uses a removed drone API and cannot run on the v2 harness.");
-                    continue;
-                }
-                skill.touch();
-                this.skills.put(skill.getName(), skill);
-            }
+    private static String readFile(File file) {
+        try (Reader reader = new FileReader(file)) {
+            StringBuilder out = new StringBuilder((int) Math.min(64_000L, file.length() + 32L));
+            char[] buffer = new char[4096];
+            int read;
+            while ((read = reader.read(buffer)) >= 0) out.append(buffer, 0, read);
+            return out.toString();
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not read skills " + this.storageFile.getAbsolutePath(), e);
+            LOG.log(Level.WARNING, "Could not read " + file.getAbsolutePath(), e);
+            return null;
         }
     }
 
-    private synchronized void saveToDisk() {
-        if (this.storageFile == null) return;
-        File parent = this.storageFile.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            LOG.warning("Could not create skill directory " + parent.getAbsolutePath());
-            return;
-        }
-        // Bundled skills live in the jar; only learned/refined overrides are
-        // persisted. Writing snapshots of bundled skills would pin an old
-        // version forever after an upgrade.
-        List<Skill> persist = new ArrayList<>();
-        for (Skill skill : this.skills.values()) {
-            if (skill == null || "bundled".equalsIgnoreCase(skill.getSource())) continue;
-            persist.add(skill);
-        }
-        File temp = new File(this.storageFile.getAbsolutePath() + ".tmp");
-        try (Writer writer = new FileWriter(temp)) {
-            CortexDroneMod.GSON.toJson(persist, writer);
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not write skills", e);
-            return;
-        }
-        if (this.storageFile.exists() && !this.storageFile.delete()) {
-            LOG.warning("Could not replace " + this.storageFile.getAbsolutePath());
-        }
-        if (!temp.renameTo(this.storageFile)) {
-            LOG.warning("Could not move " + temp.getAbsolutePath() + " into place");
-        }
+    private static boolean safeFileName(String name) {
+        return name != null && !name.isEmpty()
+                && !name.startsWith("/") && !name.startsWith("\\")
+                && !name.contains("..") && !name.contains("\\");
     }
 
     /** Old harness methods that no longer exist; such skills must not override bundled ones. */
@@ -294,15 +432,15 @@ public final class SkillLibrary {
         return false;
     }
 
-    private static List<String> deriveTriggers(String tags) {
-        List<String> triggers = new ArrayList<>();
-        if (tags == null || tags.trim().isEmpty()) return triggers;
-        triggers.addAll(Arrays.asList(tags.split("[,\\s]+")));
-        return triggers;
+    private static String cap(String value, int max) {
+        if (value == null) return "";
+        if (value.length() <= max) return value;
+        return value.substring(0, max) + "...(+" + (value.length() - max) + " chars)";
     }
 
     public static String normalize(String name) {
         if (name == null) return "";
-        return name.trim().toLowerCase().replace(' ', '_').replaceAll("[^a-z0-9_]+", "_");
+        return name.trim().toLowerCase(Locale.ROOT).replace(' ', '_')
+                .replaceAll("[^a-z0-9_]+", "_");
     }
 }

@@ -1,7 +1,7 @@
 # 13 — Skill suite
 
-Bundled workflows live in `resources/skills/`. Each skill is a small metadata
-JSON plus a sibling JavaScript body, and skills call each other with
+Bundled workflows live in `resources/skills/<name>/`: a `SKILL.md`
+(frontmatter + usage docs) plus `code.js`. Skills call each other with
 `skills.call(name, params)`. Run one with:
 
 ```json

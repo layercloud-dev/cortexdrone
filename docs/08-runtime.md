@@ -72,7 +72,7 @@ Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
 
 `/drone config <url|model|key> <value>` updates the live object and saves the
 file. Navigation recovery is not config: pass `allow_dig`, `max_dig_blocks` or
-`recovery_attempts` on the `goto` call. `config/cortexdrone/skills.json` holds learned/refined skills;
+`recovery_attempts` on the `goto` call. `config/cortexdrone/skills/<name>/SKILL.md` + `code.js` hold learned/refined skills;
 `config/cortexdrone/memory.json` holds player facts and named locations;
 `config/cortexdrone/lessons.json` holds learned procedural rules;
 `config/cortexdrone/sessions/` holds one transcript per task, grouped by
@@ -94,7 +94,7 @@ Session history: `/drone sessions [list [success|failure|...] [n]|stats|show <id
 `ConfigMigrator` runs once:
 
 - `world/layercloud-ai.json` → `config/cortexdrone/config.json`;
-- `world/layercloud-drone-skills-v2.json` → `config/cortexdrone/skills.json`;
+- `world/layercloud-drone-skills-v2.json` → `config/cortexdrone/skills.json` (imported into directories);
 - each old file is renamed `*.migrated`.
 
 No AI state is written into the world save.

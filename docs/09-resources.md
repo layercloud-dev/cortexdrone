@@ -21,7 +21,49 @@
 
 ## Bundled skills
 
-`resources/skills/index.json` lists files loaded by `SkillLibrary`:
+`resources/skills/index.json` lists directory names loaded by `SkillLibrary`.
+Each skill is a self-contained directory in the normal `SKILL.md` layout:
+
+```text
+resources/skills/
+  index.json          ["guard", "patrol", "build_structure", ...]
+  guard/
+    SKILL.md          YAML frontmatter + usage documentation
+    code.js           JavaScript function body (`params` in scope)
+  patrol/
+    SKILL.md
+    code.js
+```
+
+`SKILL.md` starts with frontmatter, followed by documentation:
+
+```markdown
+---
+name: "guard"
+description: "Hold a position and defend it for a bounded time."
+tags: "guard protect defend hold position"
+triggers:
+  - "guard this area"
+  - "protect the base"
+requires:
+  - "guard_scan"
+version: 1
+uses: 0
+code: code.js
+---
+
+# Guard
+
+## Parameters
+
+- `duration_s` - guard time 10..240 seconds. Default 120.
+...
+```
+
+The Markdown body is kept as skill `docs` and returned by
+`skill({ action: "load" })`, so parameters, return values and pitfalls are
+available without reading the code first. `code` may name another JavaScript
+file in the same directory; it defaults to `code.js`.
 
 | Skill | Purpose |
 | --- | --- |
@@ -54,37 +96,30 @@
 | `rainbow_show` | LED animation via static primitive |
 
 Saved/refined skills override bundled skills with the same normalized name and
-increment `version`. Storage is `config/cortexdrone/skills.json`, never the
-world save. Persisted `source:"bundled"` snapshots are ignored on load, so a new
-jar always ships its corrected workflows. Parameter examples for every skill are
-in [13-skills.md](13-skills.md).
+increment `version`. They are written to `config/cortexdrone/skills/<name>/` as
+`SKILL.md` + `code.js`. The legacy single-file `config/cortexdrone/skills.json`
+is imported once and archived as `skills.json.migrated`; persisted
+`source:"bundled"` snapshots are ignored, so a new jar always ships its corrected
+workflows. Parameter examples for every skill are in
+[13-skills.md](13-skills.md).
 
-## Skill JSON shape
+## Learned skill layout
 
-```json
-{
-  "name": "mine_and_deliver",
-  "description": "when to use and what it delivers",
-  "tags": "space separated retrieval keywords",
-  "triggers": ["player-style phrase", "another phrase"],
-  "version": 1,
-  "uses": 0,
-  "requires": ["skill_this_code_calls"],
-  "source": "bundled|saved|refined",
-  "codeFile": "optional bundled .js sibling (bundled skills only)",
-  "code": "JavaScript body using synchronous drone tools and `params`"
-}
+```text
+config/cortexdrone/skills/guard/
+  SKILL.md   frontmatter + docs (written from the skill metadata)
+  code.js    inline skill body
 ```
 
-A bundled JSON file may keep `code` empty and point at `codeFile`; the loader
-inlines the `.js` body. Saved/refined skills always store `code` inline.
+`SkillLibrary.save` writes both files atomically; `delete` removes the
+directory. Deleting an override of a bundled skill restores the bundled version.
 
 ## Config files
 
 ```text
 config/cortexdrone/
   config.json   gateway, agent limits, saved drone bindings
-  skills.json   learned/refined skills
+  skills/       learned/refined skills (SKILL.md + code.js per skill)
   memory.json   player facts and named locations
   lessons.json  learned procedural rules
   sessions/     task transcripts grouped by outcome + index.jsonl

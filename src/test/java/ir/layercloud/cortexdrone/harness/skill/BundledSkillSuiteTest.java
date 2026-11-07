@@ -28,6 +28,58 @@ public class BundledSkillSuiteTest {
     }
 
     @Test
+    public void bundledSkillsLoadFromTheirOwnDirectories() throws Exception {
+        SkillLibrary library = library();
+        for (String name : new String[]{"guard", "build_structure", "harvest_crops", "sort_chests"}) {
+            Skill skill = library.get(name);
+            assertNotNull("missing directory-backed skill " + name, skill);
+            assertEquals("bundled", skill.getSource());
+            assertNull("bundled codeFile is inlined and cleared", skill.getCodeFile());
+            assertTrue(skill.getCode().trim().length() > 40);
+            assertNotNull("SKILL.md body is kept as docs", skill.getDocs());
+            assertTrue("SKILL.md body for " + name + " is too short",
+                    skill.getDocs().trim().length() > 80);
+            assertTrue("SKILL.md body for " + name + " needs usage headings",
+                    skill.getDocs().contains("## "));
+        }
+        assertTrue(library.get("guard").getCode().contains("skills.call('guard_scan'"));
+
+        com.google.gson.JsonObject loaded = library.toJsonArray(
+                java.util.Collections.singletonList(library.get("guard")), true)
+                .get(0).getAsJsonObject();
+        assertTrue("skill action=load must return the SKILL.md docs", loaded.has("docs"));
+        assertTrue(loaded.get("docs").getAsString().contains("## Parameters"));
+    }
+
+    @Test
+    public void skillMarkdownRoundTripPreservesMetadataAndDocs() {
+        Skill original = new Skill();
+        original.setName("round_trip");
+        original.setDescription("A \"quoted\" description: with colon");
+        original.setTags("one two");
+        original.setTriggers(java.util.Arrays.asList("do the thing", "again"));
+        original.setRequires(java.util.Collections.singletonList("mine_blocks"));
+        original.setVersion(4);
+        original.setUses(7);
+        original.setSource("refined");
+        original.setDocs("# Round trip\n\nBody with **markdown**.\n");
+        original.setCode("return { ok: true };");
+
+        String text = SkillMarkdown.write(original);
+        Skill parsed = SkillMarkdown.read(text, null);
+        assertNotNull(parsed);
+        assertEquals(original.getName(), parsed.getName());
+        assertEquals(original.getDescription(), parsed.getDescription());
+        assertEquals(original.getTags(), parsed.getTags());
+        assertEquals(original.getTriggers(), parsed.getTriggers());
+        assertEquals(original.getRequires(), parsed.getRequires());
+        assertEquals(original.getVersion(), parsed.getVersion());
+        assertEquals(original.getUses(), parsed.getUses());
+        assertEquals(original.getSource(), parsed.getSource());
+        assertEquals(original.getDocs().trim(), parsed.getDocs());
+    }
+
+    @Test
     public void everyBundledSkillCompilesAsAFunctionBody() throws Exception {
         SkillLibrary library = library();
         List<Skill> all = library.all();
@@ -81,6 +133,12 @@ public class BundledSkillSuiteTest {
         assertTrue(library.get("mine_and_deliver").getCode().contains("skills.call('mine_blocks'"));
         assertTrue(library.get("mine_and_deliver").getCode().contains("skills.call('deliver_items'"));
         assertTrue(library.get("guard").getCode().contains("skills.call('guard_scan'"));
+
+        com.google.gson.JsonObject loaded = library.toJsonArray(
+                java.util.Collections.singletonList(library.get("guard")), true)
+                .get(0).getAsJsonObject();
+        assertTrue("skill action=load must return the SKILL.md docs", loaded.has("docs"));
+        assertTrue(loaded.get("docs").getAsString().contains("## Parameters"));
         assertTrue(library.get("build_structure").getCode().contains("skills.call('place_build_plan'"));
         assertTrue(library.get("farm_cycle").getCode().contains("skills.call('harvest_crops'"));
         assertTrue(library.get("patrol").getCode().contains("skills.call('guard_scan'"));

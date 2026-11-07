@@ -39,8 +39,9 @@
 | `harness.memory.MemoryEntry` | Persistent fact/location model |
 | `harness.memory.MemoryCapture` | Deterministic remember/location extraction |
 | `harness.memory.MemoryStore` | Memory storage, dedupe, search, context selection |
-| `harness.skill.Skill` | Skill model and version/usage metadata |
-| `harness.skill.SkillLibrary` | Bundled + saved skills, versioned storage |
+| `harness.skill.Skill` | Skill model, docs, version/usage metadata |
+| `harness.skill.SkillMarkdown` | SKILL.md frontmatter parser + renderer |
+| `harness.skill.SkillLibrary` | Bundled + learned SKILL.md directories, composition |
 | `harness.skill.SkillSearch` | BM25 + fuzzy retrieval |
 | `harness.skill.SkillRefiner` | Recursive skill compiler (RLM) |
 | `harness.session.DroneSession` | Active task, loop generation, notes, thoughts |
@@ -48,7 +49,6 @@
 | `harness.session.SessionJournal` | Per-task transcript files, outcome/topic index |
 | `harness.session.SessionOutcome` | success/failure/cancelled/interrupted/incomplete/error |
 | `harness.js.SkillRuntime` | Compiles and runs a skill body with `params`, depth-guarded |
-| `harness.skill.Skill` | Skill metadata + `codeFile`, `requires` |
 | `service.world.SiteSurvey` | Read-only build-site columns, slope, headroom, fixtures |
 | `service.world.BuildTask` | One phased blueprint placement |
 | `service.world.StructureArchitect` | Pad search + phased house/wall/tower/platform/bridge plans |

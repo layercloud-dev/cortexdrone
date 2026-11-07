@@ -8,7 +8,7 @@ import java.io.File;
  * <pre>
  * config/cortexdrone/
  *   config.json   LLM gateway, agent limits, saved drone bindings
- *   skills.json   learned + bundled skill overrides
+ *   skills/       one directory per learned skill (SKILL.md + code.js)
  *   memory.json   player facts and named locations
  *   lessons.json  learned procedural rules
  *   sessions/     per-task transcripts grouped by outcome
@@ -28,8 +28,14 @@ public final class ModPaths {
         return new File(root, "config.json");
     }
 
+    /** Legacy single-file skill store; imported once, then archived. */
     public static File skillsFile(File root) {
         return new File(root, "skills.json");
+    }
+
+    /** Learned/refined skills, one SKILL.md directory per skill. */
+    public static File skillsDir(File root) {
+        return new File(root, "skills");
     }
 
     public static File memoryFile(File root) {

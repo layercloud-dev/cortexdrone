@@ -51,10 +51,12 @@ through a tool. A service must not start actions, retain work, or import
 
 ## Add a skill
 
-- Bundled: add `<name>.json` plus `<name>.js` (referenced by `codeFile`) and
-  list the JSON in `resources/skills/index.json`.
+- Bundled: create `resources/skills/<name>/SKILL.md` (YAML frontmatter plus
+  usage docs) and `resources/skills/<name>/code.js`, then add `<name>` (the
+  directory) to `resources/skills/index.json`.
 - Learned: call `skill_refine({task, code, notes})` after a successful workflow.
-- Manual: add an entry to `config/cortexdrone/skills.json` (or use the tool).
+- Manual: create `config/cortexdrone/skills/<name>/SKILL.md` + `code.js`, or
+  use the `skill_refine` tool. The legacy single `skills.json` is imported once.
 
 Skill code is a function body that receives `params`: use synchronous
 `drone.*` calls, read options from `params`, and `return` a small result.

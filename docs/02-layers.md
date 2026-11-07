@@ -55,7 +55,7 @@ ir.layercloud.cortexdrone
     memory/              MemoryEntry, MemoryCapture, MemoryStore
     tool/                ToolSpec, ToolRegistry, ToolInvoker, ScanJobs, ToolSchema
     tools/               providers + view/ JSON boundaries
-    skill/               Skill, SkillLibrary, SkillSearch, SkillRefiner
+    skill/               Skill, SkillMarkdown, SkillLibrary, SkillSearch, SkillRefiner
     session/             DroneSession, SessionManager, SessionJournal
     task/                TaskCoordinator, TaskIntentClassifier
 

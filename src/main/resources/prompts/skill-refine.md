@@ -10,6 +10,7 @@ talking to the player. Return exactly one JSON object and nothing else:
   "triggers": ["short phrase", "another phrase"],
   "tags": "space separated retrieval keywords",
   "requires": ["existing_skill_this_code_calls"],
+  "docs": "Markdown usage notes: parameters, returns, pitfalls (optional)",
   "code": "JavaScript body using the synchronous drone tool API"
 }
 ```
@@ -40,3 +41,7 @@ Rules for metadata:
 - `tags` are extra retrieval terms (blocks, items, machines, actions).
 - `requires` is an array of existing skill names the code calls (empty when the
   skill is self-contained). Never invent a dependency.
+- `docs` is the body of the generated `SKILL.md`. Write it for the next agent:
+  a short intro, a `## Parameters` list with defaults, a `## Returns` shape and
+  a `## Notes` section with the blockers learned during the task. Omit it to get
+  a description-derived stub.

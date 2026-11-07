@@ -1,0 +1,33 @@
+---
+name: "place_double_chest"
+description: "Craft two chests from the drone inventory and place them side by side to form a double chest; reports missing planks instead of silently pulling from storage."
+tags: "craft place double chest planks wood storage"
+triggers:
+  - "make a double chest"
+  - "place two chests"
+  - "craft a chest"
+  - "more storage"
+requires: []
+version: 2
+uses: 0
+code: code.js
+---
+
+# Place double chest
+
+Craft two chests from the drone inventory and place them side by side to form a
+double chest.
+
+## Parameters
+
+- `x,y,z` - optional base position; defaults to one block in front of the player.
+- `player` - optional player to face.
+
+## Returns
+
+`{ ok, placed, at, results }`
+
+## Notes
+
+- Fails with a clear missing-material message instead of pulling planks from storage.
+- Place the chests on a solid floor with air above.

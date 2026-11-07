@@ -83,10 +83,11 @@ public final class SkillRefiner {
         String tags = text(compiled, "tags");
         List<String> triggers = triggers(compiled.get("triggers"));
         List<String> requires = triggers(compiled.get("requires"));
+        String docs = text(compiled, "docs");
         String compiledCode = text(compiled, "code");
         if (compiledCode == null || compiledCode.trim().isEmpty()) compiledCode = code;
         Skill skill = this.library.save(name, description, tags, triggers, requires,
-                compiledCode, "refined");
+                docs, compiledCode, "refined");
         if (skill != null) {
             this.logger.log("SKILL", null, "Refined skill '" + skill.getName() + "' v"
                     + skill.getVersion(), "triggers=" + triggers);

@@ -72,9 +72,12 @@ on the embedded Rhino engine; Node.js is not required.
 - `SkillLibraryTest` — bundled loading, BM25 search, versioned persistence.
 - `SessionJournalTest` — success/failure/cancelled/interrupted categorisation,
   single-write guard, index search and counters.
-- `BundledSkillSuiteTest` — every bundled skill body compiles in Rhino,
-  `requires` targets exist, compound skills call their primitives, and search
-  retrieves the expected capability.
+- `BundledSkillSuiteTest` — every bundled `SKILL.md` + `code.js` pair loads,
+  the body compiles in Rhino, `requires` targets exist, compound skills call
+  their primitives, the Markdown round-trips, and search retrieves the expected
+  capability.
+- `SkillLibraryTest` — directory storage, SKILL.md persistence, legacy JSON
+  import/archival, and restoring a bundled skill when an override is deleted.
 - `LessonStoreTest` — lesson add/search/dedupe/context and persistence.
 - `MemoryStoreTest` / `MemoryCaptureTest` — fact/location capture, coordinates,
   dedupe/update, persistence and pinned context selection.

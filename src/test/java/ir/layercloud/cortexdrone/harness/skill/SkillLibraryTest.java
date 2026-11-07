@@ -29,12 +29,12 @@ public class SkillLibraryTest {
     }
 
     @Test
-    public void persistedBundledSnapshotsDoNotShadowShippedSkills() throws Exception {
+    public void staleLegacyBundledSnapshotsAreIgnoredAndArchived() throws Exception {
         File root = Files.createTempDirectory("cortexdrone-skills-stale").toFile();
-        File storage = new File(root, "skills.json");
+        File legacy = new File(root, "skills.json");
         String stale = "[{\"name\":\"mine_and_deliver\",\"description\":\"old\","
                 + "\"code\":\"return 'stale';\",\"source\":\"bundled\",\"version\":1}]";
-        Files.write(storage.toPath(), stale.getBytes("UTF-8"));
+        Files.write(legacy.toPath(), stale.getBytes("UTF-8"));
 
         SkillLibrary library = new SkillLibrary(root);
         Skill skill = library.get("mine_and_deliver");
@@ -42,19 +42,51 @@ public class SkillLibraryTest {
         assertTrue("stale bundled snapshot must not shadow the jar resource",
                 skill.getCode().contains("skills.call('mine_blocks'"));
         assertFalse(skill.getCode().contains("stale"));
+        assertFalse("legacy file is archived after import", legacy.isFile());
+        assertTrue(new File(root, "skills.json.migrated").isFile());
     }
 
     @Test
-    public void savingWritesOnlyLearnedOverrides() throws Exception {
+    public void learnedSkillIsStoredAsSkillMarkdownDirectory() throws Exception {
         File root = Files.createTempDirectory("cortexdrone-skills-persist").toFile();
         SkillLibrary library = new SkillLibrary(root);
-        library.save("my_skill", "mine", "", null, null, "return 1;", "saved");
+        Skill saved = library.save("my_skill", "mine", "test mine", null,
+                java.util.Collections.singletonList("pickaxe"),
+                "# My skill\n\nUse it for tests.\n", "return 1;", "saved");
+        assertNotNull(saved);
 
-        String stored = new String(Files.readAllBytes(library.storageFile().toPath()), "UTF-8");
-        assertTrue(stored.contains("my_skill"));
-        assertFalse("bundled skills must stay in the jar",
-                stored.contains("\"source\": \"bundled\""));
-        assertFalse(stored.contains("\"source\":\"bundled\""));
+        File dir = new File(root, "skills/my_skill");
+        File markdown = new File(dir, "SKILL.md");
+        File code = new File(dir, "code.js");
+        assertTrue("SKILL.md must exist", markdown.isFile());
+        assertTrue("code.js must exist", code.isFile());
+        String text = new String(Files.readAllBytes(markdown.toPath()), "UTF-8");
+        assertTrue(text.startsWith("---"));
+        assertTrue(text.contains("name: \"my_skill\""));
+        assertTrue(text.contains("# My skill"));
+        assertTrue(new String(Files.readAllBytes(code.toPath()), "UTF-8").contains("return 1;"));
+
+        // Bundled skills are never copied into the config directory.
+        assertFalse(new File(root, "skills/mine_blocks").exists());
+    }
+
+    @Test
+    public void legacyLearnedSkillsAreImportedIntoDirectories() throws Exception {
+        File root = Files.createTempDirectory("cortexdrone-skills-import").toFile();
+        File legacy = new File(root, "skills.json");
+        String json = "[{\"name\":\"old_farm\",\"description\":\"harvest old style\","
+                + "\"tags\":\"farm\",\"triggers\":[\"old farm\"],"
+                + "\"code\":\"return { ok: true };\",\"source\":\"refined\",\"version\":3}]";
+        Files.write(legacy.toPath(), json.getBytes("UTF-8"));
+
+        SkillLibrary library = new SkillLibrary(root);
+        Skill imported = library.get("old_farm");
+        assertNotNull(imported);
+        assertEquals(3, imported.getVersion());
+        assertEquals("refined", imported.getSource());
+        assertTrue(new File(root, "skills/old_farm/SKILL.md").isFile());
+        assertTrue(new File(root, "skills/old_farm/code.js").isFile());
+        assertFalse(legacy.isFile());
     }
 
     @Test
@@ -65,6 +97,7 @@ public class SkillLibraryTest {
                 "return drone.state();", "saved");
         assertNotNull(first);
         assertEquals(1, first.getVersion());
+        assertTrue(new File(root, "skills/test_skill/SKILL.md").isFile());
 
         Skill second = library.save("test_skill", "does a better thing", "test thing", null,
                 "return drone.state();", "refined");
@@ -74,5 +107,20 @@ public class SkillLibraryTest {
         SkillLibrary reloaded = new SkillLibrary(root);
         assertEquals(2, reloaded.get("test_skill").getVersion());
         assertEquals("does a better thing", reloaded.get("test_skill").getDescription());
+    }
+
+    @Test
+    public void deletingAnOverrideRestoresTheBundledSkill() throws Exception {
+        File root = Files.createTempDirectory("cortexdrone-skills-delete").toFile();
+        SkillLibrary library = new SkillLibrary(root);
+        library.save("mine_blocks", "override", "", null, "return 'custom';", "refined");
+        assertTrue(library.get("mine_blocks").getCode().contains("custom"));
+
+        assertTrue(library.delete("mine_blocks"));
+        Skill restored = library.get("mine_blocks");
+        assertNotNull(restored);
+        assertEquals("bundled", restored.getSource());
+        assertTrue(restored.getCode().contains("scanVeins"));
+        assertFalse(new File(root, "skills/mine_blocks").exists());
     }
 }

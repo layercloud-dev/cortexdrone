@@ -64,7 +64,7 @@ public final class SkillTools implements ToolProvider {
                             + "skill compiler (RLM). Pass the player's task, the working JavaScript and short "
                             + "notes about parameters/blockers. The compiler writes a stable name, trigger "
                             + "phrases, retrieval tags, a `requires` list and parameterized code, then saves a "
-                            + "versioned skill in config/cortexdrone/skills.json. Use it after a multi-step "
+                            + "versioned skill directory in config/cortexdrone/skills/<name>/. Use it after a multi-step "
                             + "task succeeds, not for one-off trivia.")
                     .parameters(ToolSchema.object()
                             .requiredString("task", "The original player request that the code fulfils.")

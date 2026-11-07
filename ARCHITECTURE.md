@@ -84,7 +84,7 @@ src/main/java/ir/layercloud/cortexdrone/
     memory/                 MemoryEntry, MemoryCapture, MemoryStore
     tool/                   ToolSpec, ToolRegistry, ToolInvoker, ScanJobs, schemas
     tools/                  one provider per domain + view/ JSON boundaries
-    skill/                  Skill, SkillLibrary, SkillSearch, SkillRefiner
+    skill/                  Skill, SkillMarkdown, SkillLibrary, SkillSearch, SkillRefiner
     session/                DroneSession, SessionManager, SessionJournal
     task/                   TaskCoordinator, TaskIntentClassifier
 
@@ -272,7 +272,7 @@ Everything AI-related lives in the mod config directory, **not** the world save:
 ```text
 config/cortexdrone/
   config.json   gateway, model/key, agent limits, saved drone bindings
-  skills.json   learned/refined skill overrides
+  skills/       learned/refined skills (SKILL.md + code.js per skill)
   memory.json   player facts and named locations
   lessons.json  learned procedural rules
   sessions/     per-task JSON+Markdown transcripts grouped by outcome

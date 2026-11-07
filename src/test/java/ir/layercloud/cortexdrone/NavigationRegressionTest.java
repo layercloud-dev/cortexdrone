@@ -231,6 +231,22 @@ public class NavigationRegressionTest {
     }
 
     @Test
+    public void impossibleGoalsAreRejectedEarly() throws Exception {
+        String resolver = read(MAIN + "manager/navigation/impl/NavigationTargetResolver.java");
+        assertTrue("a placeholder y must not become a goal", resolver.contains("by <= 2 || by >= 254"));
+        assertTrue("the resolver must explain the rejection",
+                resolver.contains("describeFailure("));
+        String view = read(MAIN + "harness/tools/view/NavigationView.java");
+        assertTrue("a zero dig budget with digging enabled must be repaired",
+                view.contains("allowDig && maxDigBlocks <= 0"));
+        String invoker = read(MAIN + "harness/tool/ToolInvoker.java");
+        assertTrue("a spent dig budget needs its own hint",
+                invoker.contains("error.contains(\"dig budget\")"));
+        assertTrue("a disabled-dig failure needs its own hint",
+                invoker.contains("error.contains(\"disabled digging\")"));
+    }
+
+    @Test
     public void longTunnelsGetAUsableDefaultBudget() throws Exception {
         String view = read(MAIN + "harness/tools/view/NavigationView.java");
         assertTrue("the default dig budget must cover a long route",

@@ -40,6 +40,14 @@ public final class NavigationView {
         if (standoff == null) standoff = ToolArgs.object(args, "nearBlock");
         boolean hasStandoff = standoff != null
                 && standoff.has("x") && standoff.has("y") && standoff.has("z");
+        boolean allowDig = ToolArgs.bool(args, "allowDig", true);
+        int maxDigBlocks = ToolArgs.clampedInt(args, "maxDigBlocks", 128, 0, 512);
+        if (allowDig && maxDigBlocks <= 0) {
+            // "allow digging with a zero budget" is contradictory and used to
+            // fail every blocked goto with "dig budget 0 exhausted". A caller
+            // that passes 0 meant "no digging", so it must also clear allowDig.
+            maxDigBlocks = 128;
+        }
         return NavigationRequest.builder()
                 .controller(controller)
                 .player(player)
@@ -51,8 +59,8 @@ public final class NavigationView {
                 .standoffX(hasStandoff ? standoff.get("x").getAsInt() : 0)
                 .standoffY(hasStandoff ? standoff.get("y").getAsInt() : 0)
                 .standoffZ(hasStandoff ? standoff.get("z").getAsInt() : 0)
-                .allowDig(ToolArgs.bool(args, "allowDig", true))
-                .maxDigBlocks(ToolArgs.clampedInt(args, "maxDigBlocks", 128, 0, 512))
+                .allowDig(allowDig)
+                .maxDigBlocks(maxDigBlocks)
                 .recoveryAttempts(ToolArgs.clampedInt(args, "recoveryAttempts", 12, 0, 32))
                 .build();
     }

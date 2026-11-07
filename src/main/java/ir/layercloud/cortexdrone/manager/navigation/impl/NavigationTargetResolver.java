@@ -55,6 +55,13 @@ final class NavigationTargetResolver {
             int bx = MathHelper.floor_double(request.getX());
             int by = MathHelper.floor_double(request.getY());
             int bz = MathHelper.floor_double(request.getZ());
+            // y=0 is not a real destination in any dimension; it is what an
+            // unresolved memory or a missing field looks like. Treating it as a
+            // goal produced a wall of "no tunnel direction found" failures at
+            // bedrock depth. The same applies to any y outside the world.
+            if (by <= 2 || by >= 254) {
+                return null;
+            }
             if (!ItemClassifier.isPassableVoxel(world, bx, by, bz)) {
                 int[] open = FlightPathfinder.findNearestPassableVoxel(world, bx, by, bz, 3);
                 if (open != null) {
@@ -65,5 +72,18 @@ final class NavigationTargetResolver {
             return new NavigationTarget(request.getX(), request.getY(), request.getZ(), false);
         }
         return null;
+    }
+
+    /** Explains why {@link #resolve} returned {@code null}. */
+    static String describeFailure(NavigationRequest request) {
+        if (request == null) return "goto needs a destination.";
+        if (request.isCoordinates()
+                && (request.getY() <= 2.0 || request.getY() >= 254.0)) {
+            return "goto y=" + request.getY()
+                    + " is outside the world; resolve the real coordinates first "
+                    + "(memory search or scan_blocks) instead of passing y=0.";
+        }
+        return "goto needs a destination: goto({x,y,z}) or "
+                + "goto({standoffOf:{x,y,z}}); positional args are only x, y, z.";
     }
 }

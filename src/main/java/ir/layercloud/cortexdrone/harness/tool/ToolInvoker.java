@@ -166,8 +166,22 @@ public final class ToolInvoker {
         merged.addProperty("code", "navigation_failed");
         merged.addProperty("error", error);
         merged.addProperty("navigation_error", error);
-        merged.addProperty("hint", "Automatic trail, tunnel and detour recovery were exhausted. "
-                + "Pick a nearer goal or a different destination; do not repeat the same goto.");
+        String hint;
+        if (error != null && error.contains("dig budget")) {
+            hint = "The goal is reachable only through terrain, but this call's "
+                    + "max_dig_blocks budget is spent. Retry once with a larger "
+                    + "max_dig_blocks (up to 512) or pick a nearer destination; do not "
+                    + "repeat the same goto with the same budget.";
+        } else if (error != null && error.contains("disabled digging")) {
+            hint = "This call set allow_dig:false and the goal has no no-dig route. "
+                    + "Retry with allow_dig:true (and max_dig_blocks above 0) or choose "
+                    + "a destination reachable in open air.";
+        } else {
+            hint = "Automatic trail, tunnel and detour recovery were exhausted. "
+                    + "Pick a nearer goal or a different destination; do not repeat "
+                    + "the same goto.";
+        }
+        merged.addProperty("hint", hint);
         return merged;
     }
 

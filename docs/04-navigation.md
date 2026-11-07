@@ -233,6 +233,21 @@ an empty shell can be told apart from a rejected candidate or an A* budget
 overrun. When a tunnel is re-routed, `NAV Tunnel circling` reports the useless
 dig count and budget.
 
+When `goto` is rejected, the error names the reason:
+
+- `goto y=… is outside the world` — a placeholder `y` (usually `0` from an
+  unresolved memory) was passed. Resolve the real coordinates first; the old
+  behaviour tunnelled toward bedrock and failed with a misleading
+  "no tunnel direction found".
+- `dig budget … exhausted` — the route needs more terrain damage than this
+  call allowed; retry with a larger `max_dig_blocks` (up to 512).
+- `this goto call disabled digging` — no no-dig route exists; retry with
+  `allow_dig:true`.
+
+`allow_dig:true` together with `max_dig_blocks:0` is contradictory and was
+silently failing every blocked route; the request parser now repairs it to the
+default budget instead.
+
 ### Buried `standoff_of` targets
 
 When `goto({standoffOf})` is called for a block with no open face (a buried

@@ -101,6 +101,7 @@
 | `manager.ActionManager` / `ActionRegistry` | lifecycle/registry |
 | `manager.TickManager` | per-tick pipeline |
 | `manager.navigation.*` | goal/request/result + `NavigationManager` |
+| `manager.chunk.*` | `ChunkLoadPolicy`, `PlayerChunkOwnership`, `ChunkLoadingManager`, navigation chunk planner |
 | `manager.building.impl` | `BuildingManager` |
 | `manager.interact.impl` | `InteractionManager` |
 | `manager.inventory.impl` | `InventoryManager` |

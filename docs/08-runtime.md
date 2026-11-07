@@ -24,6 +24,7 @@ server tick END
   drain time-sliced scan jobs
   tick every controller
   reconnect unlinked drones every 40 ticks
+  chunk policy tick (login delay / player-view unload / logout grace)
   tick profiler end
 
 serverStopping

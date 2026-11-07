@@ -66,6 +66,7 @@ ir.layercloud.cortexdrone
   oc/                    OpenComputers reflection bridge (machine bootstrap)
   action/oc/             OC callback invocation + machine control actions
   manager/oc/            OC manager (oc_call, oc_machine)
+  manager/chunk/         navigation Forge chunk tickets + player-view policy
 ```
 
 ## Dependency examples

@@ -55,6 +55,12 @@ pick a goal, start an action or retain work state.
 : geometry, connectivity, targeting, registry introspection, item matching and
   structure planning.
 
+`ChunkAccess`
+: loaded-chunk checks plus the policy-gated loading bridge used by A*. The
+  navigation chunk manager installs its Forge-ticket loader here; with no loader
+  or a closed player policy, `ensureLoaded` returns false and callers treat the
+  chunk as solid.
+
 `DocLookupService`
 : live registry, ore dictionary, vanilla crafting and local machine recipe
   search. `include_web` is opt-in; internet lookups are separate tools.

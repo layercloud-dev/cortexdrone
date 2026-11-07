@@ -24,6 +24,7 @@ import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import ir.layercloud.cortexdrone.manager.oc.impl.OcManager;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
+import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
 import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
@@ -64,6 +65,7 @@ public class AIDroneManager {
     private final SessionManager sessionManager = new SessionManager();
     private final FlightPathfinder pathfinder;
     private final BreadcrumbService breadcrumbService;
+    private final ChunkLoadingManager chunkLoadingManager;
     private final NavigationManager navigationManager;
     private final WorldScanner worldScanner;
     private final InventoryService inventoryService;
@@ -92,6 +94,7 @@ public class AIDroneManager {
         this.configRoot = ModPaths.ensure(configRoot);
         this.pathfinder = new FlightPathfinder(this.logger);
         this.breadcrumbService = new BreadcrumbService();
+        this.chunkLoadingManager = new ChunkLoadingManager(this, mod, this.logger);
         this.worldScanner = new WorldScanner(this.logger, this.config);
         this.inventoryService = new InventoryService(this.logger);
         this.visualsManager = new VisualsManager(this, this.logger);
@@ -100,7 +103,7 @@ public class AIDroneManager {
         this.buildingManager = new BuildingManager(this.logger, this.damageJournal);
         this.ocManager = new OcManager();
         this.navigationManager = new NavigationManager(this, this.logger,
-                this.pathfinder, this.breadcrumbService);
+                this.pathfinder, this.breadcrumbService, this.chunkLoadingManager);
         this.actionRegistry = new ActionRegistry();
         this.actionRegistry.register(this.buildingManager);
         this.actionRegistry.register(this.interactionManager);
@@ -122,6 +125,7 @@ public class AIDroneManager {
         this.configRoot = ModPaths.ensure(this.configRoot);
         this.configFile = ModPaths.configFile(this.configRoot);
         this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
+        this.chunkLoadingManager.attach();
         this.harness = Harness.create(this, this.config, new SkillLibrary(this.configRoot));
         this.logger.setDebugLogFile(ModPaths.logFile(this.configRoot));
         reconnectUnlinkedWorldDrones();
@@ -143,6 +147,7 @@ public class AIDroneManager {
                 this.visualsManager.clearLighting(ctrl);
             }
         }
+        this.chunkLoadingManager.shutdown();
         saveConfig();
     }
 
@@ -282,6 +287,23 @@ public class AIDroneManager {
         }
 
         this.tickProfiler.onTickEnd(this.tickCounter);
+        this.chunkLoadingManager.tickPolicy(anyDroneBusy());
+    }
+
+    /**
+     * True while any drone is navigating, executing a retained action or
+     * running an agent script. The chunk manager never pulls an AI-loaded
+     * chunk out from under active work.
+     */
+    private boolean anyDroneBusy() {
+        for (DroneController ctrl : this.controllersById.values()) {
+            if (ctrl == null || ctrl.drone == null || ctrl.drone.isDead) continue;
+            if (this.navigationManager.isActive(ctrl)) return true;
+            if (this.actionRegistry.activeContextCount(ctrl) > 0) return true;
+            DroneSession session = this.sessionManager.session(ctrl);
+            if (session != null && session.isActive()) return true;
+        }
+        return false;
     }
 
     private void reconnectUnlinkedWorldDrones() {
@@ -507,6 +529,7 @@ public class AIDroneManager {
         int droppedCount = InventoryService.dropAllDroneItemsAt(d, w, dx, dy, dz);
         this.visualsManager.forget(ctrl);
         this.navigationManager.forget(ctrl);
+        this.chunkLoadingManager.releaseDroneTicket(ctrl);
         DroneSession session = this.sessionManager.session(ctrl);
         if (session != null) session.cancelOtherLoops(0, "drone_despawned");
         this.sessionManager.forget(ctrl);

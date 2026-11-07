@@ -9,6 +9,7 @@ import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
+import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -48,11 +49,14 @@ public final class NavigateAction implements Action<NavigationContext> {
         int curBx = MathHelper.floor_double(drone.posX);
         int curBy = MathHelper.floor_double(drone.posY);
         int curBz = MathHelper.floor_double(drone.posZ);
-        int topCur = world.getHeightValue(curBx, curBz);
+        int topCur = ChunkAccess.ensureBlockLoaded(world, curBx, curBz)
+                ? world.getHeightValue(curBx, curBz) : curBy;
         boolean inOpenSky = world.canBlockSeeTheSky(curBx, curBy, curBz)
                 || drone.posY >= topCur - 1;
-        int topGoal = world.getHeightValue(MathHelper.floor_double(context.targetX()),
-                MathHelper.floor_double(context.targetZ()));
+        int goalBx = MathHelper.floor_double(context.targetX());
+        int goalBz = MathHelper.floor_double(context.targetZ());
+        int topGoal = ChunkAccess.ensureBlockLoaded(world, goalBx, goalBz)
+                ? world.getHeightValue(goalBx, goalBz) : (int) Math.floor(drone.posY);
         boolean goalOnSurface = context.targetY() >= topGoal - 3;
 
         double gx = context.targetX();
@@ -93,8 +97,10 @@ public final class NavigateAction implements Action<NavigationContext> {
             effGx = drone.posX + (gx - drone.posX) / horizDist * step;
             effGz = drone.posZ + (gz - drone.posZ) / horizDist * step;
             if (inOpenSky) {
-                int topSub = world.getHeightValue(MathHelper.floor_double(effGx),
-                        MathHelper.floor_double(effGz));
+                int subBx = MathHelper.floor_double(effGx);
+                int subBz = MathHelper.floor_double(effGz);
+                int topSub = ChunkAccess.ensureBlockLoaded(world, subBx, subBz)
+                        ? world.getHeightValue(subBx, subBz) : curBy;
                 effGy = Math.max(gy, Math.max(topSub, topCur) + 4.5);
             } else {
                 effGy = drone.posY + (gy - drone.posY) * (step / horizDist);

@@ -51,6 +51,11 @@ public final class ItemClassifier {
 
     public static boolean isPassableVoxel(World world, int bx, int by, int bz) {
         if (by <= 1 || by >= 255) return false;
+        // Navigation must not silently generate chunks while the player-online
+        // policy is closed. ChunkAccess lets the installed chunk manager load
+        // on demand when the policy is open; otherwise the voxel is unavailable.
+        // Client worlds keep their normal loaded-chunk reads.
+        if (!world.isRemote && !ChunkAccess.ensureBlockLoaded(world, bx, bz)) return false;
         if (world.isAirBlock(bx, by, bz)) return true;
         Block b = world.getBlock(bx, by, bz);
         if (b == null || isLiquidBlock(b)) return true;

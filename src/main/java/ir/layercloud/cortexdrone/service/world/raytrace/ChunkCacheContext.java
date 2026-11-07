@@ -31,14 +31,15 @@ public class ChunkCacheContext {
     }
 
     /**
-     * Reads a chunk only if it is already loaded. This class never asks the
-     * server to load or generate a chunk.
+     * Reads a chunk when it is already loaded, or when the navigation chunk
+     * manager is allowed to load it (player-online policy open). A closed policy
+     * keeps the chunk unavailable so A* never plans through it.
      */
     private Chunk chunkAt(int gridX, int gridZ) {
         if (!this.resolved[gridX][gridZ]) {
             int cx = this.baseChunkX + gridX;
             int cz = this.baseChunkZ + gridZ;
-            if (ChunkAccess.isLoaded(this.world, cx, cz)) {
+            if (ChunkAccess.ensureLoaded(this.world, cx, cz)) {
                 try {
                     this.chunks[gridX][gridZ] = this.world.getChunkFromChunkCoords(cx, cz);
                 } catch (Throwable ignored) {
@@ -71,7 +72,7 @@ public class ChunkCacheContext {
             // route through a chunk the AI is not allowed to load.
             return Blocks.bedrock;
         }
-        if (!ChunkAccess.isBlockLoaded(this.world, x, z)) {
+        if (!ChunkAccess.ensureBlockLoaded(this.world, x, z)) {
             return Blocks.bedrock;
         }
         return this.world.getBlock(x, y, z);

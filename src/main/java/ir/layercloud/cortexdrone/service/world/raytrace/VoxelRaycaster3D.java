@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.service.world.raytrace;
 
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
@@ -109,7 +110,7 @@ public final class VoxelRaycaster3D {
         int endZ = MathHelper.floor_double(z1);
 
         if (x == endX && y == endY && z == endZ) {
-            return ItemClassifier.isPassableVoxel(world, x, y, z);
+            return isPassableGated(world, x, y, z);
         }
 
         double dx = x1 - x0;
@@ -130,7 +131,7 @@ public final class VoxelRaycaster3D {
 
         int maxSteps = Math.abs(endX - x) + Math.abs(endY - y) + Math.abs(endZ - z) + 3;
         for (int step = 0; step < maxSteps; step++) {
-            if (!ItemClassifier.isPassableVoxel(world, x, y, z)) {
+            if (!isPassableGated(world, x, y, z)) {
                 return false;
             }
             if (x == endX && y == endY && z == endZ) {
@@ -147,7 +148,17 @@ public final class VoxelRaycaster3D {
                 tMaxZ += tDeltaZ;
             }
         }
-        return ItemClassifier.isPassableVoxel(world, endX, endY, endZ);
+        return isPassableGated(world, endX, endY, endZ);
+    }
+
+    /**
+     * Direct-world raycasts must not silently generate chunks while the player
+     * policy is closed. The chunk manager loads/claims only when allowed;
+     * otherwise the voxel is treated as solid.
+     */
+    private static boolean isPassableGated(World world, int x, int y, int z) {
+        if (!world.isRemote && !ChunkAccess.ensureBlockLoaded(world, x, z)) return false;
+        return ItemClassifier.isPassableVoxel(world, x, y, z);
     }
 
     /**

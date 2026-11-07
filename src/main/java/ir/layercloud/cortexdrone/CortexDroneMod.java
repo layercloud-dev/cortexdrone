@@ -15,8 +15,10 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
+import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.ServerChatEvent;
+import net.minecraftforge.event.world.WorldEvent;
 
 import java.io.File;
 import java.lang.reflect.Method;
@@ -63,6 +65,8 @@ public class CortexDroneMod {
         FMLCommonHandler.instance().bus().register(this);
         this.aiDroneManager = new AIDroneManager(this,
                 new File(event.getModConfigurationDirectory(), "cortexdrone"));
+        ForgeChunkManager.setForcedChunkLoadingCallback(
+                this, this.aiDroneManager.getChunkLoadingManager());
     }
 
     @Mod.EventHandler
@@ -123,6 +127,12 @@ public class CortexDroneMod {
         } catch (Throwable t) {
             LOG.log(Level.SEVERE, "CortexDrone chat handling failed", t);
         }
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        if (event == null || event.world == null || this.aiDroneManager == null) return;
+        this.aiDroneManager.getChunkLoadingManager().releaseWorld(event.world);
     }
 
     public boolean isAuthenticated(EntityPlayer player) {

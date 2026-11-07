@@ -20,7 +20,7 @@ The old requests came from two surfaces:
 | Copy the LayerCloud gateway config, model `deepseek-v4.1-flash` | `ModConfig`, `/drone config`, `LlmClient` | present |
 | Drone stuck in place / changing colour but not moving | OC machine proxy, `DronePhysicsService`, tick pipeline | present |
 | Never teleport; real 3D flight pathfinding | `FlightPathfinder`, `TrailPlan`, `BreadcrumbService`, `NavigationManager` | present |
-| Fly 1000+ blocks and load only the needed chunks | `ChunkAccess`, `find_distant`, long-range `goto` | present |
+| Fly 1000+ blocks and load only the needed chunks | `ChunkAccess`, `ChunkLoadingManager` (Forge tickets + vanilla unload queue), long-range `goto` | present |
 | Stay near the player, not behind their back, so they can rotate and click | **was missing** — added `follow_player` skill with a stable side hover, look-at hold and drop pickup | added |
 | `@drone harvest and replant sugarcane/crops/trees` | `sugarcane_farm`, `harvest_crops`, `chop_tree`, `farm_cycle` | present |
 | `@drone mine a 3x3 under me` / tunnel / exact rectangle | **was missing** as a workflow — added `mine_box` (anchors: under/front/around or explicit corners) | added |

@@ -17,6 +17,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationResult;
+import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
@@ -24,6 +25,7 @@ import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.impl.TunnelPlanner;
+import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.AccessLevel;
@@ -62,15 +64,18 @@ public final class NavigationManager implements FlightController {
     private final DroneLogger logger;
     private final FlightPathfinder pathfinder;
     private final BreadcrumbService breadcrumbService;
+    private final ChunkLoadingManager chunkLoader;
     private final Map<DroneController, Session> sessions = new ConcurrentHashMap<>();
     private final Map<DroneController, NavigationState> states = new ConcurrentHashMap<>();
 
     public NavigationManager(AIDroneManager manager, DroneLogger logger,
-                             FlightPathfinder pathfinder, BreadcrumbService breadcrumbService) {
+                             FlightPathfinder pathfinder, BreadcrumbService breadcrumbService,
+                             ChunkLoadingManager chunkLoader) {
         this.manager = manager;
         this.logger = logger;
         this.pathfinder = pathfinder;
         this.breadcrumbService = breadcrumbService;
+        this.chunkLoader = chunkLoader;
     }
 
     /** Per-drone navigation state, created on first use. */
@@ -111,6 +116,7 @@ public final class NavigationManager implements FlightController {
         session.maxDigBlocks = request.getMaxDigBlocks();
         session.recoveryAttempts = request.getRecoveryAttempts();
         this.sessions.put(controller, session);
+        this.chunkLoader.updateDroneTicket(controller, state);
         return NavigationResult.started(target.getX(), target.getY(), target.getZ(), "planning");
     }
 
@@ -126,6 +132,7 @@ public final class NavigationManager implements FlightController {
                 NavigationMode.STOP, controller.drone.posX, controller.drone.posY,
                 controller.drone.posZ, reason != null ? reason : "Navigation stop");
         new StopAction(state).execute(context);
+        this.chunkLoader.releaseDroneTicket(controller);
         return NavigationResult.stopped(controller.drone.posX, controller.drone.posY,
                 controller.drone.posZ);
     }
@@ -154,6 +161,11 @@ public final class NavigationManager implements FlightController {
 
         Session session = this.sessions.get(controller);
         if (session == null) return;
+
+        // Keep the rolling navigation corridor claimed before the pathfinder
+        // reads it. This is also what lets a drone enter a fresh chunk without
+        // touching chunks that belong to a player's render distance.
+        this.chunkLoader.updateDroneTicket(controller, state);
 
         if (session.leg != null) {
             tickLeg(controller, session);
@@ -215,6 +227,7 @@ public final class NavigationManager implements FlightController {
             session.leg.action.cancel(session.leg.context);
         }
         this.sessions.remove(controller);
+        this.chunkLoader.releaseDroneTicket(controller);
     }
 
     /** Drops all per-drone navigation state when the controller goes away. */
@@ -273,6 +286,9 @@ public final class NavigationManager implements FlightController {
         Action<NavigationContext> action = new NavigateAction(this.pathfinder,
                 this.breadcrumbService, state(controller));
         action.execute(context);
+        // The action has just planned a fresh path; claim its corridor before
+        // vanilla can evict chunks that are not near a player.
+        this.chunkLoader.updateDroneTicket(controller, state(controller));
         if (context.isActive()) {
             context.retain();
             session.leg = new Leg(action, context);
@@ -501,54 +517,13 @@ public final class NavigationManager implements FlightController {
         session.replanCooldown = 1;
     }
 
-    /**
-     * Candidate detour goals: above the goal first (most maps are open above),
-     * then the four lateral faces, then above the drone. Points that repeat or
-     * land inside solid rock are skipped.
-     */
     private double[] nextDetour(Session session, NavigationState state,
                                 Drone drone, World world) {
-        double[][] candidates = new double[][]{
-                // Over the goal first: most maps are open above.
-                {state.goalX, state.goalY + 4.0D, state.goalZ},
-                {state.goalX, state.goalY + 8.0D, state.goalZ},
-                {state.goalX, state.goalY + 12.0D, state.goalZ},
-                {state.goalX + 6.0D, state.goalY, state.goalZ},
-                {state.goalX - 6.0D, state.goalY, state.goalZ},
-                {state.goalX, state.goalY, state.goalZ + 6.0D},
-                {state.goalX, state.goalY, state.goalZ - 6.0D},
-                // Diagonal shoulders around the goal, for tight corners.
-                {state.goalX + 6.0D, state.goalY + 3.0D, state.goalZ + 6.0D},
-                {state.goalX - 6.0D, state.goalY + 3.0D, state.goalZ - 6.0D},
-                {state.goalX + 6.0D, state.goalY + 6.0D, state.goalZ - 6.0D},
-                {state.goalX - 6.0D, state.goalY + 6.0D, state.goalZ + 6.0D},
-                // Local escapes when the drone itself is boxed in.
-                {drone.posX, Math.min(253.0D, drone.posY + 8.0D), drone.posZ},
-                {drone.posX, Math.max(3.0D, drone.posY - 6.0D), drone.posZ},
-                {drone.posX + 6.0D, drone.posY, drone.posZ},
-                {drone.posX - 6.0D, drone.posY, drone.posZ},
-                {drone.posX, drone.posY, drone.posZ + 6.0D},
-                {drone.posX, drone.posY, drone.posZ - 6.0D},
-                {drone.posX + 12.0D, drone.posY + 2.0D, drone.posZ},
-                {drone.posX - 12.0D, drone.posY + 2.0D, drone.posZ},
-                {drone.posX, drone.posY + 2.0D, drone.posZ + 12.0D},
-                {drone.posX, drone.posY + 2.0D, drone.posZ - 12.0D}
-        };
-        while (session.detours < candidates.length) {
-            double[] candidate = candidates[session.detours++];
-            int bx = (int) Math.floor(candidate[0]);
-            int by = (int) Math.floor(candidate[1]);
-            int bz = (int) Math.floor(candidate[2]);
-            if (by <= 2 || by >= 254) continue;
-            if (!world.blockExists(bx, by, bz)) continue;
-            if (!ItemClassifier.isPassableVoxel(world, bx, by, bz)) continue;
-            if (!ItemClassifier.isPassableVoxel(world, bx, by + 1, bz)) continue;
-            long key = pack(new int[]{bx, by, bz});
-            if (session.rejectedDetours.contains(key)) continue;
-            session.rejectedDetours.add(key);
-            return new double[]{bx + 0.5D, by + 0.35D, bz + 0.5D};
-        }
-        return null;
+        int[] attempt = new int[]{session.detours};
+        double[] detour = DetourPlanner.next(attempt, session.rejectedDetours,
+                state, drone, world);
+        session.detours = attempt[0];
+        return detour;
     }
 
     private static long pack(int[] position) {
@@ -560,6 +535,7 @@ public final class NavigationManager implements FlightController {
     private void arrive(DroneController controller, Session session) {
         NavigationState state = state(controller);
         this.sessions.remove(controller);
+        this.chunkLoader.releaseDroneTicket(controller);
         state.stuckTicks = 0;
         state.lastPathPartial = false;
         state.clearPath();
@@ -571,6 +547,7 @@ public final class NavigationManager implements FlightController {
     private void fail(DroneController controller, String reason) {
         this.sessions.remove(controller);
         if (controller == null) return;
+        this.chunkLoader.releaseDroneTicket(controller);
         NavigationState state = state(controller);
         state.error = reason;
         state.clearPath();
@@ -626,6 +603,9 @@ public final class NavigationManager implements FlightController {
         }
         if (request.isStandoff()) {
             World world = controller.drone.worldObj;
+            if (!ChunkAccess.ensureBlockLoaded(world, request.getStandoffX(), request.getStandoffZ())) {
+                return null;
+            }
             double[] standoff = FlightPathfinder.findBlockStandoff(world, controller.drone,
                     request.getStandoffX(), request.getStandoffY(), request.getStandoffZ());
             if (standoff == null) {

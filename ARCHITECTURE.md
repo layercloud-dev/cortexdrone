@@ -73,6 +73,7 @@ src/main/java/ir/layercloud/cortexdrone/
   manager/                  long-lived decision/orchestration layer
     ActionManager, ActionRegistry, TickManager
     building/ interact/ inventory/ navigation/ visuals/
+    chunk/                  navigation chunk tickets, load/unload policy
 
   service/                  read-only data, recon and planning
     inventory/ machine/ navigation/ world/
@@ -167,6 +168,36 @@ Decision order:
 `ToolInvoker` waits for `goto` to finish on the agent thread (not the server
 thread), so a direct tool call and `drone.goto(...)` both return after arrival
 or failure.
+
+## 5a. Chunk management
+
+Navigation owns a rolling chunk corridor through `ChunkLoadingManager`
+(`manager/chunk`). It uses the same primitive as vanilla and ChickenChunks:
+Forge 1.7.10 `ForgeChunkManager` tickets plus
+`World.getChunkFromChunkCoords`. It never edits `loadedChunkHashMap` or removes
+a chunk itself.
+
+Policy:
+
+1. **Login delay** — no AI chunk loading until a player has been online for 10
+   seconds. `ChunkAccess.ensureLoaded` is the single loading entry point, so
+   pathfinding, raycasts and A* cannot bypass the policy.
+2. **Player view is vanilla-owned** — chunks inside any online player's server
+   view square are never forced, generated or queued for unload by the drone.
+3. **Rolling corridor** — the drone ticket claims its own 3x3, the next few
+   path waypoints and a short line toward the goal (max 25 chunks, Forge's
+   default ticket depth). Chunks are loaded with a per-update budget so flight
+   does not stutter on world generation.
+4. **Safe unload** — a claim is released only after the drone is more than two
+   chunks away and no player can see the chunk. AI-generated chunks are then
+   queued with `ChunkProviderServer.unloadChunksIfNotNearSpawn`; actual removal
+   stays in vanilla's normal unload loop.
+5. **Logout grace** — after the last player leaves, AI chunks are kept for 10
+   seconds and then released, unless a drone is still near a chunk.
+
+Saved Forge tickets are deliberately released on world load rather than
+re-adopted, so a restart cannot keep stale AI chunks loaded outside the current
+player view.
 
 ## 6. Harness summary
 

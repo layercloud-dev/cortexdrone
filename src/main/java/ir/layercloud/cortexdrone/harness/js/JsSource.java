@@ -29,6 +29,8 @@ public final class JsSource {
     private static final Pattern OPTIONAL_CATCH = Pattern.compile("\\bcatch\\s*\\{");
     private static final Pattern ARRAY_SPREAD = Pattern.compile("\\[\\.\\.\\.([A-Za-z_$][\\w$.]*)\\]");
     private static final Pattern OBJECT_SPREAD = Pattern.compile("\\{\\.\\.\\.([A-Za-z_$][\\w$.]*)\\}");
+    private static final Pattern SPREAD_CALL =
+            Pattern.compile("([A-Za-z_$][\\w$.]*)\\(\\s*\\.\\.\\.\\s*([A-Za-z_$][\\w$.]*)\\s*\\)");
 
     private JsSource() {
     }
@@ -52,7 +54,42 @@ public final class JsSource {
         result = TypeScriptEraser.replaceOutsideLiterals(result, OPTIONAL_CATCH, "catch (__error) {");
         result = TypeScriptEraser.replaceOutsideLiterals(result, ARRAY_SPREAD, "$1.slice()");
         result = TypeScriptEraser.replaceOutsideLiterals(result, OBJECT_SPREAD, "Object.assign({}, $1)");
+        result = rewriteSpreadCalls(result);
         return result;
+    }
+
+    /**
+     * Rewrites {@code f(...args)} / {@code obj.m(...args)} into
+     * {@code apply} calls.
+     *
+     * <p>Rhino 1.7.15 parses array spread but not spread in call arguments, and
+     * models write {@code Math.min(...xs)} constantly. Only a single spread that
+     * is the whole argument list is rewritten; anything else is left for Rhino
+     * to reject with a clear syntax error.</p>
+     */
+    static String rewriteSpreadCalls(String source) {
+        String mask = TypeScriptEraser.maskLiterals(source);
+        java.util.regex.Matcher matcher = SPREAD_CALL.matcher(mask);
+        StringBuilder out = new StringBuilder(source.length() + 32);
+        int last = 0;
+        while (matcher.find()) {
+            int start = matcher.start();
+            // `new Foo(...args)` is a constructor, not a function call.
+            if (start >= 4 && "new ".equals(source.substring(start - 4, start))) continue;
+            String callee = matcher.group(1);
+            String argument = matcher.group(2);
+            out.append(source, last, start);
+            int dot = callee.lastIndexOf('.');
+            if (dot > 0) {
+                String owner = callee.substring(0, dot);
+                out.append(callee).append(".apply(").append(owner).append(", ").append(argument).append(")");
+            } else {
+                out.append(callee).append(".apply(null, ").append(argument).append(")");
+            }
+            last = matcher.end();
+        }
+        out.append(source.substring(last));
+        return out.toString();
     }
 
     /**

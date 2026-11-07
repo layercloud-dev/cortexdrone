@@ -92,7 +92,8 @@ public final class NavigationManager implements FlightController {
         }
         NavigationTarget target = resolveTarget(request);
         if (target == null) {
-            return NavigationResult.failure("goto requires x/y/z or standoffOf:{x,y,z}");
+            return NavigationResult.failure("goto needs a destination: goto({x,y,z}) or "
+                    + "goto({standoffOf:{x,y,z}}); positional args are only x, y, z.");
         }
 
         NavigationState state = state(controller);

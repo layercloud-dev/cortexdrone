@@ -94,6 +94,12 @@ var failed = 0;
 var planned = Math.min(targets.length, maxBlocks);
 for (var t = 0; t < planned; t++) {
   var state = drone.state();
+  if (state && state.slots === 0) {
+    return { ok: false, mined: mined.length, failed: failed,
+      remaining: targets.length - t, blocks: mined, stopped: 'no inventory slots',
+      note: 'install an inventory upgrade on the drone before mining',
+      box: { x1: x1, y1: y1, z1: z1, x2: x2, y2: y2, z2: z2 } };
+  }
   if (state && state.isFull === true) {
     return { ok: mined.length > 0, mined: mined.length, failed: failed,
       remaining: targets.length - t, blocks: mined, stopped: 'inventory full',

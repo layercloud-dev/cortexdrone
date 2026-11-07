@@ -212,13 +212,14 @@ public final class JsEngine {
     }
 
     private void bindTools(Context cx, Scriptable scope, ToolContext context) {
-        ScriptableObject drone = (ScriptableObject) cx.newObject(scope);
+        ToolNamespace drone = new ToolNamespace();
+        drone.setParentScope(scope);
+        drone.setPrototype(ScriptableObject.getObjectPrototype(scope));
         for (Tool tool : this.registry.tools()) {
             ToolSpec spec = tool.getSpec();
             if (spec.isInternal()) continue;
             Function function = new ToolFunction(this.invoker, context, spec);
-            ScriptableObject.putProperty(drone, camelCase(spec.getName()), function);
-            ScriptableObject.putProperty(drone, spec.getName(), function);
+            drone.bind(spec.getName(), camelCase(spec.getName()), function);
         }
         ScriptableObject.putProperty(scope, "drone", drone);
 
@@ -455,6 +456,56 @@ public final class JsEngine {
             return new String(buffer.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    /**
+     * The {@code drone} object, with tolerant tool-name lookup.
+     *
+     * <p>Models mix snake_case and camelCase and occasionally write
+     * {@code getTop_y}. Both {@code get_top_y} and {@code getTopY} are bound
+     * explicitly; this resolver additionally folds case and separators so a
+     * typo still reaches the intended tool instead of throwing.</p>
+     */
+    private static final class ToolNamespace extends ScriptableObject {
+        private final java.util.Map<String, Object> folded = new java.util.HashMap<>();
+
+        @Override
+        public String getClassName() {
+            return "ToolNamespace";
+        }
+
+        void bind(String snakeName, String camelName, Object function) {
+            ScriptableObject.putProperty(this, snakeName, function);
+            if (!camelName.equals(snakeName)) {
+                ScriptableObject.putProperty(this, camelName, function);
+            }
+            this.folded.put(fold(snakeName), function);
+            this.folded.put(fold(camelName), function);
+        }
+
+        @Override
+        public Object get(String name, Scriptable start) {
+            Object direct = super.get(name, start);
+            if (direct != Scriptable.NOT_FOUND) return direct;
+            Object foldedMatch = this.folded.get(fold(name));
+            return foldedMatch != null ? foldedMatch : Scriptable.NOT_FOUND;
+        }
+
+        @Override
+        public boolean has(String name, Scriptable start) {
+            return super.has(name, start) || this.folded.containsKey(fold(name));
+        }
+
+        private static String fold(String name) {
+            if (name == null) return "";
+            StringBuilder out = new StringBuilder(name.length());
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                if (c == '_' || c == '-' || Character.isWhitespace(c)) continue;
+                out.append(Character.toLowerCase(c));
+            }
+            return out.toString();
         }
     }
 

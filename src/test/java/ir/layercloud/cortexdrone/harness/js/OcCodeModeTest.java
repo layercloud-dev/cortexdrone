@@ -138,6 +138,21 @@ public class OcCodeModeTest {
         assertEquals("Running", result.get("result").getAsString());
     }
 
+    @Test
+    public void mixedSnakeAndCamelToolNamesStillResolve() throws Exception {
+        // Live models wrote `getTop_y`; both get_top_y and getTopY are bound, and
+        // the namespace folds separators and case on a miss.
+        JsonObject result = engine().execute(null,
+                "return { a: typeof drone.oc_state, b: typeof drone.ocState,"
+                        + " c: typeof drone.oc_State, d: typeof drone.OCSTATE };", 10_000L);
+        assertTrue(result.toString(), result.get("ok").getAsBoolean());
+        JsonObject value = result.getAsJsonObject("result");
+        assertEquals("function", value.get("a").getAsString());
+        assertEquals("function", value.get("b").getAsString());
+        assertEquals("function", value.get("c").getAsString());
+        assertEquals("function", value.get("d").getAsString());
+    }
+
     private static File tempRoot() throws Exception {
         return Files.createTempDirectory("cortexdrone-oc-js").toFile();
     }

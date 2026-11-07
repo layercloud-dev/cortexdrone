@@ -78,6 +78,33 @@ public class JsCompatRegressionTest {
         assertEquals(5, result.getAsJsonObject("result").get("sum").getAsInt());
     }
 
+    @Test
+    public void spreadInCallArgumentsIsRewritten() throws Exception {
+        // Rhino 1.7.15 parses array spread but not `f(...args)`. Models write
+        // Math.min(...xs) constantly, and it failed a live task.
+        JsonObject result = run(
+                "var xs = [4, 9, 2];"
+                        + "var zs = [-3, 7, 1];"
+                        + "return { min: Math.min.apply(null, xs), max: Math.max.apply(null, zs),"
+                        + " bbox: { x: [Math.min(...xs), Math.max(...xs)],"
+                        + " z: [Math.min(...zs), Math.max(...zs)] } };");
+        assertTrue(result.toString(), result.get("ok").getAsBoolean());
+        JsonObject value = result.getAsJsonObject("result");
+        assertEquals(2, value.get("min").getAsInt());
+        assertEquals(7, value.get("max").getAsInt());
+        assertEquals(2, value.getAsJsonObject("bbox").getAsJsonArray("x").get(0).getAsInt());
+    }
+
+    @Test
+    public void userFunctionSpreadCallKeepsItsOwner() throws Exception {
+        JsonObject result = run(
+                "var box = { base: 10, add: function (a, b) { return this.base + a + b; } };"
+                        + "var nums = [1, 2];"
+                        + "return box.add.apply(box, nums);");
+        assertTrue(result.toString(), result.get("ok").getAsBoolean());
+        assertEquals(13, result.get("result").getAsInt());
+    }
+
     private static File tempRoot() throws Exception {
         return Files.createTempDirectory("cortexdrone-js-compat").toFile();
     }

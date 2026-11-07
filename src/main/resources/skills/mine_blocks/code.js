@@ -44,6 +44,11 @@ var mined = [];
 var failed = 0;
 for (var t = 0; t < targets.length; t++) {
   var state = drone.state();
+  if (state.slots === 0) {
+    return { ok: false, mined: mined.length, blocks: mined,
+      remaining: targets.length - t,
+      note: 'the drone has no inventory slots; install an inventory upgrade first' };
+  }
   if (state.isFull) {
     return { ok: mined.length > 0, mined: mined.length, blocks: mined,
       remaining: targets.length - t, note: 'drone inventory is full' };

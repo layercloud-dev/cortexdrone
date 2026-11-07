@@ -3,7 +3,7 @@ package ir.layercloud.cortexdrone.config;
 import ir.layercloud.cortexdrone.DroneController;
 
 import com.google.gson.Gson;
-import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
+import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;

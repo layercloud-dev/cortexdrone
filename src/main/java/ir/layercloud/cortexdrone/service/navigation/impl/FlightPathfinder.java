@@ -352,10 +352,6 @@ public class FlightPathfinder {
         return DronePhysicsService.describeNearestObstruction(world, x, y, z);
     }
 
-    public static void clearNearbyLeafObstruction(World world, DroneController ctrl) {
-        DronePhysicsService.clearNearbyLeafObstruction(world, ctrl);
-    }
-
     public static void runServerSidePhysicsStep(Drone d, double maxVelOverride) {
         DronePhysicsService.runServerSidePhysicsStep(d, maxVelOverride);
     }

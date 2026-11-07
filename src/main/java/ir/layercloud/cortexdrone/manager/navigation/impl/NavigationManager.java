@@ -5,8 +5,11 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.action.Action;
+import ir.layercloud.cortexdrone.action.block.BlockRequest;
+import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.action.navigation.NavigationMode;
+import ir.layercloud.cortexdrone.action.navigation.impl.ClearLeafObstructionAction;
 import ir.layercloud.cortexdrone.action.navigation.impl.NavigateAction;
 import ir.layercloud.cortexdrone.action.navigation.impl.StopAction;
 import ir.layercloud.cortexdrone.config.DroneLogger;
@@ -442,9 +445,14 @@ public final class NavigationManager {
             session.replanCooldown = 1;
             return;
         }
-        String broken = this.manager.getBuildingManager()
-                .breakBlock(controller, target[0], target[1], target[2]);
-        if (broken == null) {
+        BlockResult result = this.manager.getBuildingManager().handle(
+                controller, CortexDroneMod.findPlayer(controller.ownerName), "break_block",
+                BlockRequest.builder()
+                        .x(target[0])
+                        .y(target[1])
+                        .z(target[2])
+                        .build());
+        if (result == null || !result.isOk()) {
             session.rejectedDigs.add(pack(target));
             session.phase = Phase.PLAN;
             session.replanCooldown = 1;
@@ -453,7 +461,7 @@ public final class NavigationManager {
         session.dug++;
         this.logger.log("NAV", controller, "Auto-tunnelling",
                 String.format("broke %s at (%d,%d,%d) dug=%d/%d",
-                        broken, target[0], target[1], target[2],
+                        result.getBlock(), target[0], target[1], target[2],
                         session.dug, session.maxDigBlocks));
         state.clearPath();
         state.stuckTicks = 0;
@@ -564,7 +572,14 @@ public final class NavigationManager {
             state.lastStuckKey = stuckKey;
             state.lastStuckLogTick = state.ticks;
         }
-        FlightPathfinder.clearNearbyLeafObstruction(world, controller);
+        clearLeafObstruction(controller);
+    }
+
+    private void clearLeafObstruction(DroneController controller) {
+        NavigationContext context = new NavigationContext(controller, null,
+                NavigationMode.FLIGHT, controller.drone.posX, controller.drone.posY,
+                controller.drone.posZ, "Leaf clearance");
+        new ClearLeafObstructionAction().execute(context);
     }
 
     private NavigationTarget resolveTarget(NavigationRequest request) {

@@ -16,8 +16,9 @@ pick a goal, start an action or retain work state.
 `CraftingService` / `CraftResult`
 : vanilla crafting-table resolution and execution from drone inventory items.
 
-`PlayerInventoryOps` / `FluidOpsService` / `ToolInspector`
-: player-side transfers, fluid placement/pickup helpers, tool suitability.
+`PlayerInventoryOps` / `ToolInspector`
+: player-side transfers and tool suitability. Fluid scooping is the
+  `InteractBlockAction` job, not a service.
 
 ## Machine
 

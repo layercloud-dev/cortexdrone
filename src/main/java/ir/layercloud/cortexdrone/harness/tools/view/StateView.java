@@ -10,7 +10,7 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
-import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
+import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;

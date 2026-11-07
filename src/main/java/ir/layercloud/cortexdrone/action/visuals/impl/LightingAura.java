@@ -1,11 +1,11 @@
-package ir.layercloud.cortexdrone.manager.visuals.impl;
+package ir.layercloud.cortexdrone.action.visuals.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
 
+import ir.layercloud.cortexdrone.action.visuals.LightConfig;
+import ir.layercloud.cortexdrone.action.visuals.LightResult;
 import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.manager.visuals.LightConfig;
-import ir.layercloud.cortexdrone.manager.visuals.LightResult;
-import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
+import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;

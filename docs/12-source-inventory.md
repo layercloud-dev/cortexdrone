@@ -87,10 +87,10 @@
 | Package | Contents |
 | --- | --- |
 | `action.block` | `BreakBlockAction`, `PlaceBlockAction`, request/result |
-| `action.interact` | block use, item use, attack, pick/unpick + support |
+| `action.interact` | block use, item use, attack, pick/unpick + support, `InteractionState` |
 | `action.inventory` | move/give/take/withdraw/deposit/drop/suck/craft actions |
-| `action.navigation` | `NavigateAction`, `StopAction`, mode/result |
-| `action.visuals` | LED/light/particles/sound/note/say/status actions |
+| `action.navigation` | `NavigateAction`, `StopAction`, `ClearLeafObstructionAction`, mode/result |
+| `action.visuals` | LED/light/particles/sound/note/say/status actions, `LightingAura`, light config/result/state, `VisualsState` |
 | `action.Action` | one-operation interface |
 | `context.*` | `ActionContextBase` + block/navigation/interaction/inventory/visuals contexts |
 
@@ -104,13 +104,13 @@
 | `manager.building.impl` | `BuildingManager` |
 | `manager.interact.impl` | `InteractionManager` |
 | `manager.inventory.impl` | `InventoryManager` |
-| `manager.visuals.*` | `VisualsManager`, `LightingAura`, light config/result/state |
+| `manager.visuals.*` | `VisualsManager` |
 
 ## Services
 
 | Package | Contents |
 | --- | --- |
-| `service.inventory` | `InventoryService`, `ContainerSearchService`, `CraftingService`, `PlayerInventoryOps`, `FluidOpsService`, `ToolInspector`, `CraftResult` |
+| `service.inventory` | `InventoryService`, `ContainerSearchService`, `CraftingService`, `PlayerInventoryOps`, `ToolInspector`, `CraftResult` |
 | `service.machine` | `MachineRecipeService`, hooks/parser/ranker/reflection, `MachineTileInspector`, `FurnaceScanner` |
 | `service.navigation` | `Breadcrumb`, `TrailPlan`, `BreadcrumbService`, `FlightPathfinder`, `DronePhysicsService`, `TunnelPlanner` |
 | `service.world` | `WorldScanner`, `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `BlockSight`, `ChunkAccess`, `StructureArchitect`, `SiteSurvey`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`, `LexicalItemMatcher`, `EntityAndBiomeClassifier`, `DocLookupService`, `WebLookupService`, `raytrace/*` |

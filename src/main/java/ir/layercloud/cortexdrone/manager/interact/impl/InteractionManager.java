@@ -3,12 +3,13 @@ package ir.layercloud.cortexdrone.manager.interact.impl;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.action.Action;
+import ir.layercloud.cortexdrone.action.interact.InteractionState;
 import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
 import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.action.interact.impl.*;
+import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.InteractionContext;
 import ir.layercloud.cortexdrone.manager.ActionManager;
-import ir.layercloud.cortexdrone.manager.interact.InteractionState;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -21,12 +22,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class InteractionManager extends ActionManager<InteractionContext, InteractionRequest, InteractionResult> {
     private final InventoryService inventoryService;
+    private final DroneLogger logger;
     private final Map<DroneController, InteractionState> states = new ConcurrentHashMap<>();
 
-    public InteractionManager(InventoryService inventoryService) {
+    public InteractionManager(InventoryService inventoryService, DroneLogger logger) {
         super("interact", "interact_block", "use_item", "attack_entity",
                 "pick_entity", "unpick_entity");
         this.inventoryService = inventoryService;
+        this.logger = logger;
     }
 
     /** Per-drone interaction state, created on first use. */
@@ -59,7 +62,7 @@ public final class InteractionManager extends ActionManager<InteractionContext, 
                 return ignored -> context.result(InteractionResult.failure(
                         "Missing x/y/z for interact_block", "activated", false));
             }
-            return new InteractBlockAction(this.inventoryService, request);
+            return new InteractBlockAction(this.inventoryService, this.logger, request);
         }
         if ("use_item".equals(operation)) {
             return new UseItemAction(request);
@@ -69,7 +72,7 @@ public final class InteractionManager extends ActionManager<InteractionContext, 
                 return ignored -> context.result(InteractionResult.failure(
                         "attack_entity requires entityId"));
             }
-            return new AttackEntityAction(this, request);
+            return new AttackEntityAction(state(context.controller()), request);
         }
         if ("pick_entity".equals(operation)) {
             if (!request.hasEntity()) {

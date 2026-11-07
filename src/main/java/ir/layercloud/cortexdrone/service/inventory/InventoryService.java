@@ -34,8 +34,6 @@ public class InventoryService {
     @Getter
     private final CraftingService craftingService;
     @Getter
-    private final FluidOpsService fluidOpsService;
-    @Getter
     private final ContainerSearchService containerSearchService;
     private final PlayerInventoryOps playerInventoryOps;
     @Getter
@@ -44,7 +42,6 @@ public class InventoryService {
     public InventoryService(DroneLogger logger) {
         this.logger = logger;
         this.craftingService = new CraftingService(logger, this);
-        this.fluidOpsService = new FluidOpsService(logger, this);
         this.containerSearchService = new ContainerSearchService(this);
         this.playerInventoryOps = new PlayerInventoryOps(logger);
         this.machineRecipeService = new MachineRecipeService(this);
@@ -483,11 +480,7 @@ public class InventoryService {
         return totalCount;
     }
 
-    // ==================== Delegated Fluid & Crafting Operations ====================
-
-    public boolean scoopLiquidAt(World world, DroneController ctrl, EntityPlayerMP owner, int x, int y, int z) {
-        return this.fluidOpsService.scoopLiquidAt(world, ctrl, owner, x, y, z);
-    }
+    // ==================== Delegated Crafting Operations ====================
 
     public JsonObject getRecipesForFilter(String filter) {
         return this.craftingService.getRecipesForFilter(filter);

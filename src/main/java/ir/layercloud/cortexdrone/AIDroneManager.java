@@ -21,7 +21,7 @@ import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
 import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
 import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
-import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
+import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
@@ -91,7 +91,7 @@ public class AIDroneManager {
         this.worldScanner = new WorldScanner(this.logger, this.config);
         this.inventoryService = new InventoryService(this.logger);
         this.visualsManager = new VisualsManager(this, this.logger);
-        this.interactionManager = new InteractionManager(this.inventoryService);
+        this.interactionManager = new InteractionManager(this.inventoryService, this.logger);
         this.inventoryManager = new InventoryManager(this, this.inventoryService);
         this.buildingManager = new BuildingManager(this.logger);
         this.navigationManager = new NavigationManager(this, this.logger,

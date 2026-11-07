@@ -1,10 +1,10 @@
-package ir.layercloud.cortexdrone.manager.visuals;
+package ir.layercloud.cortexdrone.action.visuals;
 
 import lombok.Builder;
 import lombok.Value;
 
 /**
- * Typed lighting configuration request.
+ * Typed lighting configuration request for {@code SetLightAction}.
  */
 @Value
 @Builder

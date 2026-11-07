@@ -1,7 +1,5 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.experimental.UtilityClass;
@@ -33,25 +31,6 @@ public final class DronePhysicsService {
             }
         }
         return "none";
-    }
-
-    public static void clearNearbyLeafObstruction(World world, DroneController ctrl) {
-        if (world == null || ctrl == null || ctrl.drone == null) return;
-        int bx = MathHelper.floor_double(ctrl.drone.posX);
-        int by = MathHelper.floor_double(ctrl.drone.posY);
-        int bz = MathHelper.floor_double(ctrl.drone.posZ);
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    int x = bx + dx, y = by + dy, z = bz + dz;
-                    if (y <= 1 || y >= 254 || world.isAirBlock(x, y, z)) continue;
-                    Block b = world.getBlock(x, y, z);
-                    if (ItemClassifier.isLeafBlock(b)) {
-                        world.setBlockToAir(x, y, z);
-                    }
-                }
-            }
-        }
     }
 
     /**

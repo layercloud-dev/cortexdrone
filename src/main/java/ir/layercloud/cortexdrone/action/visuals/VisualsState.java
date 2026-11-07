@@ -1,11 +1,12 @@
-package ir.layercloud.cortexdrone.manager.visuals;
+package ir.layercloud.cortexdrone.action.visuals;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Per-drone visual state owned by {@code VisualsManager}: the illumination aura.
- * LED colour lives on the drone itself; animations are composed by skills.
+ * Per-drone visual state shared by the visuals actions. The {@code
+ * VisualsManager} owns its lifetime; actions only read and update it. LED
+ * colour lives on the drone itself; animations are composed by skills.
  */
 public final class VisualsState {
     public boolean lightAura = false;

@@ -3,27 +3,25 @@ package ir.layercloud.cortexdrone.action.visuals.impl;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.action.Action;
+import ir.layercloud.cortexdrone.action.visuals.LightConfig;
+import ir.layercloud.cortexdrone.action.visuals.LightResult;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
 import ir.layercloud.cortexdrone.context.impl.VisualsContext;
-import ir.layercloud.cortexdrone.manager.visuals.LightConfig;
-import ir.layercloud.cortexdrone.manager.visuals.LightResult;
-import ir.layercloud.cortexdrone.manager.visuals.VisualsState;
-import ir.layercloud.cortexdrone.manager.visuals.impl.LightingAura;
-import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
+import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import lombok.RequiredArgsConstructor;
 
 /**
  * Command: turn the illumination aura on/off and configure it.
  *
- * <p>When the aura is active this action retains itself and re-applies the light
- * every tick from the action registry. There is no background lighting loop in
- * the runtime pipeline.</p>
+ * <p>The action owns the whole light job: state transitions, world light
+ * mutation and the per-tick re-apply loop. The manager only creates and retains
+ * it.</p>
  */
 @RequiredArgsConstructor
 public final class SetLightAction implements Action<VisualsContext> {
-    private final VisualsManager manager;
     private final LightingAura aura;
+    private final VisualsState state;
     private final VisualsRequest request;
 
     @Override
@@ -35,8 +33,7 @@ public final class SetLightAction implements Action<VisualsContext> {
                 .level(this.request.getLightLevel())
                 .color(this.request.getLightColor())
                 .build();
-        LightResult result = this.aura.configure(
-                context.controller(), this.manager.state(context.controller()), config);
+        LightResult result = this.aura.configure(context.controller(), this.state, config);
         if (!result.isOk()) {
             context.result(VisualsResult.failure(result.getError()));
             return;
@@ -59,11 +56,10 @@ public final class SetLightAction implements Action<VisualsContext> {
             context.complete();
             return;
         }
-        VisualsState state = this.manager.state(controller);
-        if (!state.lightAura) {
+        if (!this.state.lightAura) {
             context.complete();
             return;
         }
-        this.aura.tick(controller, state);
+        this.aura.tick(controller, this.state);
     }
 }

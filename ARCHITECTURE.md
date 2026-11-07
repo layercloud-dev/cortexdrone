@@ -134,7 +134,7 @@ for a controller. It contains no behavior.
 | `BuildingManager` | `break_block`, `place_block` | One immediate break or place |
 | `InteractionManager` | `interact_block`, `use_item`, `pick_entity`, `unpick_entity`, `attack_entity` | One interaction/attack/use |
 | `InventoryManager` | `transfer`, `craft` | transfer ops: move/give/take/withdraw/deposit/drop/suck |
-| `VisualsManager` | `set_led`, `set_light`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` | Owns lighting aura |
+| `VisualsManager` | `set_led`, `set_light`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` | Retains the light aura action |
 
 Action classes are solo: they never call another action. Block work is one
 immediate break or one place; there is no mining queue, target selection, dig

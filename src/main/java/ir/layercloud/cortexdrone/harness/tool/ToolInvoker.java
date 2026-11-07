@@ -13,10 +13,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * Executes a validated tool call on the correct thread and normalizes every
  * outcome into one envelope.
  *
- * <p>This is the only entry point used by the agent loop, the JavaScript
- * runtime and the HTTP API. It replaces the old Node.js RPC transport: calls
- * are in-process, typed by the registry schema, and errors are returned to the
- * model as data instead of being swallowed or retried heuristically.</p>
+ * <p>This is the only entry point used by the agent loop and the JavaScript
+ * runtime. Calls are in-process, typed by the registry schema, and errors are
+ * returned to the model as data.</p>
  */
 public final class ToolInvoker {
     private static final long DEFAULT_MAIN_TIMEOUT_MS = 8_000L;

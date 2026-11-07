@@ -26,8 +26,7 @@ import java.util.List;
  *
  * <p>The harness sends the registered tool schemas in {@code tools} and reads
  * {@code message.tool_calls}. It never asks the model to emit a JSON envelope
- * in prose. Legacy {@code functions}/{@code function_call} gateways are
- * supported as a one-time fallback when the server rejects {@code tools}.</p>
+ * in prose and does not fall back to the retired {@code functions} protocol.</p>
  */
 public final class LlmClient {
     private final ModConfig config;
@@ -40,32 +39,20 @@ public final class LlmClient {
 
     public LlmResponse chat(DroneController ctrl, List<JsonObject> messages,
                             JsonArray tools, boolean jsonMode) throws Exception {
-        boolean legacy = false;
-        boolean legacyTried = false;
         int attempt = 0;
         Exception last = null;
         while (attempt < 3) {
             attempt++;
             try {
-                JsonObject response = request(ctrl, messages, tools, jsonMode, legacy);
+                JsonObject response = request(ctrl, messages, tools, jsonMode);
                 LlmResponse parsed = parse(response);
                 if (parsed != null) return parsed;
                 last = new IllegalStateException("Gateway returned no usable assistant message.");
             } catch (GatewayException gateway) {
                 last = gateway;
-                String lower = String.valueOf(gateway.getMessage()).toLowerCase();
-                boolean toolsRejected = gateway.httpCode() == 400 || gateway.httpCode() == 404
+                boolean rejected = gateway.httpCode() == 400 || gateway.httpCode() == 404
                         || gateway.httpCode() == 422;
-                if (!legacy && !legacyTried && toolsRejected && tools != null
-                        && (lower.contains("tool") || lower.contains("function"))) {
-                    legacy = true;
-                    legacyTried = true;
-                    this.logger.log("LLM", ctrl,
-                            "Gateway rejected native tools; retrying with legacy functions",
-                            gateway.getMessage());
-                    continue;
-                }
-                if (gateway.httpCode() == 401 || gateway.httpCode() == 403 || toolsRejected) throw gateway;
+                if (gateway.httpCode() == 401 || gateway.httpCode() == 403 || rejected) throw gateway;
                 if (attempt >= 3) throw gateway;
                 sleep(400L * attempt);
             }
@@ -74,7 +61,7 @@ public final class LlmClient {
     }
 
     private JsonObject request(DroneController ctrl, List<JsonObject> messages, JsonArray tools,
-                               boolean jsonMode, boolean legacy) throws Exception {
+                               boolean jsonMode) throws Exception {
         URL url = new URL(this.config.getApiUrl());
         boolean local = this.config.getApiUrl().contains("127.0.0.1")
                 || this.config.getApiUrl().contains("localhost");
@@ -97,19 +84,8 @@ public final class LlmClient {
         request.addProperty("max_tokens", this.config.getMaxTokens());
         request.add("messages", toArray(messages));
         if (tools != null && tools.size() > 0) {
-            if (legacy) {
-                JsonArray functions = new JsonArray();
-                for (JsonElement tool : tools) {
-                    if (tool.isJsonObject() && tool.getAsJsonObject().has("function")) {
-                        functions.add(tool.getAsJsonObject().get("function"));
-                    }
-                }
-                request.add("functions", functions);
-                request.addProperty("function_call", "auto");
-            } else {
-                request.add("tools", tools);
-                request.addProperty("tool_choice", "auto");
-            }
+            request.add("tools", tools);
+            request.addProperty("tool_choice", "auto");
         }
         if (jsonMode) {
             JsonObject format = new JsonObject();
@@ -171,13 +147,6 @@ public final class LlmClient {
                 String name = function.get("name").getAsString();
                 String arguments = arguments(function.get("arguments"));
                 calls.add(new ToolCall(id, name, arguments));
-            }
-        }
-        if (calls.isEmpty() && message.has("function_call") && message.get("function_call").isJsonObject()) {
-            JsonObject function = message.getAsJsonObject("function_call");
-            if (function.has("name")) {
-                calls.add(new ToolCall("call_" + System.nanoTime(),
-                        function.get("name").getAsString(), arguments(function.get("arguments"))));
             }
         }
         JsonObject usage = response.has("usage") && response.get("usage").isJsonObject()
@@ -243,7 +212,7 @@ public final class LlmClient {
         }
     }
 
-    /** HTTP failure with the status code exposed for fallback decisions. */
+    /** HTTP failure with the status code exposed for retry decisions. */
     public static final class GatewayException extends Exception {
         private final int httpCode;
 

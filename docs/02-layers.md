@@ -61,7 +61,7 @@ ir.layercloud.cortexdrone
     task/                TaskCoordinator, TaskIntentClassifier
 
   command/               /drone
-  config/                ModConfig, ModPaths, ConfigMigrator, DroneLogger
+  config/                ModConfig, ModPaths, DroneLogger
   oc/                    OpenComputers reflection bridge
 ```
 

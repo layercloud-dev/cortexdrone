@@ -21,7 +21,7 @@ import net.minecraftforge.fluids.IFluidBlock;
 /**
  * Single-block fluid scooping using Forge's FluidRegistry and
  * FluidContainerRegistry. Only the primitive is exposed: batch scooping and
- * fluid placement queues were removed with the legacy behavior layer.
+ * fluid placement is a single explicit operation, never a queued job.
  */
 @RequiredArgsConstructor
 public class FluidOpsService {

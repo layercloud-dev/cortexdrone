@@ -1,8 +1,5 @@
 package ir.layercloud.cortexdrone.harness.lesson;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.ModPaths;
 import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
 
@@ -36,23 +33,21 @@ import java.util.logging.Logger;
  *
  * <p>Unlike a skill (executable code), a lesson is short prose the model reads
  * before acting. Entries are deduplicated by {@code scope + title}, so repeating
- * the same mistake updates the existing lesson instead of duplicating it. The
- * legacy {@code lessons.json} is imported once and archived.</p>
+ * the same mistake updates the existing lesson instead of duplicating it. Only
+ * the directory format is supported; the retired {@code lessons.json} is not
+ * read.</p>
  */
 public final class LessonStore {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
     private static final int MAX_ENTRIES = 400;
 
     private final File lessonsDir;
-    private final File legacyFile;
     private final Map<String, Lesson> entries = new LinkedHashMap<>();
     private long sequence;
 
     public LessonStore(File configRoot) {
         this.lessonsDir = ModPaths.lessonsDir(configRoot);
-        this.legacyFile = ModPaths.lessonsFile(configRoot);
         loadDirectories();
-        importLegacy();
     }
 
     public synchronized Lesson add(String scope, String title, String body,
@@ -222,65 +217,6 @@ public final class LessonStore {
         if (lesson.getUpdatedAt() <= 0) lesson.setUpdatedAt(stamp);
         lesson.setPath(dir.getAbsolutePath());
         this.entries.put(lesson.getId(), lesson);
-    }
-
-    /**
-     * Imports the old single {@code lessons.json} once, writes a LESSON.md
-     * directory per lesson, then archives the file.
-     */
-    private synchronized void importLegacy() {
-        if (this.legacyFile == null || !this.legacyFile.isFile()) return;
-        int imported = 0;
-        try (Reader reader = new FileReader(this.legacyFile)) {
-            JsonElement parsed = new JsonParser().parse(reader);
-            if (parsed != null && parsed.isJsonArray()) {
-                for (JsonElement element : parsed.getAsJsonArray()) {
-                    if (!element.isJsonObject()) continue;
-                    Lesson lesson = CortexDroneMod.GSON.fromJson(element, Lesson.class);
-                    if (lesson == null) continue;
-                    if (lesson.getId() == null || lesson.getId().trim().isEmpty()) {
-                        lesson.setId("les_" + System.currentTimeMillis() + "_" + (++this.sequence));
-                    }
-                    if (lesson.getScope() == null) lesson.setScope("general");
-                    if (lesson.getTitle() == null) lesson.setTitle("");
-                    if (lesson.getBody() == null) lesson.setBody("");
-                    if (lesson.getOutcome() == null) lesson.setOutcome("note");
-                    if (lesson.getSource() == null) lesson.setSource("agent");
-                    if (lesson.getTags() == null) lesson.setTags(new ArrayList<>());
-                    if (lesson.getVersion() <= 0) lesson.setVersion(1);
-                    long now = System.currentTimeMillis();
-                    if (lesson.getCreatedAt() <= 0) lesson.setCreatedAt(now);
-                    if (lesson.getUpdatedAt() <= 0) lesson.setUpdatedAt(now);
-                    if (this.entries.containsKey(lesson.getId())
-                            || findByScopeAndTitle(lesson.getScope(), lesson.getTitle()) != null) {
-                        continue;
-                    }
-                    this.entries.put(lesson.getId(), lesson);
-                    persist(lesson);
-                    imported++;
-                }
-            }
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not import legacy " + this.legacyFile.getAbsolutePath(), e);
-            return;
-        }
-        archiveLegacy();
-        if (imported > 0) {
-            LOG.info("Imported " + imported + " legacy lesson(s) into "
-                    + this.lessonsDir.getAbsolutePath());
-        }
-    }
-
-    private void archiveLegacy() {
-        File target = new File(this.legacyFile.getAbsolutePath() + ".migrated");
-        if (target.exists()) {
-            target = new File(this.legacyFile.getAbsolutePath() + ".migrated-"
-                    + System.currentTimeMillis());
-        }
-        if (!this.legacyFile.renameTo(target)) {
-            LOG.warning("Could not archive legacy lessons file "
-                    + this.legacyFile.getAbsolutePath());
-        }
     }
 
     private void persist(Lesson lesson) {

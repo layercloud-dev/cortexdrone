@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.ModPaths;
 
 import java.io.ByteArrayOutputStream;
@@ -41,9 +40,9 @@ import java.util.logging.Logger;
  * <p>Bundled skills live under {@code resources/skills/} and are listed by
  * {@code resources/skills/index.json}. Learned/refined skills live under
  * {@code config/cortexdrone/skills/} and override a bundled skill with the same
- * normalized name. The legacy single-file {@code skills.json} is imported once
- * and archived. The library never decides when to use a skill; it only stores,
- * searches, versions and composes them.</p>
+ * normalized name. Only the directory format is supported; the retired
+ * single-file {@code skills.json} is not read. The library never decides when to
+ * use a skill; it only stores, searches, versions and composes them.</p>
  */
 public final class SkillLibrary {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
@@ -51,15 +50,12 @@ public final class SkillLibrary {
     private static final int MAX_DOCS_CHARS = 4_000;
 
     private final File skillsDir;
-    private final File legacyFile;
     private final Map<String, Skill> skills = new LinkedHashMap<>();
 
     public SkillLibrary(File configRoot) {
         this.skillsDir = ModPaths.skillsDir(configRoot);
-        this.legacyFile = ModPaths.skillsFile(configRoot);
         loadBundled();
         loadLearned();
-        importLegacyJson();
     }
 
     public synchronized List<Skill> all() {
@@ -198,10 +194,7 @@ public final class SkillLibrary {
             if (index == null || !index.isJsonArray()) return;
             for (JsonElement item : index.getAsJsonArray()) {
                 if (!item.isJsonPrimitive() || !item.getAsJsonPrimitive().isString()) continue;
-                String entry = item.getAsString().trim();
-                // Tolerate an old index that listed "name.json" files.
-                if (entry.endsWith(".json")) entry = entry.substring(0, entry.length() - 5);
-                loadBundledByName(entry);
+                loadBundledByName(item.getAsString().trim());
             }
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Could not read bundled skill index", e);
@@ -272,73 +265,7 @@ public final class SkillLibrary {
         long stamp = Math.max(markdown.lastModified(), codeFile.lastModified());
         if (skill.getCreatedAt() <= 0) skill.setCreatedAt(stamp);
         skill.setUpdatedAt(stamp);
-        if (usesRemovedApi(skill.getCode())) {
-            LOG.info("Skipping legacy skill '" + skill.getName()
-                    + "': it uses a removed drone API and cannot run on the v2 harness.");
-            return;
-        }
         this.skills.put(skill.getName(), skill);
-    }
-
-    /**
-     * Imports the old flat {@code skills.json} once, archives it, and writes a
-     * SKILL.md directory per learned skill. Stale bundled snapshots are ignored.
-     */
-    private synchronized void importLegacyJson() {
-        if (this.legacyFile == null || !this.legacyFile.isFile()) return;
-        int imported = 0;
-        try (Reader reader = new FileReader(this.legacyFile)) {
-            JsonElement parsed = new JsonParser().parse(reader);
-            if (parsed != null && parsed.isJsonArray()) {
-                for (JsonElement element : parsed.getAsJsonArray()) {
-                    if (!element.isJsonObject()) continue;
-                    Skill skill = CortexDroneMod.GSON.fromJson(element, Skill.class);
-                    if (skill == null || skill.getName() == null || skill.getName().trim().isEmpty()) continue;
-                    skill.setName(normalize(skill.getName()));
-                    if ("bundled".equalsIgnoreCase(skill.getSource())) continue;
-                    if (skill.getCode() == null || skill.getCode().trim().isEmpty()) continue;
-                    if (usesRemovedApi(skill.getCode())) continue;
-                    boolean hasDirectory = new File(this.skillsDir, skill.getName()).isDirectory();
-                    if (hasDirectory) continue;
-                    if (skill.getDescription() == null) skill.setDescription("");
-                    if (skill.getTags() == null) skill.setTags("");
-                    if (skill.getTriggers() == null) skill.setTriggers(new ArrayList<>());
-                    if (skill.getRequires() == null) skill.setRequires(new ArrayList<>());
-                    if (skill.getDocs() == null || skill.getDocs().trim().isEmpty()) {
-                        skill.setDocs("# " + skill.getName() + "\n\n" + skill.getDescription() + "\n");
-                    }
-                    skill.setCodeFile(null);
-                    if (skill.getSource() == null || skill.getSource().trim().isEmpty()) {
-                        skill.setSource("saved");
-                    }
-                    if (skill.getVersion() <= 0) skill.setVersion(1);
-                    skill.touch();
-                    this.skills.put(skill.getName(), skill);
-                    persist(skill);
-                    imported++;
-                }
-            }
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not import legacy " + this.legacyFile.getAbsolutePath(), e);
-            return;
-        }
-        archiveLegacy();
-        if (imported > 0) {
-            LOG.info("Imported " + imported + " legacy skill(s) into "
-                    + this.skillsDir.getAbsolutePath());
-        }
-    }
-
-    private void archiveLegacy() {
-        File target = new File(this.legacyFile.getAbsolutePath() + ".migrated");
-        if (target.exists()) {
-            target = new File(this.legacyFile.getAbsolutePath() + ".migrated-"
-                    + System.currentTimeMillis());
-        }
-        if (!this.legacyFile.renameTo(target)) {
-            LOG.warning("Could not archive legacy skills file "
-                    + this.legacyFile.getAbsolutePath());
-        }
     }
 
     // ------------------------------------------------------------------
@@ -416,20 +343,6 @@ public final class SkillLibrary {
         return name != null && !name.isEmpty()
                 && !name.startsWith("/") && !name.startsWith("\\")
                 && !name.contains("..") && !name.contains("\\");
-    }
-
-    /** Old harness methods that no longer exist; such skills must not override bundled ones. */
-    private static boolean usesRemovedApi(String code) {
-        if (code == null) return false;
-        String[] removed = new String[]{
-                "drone.inspect(", "drone.moveTo(", "drone.transfer(", "drone.visuals(",
-                "drone.mine(", "drone.hunt(", "drone.farm(", "drone.buildStructure(",
-                "drone.sortChests(", "drone.carry(", "drone.queue"
-        };
-        for (String token : removed) {
-            if (code.contains(token)) return true;
-        }
-        return false;
     }
 
     private static String cap(String value, int max) {

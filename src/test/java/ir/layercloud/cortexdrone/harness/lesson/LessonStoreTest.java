@@ -90,22 +90,17 @@ public class LessonStoreTest {
     }
 
     @Test
-    public void legacyLessonsJsonIsImportedAndArchived() throws Exception {
-        File root = Files.createTempDirectory("cortexdrone-lessons-import").toFile();
+    public void retiredLessonsJsonIsNotReadOrMigrated() throws Exception {
+        File root = Files.createTempDirectory("cortexdrone-lessons-retired").toFile();
         File legacy = new File(root, "lessons.json");
         String json = "[{\"id\":\"les_1\",\"scope\":\"navigation\","
-                + "\"title\":\"use a standoff\",\"body\":\"keep distance\","
-                + "\"outcome\":\"failure\",\"tags\":[\"path\"],\"version\":2}]";
+                + "\"title\":\"old rule\",\"body\":\"old body\",\"version\":1}]";
         Files.write(legacy.toPath(), json.getBytes("UTF-8"));
 
         LessonStore store = new LessonStore(root);
-        assertEquals(1, store.count());
-        assertFalse(legacy.isFile());
-        assertTrue(new File(root, "lessons.json.migrated").isFile());
-        Lesson lesson = store.search("standoff", null, 5).get(0);
-        assertEquals("les_1", lesson.getId());
-        assertEquals(2, lesson.getVersion());
-        assertTrue(new File(lesson.getPath(), LessonMarkdown.FILE_NAME).isFile());
+        assertEquals(0, store.count());
+        assertTrue("the retired file is left untouched", legacy.isFile());
+        assertFalse(new File(root, "lessons").exists());
     }
 
     @Test

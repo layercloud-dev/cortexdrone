@@ -90,7 +90,7 @@ src/main/java/ir/layercloud/cortexdrone/
     task/                   TaskCoordinator, TaskIntentClassifier
 
   command/                  /drone command
-  config/                   ModConfig, ModPaths, ConfigMigrator, DroneLogger
+  config/                   ModConfig, ModPaths, DroneLogger
   oc/                       OpenComputers reflection bridge
 ```
 
@@ -256,7 +256,7 @@ skill suite instead, which the model can inspect, run and refine.
 
 1. `CortexDroneMod.preInit` resolves `config/cortexdrone/`, creates
    `AIDroneManager`, registers events.
-2. `serverStarting` migrates legacy world files, loads `config.json`, creates the
+2. `serverStarting` loads `config.json`, creates the
    skill library, builds the `Harness`, and registers `/drone`.
 3. START tick: ensure OC machine state, start tick profiler.
 4. END tick: drain main-thread queue, drain scan jobs, tick every controller,
@@ -280,8 +280,9 @@ config/cortexdrone/
   logs/         debug log
 ```
 
-`ConfigMigrator` imports `world/layercloud-ai.json` and
-`world/layercloud-drone-skills-v2.json` once, then renames them `.migrated`.
+Retired world-save files are not imported. Skills live in
+`config/cortexdrone/skills/<name>/SKILL.md` + `code.js`; lessons live in
+`config/cortexdrone/lessons/<name>/LESSON.md`.
 
 Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
 `CORTEXDRONE_API_KEY`.

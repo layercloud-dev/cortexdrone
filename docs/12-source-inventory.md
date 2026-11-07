@@ -121,7 +121,7 @@
 | --- | --- |
 | `config.ModConfig` | Persistent AI/agent/drone config |
 | `config.ModPaths` | `config/cortexdrone/` layout |
-| `config.ConfigMigrator` | One-time legacy world-file import |
+| `config.ModPaths` | Canonical config directory and skill/lesson/session paths |
 | `config.DroneLogger` | Structured in-memory + file log |
 | `config.ChatRecord` / `DebugEntry` | Log records |
 | `command.BaseCommand` / `command.impl.DroneCommand` | `/drone` |

@@ -115,7 +115,7 @@ public class DocLookupService {
         } catch (Throwable ignored) {
         }
 
-        // 3) Inspect local mod machine recipe files (HBM Nuclear Tech & OpenComputers) — legacy raw substring search fallback
+        // 3) Inspect local mod machine recipe files (HBM Nuclear Tech & OpenComputers); raw substring search fallback
         JsonArray machineRecipes = searchLocalModRecipeConfigs(query);
         if (machineRecipes.size() > 0 && !res.has("machineConfigRecipes")) {
             res.add("machineConfigRecipes", machineRecipes);

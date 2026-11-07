@@ -29,21 +29,18 @@ public class SkillLibraryTest {
     }
 
     @Test
-    public void staleLegacyBundledSnapshotsAreIgnoredAndArchived() throws Exception {
-        File root = Files.createTempDirectory("cortexdrone-skills-stale").toFile();
+    public void retiredSkillsJsonIsNotReadOrMigrated() throws Exception {
+        File root = Files.createTempDirectory("cortexdrone-skills-retired").toFile();
         File legacy = new File(root, "skills.json");
-        String stale = "[{\"name\":\"mine_and_deliver\",\"description\":\"old\","
-                + "\"code\":\"return 'stale';\",\"source\":\"bundled\",\"version\":1}]";
-        Files.write(legacy.toPath(), stale.getBytes("UTF-8"));
+        String json = "[{\"name\":\"old_learned\",\"description\":\"old\","
+                + "\"code\":\"return 'old';\",\"source\":\"saved\",\"version\":1}]";
+        Files.write(legacy.toPath(), json.getBytes("UTF-8"));
 
         SkillLibrary library = new SkillLibrary(root);
-        Skill skill = library.get("mine_and_deliver");
-        assertNotNull(skill);
-        assertTrue("stale bundled snapshot must not shadow the jar resource",
-                skill.getCode().contains("skills.call('mine_blocks'"));
-        assertFalse(skill.getCode().contains("stale"));
-        assertFalse("legacy file is archived after import", legacy.isFile());
-        assertTrue(new File(root, "skills.json.migrated").isFile());
+        assertNull("the retired single-file store must not be imported",
+                library.get("old_learned"));
+        assertTrue("the retired file is left untouched", legacy.isFile());
+        assertFalse(new File(root, "skills/old_learned").exists());
     }
 
     @Test
@@ -68,25 +65,6 @@ public class SkillLibraryTest {
 
         // Bundled skills are never copied into the config directory.
         assertFalse(new File(root, "skills/mine_blocks").exists());
-    }
-
-    @Test
-    public void legacyLearnedSkillsAreImportedIntoDirectories() throws Exception {
-        File root = Files.createTempDirectory("cortexdrone-skills-import").toFile();
-        File legacy = new File(root, "skills.json");
-        String json = "[{\"name\":\"old_farm\",\"description\":\"harvest old style\","
-                + "\"tags\":\"farm\",\"triggers\":[\"old farm\"],"
-                + "\"code\":\"return { ok: true };\",\"source\":\"refined\",\"version\":3}]";
-        Files.write(legacy.toPath(), json.getBytes("UTF-8"));
-
-        SkillLibrary library = new SkillLibrary(root);
-        Skill imported = library.get("old_farm");
-        assertNotNull(imported);
-        assertEquals(3, imported.getVersion());
-        assertEquals("refined", imported.getSource());
-        assertTrue(new File(root, "skills/old_farm/SKILL.md").isFile());
-        assertTrue(new File(root, "skills/old_farm/code.js").isFile());
-        assertFalse(legacy.isFile());
     }
 
     @Test

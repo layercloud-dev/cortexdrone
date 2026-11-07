@@ -21,9 +21,8 @@ import java.util.Map;
 /**
  * Renders the live world snapshot as readable Markdown for the context message.
  *
- * <p>This replaces the old "dump the whole debug JSON into the system prompt"
- * approach. The model gets a short, labelled state block plus a compact tool
- * catalog and skill suggestions; it can query for anything fresher.</p>
+ * <p>The model gets a short, labelled state block plus a compact tool catalog
+ * and skill suggestions; it can query for anything fresher.</p>
  */
 public final class ContextRenderer {
     private ContextRenderer() {

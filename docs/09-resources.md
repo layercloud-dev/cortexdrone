@@ -97,10 +97,8 @@ file in the same directory; it defaults to `code.js`.
 
 Saved/refined skills override bundled skills with the same normalized name and
 increment `version`. They are written to `config/cortexdrone/skills/<name>/` as
-`SKILL.md` + `code.js`. The legacy single-file `config/cortexdrone/skills.json`
-is imported once and archived as `skills.json.migrated`; persisted
-`source:"bundled"` snapshots are ignored, so a new jar always ships its corrected
-workflows. Parameter examples for every skill are in
+`SKILL.md` + `code.js`. The retired single-file `skills.json` is not read; only
+directories are supported. Parameter examples for every skill are in
 [13-skills.md](13-skills.md).
 
 ## Learned skill layout
@@ -126,8 +124,8 @@ config/cortexdrone/lessons/mining-keep-a-floor-1a2b3c4d/
 
 `LessonStore.add` deduplicates by `scope + title`, updates the same directory
 and increments `version`; `recordUse` rewrites the frontmatter; `forget` deletes
-the directory. The legacy `config/cortexdrone/lessons.json` is imported once and
-archived as `lessons.json.migrated`.
+the directory. The retired single-file `lessons.json` is not read; only
+directories are supported.
 
 ## Config files
 

@@ -76,10 +76,10 @@ on the embedded Rhino engine; Node.js is not required.
   the body compiles in Rhino, `requires` targets exist, compound skills call
   their primitives, the Markdown round-trips, and search retrieves the expected
   capability.
-- `SkillLibraryTest` — directory storage, SKILL.md persistence, legacy JSON
-  import/archival, and restoring a bundled skill when an override is deleted.
-- `LessonStoreTest` — LESSON.md directories, Markdown round-trip, legacy JSON
-  import/archival, and directory cleanup on forget.
+- `SkillLibraryTest` — directory storage, SKILL.md persistence, ignored retired
+  `skills.json`, and restoring a bundled skill when an override is deleted.
+- `LessonStoreTest` — LESSON.md directories, Markdown round-trip, ignored retired
+  `lessons.json`, and directory cleanup on forget.
 - `LessonStoreTest` — lesson add/search/dedupe/context and persistence.
 - `MemoryStoreTest` / `MemoryCaptureTest` — fact/location capture, coordinates,
   dedupe/update, persistence and pinned context selection.
@@ -90,9 +90,7 @@ on the embedded Rhino engine; Node.js is not required.
 
 1. `./build.sh` (or `./gradlew build`).
 2. Restart the server so Forge loads the new jar.
-3. On first start, `ConfigMigrator` imports legacy world config/skills into
-   `config/cortexdrone/` and renames the old files `.migrated`.
-4. Verify with `/drone status`, `/drone memory list`, `/drone lesson list`,
+3. Verify with `/drone status`, `/drone memory list`, `/drone lesson list`,
    `/drone sessions stats`, and `@drone status`.
 
 Logs: `config/cortexdrone/logs/cortexdrone.log`.
@@ -101,9 +99,8 @@ No Node.js path, script directory or RPC port is used.
 ## Troubleshooting
 
 - **LLM 401/403** — check `/drone config` and `config/cortexdrone/config.json`.
-- **Gateway rejects tools** — the client retries once with legacy
-  `functions`/`function_call`; if it still fails, use a gateway that supports
-  OpenAI tool calling.
+- **Gateway rejects tools** — the harness requires OpenAI native tool calling;
+  point it at a gateway that accepts `tools` + `tool_choice`.
 - **`js_syntax`** — the model used a construct outside the ES6+subset; the error
   includes line/column and the compatibility hint.
 - **`navigation_failed`** — the navigator found no safe no-dig route; dig a

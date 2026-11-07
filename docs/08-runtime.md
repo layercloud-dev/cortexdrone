@@ -9,7 +9,6 @@ preInit
   register Forge/FML events
 
 serverStarting
-  ConfigMigrator.migrate(worldDir, configRoot)
   ModConfig.load(config/cortexdrone/config.json)
   Harness.create(...)
   logger.debugLogFile = config/cortexdrone/logs/cortexdrone.log
@@ -89,15 +88,12 @@ Commands: `/drone memory list|search <q>|remember <text>|here <name>|forget <id|
 and `/drone lesson list|search <q>|forget <id|title>`.
 Session history: `/drone sessions [list [success|failure|...] [n]|stats|show <id>]`.
 
-## Legacy migration
+## Storage policy
 
-`ConfigMigrator` runs once:
-
-- `world/layercloud-ai.json` → `config/cortexdrone/config.json`;
-- `world/layercloud-drone-skills-v2.json` → `config/cortexdrone/skills.json` (imported into directories);
-- each old file is renamed `*.migrated`.
-
-No AI state is written into the world save.
+All AI state lives in `config/cortexdrone/`. No AI state is written into the
+world save, and retired world-save files (`world/layercloud-ai.json`,
+`world/layercloud-drone-skills-v2.json`) are not imported. Skills use
+`skills/<name>/SKILL.md` + `code.js`; lessons use `lessons/<name>/LESSON.md`.
 
 ## Logging
 

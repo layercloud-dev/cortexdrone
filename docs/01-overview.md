@@ -41,7 +41,8 @@ Key properties:
 - Minecraft 1.7.10, Forge, OpenComputers (`1.12.70-GTNH` at build time).
 - A server JVM able to load Java 8 bytecode (the deployed server runs Java 25).
 - An OpenAI-compatible chat-completions endpoint that supports `tools` /
-  `tool_calls`. Legacy `functions` gateways are attempted as a one-time fallback.
+  `tool_calls`. Gateways that only support the retired `functions` protocol are
+  not supported.
 - No Node.js installation is required.
 
 ## What the model can do

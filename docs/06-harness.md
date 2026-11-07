@@ -56,8 +56,7 @@ adapts.
 ## LLM client
 
 - POST `{model, temperature, max_tokens, messages, tools, tool_choice:"auto"}`.
-- Parses `message.tool_calls` (and legacy `function_call`).
-- One-time fallback to legacy `functions` if a gateway rejects `tools`.
+- Parses only `message.tool_calls`; the retired `function_call` shape is ignored.
 - Retries transient failures; does not retry auth/schema failures.
 - Keys are masked in logs.
 

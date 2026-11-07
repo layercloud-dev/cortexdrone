@@ -36,10 +36,9 @@ import java.util.function.BooleanSupplier;
 /**
  * In-process JavaScript (and common TypeScript) execution on Mozilla Rhino.
  *
- * <p>This replaces the old "write a .mjs file, spawn Node.js, talk HTTP RPC"
- * pipeline. A script runs on the agent thread inside the JVM; tool calls go
- * straight through {@link ToolInvoker} to the registry, so results and errors
- * are native objects and no serialization hop exists.</p>
+ * <p>A script runs on the agent thread inside the JVM; tool calls go straight
+ * through {@link ToolInvoker} to the registry, so results and errors are native
+ * objects and no serialization hop exists.</p>
  *
  * <p>Rhino 1.7.15 is used deliberately: it is the newest Rhino that still
  * produces Java 8 bytecode, which Minecraft 1.7.10's class loader requires.

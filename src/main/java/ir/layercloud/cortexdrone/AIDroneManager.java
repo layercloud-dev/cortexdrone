@@ -2,7 +2,6 @@ package ir.layercloud.cortexdrone;
 
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ir.layercloud.cortexdrone.command.impl.DroneCommand;
-import ir.layercloud.cortexdrone.config.ConfigMigrator;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.config.ModPaths;
@@ -113,10 +112,9 @@ public class AIDroneManager {
         this.taskCoordinator = new TaskCoordinator(this);
     }
 
-    public void onServerStarting(FMLServerStartingEvent event, File worldDir) {
+    public void onServerStarting(FMLServerStartingEvent event) {
         this.configRoot = ModPaths.ensure(this.configRoot);
         this.configFile = ModPaths.configFile(this.configRoot);
-        ConfigMigrator.migrate(worldDir, this.configRoot);
         this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
         this.harness = Harness.create(this, this.config, new SkillLibrary(this.configRoot));
         this.logger.setDebugLogFile(ModPaths.logFile(this.configRoot));

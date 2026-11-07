@@ -67,12 +67,8 @@ public class CortexDroneMod {
 
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
-        File worldDir = event.getServer().getFile("world");
-        if (!worldDir.exists() && !worldDir.mkdirs()) {
-            LOG.warning("Could not create world directory " + worldDir.getAbsolutePath());
-        }
         if (this.aiDroneManager != null) {
-            this.aiDroneManager.onServerStarting(event, worldDir);
+            this.aiDroneManager.onServerStarting(event);
         }
     }
 

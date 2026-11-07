@@ -77,7 +77,8 @@ public final class ToolArgs {
 
     /**
      * Adds camelCase aliases for snake_case keys. The public tool schema uses
-     * snake_case; legacy domain handlers read camelCase. Both remain valid.
+     * snake_case while domain views read camelCase, so both styles work for
+     * model calls and JavaScript skill calls.
      */
     public static JsonObject camelAliases(JsonObject args) {
         if (args == null) return new JsonObject();

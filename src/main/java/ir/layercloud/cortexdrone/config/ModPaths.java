@@ -28,11 +28,6 @@ public final class ModPaths {
         return new File(root, "config.json");
     }
 
-    /** Legacy single-file skill store; imported once, then archived. */
-    public static File skillsFile(File root) {
-        return new File(root, "skills.json");
-    }
-
     /** Learned/refined skills, one SKILL.md directory per skill. */
     public static File skillsDir(File root) {
         return new File(root, "skills");
@@ -40,11 +35,6 @@ public final class ModPaths {
 
     public static File memoryFile(File root) {
         return new File(root, "memory.json");
-    }
-
-    /** Legacy single-file lesson store; imported once, then archived. */
-    public static File lessonsFile(File root) {
-        return new File(root, "lessons.json");
     }
 
     /** Learned lessons, one LESSON.md directory per lesson. */

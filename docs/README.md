@@ -20,5 +20,6 @@ Reading order:
 | [10-build-deploy.md](10-build-deploy.md) | Gradle, tests, validation, deploy, operations |
 | [11-extending.md](11-extending.md) | Adding tools, actions, services and skills |
 | [12-source-inventory.md](12-source-inventory.md) | Class-by-class source inventory |
+| [13-skills.md](13-skills.md) | Bundled skill suite, parameters and examples |
 
 Top-level architecture: [../ARCHITECTURE.md](../ARCHITECTURE.md).

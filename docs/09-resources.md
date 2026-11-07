@@ -55,7 +55,9 @@
 
 Saved/refined skills override bundled skills with the same normalized name and
 increment `version`. Storage is `config/cortexdrone/skills.json`, never the
-world save.
+world save. Persisted `source:"bundled"` snapshots are ignored on load, so a new
+jar always ships its corrected workflows. Parameter examples for every skill are
+in [13-skills.md](13-skills.md).
 
 ## Skill JSON shape
 

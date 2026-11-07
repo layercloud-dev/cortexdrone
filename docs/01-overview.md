@@ -52,8 +52,12 @@ Key properties:
 - Move items, give/take, withdraw/deposit, suck drops, craft.
 - Look up local registries, machine recipes, wiki pages and the public web.
 - Search, load and refine reusable skills.
-- Remember durable player facts and named locations (bases, farms, mines) across
+'- Remember durable player facts and named locations (bases, farms, mines) across
   sessions in `config/cortexdrone/memory.json`.
+- Remember procedural lessons (symptom -> cause -> rule) in
+  `config/cortexdrone/lessons.json`, injected before planning similar work.
+- Work recon -> plan -> one script -> verify, then turn successful workflows
+  into skills.
 - Run JavaScript for loops, plans, bulk scans and conditional workflows.
 
 ## What it deliberately cannot do

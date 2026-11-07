@@ -76,7 +76,8 @@ Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
 `/drone config <url|model|key|allowdig|maxdig> <value>` updates the live object
 and saves the file. `/drone config allowdig false` disables automatic
 navigation tunnelling (non-destructive navigation) without a restart. `config/cortexdrone/skills.json` holds learned/refined skills;
-`config/cortexdrone/memory.json` holds player facts and named locations.
+`config/cortexdrone/memory.json` holds player facts and named locations;
+`config/cortexdrone/lessons.json` holds learned procedural rules.
 
 Memory chat capture:
 
@@ -84,7 +85,8 @@ Memory chat capture:
 - `@drone keep in mind the iron farm is at 120 64 -40`
 - `@drone by the way remember the portal is in the nether`
 
-Commands: `/drone memory list|search <q>|remember <text>|here <name>|forget <id|name>`.
+Commands: `/drone memory list|search <q>|remember <text>|here <name>|forget <id|name>`
+and `/drone lesson list|search <q>|forget <id|title>`.
 
 ## Legacy migration
 

@@ -3,7 +3,7 @@
     "modid": "cortexdrone",
     "name": "CortexDrone",
     "description": "Autonomous OpenComputers AI drone powered by an in-process Rhino tool harness with native OpenAI tool calling (/drone, @drone).",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "mcversion": "1.7.10",
     "authorList": ["LayerCloud"],
     "dependencies": ["OpenComputers"]

@@ -6,6 +6,8 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.harness.lesson.Lesson;
+import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
@@ -43,11 +45,13 @@ public final class AgentService {
     private final ToolRegistry registry;
     private final SkillLibrary skills;
     private final MemoryStore memory;
+    private final LessonStore lessons;
     private final ModConfig config;
 
     public AgentService(AIDroneManager manager, DroneLogger logger, WorldScanner worldScanner,
                         LlmClient llm, ToolInvoker invoker, ToolRegistry registry,
-                        SkillLibrary skills, MemoryStore memory, ModConfig config) {
+                        SkillLibrary skills, MemoryStore memory, LessonStore lessons,
+                        ModConfig config) {
         this.manager = manager;
         this.logger = logger;
         this.worldScanner = worldScanner;
@@ -56,6 +60,7 @@ public final class AgentService {
         this.registry = registry;
         this.skills = skills;
         this.memory = memory;
+        this.lessons = lessons;
         this.config = config;
     }
 
@@ -64,8 +69,10 @@ public final class AgentService {
         List<Skill> suggested = this.skills.search(prompt, 3);
         List<MemoryEntry> memories = this.memory != null
                 ? this.memory.forContext(prompt, 10) : java.util.Collections.emptyList();
+        List<Lesson> relevantLessons = this.lessons != null
+                ? this.lessons.forContext(prompt, 6) : java.util.Collections.emptyList();
         return ContextRenderer.render(this.manager, this.worldScanner, player, controller,
-                prompt, intent, suggested, memories);
+                prompt, intent, suggested, memories, relevantLessons);
     }
 
     public void runAgentLoop(final EntityPlayerMP player, final DroneController controller,
@@ -76,6 +83,8 @@ public final class AgentService {
                 this.config.getMaxContextChars(), this.config.getMaxToolResultChars());
         long deadline = System.currentTimeMillis() + Math.max(30, this.config.getTaskDeadlineSeconds()) * 1000L;
         int emptyResponses = 0;
+        String lastWorkflowScript = null;
+        boolean refinedSkill = false;
 
         this.logger.log("AGENT", controller, "Task loop " + loopId + " started",
                 "prompt=\"" + LoopTracer.snippet(userPrompt, 200) + "\" tools="
@@ -133,6 +142,7 @@ public final class AgentService {
                         speak(player, controller, partialMessage("empty model response", session));
                         return;
                     }
+                    maybeAutoSaveSkill(controller, userPrompt, lastWorkflowScript, refinedSkill);
                     speak(player, controller, response.content());
                     return;
                 }
@@ -157,6 +167,11 @@ public final class AgentService {
                             controller, player, loopId);
                     JsonObject result = this.invoker.invoke(context, call.name(), arguments);
                     conversation.toolResult(call, result);
+                    if ("skill_refine".equals(call.name())) refinedSkill = true;
+                    if ("execute".equals(call.name()) && isOk(result) && arguments.has("code")) {
+                        String code = arguments.get("code").getAsString();
+                        if (code != null && code.trim().length() >= 200) lastWorkflowScript = code;
+                    }
                     this.logger.log("TOOL", controller, "Turn " + turn + " <- " + call.name()
                                     + (result.has("ok") && result.get("ok").getAsBoolean() ? " ok" : " error"),
                             LoopTracer.snippet(result.toString(), 700));
@@ -171,6 +186,67 @@ public final class AgentService {
         } finally {
             session.unregisterLoop(loopId);
         }
+    }
+
+    /**
+     * Safety net for the "learn after success" rule: when a successful script
+     * performed real work but the model skipped {@code skill_refine}, save the
+     * exact code as a skill anyway. The model still owns the good description;
+     * this only guarantees that a working workflow is not thrown away.
+     */
+    private void maybeAutoSaveSkill(DroneController controller, String prompt,
+                                    String code, boolean refined) {
+        if (refined || code == null || code.trim().length() < 200) return;
+        if (!performsWorldAction(code)) return;
+        String name = autoSkillName(prompt);
+        Skill skill = this.skills.save(name, limit(prompt, 220), "auto",
+                java.util.Collections.singletonList(limit(prompt, 120)), code, "auto");
+        if (skill == null) return;
+        this.logger.log("SKILL", controller, "Auto-saved skill '" + skill.getName() + "' v"
+                        + skill.getVersion(),
+                "model did not call skill_refine; script kept verbatim");
+    }
+
+    private static boolean performsWorldAction(String code) {
+        String[] actions = new String[]{
+                "breakBlock", "placeBlock", "goto(", "craft(", "depositChest",
+                "giveToPlayer", "takeFromPlayer", "attackEntity", "interactBlock",
+                "useItem", "moveItem", "withdrawChest", "dropItems", "pickEntity",
+                "setLight", "setLed"
+        };
+        for (String action : actions) {
+            if (code.contains(action)) return true;
+        }
+        return false;
+    }
+
+    private static String autoSkillName(String prompt) {
+        if (prompt == null) return "task_workflow";
+        String[] words = prompt.toLowerCase().replaceAll("[^a-z0-9 ]+", " ").trim().split("\\s+");
+        StringBuilder name = new StringBuilder();
+        for (int i = 0; i < words.length && i < 5; i++) {
+            if (words[i].isEmpty()) continue;
+            if (name.length() > 0) name.append('_');
+            name.append(words[i]);
+        }
+        String result = name.toString();
+        // Non-Latin prompts normalize to nothing; keep skills distinct instead
+        // of letting every such task overwrite one "task_workflow" entry.
+        if (result.length() < 4) {
+            result = (result.isEmpty() ? "workflow" : result) + "_"
+                    + Integer.toHexString(prompt.hashCode());
+        }
+        return result.length() > 48 ? result.substring(0, 48) : result;
+    }
+
+    private static String limit(String text, int max) {
+        if (text == null) return "";
+        String clean = text.trim();
+        return clean.length() <= max ? clean : clean.substring(0, Math.max(0, max - 3)) + "...";
+    }
+
+    private static boolean isOk(JsonObject result) {
+        return result != null && (!result.has("ok") || result.get("ok").getAsBoolean());
     }
 
     private static String partialMessage(String reason, DroneSession session) {

@@ -5,6 +5,7 @@ import ir.layercloud.cortexdrone.harness.tools.CodeTools;
 import ir.layercloud.cortexdrone.harness.tools.InteractionTools;
 import ir.layercloud.cortexdrone.harness.tools.InventoryActionTools;
 import ir.layercloud.cortexdrone.harness.tools.InventoryQueryTools;
+import ir.layercloud.cortexdrone.harness.tools.LessonTools;
 import ir.layercloud.cortexdrone.harness.tools.MemoryTools;
 import ir.layercloud.cortexdrone.harness.tools.NavigationTools;
 import ir.layercloud.cortexdrone.harness.tools.ScanTools;
@@ -39,6 +40,7 @@ public final class ToolCatalog {
         specs.addAll(VisualsTools.specs());
         specs.addAll(WorldTools.specs());
         specs.addAll(MemoryTools.specs());
+        specs.addAll(LessonTools.specs());
         specs.addAll(SkillTools.specs());
         specs.addAll(WebTools.specs());
         specs.addAll(CodeTools.specs());

@@ -34,6 +34,8 @@
 | `harness.tool.ToolCatalog` | Merges provider declarations |
 | `harness.tool.ToolContext` | Per-call services/controller/loop |
 | `harness.tool.ToolJson` / `ToolArgs` | JSON helpers and camel aliases |
+| `harness.lesson.Lesson` | Learned procedural rule model |
+| `harness.lesson.LessonStore` | Lesson storage, dedupe, search, context selection |
 | `harness.memory.MemoryEntry` | Persistent fact/location model |
 | `harness.memory.MemoryCapture` | Deterministic remember/location extraction |
 | `harness.memory.MemoryStore` | Memory storage, dedupe, search, context selection |
@@ -59,6 +61,7 @@
 | `harness.tools.VisualsTools` | LED/light/particles/sound/chat/status |
 | `harness.tools.WorldTools` | block/room/vein/entity/build/doc tools |
 | `harness.tools.MemoryTools` | `memory` |
+| `harness.tools.LessonTools` | `lesson` |
 | `harness.tools.SkillTools` | `skill`, `skill_refine` |
 | `harness.tools.WebTools` | `web_search`, `web_fetch`, `wiki_lookup` |
 | `harness.tools.CodeTools` | `execute` |
@@ -119,6 +122,7 @@
 
 `harness/tool/ToolRegistryTest`, `harness/tool/ToolValidatorTest`,
 `harness/js/JsSourceTest`, `harness/js/JsEngineTest`,
+`harness/lesson/LessonStoreTest`,
 `harness/memory/MemoryStoreTest`, `harness/memory/MemoryCaptureTest`,
 `service/world/BlockSightTest`,
 `harness/skill/SkillLibraryTest`, `harness/session/DroneSessionTest`,

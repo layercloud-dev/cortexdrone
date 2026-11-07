@@ -7,6 +7,8 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.command.BaseCommand;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.harness.lesson.Lesson;
+import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.config.DebugEntry;
@@ -52,7 +54,7 @@ public class DroneCommand extends BaseCommand {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
                     "spawn", "link", "despawn", "list", "status",
-                    "debug", "config", "memory", "js", "help");
+                    "debug", "config", "memory", "lesson", "js", "help");
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
@@ -65,6 +67,9 @@ public class DroneCommand extends BaseCommand {
             if (sub.equals("memory")) {
                 return getListOfStringsMatchingLastWord(args,
                         "list", "search", "remember", "here", "forget");
+            }
+            if (sub.equals("lesson")) {
+                return getListOfStringsMatchingLastWord(args, "list", "search", "forget");
             }
         }
         return null;
@@ -87,6 +92,7 @@ public class DroneCommand extends BaseCommand {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear] | config");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone lesson [list|search <q>|forget <id|title>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
             return;
         }
@@ -145,6 +151,9 @@ public class DroneCommand extends BaseCommand {
                 return;
             case "memory":
                 handleMemory(sender, player, args);
+                return;
+            case "lesson":
+                handleLesson(sender, args);
                 return;
             case "config":
                 boolean isOp = player == null || player.canCommandSenderUseCommand(2, "drone");
@@ -269,6 +278,42 @@ public class DroneCommand extends BaseCommand {
 
         String fullPrompt = joinArgs(args, 0);
         this.manager.handleNaturalInstruction(player, fullPrompt);
+    }
+
+    private void handleLesson(ICommandSender sender, String[] args) {
+        LessonStore lessons = this.manager.getHarness() != null
+                ? this.manager.getHarness().lessons() : null;
+        if (lessons == null) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "[Drone] Lessons are not initialized yet.");
+            return;
+        }
+        String action = args.length >= 2 ? args[1].toLowerCase() : "list";
+        if (action.equals("forget")) {
+            String key = args.length >= 3 ? joinArgs(args, 2) : "";
+            boolean removed = lessons.forget(key);
+            CortexDroneMod.sendMsg(sender, removed
+                    ? EnumChatFormatting.GREEN + "[Drone] Forgot lesson '" + key + "'."
+                    : EnumChatFormatting.RED + "[Drone] No lesson matched '" + key + "'.");
+            return;
+        }
+        if (!action.equals("list") && !action.equals("search")) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                    + "Usage: /drone lesson [list|search <q>|forget <id|title>]");
+            return;
+        }
+        String query = action.equals("search") && args.length >= 3 ? joinArgs(args, 2) : "";
+        java.util.List<Lesson> entries = lessons.search(query, null, 12);
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Drone Lessons ("
+                + lessons.count() + " stored) ===");
+        if (entries.isEmpty()) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "Nothing stored yet.");
+            return;
+        }
+        for (Lesson entry : entries) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "[" + entry.getScope() + "/"
+                    + entry.getOutcome() + "] " + EnumChatFormatting.WHITE + entry.getTitle()
+                    + EnumChatFormatting.GRAY + " - " + entry.summary(160));
+        }
     }
 
     private void handleMemory(ICommandSender sender, EntityPlayerMP player, String[] args) {

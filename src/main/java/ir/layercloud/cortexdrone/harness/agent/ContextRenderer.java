@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.harness.agent;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.harness.lesson.Lesson;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
@@ -31,7 +32,7 @@ public final class ContextRenderer {
     public static String render(AIDroneManager manager, WorldScanner worldScanner,
                                 EntityPlayerMP player, DroneController controller,
                                 String taskPrompt, String taskIntent, List<Skill> suggestedSkills,
-                                List<MemoryEntry> memories) {
+                                List<MemoryEntry> memories, List<Lesson> lessons) {
         StringBuilder out = new StringBuilder(4096);
         World world = controller.drone.worldObj;
         double refX = player != null ? player.posX : controller.drone.posX;
@@ -105,6 +106,15 @@ public final class ContextRenderer {
         } else {
             out.append(manager.getHarness().memory().formatForPrompt(memories));
             out.append("Use `memory` action=search/remember to refine these entries.\n");
+        }
+        out.append('\n');
+
+        out.append("## Lessons (learned)\n");
+        if (lessons == null || lessons.isEmpty()) {
+            out.append("- none yet; after a failure or a non-obvious success record one with `lesson` action=add.\n");
+        } else {
+            out.append(manager.getHarness().lessons().formatForPrompt(lessons));
+            out.append("Apply these rules unless the live data contradicts them; mark one with `lesson` action=use when it changes a decision.\n");
         }
         out.append('\n');
 

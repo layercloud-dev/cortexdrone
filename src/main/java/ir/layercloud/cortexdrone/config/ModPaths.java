@@ -10,6 +10,7 @@ import java.io.File;
  *   config.json   LLM gateway, agent limits, saved drone bindings
  *   skills.json   learned + bundled skill overrides
  *   memory.json   player facts and named locations
+ *   lessons.json  learned procedural rules
  *   logs/         debug log
  * </pre>
  */
@@ -32,6 +33,10 @@ public final class ModPaths {
 
     public static File memoryFile(File root) {
         return new File(root, "memory.json");
+    }
+
+    public static File lessonsFile(File root) {
+        return new File(root, "lessons.json");
     }
 
     public static File logFile(File root) {

@@ -70,6 +70,7 @@ on the embedded Rhino engine; Node.js is not required.
   erasure, literal safety, spread.
 - `JsEngineTest` — tool call/return, catchable errors, envelope propagation.
 - `SkillLibraryTest` — bundled loading, BM25 search, versioned persistence.
+- `LessonStoreTest` — lesson add/search/dedupe/context and persistence.
 - `MemoryStoreTest` / `MemoryCaptureTest` — fact/location capture, coordinates,
   dedupe/update, persistence and pinned context selection.
 - `DroneSessionTest`, `TaskIntentClassifierTest`, `ActionRegistryTest` — session,
@@ -81,7 +82,8 @@ on the embedded Rhino engine; Node.js is not required.
 2. Restart the server so Forge loads the new jar.
 3. On first start, `ConfigMigrator` imports legacy world config/skills into
    `config/cortexdrone/` and renames the old files `.migrated`.
-4. Verify with `/drone status`, `/drone memory list`, and `@drone status`.
+4. Verify with `/drone status`, `/drone memory list`, `/drone lesson list`, and
+   `@drone status`.
 
 Logs: `config/cortexdrone/logs/cortexdrone.log`.
 No Node.js path, script directory or RPC port is used.

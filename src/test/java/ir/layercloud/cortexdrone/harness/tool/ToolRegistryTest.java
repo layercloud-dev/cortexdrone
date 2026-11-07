@@ -62,7 +62,7 @@ public class ToolRegistryTest {
                 "deposit_chest", "drop_items", "suck_items", "craft",
                 "set_led", "set_light", "spawn_particles", "play_sound", "play_note",
                 "say", "set_status_text",
-                "execute", "memory", "skill", "skill_refine",
+                "execute", "lesson", "memory", "skill", "skill_refine",
                 "web_search", "web_fetch", "wiki_lookup",
                 "scan_blocks", "poll_scan")) {
             assertTrue("Missing tool: " + required, names.contains(required));

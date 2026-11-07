@@ -13,6 +13,7 @@ ToolInvoker              schema validation + MAIN/ASYNC dispatch + envelopes
 ToolRegistry             the single tool surface
 JsEngine                 in-process Rhino runtime
 MemoryStore              persistent facts + named locations
+LessonStore              learned procedural rules
 SkillLibrary / Refiner   memory + recursive skill compiler
 ```
 
@@ -123,6 +124,34 @@ memory action=forget id=mem_...
 `AgentService` injects relevant memories plus pinned locations into the context.
 Storage is `config/cortexdrone/memory.json`; entries are deduplicated by
 `kind + name` and updated in place.
+
+## Operating loop
+
+`system.md` makes the model work in four phases: read-only **recon**,
+a short **plan**, one **`execute`** script for the whole action, then
+**verify + learn**. Single tool calls are reserved for one lookup or one
+primitive the player asked for. After a successful multi-step workflow the
+model calls `skill_refine`; if it forgets, `AgentService` auto-saves the last
+successful script (only when it performed a real world action) so the work is
+never lost.
+
+## Lessons
+
+`LessonStore` is the third memory layer, stored in
+`config/cortexdrone/lessons.json`:
+
+- `memory` — player facts and named places;
+- `lesson` — prose rule learned from an attempt;
+- `skill` — executable workflow code.
+
+```text
+lesson action=add scope=mining title="keep floor when digging down" \
+       outcome=failure body="fell -> broke support -> keep a floor block"
+lesson action=search query="digging down"
+lesson action=forget id=les_...
+```
+
+Relevant and pinned lessons are injected into the task context next to memory.
 
 ## Skills
 

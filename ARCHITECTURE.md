@@ -81,6 +81,7 @@ src/main/java/ir/layercloud/cortexdrone/
     Harness.java            composition root (registry, invoker, js, llm, agent)
     agent/                  AgentService, LlmClient, Conversation, ContextRenderer
     js/                     JsEngine (Rhino), JsSource, TypeScriptEraser
+    lesson/                 Lesson, LessonStore
     memory/                 MemoryEntry, MemoryCapture, MemoryStore
     tool/                   ToolSpec, ToolRegistry, ToolInvoker, ScanJobs, schemas
     tools/                  one provider per domain + view/ JSON boundaries
@@ -198,6 +199,12 @@ definitions are captured deterministically, and the model can use the `memory`
 tool to remember/search/forget. Relevant and pinned memories are injected into
 the task context.
 
+`LessonStore` keeps learned procedural rules in
+`config/cortexdrone/lessons.json` (symptom -> cause -> rule). The model records
+them with the `lesson` tool after a failure or non-obvious success and they are
+injected next to memory. Skills stay executable code; the harness also
+auto-saves a successful script when the model skips `skill_refine`.
+
 ## 7. Tool surface
 
 Each domain provider owns its declarations and handlers. Duplicate names or
@@ -214,6 +221,7 @@ visuals      set_led set_light spawn_particles play_sound play_note say
              set_status_text
 code         execute
 memory       memory
+lesson       lesson
 skills       skill skill_refine
 world        get_block get_blocks_in_box get_top_y scan_room scan_blocks
              scan_veins find_distant get_entities get_drops raycast_player
@@ -253,6 +261,7 @@ config/cortexdrone/
   config.json   gateway, model/key, agent limits, saved drone bindings
   skills.json   learned/refined skill overrides
   memory.json   player facts and named locations
+  lessons.json  learned procedural rules
   logs/         debug log
 ```
 

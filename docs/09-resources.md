@@ -60,6 +60,7 @@ config/cortexdrone/
   config.json   gateway, agent limits, saved drone bindings
   skills.json   learned/refined skills
   memory.json   player facts and named locations
+  lessons.json  learned procedural rules
   logs/         cortexdrone.log (+ .1 rotation)
 ```
 

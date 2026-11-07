@@ -65,6 +65,13 @@ Use `Harness.memory()` / `MemoryStore` instead of inventing a new file. Call
 `remember(...)`, `search(...)`, `forget(...)` or `captureFromChat(...)`.
 Locations must include `dimension` and `x/y/z`; reuse `kind + name` to update.
 
+## Add a lesson-backed tool
+
+Use `Harness.lessons()` / `LessonStore` for procedural knowledge. Call
+`add(...)`, `search(...)`, `forget(...)` or `recordUse(...)`. Keep lessons short
+(symptom -> cause -> rule) and scoped; executable workflows belong in
+`SkillLibrary`.
+
 ## Add a web source
 
 Extend `WebLookupService` and declare an `ASYNC` tool in `WebTools`. Never touch

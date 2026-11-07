@@ -128,6 +128,23 @@
 | `command.BaseCommand` / `command.impl.DroneCommand` | `/drone` |
 | `oc.OcHardwareBridge` / `oc.impl.InertMachineArchitecture` | OC machine state bridge |
 
+## Map integration
+
+| Class | Role |
+| --- | --- |
+| `network.DroneMarker` | Immutable drone position/name/owner/dimension value |
+| `network.DroneMapSnapshot` | Server-to-client FML packet (one per second) |
+| `network.DroneMapSyncHandler` | Publishes snapshots on the client network thread |
+| `network.DroneMapSync` | Channel registration + server broadcast of live controllers |
+| `client.ClientDroneMarkers` | Volatile latest snapshot shared with the client tick |
+| `client.xaero.XaeroMapHook` | Optional reflection hook for Xaero's Minimap + World Map |
+
+The Xaero hook is class-name detected, so Xaero is not a build or startup
+dependency. It creates temporary waypoints (aqua, symbol `D`) in the current
+Xaero set; temporary waypoints are never saved to the player's waypoint files,
+and Xaero's world map reads the same set. The hook is registered only when the
+physical side is the client.
+
 ## Tests
 
 `harness/tool/ToolRegistryTest`, `harness/tool/ToolValidatorTest`,

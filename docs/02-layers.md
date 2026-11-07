@@ -63,6 +63,8 @@ ir.layercloud.cortexdrone
 
   command/               /drone
   config/                ModConfig, ModPaths, DroneLogger
+  network/               drone map-sync packet + server broadcast
+  client/                client-only map state and optional Xaero hook
   oc/                    OpenComputers reflection bridge (machine bootstrap)
   action/oc/             OC callback invocation + machine control actions
   manager/oc/            OC manager (oc_call, oc_machine)

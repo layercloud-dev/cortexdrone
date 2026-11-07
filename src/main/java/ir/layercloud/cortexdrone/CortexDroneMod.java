@@ -10,6 +10,7 @@ import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import ir.layercloud.cortexdrone.network.DroneMapSync;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -56,6 +57,7 @@ public class CortexDroneMod {
 
     private final List<Runnable> mainThreadTasks = Collections.synchronizedList(new ArrayList<>());
     private AIDroneManager aiDroneManager = null;
+    private final DroneMapSync mapSync = new DroneMapSync();
     private Method authCheckMethod = null;
     private boolean authCheckResolved = false;
 
@@ -63,10 +65,29 @@ public class CortexDroneMod {
     public void preInit(FMLPreInitializationEvent event) {
         MinecraftForge.EVENT_BUS.register(this);
         FMLCommonHandler.instance().bus().register(this);
+        DroneMapSync.register();
+        if (FMLCommonHandler.instance().getSide().isClient()) {
+            registerClientHooks();
+        }
         this.aiDroneManager = new AIDroneManager(this,
                 new File(event.getModConfigurationDirectory(), "cortexdrone"));
         ForgeChunkManager.setForcedChunkLoadingCallback(
                 this, this.aiDroneManager.getChunkLoadingManager());
+    }
+
+    /**
+     * Optional client-only integrations are loaded by name so the dedicated
+     * server never resolves a class that references client or Xaero types.
+     */
+    private static void registerClientHooks() {
+        try {
+            Class<?> hook = Class.forName("ir.layercloud.cortexdrone.client.xaero.XaeroMapHook");
+            hook.getMethod("register").invoke(null);
+        } catch (ClassNotFoundException ignored) {
+            // Client integration is optional.
+        } catch (Throwable t) {
+            LOG.log(Level.WARNING, "Failed to register the Xaero map hook", t);
+        }
     }
 
     @Mod.EventHandler
@@ -106,6 +127,7 @@ public class CortexDroneMod {
         if (this.aiDroneManager != null) {
             try {
                 this.aiDroneManager.onServerTickEnd();
+                this.mapSync.tick(this.aiDroneManager);
             } catch (Throwable t) {
                 LOG.log(Level.SEVERE, "Server tick pipeline failed", t);
             }

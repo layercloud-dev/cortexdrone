@@ -25,11 +25,17 @@ server tick END
   tick every controller
   reconnect unlinked drones every 40 ticks
   chunk policy tick (login delay / player-view unload / logout grace)
+  map-sync broadcast every 20 ticks (all live drone positions)
   tick profiler end
 
 serverStopping
   restore light auras
   save config (including saved drone bindings)
+
+client tick END (optional)
+  Xaero hook reads the latest map snapshot
+  adds/updates one temporary Xaero waypoint per drone in the current dimension
+  requests a world-map waypoint refresh when a marker changes
 ```
 
 ## Per-controller tick

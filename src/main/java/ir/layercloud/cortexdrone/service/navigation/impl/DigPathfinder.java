@@ -136,8 +136,13 @@ public final class DigPathfinder {
                         if (closed.contains(nKey)) continue;
                         Step step = classify(world, nx, ny, nz, rejected);
                         if (step == null) continue;
-                        double ng = cur.g + step.cost
-                                + (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > 1 ? 0.35D : 0.0D);
+                        // The heuristic is Euclidean, so the step cost must not
+                        // be cheaper than the distance it covers or A* would
+                        // under-price diagonals and stop being admissible.
+                        int manhattan = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
+                        double traversal = manhattan == 1 ? 1.0D
+                                : (manhattan == 2 ? 1.414D : 1.732D);
+                        double ng = cur.g + step.cost * traversal;
                         Double previous = bestG.get(nKey);
                         if (previous != null && ng >= previous) continue;
                         bestG.put(nKey, ng);
@@ -161,8 +166,7 @@ public final class DigPathfinder {
                 result.breakBlock[0], result.breakBlock[1], result.breakBlock[2]);
     }
 
-    private static final class Step {
-        final double cost;
+    private static final class Step {        final double cost;
         final boolean solid;
 
         Step(double cost, boolean solid) {

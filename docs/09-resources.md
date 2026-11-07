@@ -114,6 +114,21 @@ config/cortexdrone/skills/guard/
 `SkillLibrary.save` writes both files atomically; `delete` removes the
 directory. Deleting an override of a bundled skill restores the bundled version.
 
+## Learned lesson layout
+
+Lessons use the same frontmatter + Markdown format and one directory per entry:
+
+```text
+config/cortexdrone/lessons/mining-keep-a-floor-1a2b3c4d/
+  LESSON.md   frontmatter (id, scope, title, outcome, tags, pinned, uses,
+              source, version, created, updated) + symptom -> cause -> rule body
+```
+
+`LessonStore.add` deduplicates by `scope + title`, updates the same directory
+and increments `version`; `recordUse` rewrites the frontmatter; `forget` deletes
+the directory. The legacy `config/cortexdrone/lessons.json` is imported once and
+archived as `lessons.json.migrated`.
+
 ## Config files
 
 ```text
@@ -121,7 +136,7 @@ config/cortexdrone/
   config.json   gateway, agent limits, saved drone bindings
   skills/       learned/refined skills (SKILL.md + code.js per skill)
   memory.json   player facts and named locations
-  lessons.json  learned procedural rules
+  lessons/      learned procedural rules (LESSON.md per lesson)
   sessions/     task transcripts grouped by outcome + index.jsonl
   logs/         cortexdrone.log (+ .1 rotation)
 ```

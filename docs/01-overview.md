@@ -55,7 +55,7 @@ Key properties:
 - Remember durable player facts and named locations (bases, farms, mines) across
   sessions in `config/cortexdrone/memory.json`.
 - Remember procedural lessons (symptom -> cause -> rule) in
-  `config/cortexdrone/lessons.json`, injected before planning similar work.
+  `config/cortexdrone/lessons/<name>/LESSON.md`, injected before planning similar work.
 - Log every task to `config/cortexdrone/sessions/<outcome>/` (success, failure,
   cancelled, interrupted, incomplete, error) with a searchable index.
 - Run the bundled skill suite: mining/hauling, storage sorting, hunting,

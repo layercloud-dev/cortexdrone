@@ -87,7 +87,8 @@ Locations must include `dimension` and `x/y/z`; reuse `kind + name` to update.
 
 ## Add a lesson-backed tool
 
-Use `Harness.lessons()` / `LessonStore` for procedural knowledge. Call
+Use `Harness.lessons()` / `LessonStore` for procedural knowledge; each lesson
+is a `config/cortexdrone/lessons/<name>/LESSON.md` directory. Call
 `add(...)`, `search(...)`, `forget(...)` or `recordUse(...)`. Keep lessons short
 (symptom -> cause -> rule) and scoped; executable workflows belong in
 `SkillLibrary`.

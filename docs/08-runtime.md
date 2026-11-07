@@ -74,7 +74,7 @@ Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
 file. Navigation recovery is not config: pass `allow_dig`, `max_dig_blocks` or
 `recovery_attempts` on the `goto` call. `config/cortexdrone/skills/<name>/SKILL.md` + `code.js` hold learned/refined skills;
 `config/cortexdrone/memory.json` holds player facts and named locations;
-`config/cortexdrone/lessons.json` holds learned procedural rules;
+`config/cortexdrone/lessons/<name>/LESSON.md` holds learned procedural rules;
 `config/cortexdrone/sessions/` holds one transcript per task, grouped by
 outcome (`success`, `failure`, `cancelled`, `interrupted`, `incomplete`,
 `error`) plus `index.jsonl`.

@@ -78,6 +78,8 @@ on the embedded Rhino engine; Node.js is not required.
   capability.
 - `SkillLibraryTest` — directory storage, SKILL.md persistence, legacy JSON
   import/archival, and restoring a bundled skill when an override is deleted.
+- `LessonStoreTest` — LESSON.md directories, Markdown round-trip, legacy JSON
+  import/archival, and directory cleanup on forget.
 - `LessonStoreTest` — lesson add/search/dedupe/context and persistence.
 - `MemoryStoreTest` / `MemoryCaptureTest` — fact/location capture, coordinates,
   dedupe/update, persistence and pinned context selection.

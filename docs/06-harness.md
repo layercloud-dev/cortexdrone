@@ -140,7 +140,8 @@ never lost.
 ## Lessons
 
 `LessonStore` is the third memory layer, stored in
-`config/cortexdrone/lessons.json`:
+`config/cortexdrone/lessons/`, one `LESSON.md` directory per rule (same
+frontmatter + Markdown format as `SKILL.md`):
 
 - `memory` — player facts and named places;
 - `lesson` — prose rule learned from an attempt;

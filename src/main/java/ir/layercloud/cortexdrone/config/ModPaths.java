@@ -10,7 +10,7 @@ import java.io.File;
  *   config.json   LLM gateway, agent limits, saved drone bindings
  *   skills/       one directory per learned skill (SKILL.md + code.js)
  *   memory.json   player facts and named locations
- *   lessons.json  learned procedural rules
+ *   lessons/      one LESSON.md directory per learned rule
  *   sessions/     per-task transcripts grouped by outcome
  *   logs/         debug log
  * </pre>
@@ -42,8 +42,14 @@ public final class ModPaths {
         return new File(root, "memory.json");
     }
 
+    /** Legacy single-file lesson store; imported once, then archived. */
     public static File lessonsFile(File root) {
         return new File(root, "lessons.json");
+    }
+
+    /** Learned lessons, one LESSON.md directory per lesson. */
+    public static File lessonsDir(File root) {
+        return new File(root, "lessons");
     }
 
     public static File logFile(File root) {

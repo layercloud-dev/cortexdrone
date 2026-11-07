@@ -30,6 +30,9 @@ public class Lesson {
     private long createdAt;
     private long updatedAt;
 
+    /** Absolute LESSON.md directory; transient, never persisted. */
+    private transient String path;
+
     public void touch() {
         long now = System.currentTimeMillis();
         if (this.createdAt <= 0) this.createdAt = now;

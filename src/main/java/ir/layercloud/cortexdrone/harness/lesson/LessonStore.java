@@ -12,7 +12,9 @@ import java.io.FileWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -23,22 +25,34 @@ import java.util.logging.Logger;
 /**
  * Persistent lessons: what went wrong, why, and the rule for next time.
  *
- * <p>Storage is {@code config/cortexdrone/lessons.json}. Unlike a skill (which
- * is executable code), a lesson is short prose the model reads before acting.
- * Entries are deduplicated by {@code scope + title}, so repeating the same
- * mistake updates the existing lesson instead of duplicating it.</p>
+ * <p>Storage mirrors skills: one directory per lesson with a
+ * {@code LESSON.md} that has YAML frontmatter and a prose body.</p>
+ *
+ * <pre>
+ * config/cortexdrone/lessons/
+ *   mining-keep-floor-1a2b3c4d/
+ *     LESSON.md
+ * </pre>
+ *
+ * <p>Unlike a skill (executable code), a lesson is short prose the model reads
+ * before acting. Entries are deduplicated by {@code scope + title}, so repeating
+ * the same mistake updates the existing lesson instead of duplicating it. The
+ * legacy {@code lessons.json} is imported once and archived.</p>
  */
 public final class LessonStore {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
     private static final int MAX_ENTRIES = 400;
 
-    private final File storageFile;
+    private final File lessonsDir;
+    private final File legacyFile;
     private final Map<String, Lesson> entries = new LinkedHashMap<>();
     private long sequence;
 
     public LessonStore(File configRoot) {
-        this.storageFile = ModPaths.lessonsFile(configRoot);
-        load();
+        this.lessonsDir = ModPaths.lessonsDir(configRoot);
+        this.legacyFile = ModPaths.lessonsFile(configRoot);
+        loadDirectories();
+        importLegacy();
     }
 
     public synchronized Lesson add(String scope, String title, String body,
@@ -77,7 +91,7 @@ public final class LessonStore {
         lesson.touch();
         this.entries.put(lesson.getId(), lesson);
         enforceLimit();
-        save();
+        persist(lesson);
         return lesson;
     }
 
@@ -134,14 +148,15 @@ public final class LessonStore {
         if (lesson == null) return;
         lesson.setUses(lesson.getUses() + 1);
         lesson.touch();
-        save();
+        persist(lesson);
     }
 
     public synchronized boolean forget(String idOrTitle) {
         if (idOrTitle == null || idOrTitle.trim().isEmpty()) return false;
         String key = idOrTitle.trim();
-        if (this.entries.remove(key) != null) {
-            save();
+        Lesson direct = this.entries.remove(key);
+        if (direct != null) {
+            deleteLesson(direct);
             return true;
         }
         String title = normalizeTitle(key);
@@ -149,8 +164,10 @@ public final class LessonStore {
         for (Lesson lesson : this.entries.values()) {
             if (lesson.getTitle().equals(title)) remove.add(lesson.getId());
         }
-        for (String id : remove) this.entries.remove(id);
-        if (!remove.isEmpty()) save();
+        for (String id : remove) {
+            Lesson lesson = this.entries.remove(id);
+            if (lesson != null) deleteLesson(lesson);
+        }
         return !remove.isEmpty();
     }
 
@@ -170,9 +187,176 @@ public final class LessonStore {
         return out.toString();
     }
 
-    public File storageFile() {
-        return this.storageFile;
+    public File lessonsDir() {
+        return this.lessonsDir;
     }
+
+    // ------------------------------------------------------------------
+    // Loading and persistence
+    // ------------------------------------------------------------------
+
+    private synchronized void loadDirectories() {
+        File[] dirs = this.lessonsDir != null ? this.lessonsDir.listFiles(File::isDirectory) : null;
+        if (dirs == null) return;
+        Arrays.sort(dirs, Comparator.comparing(File::getName));
+        for (File dir : dirs) loadLesson(dir);
+    }
+
+    private void loadLesson(File dir) {
+        File markdown = new File(dir, LessonMarkdown.FILE_NAME);
+        if (!markdown.isFile()) return;
+        Lesson lesson = LessonMarkdown.read(readFile(markdown));
+        if (lesson == null) return;
+        long stamp = markdown.lastModified();
+        if (lesson.getId() == null || lesson.getId().trim().isEmpty()) {
+            lesson.setId("les_" + stamp + "_" + Math.abs(lesson.getTitle().hashCode()));
+        }
+        if (lesson.getScope() == null || lesson.getScope().trim().isEmpty()) lesson.setScope("general");
+        if (lesson.getTitle() == null) lesson.setTitle("");
+        if (lesson.getBody() == null) lesson.setBody("");
+        if (lesson.getOutcome() == null) lesson.setOutcome("note");
+        if (lesson.getSource() == null || lesson.getSource().trim().isEmpty()) lesson.setSource("agent");
+        if (lesson.getTags() == null) lesson.setTags(new ArrayList<>());
+        if (lesson.getVersion() <= 0) lesson.setVersion(1);
+        if (lesson.getCreatedAt() <= 0) lesson.setCreatedAt(stamp);
+        if (lesson.getUpdatedAt() <= 0) lesson.setUpdatedAt(stamp);
+        lesson.setPath(dir.getAbsolutePath());
+        this.entries.put(lesson.getId(), lesson);
+    }
+
+    /**
+     * Imports the old single {@code lessons.json} once, writes a LESSON.md
+     * directory per lesson, then archives the file.
+     */
+    private synchronized void importLegacy() {
+        if (this.legacyFile == null || !this.legacyFile.isFile()) return;
+        int imported = 0;
+        try (Reader reader = new FileReader(this.legacyFile)) {
+            JsonElement parsed = new JsonParser().parse(reader);
+            if (parsed != null && parsed.isJsonArray()) {
+                for (JsonElement element : parsed.getAsJsonArray()) {
+                    if (!element.isJsonObject()) continue;
+                    Lesson lesson = CortexDroneMod.GSON.fromJson(element, Lesson.class);
+                    if (lesson == null) continue;
+                    if (lesson.getId() == null || lesson.getId().trim().isEmpty()) {
+                        lesson.setId("les_" + System.currentTimeMillis() + "_" + (++this.sequence));
+                    }
+                    if (lesson.getScope() == null) lesson.setScope("general");
+                    if (lesson.getTitle() == null) lesson.setTitle("");
+                    if (lesson.getBody() == null) lesson.setBody("");
+                    if (lesson.getOutcome() == null) lesson.setOutcome("note");
+                    if (lesson.getSource() == null) lesson.setSource("agent");
+                    if (lesson.getTags() == null) lesson.setTags(new ArrayList<>());
+                    if (lesson.getVersion() <= 0) lesson.setVersion(1);
+                    long now = System.currentTimeMillis();
+                    if (lesson.getCreatedAt() <= 0) lesson.setCreatedAt(now);
+                    if (lesson.getUpdatedAt() <= 0) lesson.setUpdatedAt(now);
+                    if (this.entries.containsKey(lesson.getId())
+                            || findByScopeAndTitle(lesson.getScope(), lesson.getTitle()) != null) {
+                        continue;
+                    }
+                    this.entries.put(lesson.getId(), lesson);
+                    persist(lesson);
+                    imported++;
+                }
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Could not import legacy " + this.legacyFile.getAbsolutePath(), e);
+            return;
+        }
+        archiveLegacy();
+        if (imported > 0) {
+            LOG.info("Imported " + imported + " legacy lesson(s) into "
+                    + this.lessonsDir.getAbsolutePath());
+        }
+    }
+
+    private void archiveLegacy() {
+        File target = new File(this.legacyFile.getAbsolutePath() + ".migrated");
+        if (target.exists()) {
+            target = new File(this.legacyFile.getAbsolutePath() + ".migrated-"
+                    + System.currentTimeMillis());
+        }
+        if (!this.legacyFile.renameTo(target)) {
+            LOG.warning("Could not archive legacy lessons file "
+                    + this.legacyFile.getAbsolutePath());
+        }
+    }
+
+    private void persist(Lesson lesson) {
+        File dir = lesson.getPath() != null && !lesson.getPath().trim().isEmpty()
+                ? new File(lesson.getPath()) : lessonDir(lesson);
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+            LOG.warning("Could not create lesson directory " + dir.getAbsolutePath());
+            return;
+        }
+        lesson.setPath(dir.getAbsolutePath());
+        writeFile(new File(dir, LessonMarkdown.FILE_NAME), LessonMarkdown.write(lesson));
+    }
+
+    private void deleteLesson(Lesson lesson) {
+        if (lesson == null) return;
+        File dir = lesson.getPath() != null && !lesson.getPath().trim().isEmpty()
+                ? new File(lesson.getPath()) : lessonDir(lesson);
+        deleteRecursively(dir);
+    }
+
+    private File lessonDir(Lesson lesson) {
+        String scope = slug(lesson.getScope(), "general");
+        String title = slug(lesson.getTitle(), "lesson");
+        String id = lesson.getId() != null ? Integer.toHexString(lesson.getId().hashCode()) : "lesson";
+        return new File(this.lessonsDir, scope + "-" + title + "-" + id);
+    }
+
+    private static String slug(String value, String fallback) {
+        String clean = value != null ? value.trim().toLowerCase(Locale.ROOT) : "";
+        clean = clean.replaceAll("[^a-z0-9]+", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
+        if (clean.isEmpty()) clean = fallback;
+        return clean.length() > 48 ? clean.substring(0, 48) : clean;
+    }
+
+    private static void writeFile(File target, String content) {
+        File temp = new File(target.getAbsolutePath() + ".tmp");
+        try (Writer writer = new FileWriter(temp)) {
+            writer.write(content != null ? content : "");
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Could not write " + target.getAbsolutePath(), e);
+            return;
+        }
+        if (target.exists() && !target.delete()) {
+            LOG.warning("Could not replace " + target.getAbsolutePath());
+            return;
+        }
+        if (!temp.renameTo(target)) {
+            LOG.warning("Could not move " + temp.getAbsolutePath() + " into place");
+        }
+    }
+
+    private static String readFile(File file) {
+        try (Reader reader = new FileReader(file)) {
+            StringBuilder out = new StringBuilder((int) Math.min(64_000L, file.length() + 32L));
+            char[] buffer = new char[4096];
+            int read;
+            while ((read = reader.read(buffer)) >= 0) out.append(buffer, 0, read);
+            return out.toString();
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Could not read " + file.getAbsolutePath(), e);
+            return null;
+        }
+    }
+
+    private static void deleteRecursively(File file) {
+        if (file == null || !file.exists()) return;
+        File[] children = file.listFiles();
+        if (children != null) {
+            for (File child : children) deleteRecursively(child);
+        }
+        if (!file.delete()) LOG.warning("Could not delete " + file.getAbsolutePath());
+    }
+
+    // ------------------------------------------------------------------
+    // Query helpers
+    // ------------------------------------------------------------------
 
     private Lesson find(String idOrTitle) {
         if (idOrTitle == null) return null;
@@ -240,55 +424,8 @@ public final class LessonStore {
                 }
             }
             if (oldestId == null) break;
-            this.entries.remove(oldestId);
-        }
-    }
-
-    private synchronized void load() {
-        if (this.storageFile == null || !this.storageFile.isFile()) return;
-        try (Reader reader = new FileReader(this.storageFile)) {
-            JsonElement parsed = new JsonParser().parse(reader);
-            if (parsed == null || !parsed.isJsonArray()) return;
-            for (JsonElement element : parsed.getAsJsonArray()) {
-                if (!element.isJsonObject()) continue;
-                Lesson lesson = CortexDroneMod.GSON.fromJson(element, Lesson.class);
-                if (lesson == null || lesson.getId() == null || lesson.getId().isEmpty()) continue;
-                if (lesson.getTags() == null) lesson.setTags(new ArrayList<>());
-                if (lesson.getScope() == null) lesson.setScope("general");
-                if (lesson.getTitle() == null) lesson.setTitle("");
-                if (lesson.getBody() == null) lesson.setBody("");
-                if (lesson.getOutcome() == null) lesson.setOutcome("note");
-                if (lesson.getSource() == null) lesson.setSource("agent");
-                if (lesson.getVersion() <= 0) lesson.setVersion(1);
-                long now = System.currentTimeMillis();
-                if (lesson.getCreatedAt() <= 0) lesson.setCreatedAt(now);
-                if (lesson.getUpdatedAt() <= 0) lesson.setUpdatedAt(now);
-                this.entries.put(lesson.getId(), lesson);
-            }
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not read lessons " + this.storageFile.getAbsolutePath(), e);
-        }
-    }
-
-    private synchronized void save() {
-        if (this.storageFile == null) return;
-        File parent = this.storageFile.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            LOG.warning("Could not create lesson directory " + parent.getAbsolutePath());
-            return;
-        }
-        File temp = new File(this.storageFile.getAbsolutePath() + ".tmp");
-        try (Writer writer = new FileWriter(temp)) {
-            CortexDroneMod.GSON.toJson(new ArrayList<>(this.entries.values()), writer);
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not write lessons", e);
-            return;
-        }
-        if (this.storageFile.exists() && !this.storageFile.delete()) {
-            LOG.warning("Could not replace " + this.storageFile.getAbsolutePath());
-        }
-        if (!temp.renameTo(this.storageFile)) {
-            LOG.warning("Could not move " + temp.getAbsolutePath() + " into place");
+            Lesson removed = this.entries.remove(oldestId);
+            deleteLesson(removed);
         }
     }
 

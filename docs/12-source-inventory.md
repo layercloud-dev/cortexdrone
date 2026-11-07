@@ -34,13 +34,15 @@
 | `harness.tool.ToolCatalog` | Merges provider declarations |
 | `harness.tool.ToolContext` | Per-call services/controller/loop |
 | `harness.tool.ToolJson` / `ToolArgs` | JSON helpers and camel aliases |
-| `harness.lesson.Lesson` | Learned procedural rule model |
-| `harness.lesson.LessonStore` | Lesson storage, dedupe, search, context selection |
+| `harness.lesson.Lesson` | Learned rule model, dedupe metadata, directory path |
+| `harness.lesson.LessonMarkdown` | LESSON.md reader/writer |
+| `harness.lesson.LessonStore` | LESSON.md directories, dedupe, search, context selection |
 | `harness.memory.MemoryEntry` | Persistent fact/location model |
 | `harness.memory.MemoryCapture` | Deterministic remember/location extraction |
 | `harness.memory.MemoryStore` | Memory storage, dedupe, search, context selection |
 | `harness.skill.Skill` | Skill model, docs, version/usage metadata |
-| `harness.skill.SkillMarkdown` | SKILL.md frontmatter parser + renderer |
+| `harness.markdown.Frontmatter` | Shared YAML frontmatter parser (skills, lessons) |
+| `harness.skill.SkillMarkdown` | SKILL.md reader/writer |
 | `harness.skill.SkillLibrary` | Bundled + learned SKILL.md directories, composition |
 | `harness.skill.SkillSearch` | BM25 + fuzzy retrieval |
 | `harness.skill.SkillRefiner` | Recursive skill compiler (RLM) |

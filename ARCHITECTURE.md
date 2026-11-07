@@ -80,10 +80,11 @@ src/main/java/ir/layercloud/cortexdrone/
     Harness.java            composition root (registry, invoker, js, llm, agent)
     agent/                  AgentService, LlmClient, Conversation, ContextRenderer
     js/                     JsEngine (Rhino), JsSource, TypeScriptEraser
-    lesson/                 Lesson, LessonStore
+    lesson/                 Lesson, LessonMarkdown, LessonStore
     memory/                 MemoryEntry, MemoryCapture, MemoryStore
     tool/                   ToolSpec, ToolRegistry, ToolInvoker, ScanJobs, schemas
     tools/                  one provider per domain + view/ JSON boundaries
+    markdown/               Frontmatter (shared by skills and lessons)
     skill/                  Skill, SkillMarkdown, SkillLibrary, SkillSearch, SkillRefiner
     session/                DroneSession, SessionManager, SessionJournal
     task/                   TaskCoordinator, TaskIntentClassifier
@@ -199,7 +200,7 @@ tool to remember/search/forget. Relevant and pinned memories are injected into
 the task context.
 
 `LessonStore` keeps learned procedural rules in
-`config/cortexdrone/lessons.json` (symptom -> cause -> rule). The model records
+`config/cortexdrone/lessons/<name>/LESSON.md` (symptom -> cause -> rule). The model records
 them with the `lesson` tool after a failure or non-obvious success and they are
 injected next to memory. Skills stay executable code; the harness also
 auto-saves a successful script when the model skips `skill_refine`.
@@ -274,7 +275,7 @@ config/cortexdrone/
   config.json   gateway, model/key, agent limits, saved drone bindings
   skills/       learned/refined skills (SKILL.md + code.js per skill)
   memory.json   player facts and named locations
-  lessons.json  learned procedural rules
+  lessons/      learned procedural rules (LESSON.md per lesson)
   sessions/     per-task JSON+Markdown transcripts grouped by outcome
   logs/         debug log
 ```

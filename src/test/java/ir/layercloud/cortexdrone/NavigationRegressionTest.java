@@ -168,9 +168,66 @@ public class NavigationRegressionTest {
     public void localCornerObstructionsAreDiggable() throws Exception {
         String planner = read(MAIN + "service/navigation/impl/TunnelPlanner.java");
         assertTrue("a corner escape must exist", planner.contains("nextLocalObstruction("));
-        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        assertTrue("the shell search must include the floor voxel",
+                planner.contains("for (int dy = -1; dy <= 2; dy++)"));
+        String recovery = read(MAIN + "manager/navigation/impl/TunnelRecovery.java");
         assertTrue("recovery must try the local corner escape",
-                manager.contains("TunnelPlanner.nextLocalObstruction("));
+                recovery.contains("TunnelPlanner.nextLocalObstruction("));
+        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        assertTrue("the manager must delegate to the tunnel escalation",
+                manager.contains("TunnelRecovery.nextTarget("));
+    }
+
+    @Test
+    public void digAwareRoutesReachRockOutsideTheShell() throws Exception {
+        String dig = read(MAIN + "service/navigation/impl/DigPathfinder.java");
+        assertTrue("a dig-aware A* must exist", dig.contains("firstBreak("));
+        assertTrue("breaking must be priced by hardness",
+                dig.contains("getBlockHardness") && dig.contains("BREAK_BASE_COST"));
+        assertTrue("the search must be time-budgeted",
+                dig.contains("BUDGET_NANOS"));
+        assertTrue("unbreakable blocks must stay walls",
+                dig.contains("isMineableBlock"));
+        String recovery = read(MAIN + "manager/navigation/impl/TunnelRecovery.java");
+        assertTrue("recovery must fall back to the dig-aware route",
+                recovery.contains("DigPathfinder.firstBreak("));
+    }
+
+    @Test
+    public void openPocketsStillMakeProgress() throws Exception {
+        String recovery = read(MAIN + "manager/navigation/impl/TunnelRecovery.java");
+        assertTrue("an escape step must exist for flooded pockets",
+                recovery.contains("escapeStep("));
+        assertTrue("an escape step must prove it approaches the goal",
+                recovery.contains("remaining > current - 0.75D"));
+        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        assertTrue("recovery must use the escape step before failing",
+                manager.contains("TunnelRecovery.escapeStep("));
+    }
+
+    @Test
+    public void circlingTunnelsAreAbandoned() throws Exception {
+        String recovery = read(MAIN + "manager/navigation/impl/TunnelRecovery.java");
+        assertTrue("circling tunnels need a detector", recovery.contains("circling("));
+        assertTrue("the detector needs a threshold", recovery.contains("MAX_USELESS_DIGS"));
+        String session = read(MAIN + "manager/navigation/impl/NavigationSession.java");
+        assertTrue("digression must be tracked per session",
+                session.contains("uselessDigs"));
+        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        assertTrue("recovery must consult the detector",
+                manager.contains("TunnelRecovery.circling("));
+    }
+
+    @Test
+    public void tunnelExhaustionIsDiagnosable() throws Exception {
+        String reporter = read(MAIN + "manager/navigation/impl/StallReporter.java");
+        assertTrue("a tunnel-exhausted line must exist",
+                reporter.contains("Tunnel search exhausted"));
+        assertTrue("the line must show each planner's answer",
+                reporter.contains("straight=") && reporter.contains("digFirst="));
+        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        assertTrue("recovery must emit the diagnostics",
+                manager.contains("tunnelDiagnostics("));
     }
 
     @Test

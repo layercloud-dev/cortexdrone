@@ -6,7 +6,9 @@ import ir.layercloud.cortexdrone.action.navigation.impl.ClearLeafObstructionActi
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
+import ir.layercloud.cortexdrone.service.navigation.impl.DigPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
+import ir.layercloud.cortexdrone.service.navigation.impl.TunnelPlanner;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -123,6 +125,81 @@ final class StallReporter {
         this.logger.log("NAV", controller, "Navigation failure snapshot", detail.toString());
     }
 
+    /**
+     * Records why automatic tunnelling found nothing to break.
+     *
+     * <p>The failure snapshot shows what surrounds the drone; this line shows
+     * what each planner returned, so a future fix can tell "the shell was
+     * empty" from "every candidate was rejected as unreachable" or "the
+     * dig-aware A* exceeded its budget".</p>
+     */
+    void tunnelDiagnostics(DroneController controller, NavigationState state,
+                           NavigationSession session, World world, Drone drone) {
+        if (controller == null || drone == null || world == null) return;
+        int bx = (int) Math.floor(drone.posX);
+        int by = (int) Math.floor(drone.posY);
+        int bz = (int) Math.floor(drone.posZ);
+
+        int[] straight = TunnelPlanner.nextObstruction(world, drone,
+                state.goalX, state.goalY, state.goalZ, session.targetBlock);
+        int[] vertical = TunnelPlanner.nextVertical(world, drone, null,
+                state.goalX, state.goalY, state.goalZ);
+        int[] local = TunnelPlanner.nextLocalObstruction(world, drone,
+                state.goalX, state.goalZ);
+        DigPathfinder.Result dig = DigPathfinder.firstBreak(world, drone,
+                state.goalX, state.goalY, state.goalZ, session.rejectedDigs);
+
+        StringBuilder detail = new StringBuilder(256);
+        detail.append("straight=").append(pos(straight))
+                .append(" vertical=").append(pos(vertical))
+                .append(" local=").append(pos(local))
+                .append(" digFirst=").append(pos(dig.breakBlock))
+                .append(" digExpanded=").append(dig.expanded)
+                .append(" digGoal=").append(dig.reachedGoal)
+                .append(" rejected=").append(session.rejectedDigs.size())
+                .append(" floor=").append(floor(world, bx, by, bz))
+                .append(" shellMineable=").append(countMineable(world, bx, by, bz))
+                .append(" liquids=").append(countLiquids(world, bx, by, bz));
+        this.logger.log("NAV", controller, "Tunnel search exhausted", detail.toString());
+    }
+
+    private static String pos(int[] p) {
+        return p == null ? "none" : "(" + p[0] + "," + p[1] + "," + p[2] + ")";
+    }
+
+    private static String floor(World world, int bx, int by, int bz) {
+        Block below = world.getBlock(bx, by - 1, bz);
+        if (below == null || below == Blocks.air) return "air";
+        return ItemClassifier.getBlockDisplayName(below,
+                world.getBlockMetadata(bx, by - 1, bz))
+                + (ItemClassifier.isMineableBlock(world, bx, by - 1, bz) ? "/mineable" : "/solid");
+    }
+
+    private static int countMineable(World world, int bx, int by, int bz) {
+        int count = 0;
+        for (int dy = -1; dy <= 2; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (ItemClassifier.isMineableBlock(world, bx + dx, by + dy, bz + dz)) count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private static int countLiquids(World world, int bx, int by, int bz) {
+        int count = 0;
+        for (int dy = -1; dy <= 2; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    Block b = world.getBlock(bx + dx, by + dy, bz + dz);
+                    if (b != null && ItemClassifier.isLiquidBlock(b)) count++;
+                }
+            }
+        }
+        return count;
+    }
+
     private static void appendNearby(StringBuilder out, World world, int bx, int by, int bz) {
         boolean first = true;
         for (int dy = -1; dy <= 2; dy++) {
@@ -163,6 +240,9 @@ final class StallReporter {
         }
         int lava = 0;
         int protectedBlocks = 0;
+        int mineable = 0;
+        int bodyMineable = 0;
+        int floorMineable = 0;
         for (int dy = -1; dy <= 2; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {
@@ -171,18 +251,38 @@ final class StallReporter {
                     int z = bz + dz;
                     Block b = world.getBlock(x, y, z);
                     if (b == null || b == Blocks.air) continue;
-                    if (ItemClassifier.isDangerousLiquid(b)) lava++;
-                    else if (!ItemClassifier.isPassableVoxel(world, x, y, z)
-                            && !ItemClassifier.isMineableBlock(world, x, y, z)
-                            && !ItemClassifier.isLiquidBlock(b)) protectedBlocks++;
+                    if (ItemClassifier.isDangerousLiquid(b)) {
+                        lava++;
+                        continue;
+                    }
+                    if (ItemClassifier.isMineableBlock(world, x, y, z)) {
+                        mineable++;
+                        if (dy < 0) floorMineable++;
+                        if (dy == 0 || dy == 1) bodyMineable++;
+                        continue;
+                    }
+                    if (!ItemClassifier.isPassableVoxel(world, x, y, z)
+                            && !ItemClassifier.isLiquidBlock(b)) {
+                        protectedBlocks++;
+                    }
                 }
             }
         }
         if (lava > 0) return "lava nearby (" + lava + " voxels), no safe standoff";
+        if (bodyMineable > 0) {
+            return bodyMineable + " mineable block(s) touch the body but none has a reachable standoff";
+        }
+        if (floorMineable > 0) {
+            return "only the floor is mineable (" + floorMineable
+                    + " voxel(s)); the descent shaft was not opened";
+        }
+        if (mineable > 0) {
+            return mineable + " mineable block(s) nearby, none reachable without a longer tunnel";
+        }
         if (protectedBlocks > 0) {
             return protectedBlocks + " protected/unbreakable block(s) block the line";
         }
-        return "no mineable obstruction or reachable standoff (goal isolated or chunk unloaded)";
+        return "open pocket with no mineable block in the 3x3x4 shell (needs a dig-aware route)";
     }
 
     private static String fmt(double value) {

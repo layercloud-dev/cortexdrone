@@ -475,7 +475,11 @@ public final class NavigationManager implements FlightController {
 
         if (session.allowDig && (session.dug > 0
                 || session.failedRecoveries >= MAX_INSTANT_FAILURES)) {
-            if (resumeOpenTunnel(controller, session, state, world)) return;
+            if (TunnelRecovery.circling(this.logger, controller, session)) {
+                session.trailRejected = true;
+            } else if (resumeOpenTunnel(controller, session, state, world)) {
+                return;
+            }
         }
 
         if (session.usingTrail && !session.trailRejected) {
@@ -505,10 +509,17 @@ public final class NavigationManager implements FlightController {
             }
             // Detours were already tried above; only now clear the obstruction
             // or take a vertical step toward the goal.
-            if (tryDig(controller, session, state, world, drone)) return;
-            if (tryDigVertical(controller, session, state, world, drone)) return;
-            if (startDig(controller, session,
-                    TunnelPlanner.nextLocalObstruction(world, drone, state.goalX, state.goalZ))) return;
+            if (tryTunnel(controller, session, state, world, drone)) return;
+            // Nothing to mine: a flooded pocket or an open drop still lets the
+            // drone fly. Without this step a submerged drone failed with
+            // "no tunnel direction found".
+            double[] escape = TunnelRecovery.escapeStep(world, drone, state);
+            if (escape != null) {
+                session.reason = "escape-step";
+                startLeg(controller, session, escape[0], escape[1], escape[2],
+                        "Escape step");
+                return;
+            }
             fail(controller, reason + " (no tunnel direction found)");
             return;
         }
@@ -516,38 +527,27 @@ public final class NavigationManager implements FlightController {
         fail(controller, reason + " (this goto call disabled digging)");
     }
 
-    /** Keeps an already-open tunnel going instead of backtracking away from it. */
+    /**
+     * Keeps an already-open tunnel going instead of backtracking away from it:
+     * a dug tunnel can face a diagonal wall, so the full escalation is right.
+     */
     private boolean resumeOpenTunnel(DroneController controller, NavigationSession session,
                                      NavigationState state, World world) {
-        return continueDigging(controller, session, state, world);
+        return tryTunnel(controller, session, state, world, controller.drone);
     }
 
-    /** Tries the straight obstruction first, then a vertical step. */
-    private boolean continueDigging(DroneController controller, NavigationSession session,
-                                    NavigationState state, World world) {
-        if (session.dug >= session.maxDigBlocks) return false;
-        if (tryDig(controller, session, state, world, controller.drone)) return true;
-        return tryDigVertical(controller, session, state, world, controller.drone);
-    }
-
-    /** Mines one step up or down toward a goal that is far above/below the drone. */
-    private boolean tryDigVertical(DroneController controller, NavigationSession session,
-                                   NavigationState state, World world, Drone drone) {
-        int[] target = TunnelPlanner.nextVertical(world, drone,
-                CortexDroneMod.findPlayer(controller.ownerName),
-                state.goalX, state.goalY, state.goalZ);
-        return startDig(controller, session, target);
-    }
-
-    /** Finds the obstruction toward the goal and either digs it or flies to its standoff. */
-    private boolean tryDig(DroneController controller, NavigationSession session,
-                           NavigationState state, World world, Drone drone) {
-        int[] target = session.digTarget;
-        if (target == null) {
-            target = TunnelPlanner.nextObstruction(world, drone,
-                    state.goalX, state.goalY, state.goalZ, session.targetBlock);
+    private boolean tryTunnel(DroneController controller, NavigationSession session,
+                              NavigationState state, World world, Drone drone) {
+        EntityPlayerMP player = CortexDroneMod.findPlayer(controller.ownerName);
+        for (int attempt = 0; attempt < 4; attempt++) {
+            int[] target = TunnelRecovery.nextTarget(state, session, world, drone, player);
+            if (target == null) break;
+            if (startDig(controller, session, target)) return true;
+            session.rejectedDigs.add(FlightPathfinder.packBlockPos(
+                    target[0], target[1], target[2]));
         }
-        return startDig(controller, session, target);
+        this.stallReporter.tunnelDiagnostics(controller, state, session, world, drone);
+        return false;
     }
 
     /** Starts digging {@code target}, or flies to its reachable standoff. */
@@ -604,6 +604,7 @@ public final class NavigationManager implements FlightController {
         session.dug++;
         session.recoveries = 0;
         session.failedRecoveries = 0;
+        TunnelRecovery.trackDigProgress(session, drone, state);
         // Journal only blocks that actually disappeared, so repair_trail never
         // records a refused or still-present voxel.
         this.manager.getDamageJournal().record(controller, drone.worldObj,
@@ -619,8 +620,7 @@ public final class NavigationManager implements FlightController {
     }
 
     private double[] nextDetour(NavigationSession session, NavigationState state,
-                                Drone drone, World world) {
-        int[] attempt = new int[]{session.detours};
+                                Drone drone, World world) {        int[] attempt = new int[]{session.detours};
         double[] detour = DetourPlanner.next(attempt, session.rejectedDetours,
                 state, drone, world);
         session.detours = attempt[0];

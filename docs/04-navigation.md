@@ -141,12 +141,50 @@ open. With the policy closed, unloaded chunks are treated as solid.
    0.75-wide body, ignoring the block the caller asked to stand beside);
 5. a **vertical step** toward a goal far above or below — mine one block down
    (or up) and descend/ascend into it, exactly like a player;
-6. fail only when every attempt is exhausted, the `max_dig_blocks` budget is
+6. the **3x3x4 body shell, floor included**
+   (`TunnelPlanner.nextLocalObstruction`). The floor matters: a drone
+   hovering at y=18.25 over deepslate at y=17 with open air above is wedged
+   by the descent column, and a shell scan starting at `dy = 0` reported
+   "nothing to dig" while the floor was mineable. A floor candidate is only
+   accepted when the freed voxel leaves a body-sized column to sink into;
+7. a **dig-aware A\*** (`DigPathfinder`) through rock, used when the drone
+   sits in a pocket wider than the straight ray and taller than the shell.
+   Breaking is priced by hardness (`6 + 2 * hardness`) plus 18 for falling
+   blocks, 8 for lava and 2 for water; bedrock, protected tile entities and
+   hardness above 50 stay walls. It is bounded to 900 expansions / 2 ms and
+   clamped to a 40-block radius, so it cannot stall the server tick. The
+   first solid node on the returned route is the block to break;
+8. an **escape step** (`TunnelRecovery.escapeStep`) when nothing is mineable
+   at all — a flooded pocket or an open drop. The candidate must be at least
+   0.75 blocks closer to the goal than the drone, so this is guaranteed
+   progress rather than a random walk;
+9. fail only when every attempt is exhausted, the `max_dig_blocks` budget is
    spent, or the per-call `recovery_attempts` is exhausted without progress.
 
 A successful dig resets the soft recovery counter, so a 20-block shaft is one
 continuous tunnel rather than twenty failures. The hard ceiling (96 recovery
 cycles) still prevents an infinite loop.
+
+### Circling tunnels
+
+Every dig records whether the drone actually got closer to the goal
+(`TunnelRecovery.trackDigProgress`, 0.75-block hysteresis). After 24
+consecutive non-approaching digs the tunnel is declared circling:
+`TunnelRecovery.circling` clears the dig target, resets the detour ladder and
+rejects the trail, so recovery picks a new heading instead of draining the
+whole `max_dig_blocks` budget on one spot. The live log showed exactly that
+failure: 128 blocks broken in a zig-zag around a single pocket, then
+`dig budget exhausted`.
+
+### Pooled water
+
+Water is a passable medium, never a wall. Two things follow:
+
+- the no-dig A* prices water at 2.0 and may route through it;
+- if no voxel is mineable, step 8 flies a short hop toward the goal instead of
+  reporting "no tunnel direction found". A drone hovering *above* a pool also
+  uses this path, because the vertical planner only accepts a mineable block
+  and water is not one.
 
 ### Stuck legs (Baritone-style watchdog)
 
@@ -166,9 +204,34 @@ blocked node.
 A* is budgeted by wall-clock time (4 ms) and node count (1400), not a fixed
 400 expansions. Partial results follow Baritone's rule: the furthest node for
 the first backoff coefficient that is at least **5 blocks** from the start.
-The start node is never returned as a one-waypoint path; if nothing useful is
-reachable the navigator goes straight to detour/dig recovery instead of
-spinning on an empty leg.
+If no coefficient reaches 5 blocks, the search accepts a short segment down
+to **1.5 blocks**: a drone in a tight pocket has no farther node, and returning
+nothing used to push recovery straight to "no tunnel direction found" even
+though two open blocks of progress existed. Each short segment is re-planned
+from its end, so progress accumulates. The start node itself is never returned
+as a one-waypoint path.
+
+### Failure diagnostics
+
+Every failed `goto` writes one `NAV Navigation failure snapshot` line with the
+drone position, goal, failed waypoint, path/recovery counters, the whole 3x3x4
+neighbourhood (`pass`, `liquid`, `mineable`, `hard`) and a `guess=` cause. The
+guess distinguishes the cases that actually occur:
+
+- `body embedded in …` / `head/ceiling embedded in …`;
+- `N mineable block(s) touch the body but none has a reachable standoff`;
+- `only the floor is mineable (N voxel(s))` — the shaft was not opened;
+- `N mineable block(s) nearby, none reachable without a longer tunnel`;
+- `lava nearby (N voxels), no safe standoff`;
+- `N protected/unbreakable block(s) block the line`;
+- `open pocket with no mineable block in the 3x3x4 shell`.
+
+When tunnelling gives up, a second `NAV Tunnel search exhausted` line records
+what each planner returned (`straight`, `vertical`, `local`, `digFirst`,
+`digExpanded`, `digGoal`, `rejected`, `floor`, `shellMineable`, `liquids`), so
+an empty shell can be told apart from a rejected candidate or an A* budget
+overrun. When a tunnel is re-routed, `NAV Tunnel circling` reports the useless
+dig count and budget.
 
 ### Buried `standoff_of` targets
 

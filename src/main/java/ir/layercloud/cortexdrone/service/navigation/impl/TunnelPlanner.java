@@ -200,12 +200,15 @@ public final class TunnelPlanner {
     }
 
     /**
-     * Nearest mineable block in the 3x3x3 shell around the drone's body.
+     * Nearest mineable block in the 3x3x3 shell around the drone's body,
+     * including the floor.
      *
      * <p>Straight-line and vertical planners cannot see a corner that wedges
-     * the 0.75-wide drone. This is the local escape: clear the side block and
-     * let the next path plan from the freed cell. The drone's own column is
-     * skipped because its feet and head are already air.</p>
+     * the 0.75-wide drone, and the most common wedge in the live logs was the
+     * floor itself: a drone hovering at y=18.25 over deepslate at y=17 with
+     * open air above cannot move because the descent column is solid, and the
+     * old shell scan started at {@code dy = 0}. The floor voxel is a valid
+     * escape: breaking it opens a one-block shaft the drone can sink into.</p>
      */
     public static int[] nextLocalObstruction(World world, Drone drone,
                                              double goalX, double goalZ) {
@@ -217,7 +220,7 @@ public final class TunnelPlanner {
         double gz = goalZ - drone.posZ;
         int[] best = null;
         double bestScore = Double.MAX_VALUE;
-        for (int dy = 0; dy <= 2; dy++) {
+        for (int dy = -1; dy <= 2; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     // The drone's own column is usually air, but a solid head
@@ -228,8 +231,14 @@ public final class TunnelPlanner {
                     int z = bz + dz;
                     if (!world.blockExists(x, y, z)) continue;
                     if (!ItemClassifier.isMineableBlock(world, x, y, z)) continue;
+                    // Breaking a floor block only helps when the drone can
+                    // actually descend into the freed space.
+                    if (dy < 0 && !canSinkInto(world, x, y, z)) continue;
                     double align = dx * gx + dz * gz;
-                    double score = dx * dx + dz * dz + dy * dy - 0.15D * align;
+                    // The floor is a last resort: it costs more than a lateral
+                    // wedge unless it is the only candidate.
+                    double score = dx * dx + dz * dz + dy * dy - 0.15D * align
+                            + (dy < 0 ? 1.5D : 0.0D);
                     if (score < bestScore) {
                         bestScore = score;
                         best = new int[]{x, y, z};
@@ -238,6 +247,12 @@ public final class TunnelPlanner {
             }
         }
         return best;
+    }
+
+    /** True when the freed floor voxel leaves a body-sized column to sink into. */
+    private static boolean canSinkInto(World world, int x, int y, int z) {
+        return ItemClassifier.isPassableVoxel(world, x, y + 1, z)
+                && ItemClassifier.isPassableVoxel(world, x, y + 2, z);
     }
 
     /** True when the drone can break the voxel without moving. */

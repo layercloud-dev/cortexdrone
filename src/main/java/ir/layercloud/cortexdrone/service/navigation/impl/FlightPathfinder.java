@@ -22,6 +22,15 @@ public class FlightPathfinder {
     private static final double MIN_IMPROVEMENT = 0.01;
     /** Baritone's MIN_DIST_PATH: a partial route shorter than this is not useful. */
     private static final double MIN_PARTIAL_DIST = 5.0;
+    /**
+     * Last-resort segment length. Baritone refuses a partial shorter than
+     * {@link #MIN_PARTIAL_DIST}, but a drone wedged in a cave pocket can have no
+     * farther node available; returning nothing made recovery fall through to
+     * "no tunnel direction found" even though two open blocks of progress
+     * existed. A short segment is re-planned from its end, so progress
+     * accumulates instead of failing outright.
+     */
+    private static final double MIN_PARTIAL_STEP = 1.5;
     private static final int MAX_EXPANSIONS = 1400;
     /** Per-plan wall-clock budget; the server tick must stay responsive. */
     private static final long SEARCH_BUDGET_NANOS = 4_000_000L;
@@ -373,14 +382,24 @@ public class FlightPathfinder {
      */
     private static AStarNode bestPartialNode(AStarNode[] bestSoFar,
                                              int startX, int startY, int startZ) {
-        double minSq = MIN_PARTIAL_DIST * MIN_PARTIAL_DIST;
-        AStarNode firstUseful = null;
+        AStarNode useful = firstAtLeast(bestSoFar, startX, startY, startZ,
+                MIN_PARTIAL_DIST * MIN_PARTIAL_DIST);
+        if (useful != null) return useful;
+        // A tight pocket may offer nothing 5 blocks away. A short but real
+        // segment is still progress: it is re-planned from its end, so the
+        // drone walks out of the pocket one step at a time.
+        return firstAtLeast(bestSoFar, startX, startY, startZ,
+                MIN_PARTIAL_STEP * MIN_PARTIAL_STEP);
+    }
+
+    private static AStarNode firstAtLeast(AStarNode[] bestSoFar,
+                                          int startX, int startY, int startZ,
+                                          double minSq) {
         for (AStarNode cand : bestSoFar) {
             if (cand == null) continue;
-            double distSq = squaredDistance(cand, startX, startY, startZ);
-            if (distSq >= minSq && firstUseful == null) firstUseful = cand;
+            if (squaredDistance(cand, startX, startY, startZ) >= minSq) return cand;
         }
-        return firstUseful;
+        return null;
     }
 
     private static double squaredDistance(AStarNode node, int x, int y, int z) {

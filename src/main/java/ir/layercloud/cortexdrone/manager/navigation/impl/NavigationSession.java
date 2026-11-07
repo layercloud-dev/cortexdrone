@@ -35,6 +35,15 @@ final class NavigationSession {
     int failedRecoveries;
     int detours;
     int dug;
+    /**
+     * Consecutive digs that did not bring the drone closer to the goal.
+     * Baritone abandons a movement that costs far more than estimated; here a
+     * run of useless digs means the tunnel is heading the wrong way (the live
+     * log shows 128 blocks spent zig-zagging in one spot), so recovery
+     * re-targets instead of draining the whole budget.
+     */
+    int uselessDigs;
+    double digBestDistance = Double.MAX_VALUE;
     double bestDistance = Double.MAX_VALUE;
     boolean lastLegMoved;
     boolean allowDig = true;

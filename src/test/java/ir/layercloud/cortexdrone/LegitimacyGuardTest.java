@@ -45,10 +45,15 @@ public class LegitimacyGuardTest {
         String recover = manager.substring(methodStart, methodEnd);
 
         int detour = recover.indexOf("nextDetour(");
-        int dig = recover.indexOf("tryDig(");
+        int dig = recover.indexOf("tryTunnel(");
         assertTrue("recover() must look for a detour", detour > 0);
         assertTrue("recover() must be able to dig as a last resort", dig > 0);
         assertTrue("a detour must be tried before tunnelling", detour < dig);
+        String recovery = read(MAIN + "manager/navigation/impl/TunnelRecovery.java");
+        assertTrue("the escalation must aim at diggable rock",
+                recovery.contains("TunnelPlanner.nextObstruction("));
+        assertTrue("the escalation must include the vertical step",
+                recovery.contains("TunnelPlanner.nextVertical("));
     }
 
     @Test

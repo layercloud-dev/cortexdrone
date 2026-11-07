@@ -232,7 +232,9 @@ public final class NavigationManager {
             return;
         }
 
-        if (!session.trailRejected) {
+        // Once tunnelling has started, keep tunnelling: a trail backtrack would
+        // fly away from the hole being dug and reset the session's progress.
+        if (!session.trailRejected && session.dug == 0) {
             TrailPlan trail = this.breadcrumbService.planBacktrack(controller,
                     state.goalX, state.goalY, state.goalZ);
             if (trail != null && trail.isUseful()) {

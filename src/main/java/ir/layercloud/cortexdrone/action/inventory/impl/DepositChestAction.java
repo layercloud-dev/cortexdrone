@@ -2,10 +2,10 @@ package ir.layercloud.cortexdrone.action.inventory.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
 
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
+import ir.layercloud.cortexdrone.action.navigation.FlightController;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
@@ -25,7 +25,7 @@ import net.minecraft.world.World;
 public final class DepositChestAction implements Action<InventoryContext> {
     private static final double REACH = 3.8;
 
-    private final AIDroneManager manager;
+    private final FlightController flight;
     private final InventoryService inventoryService;
     private final InventoryRequest request;
 
@@ -78,7 +78,7 @@ public final class DepositChestAction implements Action<InventoryContext> {
         double cx = standoff != null ? standoff[0] : chest.xCoord + 0.5;
         double cy = standoff != null ? standoff[1] : chest.yCoord + 1.2;
         double cz = standoff != null ? standoff[2] : chest.zCoord + 0.5;
-        this.manager.getNavigationManager().flyToward(controller, cx, cy, cz, "Deposit flight");
+        this.flight.flyToward(controller, cx, cy, cz, "Deposit flight");
         drone.statusText_$eq("Depositing\nChest");
     }
 

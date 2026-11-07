@@ -65,7 +65,7 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
         if ("play_sound".equals(operation) || "play_note".equals(operation)) {
             return new PlaySoundAction(request);
         }
-        if ("say".equals(operation)) return new SayAction(this.manager, request);
+        if ("say".equals(operation)) return new SayAction(this.manager::droneSay, request);
         if ("set_status_text".equals(operation)) return new SetStatusTextAction(request);
         throw new IllegalArgumentException("Unsupported visuals action: " + operation);
     }

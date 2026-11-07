@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.service.inventory;
+package ir.layercloud.cortexdrone.action.inventory;
 
 import lombok.Builder;
 import lombok.Value;

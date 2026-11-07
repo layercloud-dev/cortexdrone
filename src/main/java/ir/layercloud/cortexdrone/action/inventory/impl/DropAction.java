@@ -2,11 +2,11 @@ package ir.layercloud.cortexdrone.action.inventory.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
 
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
+import ir.layercloud.cortexdrone.action.navigation.FlightController;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import li.cil.oc.common.entity.Drone;
@@ -22,7 +22,8 @@ import net.minecraft.world.World;
 public final class DropAction implements Action<InventoryContext> {
     private static final double REACH = 3.5;
 
-    private final AIDroneManager manager;
+    private final FlightController flight;
+    private final InventoryService inventoryService;
     private final InventoryRequest request;
 
     @Override
@@ -73,14 +74,14 @@ public final class DropAction implements Action<InventoryContext> {
             deliver(context, controller, drone, world, owner, filter);
             return;
         }
-        this.manager.getNavigationManager().flyToward(
+        this.flight.flyToward(
                 controller, owner.posX, owner.posY + 1.25, owner.posZ, "Deliver to player");
         drone.statusText_$eq("Delivering\nItems");
     }
 
     private void deliver(InventoryContext context, DroneController controller, Drone drone,
                          World world, EntityPlayerMP owner, String filter) {
-        int delivered = this.manager.getInventoryService()
+        int delivered = this.inventoryService
                 .giveToPlayerInventory(controller, owner, filter, 9999);
         if (isAll(filter)) {
             delivered += InventoryService.dropAllDroneItemsAt(

@@ -41,7 +41,7 @@ public class InventoryService {
 
     public InventoryService(DroneLogger logger) {
         this.logger = logger;
-        this.craftingService = new CraftingService(logger, this);
+        this.craftingService = new CraftingService();
         this.containerSearchService = new ContainerSearchService(this);
         this.playerInventoryOps = new PlayerInventoryOps(logger);
         this.machineRecipeService = new MachineRecipeService(this);
@@ -480,13 +480,10 @@ public class InventoryService {
         return totalCount;
     }
 
-    // ==================== Delegated Crafting Operations ====================
+    // ==================== Delegated Read-Only Recipe Queries ====================
 
     public JsonObject getRecipesForFilter(String filter) {
         return this.craftingService.getRecipesForFilter(filter);
     }
 
-    public CraftResult craftItem(World world, DroneController ctrl, EntityPlayerMP owner, String targetFilter, int wantedCount) {
-        return this.craftingService.craftItem(world, ctrl, owner, targetFilter, wantedCount);
-    }
 }

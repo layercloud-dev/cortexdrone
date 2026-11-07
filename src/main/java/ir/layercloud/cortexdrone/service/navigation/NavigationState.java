@@ -1,4 +1,4 @@
-package ir.layercloud.cortexdrone.manager.navigation;
+package ir.layercloud.cortexdrone.service.navigation;
 
 import java.util.ArrayList;
 import java.util.HashMap;

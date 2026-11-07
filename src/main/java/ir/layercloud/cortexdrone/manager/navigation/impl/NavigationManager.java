@@ -7,6 +7,7 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
+import ir.layercloud.cortexdrone.action.navigation.FlightController;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.action.navigation.NavigationMode;
 import ir.layercloud.cortexdrone.action.navigation.impl.ClearLeafObstructionAction;
@@ -16,7 +17,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationResult;
-import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
+import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
@@ -53,7 +54,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * counters, path-cache signature and tick clock). The controller carries none
  * of them.</p>
  */
-public final class NavigationManager {
+public final class NavigationManager implements FlightController {
     private static final double ARRIVAL_RADIUS = 0.85;
     private static final int MAX_FLIGHT_TICKS = 12000;
 
@@ -178,6 +179,7 @@ public final class NavigationManager {
      * Runs one flight action tick for non-session callers (follow/drop/deposit
      * and mining standoffs). Still executed by {@link NavigateAction}.
      */
+    @Override
     public void flyToward(DroneController controller, double x, double y, double z,
                           String label) {
         if (controller == null || controller.drone == null) {

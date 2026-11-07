@@ -4,7 +4,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
-import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
+import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 
 import com.google.gson.JsonObject;
 import net.minecraft.entity.player.EntityPlayerMP;

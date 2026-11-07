@@ -7,14 +7,15 @@ pick a goal, start an action or retain work state.
 
 `InventoryService`
 : inventory summaries/counts, insertion, withdrawal, deposit, player transfer,
-  fluid scoop, crafting entry points, nearby inventory discovery.
+  nearby inventory discovery. Crafting and fluid scooping are action jobs.
 
 `ContainerSearchService`
 : `searchChestsForItem` and `findItemEverywhere`; ranks containers and reports
   per-source counts.
 
-`CraftingService` / `CraftResult`
-: vanilla crafting-table resolution and execution from drone inventory items.
+`CraftingService`
+: read-only vanilla crafting-table introspection: recipe discovery, ingredient
+  extraction and relevance ranking. `CraftAction` does the actual crafting.
 
 `PlayerInventoryOps` / `ToolInspector`
 : player-side transfers and tool suitability. Fluid scooping is the

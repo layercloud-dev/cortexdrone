@@ -92,7 +92,7 @@ public class AIDroneManager {
         this.inventoryService = new InventoryService(this.logger);
         this.visualsManager = new VisualsManager(this, this.logger);
         this.interactionManager = new InteractionManager(this.inventoryService, this.logger);
-        this.inventoryManager = new InventoryManager(this, this.inventoryService);
+        this.inventoryManager = new InventoryManager(this, this.inventoryService, this.logger);
         this.buildingManager = new BuildingManager(this.logger);
         this.navigationManager = new NavigationManager(this, this.logger,
                 this.pathfinder, this.breadcrumbService);

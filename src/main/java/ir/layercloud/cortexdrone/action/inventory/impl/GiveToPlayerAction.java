@@ -2,11 +2,11 @@ package ir.layercloud.cortexdrone.action.inventory.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
 
-import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
+import ir.layercloud.cortexdrone.action.navigation.FlightController;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import li.cil.oc.common.entity.Drone;
@@ -22,7 +22,7 @@ import net.minecraft.world.World;
 public final class GiveToPlayerAction implements Action<InventoryContext> {
     private static final double REACH = 3.5;
 
-    private final AIDroneManager manager;
+    private final FlightController flight;
     private final InventoryService inventoryService;
     private final InventoryRequest request;
 
@@ -69,7 +69,7 @@ public final class GiveToPlayerAction implements Action<InventoryContext> {
             context.complete();
             return;
         }
-        this.manager.getNavigationManager().flyToward(
+        this.flight.flyToward(
                 controller, player.posX, player.posY + 1.25, player.posZ, "Deliver to player");
         drone.statusText_$eq("Delivering\nItems");
     }

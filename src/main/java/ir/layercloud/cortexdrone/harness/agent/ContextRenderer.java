@@ -7,7 +7,7 @@ import ir.layercloud.cortexdrone.harness.lesson.Lesson;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
-import ir.layercloud.cortexdrone.manager.navigation.NavigationState;
+import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import net.minecraft.entity.player.EntityPlayerMP;

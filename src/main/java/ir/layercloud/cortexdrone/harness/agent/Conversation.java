@@ -60,6 +60,14 @@ public final class Conversation {
         JsonObject message = new JsonObject();
         message.addProperty("role", "assistant");
         message.addProperty("content", response.content());
+        // Thinking models require the previous turn's reasoning to be replayed
+        // verbatim, especially when the turn carried tool calls; omitting it
+        // fails the next request with "reasoning_content ... must be passed
+        // back to the API". Providers that reject the field strip it in the
+        // gateway, so replaying it is safe.
+        if (!response.reasoning().isEmpty()) {
+            message.addProperty("reasoning_content", response.reasoning());
+        }
         if (response.hasToolCalls()) {
             JsonArray calls = new JsonArray();
             for (ToolCall call : response.toolCalls()) {
@@ -110,6 +118,8 @@ public final class Conversation {
             total += 24;
             total += message.has("content") && !message.get("content").isJsonNull()
                     ? message.get("content").getAsString().length() : 0;
+            total += message.has("reasoning_content") && !message.get("reasoning_content").isJsonNull()
+                    ? message.get("reasoning_content").getAsString().length() : 0;
             if (message.has("tool_calls")) total += message.get("tool_calls").toString().length();
         }
         return total;

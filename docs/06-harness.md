@@ -57,6 +57,9 @@ adapts.
 
 - POST `{model, temperature, max_tokens, messages, tools, tool_choice:"auto"}`.
 - Parses only `message.tool_calls`; the retired `function_call` shape is ignored.
+- Replays `message.reasoning_content` verbatim on the assistant turn in the
+  conversation. Thinking models require it back on the next request, and the
+  gateway strips the field for upstreams that reject it.
 - Retries transient failures; does not retry auth/schema failures.
 - Keys are masked in logs.
 

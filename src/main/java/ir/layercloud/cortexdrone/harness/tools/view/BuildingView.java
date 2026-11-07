@@ -20,11 +20,20 @@ public final class BuildingView {
 
     public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {
+        if ("repair_trail".equals(operation)) {
+            BlockResult repaired = this.service.handle(controller, player, operation,
+                    BlockRequest.builder().build());
+            if (repaired == null) return ToolJson.error("Repair produced no result");
+            JsonObject response = ToolJson.ok();
+            response.addProperty("repair", repaired.getBlock());
+            if (repaired.getError() != null) response.addProperty("note", repaired.getError());
+            return response;
+        }
         if (!ToolArgs.has(args, "x") || !ToolArgs.has(args, "y") || !ToolArgs.has(args, "z")) {
             return ToolJson.error(operation + " requires x/y/z");
         }
         BlockRequest request;
-        if ("place_block".equals(operation)) {
+        if ("place_block".equals(operation) || "replace_block".equals(operation)) {
             String filter = ToolArgs.string(args, "block",
                     ToolArgs.string(args, "with", ToolArgs.string(args, "item", "any")));
             request = BlockRequest.builder()
@@ -50,6 +59,11 @@ public final class BuildingView {
         response.add("target", ToolJson.point(result.getX(), result.getY(), result.getZ()));
         if ("break_block".equals(operation)) {
             response.addProperty("broken", result.isBroken());
+        } else if ("replace_block".equals(operation)) {
+            response.addProperty("replaced", result.isReplaced());
+            response.addProperty("alreadyMatching", result.isAlready());
+            if (result.getOldBlock() != null) response.addProperty("oldBlock", result.getOldBlock());
+            if (result.getNewBlock() != null) response.addProperty("newBlock", result.getNewBlock());
         } else {
             response.addProperty("placed", result.isPlaced());
         }

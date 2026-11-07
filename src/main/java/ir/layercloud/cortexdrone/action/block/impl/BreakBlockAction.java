@@ -80,7 +80,7 @@ public final class BreakBlockAction implements Action<BlockContext> {
         int meta = world.getBlockMetadata(x, y, z);
         String name = ItemClassifier.getBlockDisplayName(block, meta);
         int fortune = ToolInspector.getBestFortuneLevel(drone.mainInventory());
-        List<ItemStack> drops = getBlockDrops(world, block, x, y, z, meta, fortune);
+        List<ItemStack> drops = computeDrops(world, block, x, y, z, meta, fortune);
 
         world.playAuxSFX(2001, x, y, z, Block.getIdFromBlock(block) + (meta << 12));
         if (!world.setBlockToAir(x, y, z)) {
@@ -115,9 +115,13 @@ public final class BreakBlockAction implements Action<BlockContext> {
         }
     }
 
+    /**
+     * Resolves the drops for one block, including the modded-ore fallback used
+     * when a mod returns an empty list from {@code getDrops}.
+     */
     @SuppressWarnings("unchecked")
-    private static List<ItemStack> getBlockDrops(World world, Block block,
-                                                 int x, int y, int z, int meta, int fortune) {
+    public static List<ItemStack> computeDrops(World world, Block block,
+                                               int x, int y, int z, int meta, int fortune) {
         List<ItemStack> drops = new ArrayList<>();
         if (BLOCK_GET_DROPS != null) {
             try {

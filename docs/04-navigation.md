@@ -85,3 +85,22 @@ that entered an area.
 `DronePhysicsService` and `FlightPathfinder.runServerSidePhysicsStep` keep the
 drone from coasting or clipping. `TickManager` applies the safety step when the
 drone is stuck, long-range flying, or the OC machine is not running.
+
+
+## Recovery order
+
+`NavigationManager.recover()` tries, in order:
+
+1. reject the trail and replan;
+2. a detour waypoint (over, around, diagonally or a local escape);
+3. straight-line tunnelling of the first obstruction;
+4. a **vertical step** toward a goal far above or below — mine one block down
+   (or up) and descend/ascend into it, exactly like a player;
+5. fail only when every attempt is exhausted.
+
+Tunnelling never touches a tile entity: chests, crates, furnaces, machines and
+OpenComputers blocks are property even when empty. Every block that is broken is
+recorded in `DamageJournal` for `repair_trail`.
+
+Defaults are `max_dig_blocks=64` and `recovery_attempts=12`; both are per-call
+arguments on `goto`.

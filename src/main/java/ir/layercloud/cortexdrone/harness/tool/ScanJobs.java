@@ -172,6 +172,20 @@ public final class ScanJobs {
         }
     }
 
+    /** Same shape gate as {@code scan_blocks}; see WorldTools. */
+    private static boolean withinShape(String shape, int dx, int dy, int dz, int radius) {
+        if (shape == null) return true;
+        String kind = shape.trim().toLowerCase();
+        if (kind.isEmpty() || "cube".equals(kind) || "box".equals(kind)) return true;
+        double horizontal = Math.sqrt(dx * dx + dz * dz);
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if ("sphere".equals(kind) || "ball".equals(kind)) return distance <= radius;
+        if ("cylinder".equals(kind) || "column".equals(kind)) return horizontal <= radius;
+        if ("shell".equals(kind) || "surface".equals(kind)) return distance > radius - 2.5 && distance <= radius;
+        return true;
+    }
+
+
     private static int intArg(JsonObject args, String key, int fallback) {
         if (args == null || !args.has(key) || args.get(key).isJsonNull()) return fallback;
         try {
@@ -207,6 +221,9 @@ public final class ScanJobs {
         final int maxY;
         final int radius;
         final boolean liquidOnly;
+        final String shape;
+        final int limit;
+        final boolean includeAir;
         final long totalVoxels;
         int cursorX;
         int cursorY;
@@ -223,14 +240,24 @@ public final class ScanJobs {
             this.filter = args.has("filter") && !args.get("filter").isJsonNull()
                     ? args.get("filter").getAsString() : "ores";
             boolean explicitCenter = args.has("x") && args.has("y") && args.has("z");
-            double ax = player != null ? player.posX : (controller != null && controller.drone != null ? controller.drone.posX : 0);
-            double ay = player != null ? player.posY : (controller != null && controller.drone != null ? controller.drone.posY : 0);
-            double az = player != null ? player.posZ : (controller != null && controller.drone != null ? controller.drone.posZ : 0);
+            String anchor = args.has("anchor") && !args.get("anchor").isJsonNull()
+                    ? args.get("anchor").getAsString() : "drone";
+            boolean usePlayer = "player".equalsIgnoreCase(anchor) && player != null;
+            double ax = usePlayer ? player.posX
+                    : (controller != null && controller.drone != null ? controller.drone.posX : 0);
+            double ay = usePlayer ? player.posY
+                    : (controller != null && controller.drone != null ? controller.drone.posY : 0);
+            double az = usePlayer ? player.posZ
+                    : (controller != null && controller.drone != null ? controller.drone.posZ : 0);
             this.centerX = explicitCenter ? intArg(args, "x", 0) : (int) Math.floor(ax);
             this.centerY = explicitCenter ? intArg(args, "y", 0) : (int) Math.floor(ay + 0.5);
             this.centerZ = explicitCenter ? intArg(args, "z", 0) : (int) Math.floor(az);
             int requested = Math.min(ABSOLUTE_RADIUS_CAP, Math.max(1, intArg(args, "radius", 24)));
             this.radius = Math.min(DEFAULT_RADIUS_CAP, requested);
+            this.shape = args.has("shape") && !args.get("shape").isJsonNull()
+                    ? args.get("shape").getAsString().trim().toLowerCase() : "cube";
+            this.limit = Math.min(2000, Math.max(1, intArg(args, "limit", 400)));
+            this.includeAir = args.has("include_air") && args.get("include_air").getAsBoolean();
             boolean underground = !explicitCenter && ItemClassifier.isLikelyUndergroundQuery(this.filter);
             this.minY = args.has("min_y") ? Math.max(1, intArg(args, "min_y", 1))
                     : (underground ? 1 : Math.max(1, this.centerY - this.radius));
@@ -271,7 +298,7 @@ public final class ScanJobs {
                 this.result = ToolJson.error("no_drone", "No active drone for the scan.", null, false);
                 return 1L;
             }
-            if (this.results.size() >= MAX_RESULTS) {
+            if (this.results.size() >= Math.min(MAX_RESULTS, this.limit)) {
                 this.truncated = true;
                 this.done = true;
                 return 1L;
@@ -280,16 +307,19 @@ public final class ScanJobs {
                 World world = this.controller.drone.worldObj;
                 long key = FlightPathfinder.packBlockPos(x, y, z);
                 if (!this.seen.add(key)) return 1L;
-                if (world.isAirBlock(x, y, z)) return 1L;
+                int dx = x - this.centerX;
+                int dy = y - this.centerY;
+                int dz = z - this.centerZ;
+                if (!withinShape(this.shape, dx, dy, dz, this.radius)) return 1L;
+                boolean air = world.isAirBlock(x, y, z);
+                if (air && !this.includeAir) return 1L;
                 Block block = world.getBlock(x, y, z);
                 int meta = world.getBlockMetadata(x, y, z);
                 boolean match = this.liquidOnly
                         ? ItemClassifier.isLiquidBlock(block)
                         : ItemClassifier.matchesMineFilter(block, meta, this.filter);
                 if (match) {
-                    int distSq = (x - this.centerX) * (x - this.centerX)
-                            + (y - this.centerY) * (y - this.centerY)
-                            + (z - this.centerZ) * (z - this.centerZ);
+                    int distSq = dx * dx + dy * dy + dz * dz;
                     this.results.add(new int[]{x, y, z, meta, distSq});
                 }
                 if (this.scannedVoxels >= this.totalVoxels) {

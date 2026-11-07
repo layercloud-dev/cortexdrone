@@ -112,7 +112,9 @@ public class MachineRecipeService {
         return res;
     }
 
-    public JsonObject getBestMachineRecipe(World world, EntityPlayerMP player, String targetFilter, String machineFilter, int radius) {
+    public JsonObject getBestMachineRecipe(World world, li.cil.oc.common.entity.Drone drone,
+                                           EntityPlayerMP player, String targetFilter,
+                                           String machineFilter, int radius) {
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);
         String f = targetFilter != null ? targetFilter.trim() : "plate_iron";
@@ -126,9 +128,9 @@ public class MachineRecipeService {
             res.addProperty("hint", "Run get_machine_recipes without a filter to list available machines, or kb.lookup(target) for drafting.");
             return res;
         }
-        MachineRecipeService.Availability av = MachineRecipeRanker.assess(this.inventoryService, ranked.get(0), world, player, radius);
+        MachineRecipeService.Availability av = MachineRecipeRanker.assess(this.inventoryService, ranked.get(0), world, drone, player, radius);
         for (NormalizedRecipe cand : ranked) {
-            MachineRecipeService.Availability a = MachineRecipeRanker.assess(this.inventoryService, cand, world, player, radius);
+            MachineRecipeService.Availability a = MachineRecipeRanker.assess(this.inventoryService, cand, world, drone, player, radius);
             if (a.isSufficient()) {
                 av = a;
                 ranked.remove(cand);

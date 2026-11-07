@@ -74,6 +74,78 @@ public final class BlockSight {
         return blocked != null ? blocked : Result.hidden(distance, null, null);
     }
 
+    /**
+     * Finds a point that is both within reach and has a clear line of sight to
+     * the target. Prefers the nearest candidate to the drone.
+     *
+     * <p>This is the shared standoff search used by every primitive that must
+     * physically touch a block, so block and container access agree on what
+     * "reachable" means.</p>
+     *
+     * @return {@code {x, y, z}} in drone coordinates, or {@code null}
+     */
+    public static double[] visibleStandoff(World world, double fromX, double fromY, double fromZ,
+                                            int x, int y, int z) {
+        if (world == null) return null;
+        double[] best = null;
+        double bestDistance = Double.MAX_VALUE;
+        int[][] directions = new int[][]{
+                {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}
+        };
+        for (int[] direction : directions) {
+            int ax = x + direction[0];
+            int ay = y + direction[1];
+            int az = z + direction[2];
+            if (!isOpenForDrone(world, ax, ay, az)) continue;
+            double[] candidate = standoffPoint(ax, ay, az);
+            if (!isClearFrom(world, candidate, x, y, z)) continue;
+            double distance = squared(candidate, fromX, fromY, fromZ);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = candidate;
+            }
+        }
+        if (best != null) return best;
+
+        // Exposed faces can also be reached diagonally (a corner or a ledge).
+        for (int radius = 1; radius <= 2 && best == null; radius++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dy = -radius; dy <= radius; dy++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
+                        int ax = x + dx;
+                        int ay = y + dy;
+                        int az = z + dz;
+                        if (!isOpenForDrone(world, ax, ay, az)) continue;
+                        double[] candidate = standoffPoint(ax, ay, az);
+                        if (!isClearFrom(world, candidate, x, y, z)) continue;
+                        double distance = squared(candidate, fromX, fromY, fromZ);
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            best = candidate;
+                        }
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private static double[] standoffPoint(int x, int y, int z) {
+        return new double[]{x + 0.5D, y + 0.35D, z + 0.5D};
+    }
+
+    private static boolean isClearFrom(World world, double[] point, int x, int y, int z) {
+        Result sight = check(world, point[0], point[1] + DRONE_EYE_HEIGHT, point[2], x, y, z);
+        return sight.isVisible() && sight.getDistance() <= REACH;
+    }
+
+    private static double squared(double[] point, double x, double y, double z) {
+        double dx = point[0] - x;
+        double dy = point[1] - y;
+        double dz = point[2] - z;
+        return dx * dx + dy * dy + dz * dz;
+    }
+
     /** True when at least one face of the block is reachable from open air. */
     public static boolean hasExposedFace(World world, int x, int y, int z) {
         if (world == null || !world.blockExists(x, y, z)) return false;

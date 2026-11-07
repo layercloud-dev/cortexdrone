@@ -17,8 +17,11 @@ import java.util.regex.Pattern;
 final class TypeScriptEraser {
     private static final Pattern VARIABLE_ANNOTATION = Pattern.compile(
             "\\b(let|const|var)\\s+([A-Za-z_$][\\w$]*)\\s*:\\s*" + type() + "\\s*(?==)");
+    // A return-type annotation may not be a bare null/undefined: those are the
+    // else-branch of a ternary ("cond ? a : null,") and erasing them produced
+    // "missing : in conditional expression" on ordinary JavaScript.
     private static final Pattern PARAM_OR_RETURN_ANNOTATION = Pattern.compile(
-            "\\s*:\\s*" + type() + "\\s*(?=[,)=]|=>|\\{)");
+            "\\s*:\\s*" + nonNullishType() + "\\s*(?=[,)=]|=>|\\{)");
     private static final Pattern AS_CAST = Pattern.compile(
             "\\s+as\\s+" + type() + "(?=\\s|[,);}\\]])");
     private static final Pattern GENERIC_FUNCTION = Pattern.compile(
@@ -42,6 +45,13 @@ final class TypeScriptEraser {
 
     private static String type() {
         return "(?:void|string|number|boolean|any|unknown|never|object|null|undefined"
+                + "|[A-Z][\\w$.]*(?:\\s*<[^<>{};]*>)?(?:\\s*\\[\\])*)"
+                + "(?:\\s*\\|\\s*(?:[A-Za-z_$][\\w$.]*(?:\\s*<[^<>{};]*>)?(?:\\s*\\[\\])*))*";
+    }
+
+    /** Same as {@link #type()} but never matches a bare null/undefined. */
+    private static String nonNullishType() {
+        return "(?:void|string|number|boolean|any|unknown|never|object"
                 + "|[A-Z][\\w$.]*(?:\\s*<[^<>{};]*>)?(?:\\s*\\[\\])*)"
                 + "(?:\\s*\\|\\s*(?:[A-Za-z_$][\\w$.]*(?:\\s*<[^<>{};]*>)?(?:\\s*\\[\\])*))*";
     }

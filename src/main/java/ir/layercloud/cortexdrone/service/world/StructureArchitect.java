@@ -155,18 +155,26 @@ public class StructureArchitect {
      */
     public JsonObject findBestBuildSite(World world, EntityPlayerMP player, DroneController ctrl,
                                         int width, int depth, int maxRadius) {
+        return findBestBuildSite(world, player, ctrl, width, depth, maxRadius, "drone");
+    }
+
+    public JsonObject findBestBuildSite(World world, EntityPlayerMP player, DroneController ctrl,
+                                        int width, int depth, int maxRadius, String anchor) {
         int w = Math.max(3, Math.min(21, width));
         int d = Math.max(3, Math.min(21, depth));
         int r = Math.max(8, Math.min(40, maxRadius));
 
-        double px = player != null ? player.posX : ctrl.drone.posX;
-        double py = player != null ? player.posY : ctrl.drone.posY;
-        double pz = player != null ? player.posZ : ctrl.drone.posZ;
+        // The search radius is always the drone's; only the preferred spot may
+        // be biased by where the player is looking.
+        boolean usePlayer = "player".equalsIgnoreCase(anchor) && player != null;
+        double px = usePlayer ? player.posX : ctrl.drone.posX;
+        double py = usePlayer ? player.posY : ctrl.drone.posY;
+        double pz = usePlayer ? player.posZ : ctrl.drone.posZ;
         int refY = MathHelper.floor_double(py);
 
         int prefCenterX = MathHelper.floor_double(px);
         int prefCenterZ = MathHelper.floor_double(pz);
-        if (player != null) {
+        if (usePlayer) {
             JsonObject look = WorldScanner.raycastPlayerLook(world, player, 32.0);
             if (look != null && look.has("x") && look.has("z")
                     && look.get("distance").getAsDouble() >= 4.0) {

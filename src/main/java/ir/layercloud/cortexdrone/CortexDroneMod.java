@@ -110,10 +110,18 @@ public class CortexDroneMod {
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public void onChat(ServerChatEvent event) {
-        if (event.isCanceled()) return;
-        if (!isAuthenticated(event.player)) return;
-        if (this.aiDroneManager != null) {
-            this.aiDroneManager.onPlayerChat(event);
+        // A failure here must never take down the server: Forge propagates
+        // exceptions from event handlers into the server tick loop. This also
+        // covers LinkageError (e.g. a class that cannot be loaded because the
+        // mod jar was replaced under a running server).
+        try {
+            if (event.isCanceled()) return;
+            if (!isAuthenticated(event.player)) return;
+            if (this.aiDroneManager != null) {
+                this.aiDroneManager.onPlayerChat(event);
+            }
+        } catch (Throwable t) {
+            LOG.log(Level.SEVERE, "CortexDrone chat handling failed", t);
         }
     }
 

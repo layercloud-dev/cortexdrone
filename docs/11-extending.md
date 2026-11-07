@@ -100,10 +100,35 @@ Minecraft state from an `ASYNC` tool. Respect `webSearchEnabled` and cap output.
 
 ## Add Java reflection access
 
-`ModConfig.allowJavaReflection` controls whether the Rhino `ClassShutter` denies
-I/O/network/process classes. Default is `true` for trusted single-server use.
-Reflection is available through `Packages`, `java.*` and `Java.type(name)`;
-prefer a registered tool whenever one exists.
+`ModConfig.allowJavaReflection` (default `true` for trusted single-server use)
+switches the whole interop surface on or off:
+
+- **On** — the script scope is an `ImporterTopLevel`, so `Packages`, `java.*`,
+  `javax.*`, `importClass(...)` and `importPackage(...)` work, plus
+  `Java.type(name)` (accepting a `.class` suffix and `[]` array suffixes),
+  `Java.from`, `Java.to`, `Java.isJavaObject`, `Java.isType`,
+  `Java.getClassName` and `JavaAdapter`. `JavaInterop` also adds a `.class`
+  property and the `java.lang.Class` methods on every class handle and live
+  instance, so `Java.type("net.minecraft.world.World").getName()` and
+  reflection (`Class.forName`, `getDeclaredMethods`, `Method.invoke`) work.
+- **Off** — the scope has no `Java`, `Packages`, `java.*`, `importClass` or
+  `importPackage`, and a `ClassShutter` additionally hides I/O, network,
+  reflection and process classes. Plain `execute` scripts keep working.
+
+Minecraft state is not thread safe. Scripts run on the agent thread, so reading
+live objects is fine but mutation must go through the `main(fn)` bridge, which
+hop-posts the function to the server thread and returns its result:
+
+```js
+var mod = Java.type("ir.layercloud.cortexdrone.CortexDroneMod");
+return main(function() {
+  var player = mod.findPlayer(ctx.player);
+  return player == null ? null : { x: player.posX, y: player.posY, z: player.posZ };
+});
+```
+
+Prefer a registered tool whenever one exists; reach for reflection to inspect
+what no tool exposes, not to replace mutations that already have an action.
 
 ## Guidelines
 

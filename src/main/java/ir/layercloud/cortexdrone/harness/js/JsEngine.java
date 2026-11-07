@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.harness.js;
 
 import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
+import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
@@ -21,6 +22,7 @@ import org.mozilla.javascript.ContextAction;
 import org.mozilla.javascript.ContextFactory;
 import org.mozilla.javascript.EvaluatorException;
 import org.mozilla.javascript.Function;
+import org.mozilla.javascript.ImporterTopLevel;
 import org.mozilla.javascript.JavaScriptException;
 import org.mozilla.javascript.RhinoException;
 import org.mozilla.javascript.Scriptable;
@@ -69,6 +71,9 @@ public final class JsEngine {
                 cx.setLanguageVersion(Context.VERSION_ES6);
                 cx.setOptimizationLevel(-1);
                 cx.setInstructionObserverThreshold(20_000);
+                if (config.isAllowJavaReflection()) {
+                    cx.setWrapFactory(JavaInterop.wrapFactory());
+                }
                 return cx;
             }
 
@@ -118,15 +123,20 @@ public final class JsEngine {
 
     private JsonObject runScript(Context cx, ToolContext context, String code,
                                  List<String> logs, JsBudget budget, long started) {
-        Scriptable scope = cx.initStandardObjects();
-        if (!this.config.isAllowJavaReflection()) {
-            cx.setClassShutter(dangerousClassShutter());
+        boolean java = this.config.isAllowJavaReflection();
+        // The importer scope provides Packages, java.*, javax.*, importClass and
+        // importPackage. Without it scripts only ever see the help, ctx, drone,
+        // tools and skills objects bound below.
+        Scriptable scope = java ? javaScope(cx) : cx.initStandardObjects();
+        if (!java) {
+            cx.setClassShutter(JavaInterop.restrictedShutter());
+            JavaInterop.removePackageGlobals(scope);
         }
         bindConsole(cx, scope, logs);
         bindUtilities(cx, scope, budget);
         bindContext(cx, scope, context);
         bindTools(cx, scope, context);
-        bindJava(cx, scope);
+        bindJava(cx, scope, context);
         bindSkills(cx, scope, context);
         if (!BOOTSTRAP.isEmpty()) {
             cx.evaluateString(scope, BOOTSTRAP, "bootstrap.js", 1, null);
@@ -281,24 +291,44 @@ public final class JsEngine {
         ScriptableObject.putProperty(scope, "skills", skillsObject);
     }
 
-    private void bindJava(Context cx, final Scriptable scope) {
+    private void bindJava(Context cx, final Scriptable scope, final ToolContext context) {
         if (!this.config.isAllowJavaReflection()) return;
-        ScriptableObject java = (ScriptableObject) cx.newObject(scope);
-        ScriptableObject.putProperty(java, "type", new BaseFunction() {
+        JavaInterop.bind(cx, scope, JavaInterop.classLoader());
+        ScriptableObject.putProperty(scope, "main", new BaseFunction() {
             @Override
             public Object call(Context inner, Scriptable innerScope, Scriptable thisObj, Object[] args) {
-                String name = args.length > 0 ? Context.toString(args[0]) : "";
+                if (args.length == 0 || !(args[0] instanceof Function)) {
+                    throw Context.reportRuntimeError("main(fn) expects a function.");
+                }
+                final Function fn = (Function) args[0];
+                final Object[] callArgs = new Object[Math.max(0, args.length - 1)];
+                System.arraycopy(args, 1, callArgs, 0, callArgs.length);
+                if (!onServerThread()) return fn.call(inner, innerScope, innerScope, callArgs);
+                AIDroneManager manager = context != null ? context.manager() : null;
+                if (manager == null) return fn.call(inner, innerScope, innerScope, callArgs);
+                long timeout = context.config() != null
+                        ? Math.max(1_000L, context.config().getExecuteTimeoutMs()) : 30_000L;
                 try {
-                    Class<?> type = Class.forName(name);
-                    return new org.mozilla.javascript.NativeJavaClass(innerScope, type);
-                } catch (Throwable t) {
-                    throw Context.reportRuntimeError("Java.type('" + name + "') failed: " + t);
+                    return manager.callOnMainThread(
+                            (java.util.concurrent.Callable<Object>) () -> fn.call(inner, innerScope, innerScope, callArgs),
+                            timeout);
+                } catch (Exception e) {
+                    throw Context.reportRuntimeError("main(fn) failed: " + e);
                 }
             }
         });
-        ScriptableObject.putProperty(java, "classOf", ScriptableObject.getProperty(java, "type"));
-        ScriptableObject.putProperty(java, "reflect", ScriptableObject.getProperty(java, "type"));
-        ScriptableObject.putProperty(scope, "Java", java);
+    }
+
+    private static boolean onServerThread() {
+        Thread thread = Thread.currentThread();
+        return thread.getName() != null && thread.getName().contains("Server thread");
+    }
+
+    /** Importer scope so Packages, java.* and importClass work like Rhino's shell. */
+    private static Scriptable javaScope(Context cx) {
+        // The constructor already initializes the standard objects and the
+        // importer globals; calling initStandardObjects again throws.
+        return new ImporterTopLevel(cx, false);
     }
 
     private static JsonObject error(Throwable throwable, List<String> logs, long started, JsBudget budget) {
@@ -327,7 +357,11 @@ public final class JsEngine {
         String message;
         String hint = "Fix the JavaScript and retry. Use 'return' to return a value; "
                 + "tools are synchronous so await is optional.";
-        if (budget != null && budget.tripped()) {
+        if (budget != null && budget.superseded()) {
+            code = "js_cancelled";
+            message = budget.reason();
+            hint = "This script was stopped because a newer task replaced it. Do not retry it.";
+        } else if (budget != null && budget.tripped()) {
             code = "js_budget";
             message = budget.reason();
             hint = "Reduce work per execute call (smaller loops/scans) or split it into several calls.";
@@ -392,20 +426,7 @@ public final class JsEngine {
     }
 
     private static ClassShutter dangerousClassShutter() {
-        return new ClassShutter() {
-            @Override
-            public boolean visibleToScripts(String fullClassName) {
-                if (fullClassName == null) return false;
-                return !(fullClassName.startsWith("java.io.")
-                        || fullClassName.startsWith("java.nio.file.")
-                        || fullClassName.startsWith("java.net.")
-                        || fullClassName.startsWith("java.lang.reflect.")
-                        || fullClassName.equals("java.lang.Runtime")
-                        || fullClassName.equals("java.lang.ProcessBuilder")
-                        || fullClassName.startsWith("sun.")
-                        || fullClassName.startsWith("jdk."));
-            }
-        };
+        return JavaInterop.restrictedShutter();
     }
 
     public static String camelCase(String snake) {

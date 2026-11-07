@@ -80,6 +80,73 @@ public final class TunnelPlanner {
         return true;
     }
 
+    /**
+     * Deterministic vertical step toward a goal that is above or below the
+     * drone.
+     *
+     * <p>Straight-line tunnelling fails underground because the first
+     * obstruction is the floor the drone is hovering over, and no flight path
+     * exists to its standoff. A player just mines down. This returns the voxel
+     * to clear so the drone can descend (or ascend) one step and keep going.</p>
+     *
+     * @return {@code {x, y, z}} to break, or {@code null}
+     */
+    public static int[] nextVertical(World world, Drone drone, EntityPlayerMP player,
+                                     double goalX, double goalY, double goalZ) {
+        if (world == null || drone == null) return null;
+        int bx = (int) Math.floor(drone.posX);
+        int bz = (int) Math.floor(drone.posZ);
+        int feetY = (int) Math.floor(drone.posY);
+
+        if (goalY < drone.posY - 0.75D) {
+            int[] below = {bx, feetY - 1, bz};
+            if (canDescend(world, player, below)) return below;
+            int stepX = (int) Math.signum(goalX - drone.posX);
+            int stepZ = (int) Math.signum(goalZ - drone.posZ);
+            int[][] diagonals = {{stepX, stepZ}, {stepX, 0}, {0, stepZ},
+                    {-stepX, 0}, {0, -stepZ}};
+            for (int[] diagonal : diagonals) {
+                if (diagonal[0] == 0 && diagonal[1] == 0) continue;
+                int[] candidate = {bx + diagonal[0], feetY - 1, bz + diagonal[1]};
+                if (canDescend(world, player, candidate)) return candidate;
+            }
+            return null;
+        }
+
+        if (goalY > drone.posY + 1.25D) {
+            int[] above = {bx, feetY + 2, bz};
+            if (canAscend(world, player, above)) return above;
+            int stepX = (int) Math.signum(goalX - drone.posX);
+            int stepZ = (int) Math.signum(goalZ - drone.posZ);
+            int[][] diagonals = {{stepX, stepZ}, {stepX, 0}, {0, stepZ}};
+            for (int[] diagonal : diagonals) {
+                if (diagonal[0] == 0 && diagonal[1] == 0) continue;
+                int[] candidate = {bx + diagonal[0], feetY + 2, bz + diagonal[1]};
+                if (canAscend(world, player, candidate)) return candidate;
+            }
+        }
+        return null;
+    }
+
+    /** Below-step is usable when the voxel is solid and the drone's space stays clear. */
+    private static boolean canDescend(World world, EntityPlayerMP player, int[] target) {
+        if (!world.blockExists(target[0], target[1], target[2])) return false;
+        if (world.isAirBlock(target[0], target[1], target[2])) return false;
+        if (!safeToDig(world, player, target[0], target[1], target[2])) return false;
+        // The drone must fit above the freshly dug voxel.
+        return ItemClassifier.isPassableVoxel(world, target[0], target[1] + 1, target[2])
+                && ItemClassifier.isPassableVoxel(world, target[0], target[1] + 2, target[2]);
+    }
+
+    /** Above-step is usable when the ceiling is solid and the space beyond is open. */
+    private static boolean canAscend(World world, EntityPlayerMP player, int[] target) {
+        if (!world.blockExists(target[0], target[1], target[2])) return false;
+        if (world.isAirBlock(target[0], target[1], target[2])) return false;
+        if (!safeToDig(world, player, target[0], target[1], target[2])) return false;
+        return ItemClassifier.isPassableVoxel(world, target[0], target[1] + 1, target[2])
+                && ItemClassifier.isPassableVoxel(world, target[0], target[1] + 2, target[2]);
+    }
+
     /** True when the drone can break the voxel without moving. */
     public static boolean inReach(Drone drone, int x, int y, int z) {
         if (drone == null) return false;

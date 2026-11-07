@@ -32,6 +32,7 @@ public final class SkillRefiner {
     private final LlmClient llm;
     private final SkillLibrary library;
     private final DroneLogger logger;
+    private volatile String lastRejection;
 
     public SkillRefiner(LlmClient llm, SkillLibrary library, DroneLogger logger) {
         this.llm = llm;
@@ -39,19 +40,51 @@ public final class SkillRefiner {
         this.logger = logger;
     }
 
+    /** Why the last refine attempt was refused, or null when it succeeded. */
+    public String lastRejection() {
+        return this.lastRejection;
+    }
+
     public Skill refine(DroneController controller, String requestedName, String task,
                         String code, String notes) {
         if (code == null || code.trim().isEmpty()) return null;
-        JsonObject compiled = compile(controller, requestedName, task, code, notes);
-        if (compiled != null) {
-            Skill skill = save(compiled, requestedName, task, code);
-            if (skill != null) return skill;
+        this.lastRejection = null;
+        List<SkillCodeGuard.Violation> sourceViolations = SkillCodeGuard.inspect(code);
+        JsonObject compiled = compile(controller, requestedName, task, code, notes,
+                sourceViolations, java.util.Collections.<SkillCodeGuard.Violation>emptyList());
+        if (compiled == null) return fallback(requestedName, task, code);
+
+        List<SkillCodeGuard.Violation> violations =
+                SkillCodeGuard.inspect(codeOf(compiled, code));
+        if (!violations.isEmpty()) {
+            this.logger.log("SKILL", controller,
+                    "Skill compiler copied instance-specific literals; retrying",
+                    SkillCodeGuard.describe(violations));
+            JsonObject retry = compile(controller, requestedName, task, code, notes,
+                    sourceViolations, violations);
+            if (retry != null) {
+                compiled = retry;
+                violations = SkillCodeGuard.inspect(codeOf(compiled, code));
+            }
         }
+        if (!violations.isEmpty()) {
+            this.lastRejection = "Rejected a skill with instance-specific literals: "
+                    + SkillCodeGuard.describe(violations)
+                    + ". Read these values from params or live player/drone state instead.";
+            this.logger.log("SKILL", controller, "Refused to save hardcoded skill",
+                    SkillCodeGuard.describe(violations));
+            return null;
+        }
+
+        Skill skill = save(compiled, requestedName, task, code);
+        if (skill != null) return skill;
         return fallback(requestedName, task, code);
     }
 
     private JsonObject compile(DroneController controller, String requestedName,
-                               String task, String code, String notes) {
+                               String task, String code, String notes,
+                               List<SkillCodeGuard.Violation> sourceViolations,
+                               List<SkillCodeGuard.Violation> previousViolations) {
         if (COMPILER_PROMPT == null || COMPILER_PROMPT.isEmpty()) return null;
         List<JsonObject> messages = new ArrayList<>();
         messages.add(message("system", COMPILER_PROMPT));
@@ -61,6 +94,19 @@ public final class SkillRefiner {
         user.append("Working JavaScript:\n```js\n").append(limit(code, 8_000)).append("\n```\n\n");
         if (notes != null && !notes.trim().isEmpty()) {
             user.append("Agent notes / blockers / parameters:\n").append(limit(notes, 2_000)).append("\n\n");
+        }
+        if (!sourceViolations.isEmpty()) {
+            user.append("Instance-specific literals found in the working JavaScript. ");
+            user.append("Do not copy them into the skill:\n");
+            appendViolations(user, sourceViolations);
+            user.append('\n');
+        }
+        if (!previousViolations.isEmpty()) {
+            user.append("Your previous JSON still contained instance-specific literals:\n");
+            appendViolations(user, previousViolations);
+            user.append("Rewrite the code so every one is read from params (or ctx/drone/player "
+                    + "state) with a safe default. The skill must work for any player, position "
+                    + "and run.\n\n");
         }
         user.append("Compile this into the JSON skill object described by the system prompt.");
         messages.add(message("user", user.toString()));
@@ -84,8 +130,15 @@ public final class SkillRefiner {
         List<String> triggers = triggers(compiled.get("triggers"));
         List<String> requires = triggers(compiled.get("requires"));
         String docs = text(compiled, "docs");
-        String compiledCode = text(compiled, "code");
-        if (compiledCode == null || compiledCode.trim().isEmpty()) compiledCode = code;
+        String compiledCode = codeOf(compiled, code);
+        List<SkillCodeGuard.Violation> violations = SkillCodeGuard.inspect(compiledCode);
+        if (!violations.isEmpty()) {
+            this.lastRejection = "Refused to save a skill with instance-specific literals: "
+                    + SkillCodeGuard.describe(violations);
+            this.logger.log("SKILL", null, "Refused to save hardcoded compiled code",
+                    SkillCodeGuard.describe(violations));
+            return null;
+        }
         Skill skill = this.library.save(name, description, tags, triggers, requires,
                 docs, compiledCode, "refined");
         if (skill != null) {
@@ -96,6 +149,15 @@ public final class SkillRefiner {
     }
 
     private Skill fallback(String requestedName, String task, String code) {
+        List<SkillCodeGuard.Violation> violations = SkillCodeGuard.inspect(code);
+        if (!violations.isEmpty()) {
+            this.lastRejection = "The working code contains instance-specific literals ("
+                    + SkillCodeGuard.describe(violations)
+                    + "). Parameterize them before saving the skill.";
+            this.logger.log("SKILL", null, "Refused to save hardcoded fallback skill",
+                    SkillCodeGuard.describe(violations));
+            return null;
+        }
         String name = requestedName != null && !requestedName.trim().isEmpty()
                 ? requestedName : deriveName(task);
         List<String> triggers = new ArrayList<>();
@@ -108,6 +170,22 @@ public final class SkillRefiner {
                     + skill.getVersion(), "compiler unavailable or invalid JSON");
         }
         return skill;
+    }
+
+    private static String codeOf(JsonObject compiled, String fallback) {
+        String compiledCode = text(compiled, "code");
+        return compiledCode == null || compiledCode.trim().isEmpty() ? fallback : compiledCode;
+    }
+
+    private static void appendViolations(StringBuilder out,
+                                         List<SkillCodeGuard.Violation> violations) {
+        int limit = Math.min(violations.size(), 8);
+        for (int i = 0; i < limit; i++) {
+            out.append("- ").append(violations.get(i).feedback()).append('\n');
+        }
+        if (violations.size() > limit) {
+            out.append("- ... ").append(violations.size() - limit).append(" more\n");
+        }
     }
 
     private static JsonObject message(String role, String content) {

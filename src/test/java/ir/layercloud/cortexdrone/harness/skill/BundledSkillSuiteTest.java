@@ -142,6 +142,8 @@ public class BundledSkillSuiteTest {
         assertTrue(library.get("build_structure").getCode().contains("skills.call('place_build_plan'"));
         assertTrue(library.get("farm_cycle").getCode().contains("skills.call('harvest_crops'"));
         assertTrue(library.get("patrol").getCode().contains("skills.call('guard_scan'"));
+        assertTrue(library.get("gather_distant").getCode().contains("skills.call('mine_blocks'"));
+        assertTrue(library.get("gather_distant").getCode().contains("skills.call('deliver_items'"));
     }
 
     @Test
@@ -149,10 +151,12 @@ public class BundledSkillSuiteTest {
         SkillLibrary library = library();
         for (String name : new String[]{
                 "guard", "patrol", "carry_player", "sort_chests", "hunt",
-                "harvest_crops", "sugarcane_farm", "melon_pumpkin_farm", "chop_tree",
+                "harvest_crops", "sugarcane_farm", "bamboo_farm", "melon_pumpkin_farm", "chop_tree",
                 "build_structure", "place_build_plan", "survey_build_site",
+                "replace_surface", "replace_box",
                 "light_area", "deliver_items", "withdraw_items", "collect_drops",
-                "return_to_player", "mine_blocks", "mine_and_deliver"}) {
+                "return_to_player", "mine_blocks", "mine_box", "mine_and_deliver",
+                "gather_distant", "follow_player"}) {
             assertNotNull("missing bundled skill " + name, library.get(name));
         }
     }

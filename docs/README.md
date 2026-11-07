@@ -21,5 +21,6 @@ Reading order:
 | [11-extending.md](11-extending.md) | Adding tools, actions, services and skills |
 | [12-source-inventory.md](12-source-inventory.md) | Class-by-class source inventory |
 | [13-skills.md](13-skills.md) | Bundled skill suite, parameters and examples |
+| [14-legacy-parity.md](14-legacy-parity.md) | Old SMP requests vs current features, and what was added |
 
 Top-level architecture: [../ARCHITECTURE.md](../ARCHITECTURE.md).

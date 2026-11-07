@@ -46,6 +46,7 @@ ir.layercloud.cortexdrone
   context/               action execution state
   manager/               orchestration
   service/               read-only data/recon/planning
+  service/oc/            OC callback discovery + drone/machine state
 
   harness/
     Harness              composition root
@@ -62,7 +63,9 @@ ir.layercloud.cortexdrone
 
   command/               /drone
   config/                ModConfig, ModPaths, DroneLogger
-  oc/                    OpenComputers reflection bridge
+  oc/                    OpenComputers reflection bridge (machine bootstrap)
+  action/oc/             OC callback invocation + machine control actions
+  manager/oc/            OC manager (oc_call, oc_machine)
 ```
 
 ## Dependency examples

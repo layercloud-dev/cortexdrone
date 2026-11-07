@@ -1,3 +1,7 @@
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
 plugins {
     id 'java'
     id 'com.gtnewhorizons.retrofuturagradle' version '2.0.6'
@@ -151,17 +155,33 @@ tasks.register('deploy') {
         def outJar = reobfJar.get().archiveFile.get().asFile
         def targetDir = file(modsDir)
         targetDir.mkdirs()
+        def targetJar = new File(targetDir, outJar.name)
+
+        // Copy to a temp file and atomically rename it over the target. A live
+        // Minecraft server keeps the mod jar open through JarFile; overwriting
+        // that file in place corrupts its zip offsets ("ZipFile invalid LOC
+        // header" / empty class bytes -> NoClassDefFoundError crashes). An
+        // atomic move swaps the directory entry and leaves the old inode
+        // readable by the running server, so the next restart loads the new jar.
+        def tempJar = new File(targetDir, outJar.name + '.tmp')
+        Files.copy(outJar.toPath(), tempJar.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        try {
+            Files.move(tempJar.toPath(), targetJar.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } catch (AtomicMoveNotSupportedException ignored) {
+            Files.move(tempJar.toPath(), targetJar.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }
+
+        // Retire older versions after the new jar is in place. Deleting a file
+        // that a running JVM still has open is safe on Linux (the inode stays
+        // alive); overwriting it in place is what breaks class loading.
         targetDir.listFiles()?.each { f ->
             if (f.isFile() && f.name.startsWith('CortexDrone-') && f.name.endsWith('.jar')
-                && f.name != outJar.name) {
+                && f.name != targetJar.name) {
                 f.delete()
             }
         }
-        copy {
-            from outJar
-            into targetDir
-        }
-        println "Deployed ${new File(targetDir, outJar.name)}"
+        println "Deployed ${targetJar}"
     }
 }
 

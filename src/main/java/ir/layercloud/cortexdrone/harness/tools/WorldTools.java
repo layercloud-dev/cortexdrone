@@ -69,52 +69,65 @@ public class WorldTools implements ToolProvider {
                         .affinity(ToolAffinity.MAIN).timeoutMs(3_000L).build(),
                 ToolSpec.builder("scan_room")
                         .description("Scan floor/walls/ceiling geometry around a point and report interior "
-                                + "dimensions, materials and openings. Good before building inside a cave/base.")
+                                + "dimensions, materials and openings. Good before building inside a cave/base. "
+                                + "Centred on the DRONE by default.")
                         .parameters(ToolSchema.object()
-                                .optionalInt("x", "Center X; defaults to the player.")
-                                .optionalInt("y", "Center Y.")
-                                .optionalInt("z", "Center Z.")
+                                .optionalString("anchor", "drone (default) or player.", "drone")
+                                .optionalInt("x", "Center X; defaults to the drone.")
+                                .optionalInt("y", "Center Y; defaults to the drone.")
+                                .optionalInt("z", "Center Z; defaults to the drone.")
                                 .optionalInt("max_radius", "Maximum scan radius, 2..32.", 2, 32, 18))
                         .affinity(ToolAffinity.MAIN).timeoutMs(4_000L).build(),
                 ToolSpec.builder("scan_blocks")
-                        .description("Find blocks matching a filter within a radius. filter accepts a block "
-                                + "name, registry name, ore dictionary tag, or category ('ores', 'logs', "
-                                + "'stone', 'liquid', 'plants'...). Large radii (>32) are time-sliced: the "
-                                + "result is pending:true with a job_id; poll with poll_scan until done:true. "
-                                + "Inside execute, use drone.scanBlocks(...) which polls automatically.")
+                        .description("Find blocks matching a filter within a radius centred on the DRONE. "
+                                + "filter accepts a block name, registry name, ore dictionary tag, or category "
+                                + "('ores', 'logs', 'stone', 'liquid', 'plants'...). Large radii (>32) are "
+                                + "time-sliced: the result is pending:true with a job_id; poll with poll_scan "
+                                + "until done:true. Inside execute, drone.scanBlocks(...) polls automatically.")
                         .parameters(ToolSchema.object()
                                 .optionalString("filter", "Block name, registry name, ore tag or category.", "ores")
+                                .optionalString("anchor", "drone (default) or player.", "drone")
                                 .optionalInt("radius", "Search radius in blocks, 1..64 (capped at 32 for "
                                         + "time-sliced scans).", 1, 64, 24)
-                                .optionalInt("x", "Center X; defaults to the task player.")
-                                .optionalInt("y", "Center Y.")
-                                .optionalInt("z", "Center Z.")
+                                .optionalEnum("shape", "Volume shape around the centre.", "cube",
+                                        "cube", "sphere", "cylinder", "shell")
+                                .optionalInt("x", "Center X; defaults to the drone.")
+                                .optionalInt("y", "Center Y; defaults to the drone.")
+                                .optionalInt("z", "Center Z; defaults to the drone.")
                                 .optionalInt("min_y", "Lowest Y to scan, 1..254.")
-                                .optionalInt("max_y", "Highest Y to scan, 1..254."))
+                                .optionalInt("max_y", "Highest Y to scan, 1..254.")
+                                .optionalInt("limit", "Maximum blocks returned, 1..2000.", 1, 2000, 400)
+                                .optionalBoolean("include_air", "Include air matches in the sample.", false))
                         .affinity(ToolAffinity.MAIN).timeoutMs(6_000L).build(),
                 ToolSpec.builder("scan_veins")
                         .description("Find connected vein clusters for an ore/block filter and return each "
                                 + "cluster's center, size and bounding box. More useful than scan_blocks when "
-                                + "you need a mining plan.")
+                                + "you need a mining plan. Centred on the DRONE by default.")
                         .parameters(ToolSchema.object()
                                 .optionalString("filter", "Block name, registry name or ore tag.", "ores")
+                                .optionalString("anchor", "drone (default) or player.", "drone")
                                 .optionalInt("radius", "Search radius, 4..48.", 4, 48, 28)
-                                .optionalInt("x", "Center X.").optionalInt("y", "Center Y.").optionalInt("z", "Center Z."))
+                                .optionalInt("x", "Center X; defaults to the drone.")
+                                .optionalInt("y", "Center Y; defaults to the drone.")
+                                .optionalInt("z", "Center Z; defaults to the drone."))
                         .affinity(ToolAffinity.MAIN).timeoutMs(6_000L).build(),
                 ToolSpec.builder("find_distant")
                         .description("Search terrain farther than normal scan range for a resource block or "
                                 + "biome name (e.g. 'jungle', 'desert', 'meteorite', 'oil_sand'). Returns the "
-                                + "nearest hits and distance so you can plan a long flight.")
+                                + "nearest hits and distance so you can plan a long flight. Searches outward "
+                                + "from the DRONE, not the player.")
                         .parameters(ToolSchema.object()
                                 .requiredString("target", "Block/ore/biome name or category to find.")
                                 .optionalInt("max_radius", "Maximum search distance, 64..1500.", 64, 1500, 1200))
                         .affinity(ToolAffinity.MAIN).timeoutMs(10_000L).build(),
                 ToolSpec.builder("get_entities")
-                        .description("List nearby living entities with id, name, type, hostile/animal flags, "
-                                + "health, position and distance. filter: all, hostile, animal, player, or a name.")
+                        .description("List living entities with id, name, type, hostile/animal flags, health, "
+                                + "position and distance around the DRONE (anchor=player for the player). "
+                                + "filter: all, hostile, animal, player, or a name substring.")
                         .parameters(ToolSchema.object()
-                                .optionalInt("radius", "Search radius, 4..180.", 4, 180, 64)
-                                .optionalString("filter", "all, hostile, animal, player, or a name substring.", "all"))
+                                .optionalString("filter", "all, hostile, animal, player, or a name substring.", "all")
+                                .optionalString("anchor", "drone (default) or player.", "drone")
+                                .optionalInt("radius", "Search radius, 4..180.", 4, 180, 64))
                         .affinity(ToolAffinity.MAIN).timeoutMs(4_000L).build(),
                 ToolSpec.builder("get_drops")
                         .description("List nearby dropped item entities with item name/count and entity id. "
@@ -140,10 +153,12 @@ public class WorldTools implements ToolProvider {
                                         + "registries have no match.", false))
                         .affinity(ToolAffinity.MAIN).timeoutMs(6_000L).build(),
                 ToolSpec.builder("find_build_site")
-                        .description("Find a flat, clear build pad near the player and return its corners, "
-                                + "floor Y and door side. Feed the result into survey_build_site and "
+                        .description("Find a flat, clear build pad centred on the DRONE and return its corners, "
+                                + "floor Y and door side. anchor=player biases the preferred spot toward where "
+                                + "the player is looking. Feed the result into survey_build_site and "
                                 + "plan_structure.")
                         .parameters(ToolSchema.object()
+                                .optionalString("anchor", "drone (default) or player.", "drone")
                                 .optionalInt("width", "Desired width, 3..19.", 3, 19, 5)
                                 .optionalInt("depth", "Desired depth, 3..19.", 3, 19, 5)
                                 .optionalInt("max_radius", "Search radius, 4..64.", 4, 64, 24))
@@ -322,39 +337,38 @@ public class WorldTools implements ToolProvider {
                 return res;
             }
             case "scan_room": {
-                int sx = args.has("x") ? args.get("x").getAsInt()
-                        : MathHelper.floor_double(player != null ? player.posX : d.posX);
-                int sy = args.has("y") ? args.get("y").getAsInt()
-                        : MathHelper.floor_double((player != null ? player.posY : d.posY) + 0.5);
-                int sz = args.has("z") ? args.get("z").getAsInt()
-                        : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
+                int[] c = scanCenter(d, player, args);
                 int maxR = args.has("maxRadius") ? args.get("maxRadius").getAsInt() : 18;
-                if (!ChunkAccess.isBlockLoaded(world, sx, sz)) {
+                if (!ChunkAccess.isBlockLoaded(world, c[0], c[2])) {
                     return chunkNotLoaded("scan_room");
                 }
-                return this.worldScanner.scanRoom3D(world, sx, sy, sz, maxR);
+                return this.worldScanner.scanRoom3D(world, c[0], c[1], c[2], maxR);
             }
             case "scan_blocks": {
                 String filter = args.has("filter") ? args.get("filter").getAsString() : "ores";
                 int radius = args.has("radius") ? Math.min(64, Math.max(1, args.get("radius").getAsInt())) : 24;
-                final int cx = args.has("x") ? args.get("x").getAsInt() : MathHelper.floor_double(player != null ? player.posX : d.posX);
-                final int cy = args.has("y") ? args.get("y").getAsInt() : MathHelper.floor_double(player != null ? player.posY : d.posY);
-                final int cz = args.has("z") ? args.get("z").getAsInt() : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
+                int[] c = scanCenter(d, player, args);
+                final int cx = c[0], cy = c[1], cz = c[2];
                 int minY = args.has("minY") ? Math.max(1, args.get("minY").getAsInt())
                         : (!args.has("y") && ItemClassifier.isLikelyUndergroundQuery(filter) ? 1 : Math.max(1, cy - radius));
                 int maxY = args.has("maxY") ? Math.min(254, args.get("maxY").getAsInt()) : Math.min(254, cy + radius);
+                boolean skipAir = !args.has("include_air") || !args.get("include_air").getAsBoolean();
+                String shape = args.has("shape") ? args.get("shape").getAsString() : "cube";
+                int limit = args.has("limit") ? Math.min(2000, Math.max(1, args.get("limit").getAsInt())) : 400;
 
                 List<int[]> matched = new ArrayList<>();
                 for (int x = cx - radius; x <= cx + radius; x++) {
                     for (int y = minY; y <= maxY; y++) {
                         for (int z = cz - radius; z <= cz + radius; z++) {
                             if (!ChunkAccess.isBlockLoaded(world, x, z)) continue;
-                            if (world.isAirBlock(x, y, z)) continue;
+                            int distSq = (x - cx) * (x - cx) + (y - cy) * (y - cy) + (z - cz) * (z - cz);
+                            if (!withinShape(shape, x - cx, y - cy, z - cz, radius)) continue;
+                            boolean air = world.isAirBlock(x, y, z);
+                            if (air && skipAir) continue;
                             Block b = world.getBlock(x, y, z);
                             int meta = world.getBlockMetadata(x, y, z);
                             boolean match = filter.equalsIgnoreCase("liquid") ? ItemClassifier.isLiquidBlock(b) : ItemClassifier.matchesMineFilter(b, meta, filter);
                             if (match) {
-                                int distSq = (x - cx) * (x - cx) + (y - cy) * (y - cy) + (z - cz) * (z - cz);
                                 matched.add(new int[]{x, y, z, meta, distSq});
                             }
                         }
@@ -362,8 +376,8 @@ public class WorldTools implements ToolProvider {
                 }
                 matched.sort(Comparator.comparingInt(a -> a[4]));
                 JsonArray arr = new JsonArray();
-                int limit = Math.min(400, matched.size());
-                for (int i = 0; i < limit; i++) {
+                int returned = Math.min(limit, matched.size());
+                for (int i = 0; i < returned; i++) {
                     int[] mpt = matched.get(i);
                     int x = mpt[0], y = mpt[1], z = mpt[2], meta = mpt[3];
                     Block b = world.getBlock(x, y, z);
@@ -386,19 +400,17 @@ public class WorldTools implements ToolProvider {
             case "scan_veins": {
                 String filter = args.has("filter") ? args.get("filter").getAsString() : "ores";
                 int radius = args.has("radius") ? Math.min(48, Math.max(4, args.get("radius").getAsInt())) : 28;
-                int cx = args.has("x") ? args.get("x").getAsInt() : MathHelper.floor_double(player != null ? player.posX : d.posX);
-                int cy = args.has("y") ? args.get("y").getAsInt() : MathHelper.floor_double(player != null ? player.posY : d.posY);
-                int cz = args.has("z") ? args.get("z").getAsInt() : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
-                if (!ChunkAccess.isBlockLoaded(world, cx, cz)) {
+                int[] c = scanCenter(d, player, args);
+                if (!ChunkAccess.isBlockLoaded(world, c[0], c[2])) {
                     return chunkNotLoaded("scan_veins");
                 }
-                return this.worldScanner.scanConnectedVeins(world, cx, cy, cz, radius, filter);
+                return this.worldScanner.scanConnectedVeins(world, c[0], c[1], c[2], radius, filter);
             }
             case "find_distant": {
                 String target = args.has("target") ? args.get("target").getAsString() : "jungle";
                 int maxR = args.has("maxRadius") ? Math.min(1500, Math.max(64, args.get("maxRadius").getAsInt())) : 1200;
-                double sx = player != null ? player.posX : d.posX;
-                double sz = player != null ? player.posZ : d.posZ;
+                double sx = d.posX;
+                double sz = d.posZ;
                 if (!ChunkAccess.isBlockLoaded(world, sx, sz)) {
                     return chunkNotLoaded("find_distant");
                 }
@@ -428,9 +440,8 @@ public class WorldTools implements ToolProvider {
             case "get_entities": {
                 int radius = args.has("radius") ? Math.min(180, Math.max(4, args.get("radius").getAsInt())) : 64;
                 String filter = args.has("filter") ? args.get("filter").getAsString() : "all";
-                double cx = player != null ? player.posX : d.posX;
-                double cy = player != null ? player.posY : d.posY;
-                double cz = player != null ? player.posZ : d.posZ;
+                int[] c = scanCenter(d, player, args);
+                double cx = c[0], cy = c[1], cz = c[2];
                 AxisAlignedBB box = AxisAlignedBB.getBoundingBox(cx - radius, Math.max(1.0, cy - 32.0), cz - radius, cx + radius, Math.min(254.0, cy + 32.0), cz + radius);
                 List<?> list = world.getEntitiesWithinAABB(EntityLivingBase.class, box);
                 JsonArray arr = new JsonArray();
@@ -516,7 +527,8 @@ public class WorldTools implements ToolProvider {
                 int width = args.has("width") ? args.get("width").getAsInt() : 5;
                 int depth = args.has("depth") ? args.get("depth").getAsInt() : width;
                 int maxR = args.has("maxRadius") ? args.get("maxRadius").getAsInt() : 24;
-                return this.structureArchitect.findBestBuildSite(world, player, ctrl, width, depth, maxR);
+                String anchor = args.has("anchor") ? args.get("anchor").getAsString() : "drone";
+                return this.structureArchitect.findBestBuildSite(world, player, ctrl, width, depth, maxR, anchor);
             }
             case "survey_build_site": {
                 int height = args.has("height") ? Math.max(1, Math.min(24, args.get("height").getAsInt())) : 4;
@@ -524,18 +536,18 @@ public class WorldTools implements ToolProvider {
                 if (args.has("x1") && args.has("z1") && args.has("x2") && args.has("z2")) {
                     return SiteSurvey.survey(world, player,
                             args.get("x1").getAsInt(), args.get("z1").getAsInt(),
-                            args.get("x2").getAsInt(), args.get("z2").getAsInt(), explicitY, height);
+                            args.get("x2").getAsInt(), args.get("z2").getAsInt(), explicitY, height,
+                            MathHelper.floor_double(d.posY));
                 }
                 int width = args.has("width") ? Math.max(3, Math.min(33, args.get("width").getAsInt())) : 5;
                 int depth = args.has("depth") ? Math.max(3, Math.min(33, args.get("depth").getAsInt())) : width;
-                int centerX = args.has("x") ? args.get("x").getAsInt()
-                        : MathHelper.floor_double(player != null ? player.posX : d.posX);
-                int centerZ = args.has("z") ? args.get("z").getAsInt()
-                        : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
+                int[] c = scanCenter(d, player, args);
+                int centerX = c[0];
+                int centerZ = c[2];
                 return SiteSurvey.survey(world, player,
                         centerX - width / 2, centerZ - depth / 2,
                         centerX - width / 2 + width - 1, centerZ - depth / 2 + depth - 1,
-                        explicitY, height);
+                        explicitY, height, c[1]);
             }
             case "plan_structure":
                 StructureArchitect.StructurePlan plan = this.structureArchitect.generateStructureBlueprint(world, player, ctrl, args);
@@ -545,6 +557,50 @@ public class WorldTools implements ToolProvider {
         res.addProperty("ok", false);
         res.addProperty("error", "Unhandled world tool: " + m);
         return res;
+    }
+
+    /**
+     * Resolves the centre of a scan.
+     *
+     * <p>Every radius/scan is centred on the <b>drone</b>: that is where the
+     * machine and its loaded chunks are. An explicit x/y/z always wins; an
+     * {@code anchor} may be {@code drone} (default) or {@code player} when the
+     * caller explicitly wants the player's position.</p>
+     */
+    private static int[] scanCenter(Drone d, EntityPlayerMP player, JsonObject args) {
+        String anchor = args != null && args.has("anchor")
+                ? args.get("anchor").getAsString() : "drone";
+        boolean usePlayer = "player".equalsIgnoreCase(anchor) && player != null;
+        int x = args != null && args.has("x") ? args.get("x").getAsInt()
+                : MathHelper.floor_double(usePlayer ? player.posX : d.posX);
+        int y = args != null && args.has("y") ? args.get("y").getAsInt()
+                : MathHelper.floor_double(usePlayer ? player.posY : d.posY);
+        int z = args != null && args.has("z") ? args.get("z").getAsInt()
+                : MathHelper.floor_double(usePlayer ? player.posZ : d.posZ);
+        return new int[]{x, y, z};
+    }
+
+    /**
+     * Shape gate for {@code scan_blocks}: {@code cube} keeps the full box,
+     * {@code sphere}/{@code ball} a round radius, {@code cylinder} a vertical
+     * column, and {@code shell} only the outer layer (surface ores, cave walls).
+     */
+    static boolean withinShape(String shape, int dx, int dy, int dz, int radius) {
+        if (shape == null) return true;
+        String kind = shape.trim().toLowerCase();
+        if (kind.isEmpty() || "cube".equals(kind) || "box".equals(kind)) return true;
+        double horizontal = Math.sqrt(dx * dx + dz * dz);
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if ("sphere".equals(kind) || "ball".equals(kind)) {
+            return distance <= radius;
+        }
+        if ("cylinder".equals(kind) || "column".equals(kind)) {
+            return horizontal <= radius;
+        }
+        if ("shell".equals(kind) || "surface".equals(kind)) {
+            return distance > radius - 2.5 && distance <= radius;
+        }
+        return true;
     }
 
     /** Clean error instead of a raw NPE when a required coordinate is absent. */

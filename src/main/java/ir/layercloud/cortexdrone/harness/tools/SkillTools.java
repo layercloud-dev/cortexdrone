@@ -64,8 +64,9 @@ public final class SkillTools implements ToolProvider {
                             + "skill compiler (RLM). Pass the player's task, the working JavaScript and short "
                             + "notes about parameters/blockers. The compiler writes a stable name, trigger "
                             + "phrases, retrieval tags, a `requires` list and parameterized code, then saves a "
-                            + "versioned skill directory in config/cortexdrone/skills/<name>/. Use it after a multi-step "
-                            + "task succeeds, not for one-off trivia.")
+                            + "versioned skill directory in config/cortexdrone/skills/<name>/. Rejects code that "
+                            + "embeds player names, coordinates, entity ids, slots or dimensions; pass those as "
+                            + "params/notes instead. Use it after a multi-step task succeeds, not for one-off trivia.")
                     .parameters(ToolSchema.object()
                             .requiredString("task", "The original player request that the code fulfils.")
                             .requiredString("code", "The working JavaScript body (same syntax as execute).")
@@ -191,8 +192,14 @@ public final class SkillTools implements ToolProvider {
         String notes = args.has("notes") ? args.get("notes").getAsString() : "";
         Skill skill = this.refiner.refine(controller, name, task, code, notes);
         if (skill == null) {
-            return ToolJson.error("refine_failed", "The skill compiler could not produce a skill.",
-                    "Check that the code is non-empty and the LLM gateway is reachable, then retry.", true);
+            String hint = this.refiner.lastRejection();
+            if (hint == null || hint.trim().isEmpty()) {
+                hint = "Check that the code is non-empty and the LLM gateway is reachable, then retry. "
+                        + "Skills must read player names, coordinates, entity ids and slots from params "
+                        + "or live state, never from literals.";
+            }
+            return ToolJson.error("refine_failed",
+                    "The skill compiler could not produce a reusable skill.", hint, true);
         }
         JsonObject result = ToolJson.ok();
         result.addProperty("saved", true);

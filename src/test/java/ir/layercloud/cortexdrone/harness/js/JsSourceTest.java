@@ -41,7 +41,8 @@ public class JsSourceTest {
         assertFalse(prepared.contains("interface Foo"));
         assertFalse(prepared.contains("type Bar"));
         assertFalse(prepared.contains(": number"));
-        assertTrue(prepared.contains("const count = 2"));
+        // const/let are lowered to var so a name can be reused in one scope.
+        assertTrue(prepared.contains("var count = 2"));
         assertTrue(prepared.contains("function add("));
     }
 

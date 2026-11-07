@@ -31,6 +31,15 @@ public final class SiteSurvey {
 
     public static JsonObject survey(World world, EntityPlayerMP player, int x1, int z1, int x2, int z2,
                                     Integer explicitY, int height) {
+        return survey(world, player, x1, z1, x2, z2, explicitY, height, null);
+    }
+
+    /**
+     * @param droneY reference floor when the caller has no explicit Y. Passing
+     *               it keeps the survey independent of the player's position.
+     */
+    public static JsonObject survey(World world, EntityPlayerMP player, int x1, int z1, int x2, int z2,
+                                    Integer explicitY, int height, Integer droneY) {
         int minX = Math.min(x1, x2);
         int maxX = Math.min(minX + MAX_SIDE - 1, Math.max(x1, x2));
         int minZ = Math.min(z1, z2);
@@ -38,7 +47,8 @@ public final class SiteSurvey {
         int wallHeight = Math.max(1, Math.min(24, height));
 
         int refY = explicitY != null ? explicitY
-                : (player != null ? MathHelper.floor_double(player.posY) : 64);
+                : (droneY != null ? droneY
+                : (player != null ? MathHelper.floor_double(player.posY) : 64));
 
         JsonObject out = new JsonObject();
         out.addProperty("ok", true);

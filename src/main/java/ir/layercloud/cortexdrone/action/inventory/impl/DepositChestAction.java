@@ -7,6 +7,8 @@ import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
 import ir.layercloud.cortexdrone.action.navigation.FlightController;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
+import ir.layercloud.cortexdrone.service.inventory.ContainerAccess;
+import ir.layercloud.cortexdrone.service.inventory.ContainerAnimation;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import li.cil.oc.common.entity.Drone;
@@ -23,8 +25,6 @@ import net.minecraft.world.World;
  */
 @RequiredArgsConstructor
 public final class DepositChestAction implements Action<InventoryContext> {
-    private static final double REACH = 3.8;
-
     private final FlightController flight;
     private final InventoryService inventoryService;
     private final InventoryRequest request;
@@ -40,7 +40,7 @@ public final class DepositChestAction implements Action<InventoryContext> {
             context.result(InventoryResult.failure("No chest with free space within 28m"));
             return;
         }
-        if (inReach(drone, chest)) {
+        if (inReach(drone, world, chest)) {
             deposit(context, drone, world, chest);
             return;
         }
@@ -69,7 +69,7 @@ public final class DepositChestAction implements Action<InventoryContext> {
             context.complete();
             return;
         }
-        if (inReach(drone, chest)) {
+        if (inReach(drone, world, chest)) {
             deposit(context, drone, world, chest);
             return;
         }
@@ -102,14 +102,15 @@ public final class DepositChestAction implements Action<InventoryContext> {
         return nearest;
     }
 
-    private static boolean inReach(Drone drone, TileEntity chest) {
-        return drone.getDistance(chest.xCoord + 0.5, chest.yCoord + 0.5, chest.zCoord + 0.5) <= REACH;
+    private static boolean inReach(Drone drone, World world, TileEntity chest) {
+        // Same rule as every other container: reach plus a clear line of sight.
+        return ContainerAccess.check(world, drone, chest).isAccessible();
     }
 
     private void deposit(InventoryContext context, Drone drone, World world, TileEntity chest) {
-        int moved = this.inventoryService.depositDroneItemsIntoTile(drone, chest);
-        world.playSoundEffect(chest.xCoord + 0.5, chest.yCoord + 0.5, chest.zCoord + 0.5,
-                "random.chestclosed", 0.5f, 1.0f);
+        // Open through the container's real hook so the lid/feedback animates.
+        int moved = ContainerAnimation.withOpen(world, drone, chest,
+                () -> this.inventoryService.depositDroneItemsIntoTile(drone, chest));
         context.movedCount(moved);
         context.result(InventoryResult.success("deposited", moved,
                 "chest", chest.xCoord + "," + chest.yCoord + "," + chest.zCoord));

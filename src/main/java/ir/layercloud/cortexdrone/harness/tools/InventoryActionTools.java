@@ -7,6 +7,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.ToolContext;
 import ir.layercloud.cortexdrone.harness.tools.view.InventoryView;
 
 import java.util.Arrays;
@@ -22,7 +23,9 @@ public final class InventoryActionTools implements ToolProvider {
                     .description("Move filtered items between the drone, the owner and container slots. "
                             + "Set from/to to 'drone', 'player' or 'chest'; give chest coordinates via "
                             + "from_x/from_y/from_z or to_x/to_y/to_z. Optional from_slot/to_slot pin exact "
-                            + "slots. count=0 means as many as possible.")
+                            + "slots. count=0 means as many as possible. A container slot is a physical "
+                            + "interaction: if it is out of reach the result is needs_movement + standoff, "
+                            + "never a long-range transfer.")
                     .parameters(ToolSchema.object()
                             .requiredString("from", "Source: drone, player or chest.")
                             .requiredString("to", "Destination: drone, player or chest.")
@@ -61,8 +64,10 @@ public final class InventoryActionTools implements ToolProvider {
                     .build(),
             ToolSpec.builder("withdraw_chest")
                     .description("Withdraw filtered items from one chest/container. Pass x/y/z to target a "
-                            + "specific container, or omit them to search the nearest matching containers. "
-                            + "The drone flies to the container and waits for the transfer.")
+                            + "specific container, or omit them to use the nearest container the drone can "
+                            + "actually open. Only containers within reach with line of sight are used, and "
+                            + "each is opened and closed so the lid/sound plays. Out of reach returns "
+                            + "needs_movement + standoff.")
                     .parameters(ToolSchema.object()
                             .optionalString("filter", "Item name/registry/ore tag or 'all'.", "all")
                             .optionalInt("count", "Maximum items to withdraw; 0 = as many as fit.", 0, 2304, 0)
@@ -74,7 +79,9 @@ public final class InventoryActionTools implements ToolProvider {
                     .build(),
             ToolSpec.builder("deposit_chest")
                     .description("Fly to a chest/container and deposit the drone inventory. Pass x/y/z for a "
-                            + "specific container, or omit to use the nearest container with space.")
+                            + "specific container, or omit to use the nearest container with space. The "
+                            + "transfer only happens once the drone is within reach, and the container is "
+                            + "opened and closed so its animation plays.")
                     .parameters(ToolSchema.object()
                             .optionalInt("x", "Chest X (optional).")
                             .optionalInt("y", "Chest Y (optional).")
@@ -120,12 +127,39 @@ public final class InventoryActionTools implements ToolProvider {
         return SPECS;
     }
 
+    /**
+     * A successful container transfer is a real visit: remember where it is and
+     * which trail got the drone there, so the next trip can retrace it.
+     */
+    private static void rememberVisit(ToolContext context, String name, JsonObject args,
+                                      JsonObject result) {
+        if (result == null || !result.has("ok") || !result.get("ok").getAsBoolean()) return;
+        if (result.has("needsMovement") && result.get("needsMovement").getAsBoolean()) return;
+        if (context == null || context.controller() == null
+                || context.controller().drone == null || context.controller().drone.worldObj == null) return;
+        String kind = "chest";
+        int[] coords = null;
+        if (args.has("to_x") && args.has("to_y") && args.has("to_z")) {
+            coords = new int[]{args.get("to_x").getAsInt(), args.get("to_y").getAsInt(), args.get("to_z").getAsInt()};
+        } else if (args.has("from_x") && args.has("from_y") && args.has("from_z")) {
+            coords = new int[]{args.get("from_x").getAsInt(), args.get("from_y").getAsInt(), args.get("from_z").getAsInt()};
+        }
+        if (coords == null) return;
+        PlaceMemory.rememberContainer(context, context.controller(),
+                context.controller().drone.worldObj, coords[0], coords[1], coords[2], kind);
+    }
+
     @Override
     public void register(ToolRegistry registry) {
         for (ToolSpec spec : SPECS) {
             final String name = spec.getName();
             registry.bind(name, getClass().getSimpleName(),
-                    (context, arguments) -> this.inventory.handle(context.controller(), context.player(), name, arguments));
+                    (context, arguments) -> {
+                        JsonObject result = this.inventory.handle(
+                                context.controller(), context.player(), name, arguments);
+                        rememberVisit(context, name, arguments, result);
+                        return result;
+                    });
         }
     }
 }

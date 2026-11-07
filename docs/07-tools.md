@@ -28,7 +28,7 @@ The registry generates:
 | --- | --- |
 | `SessionTools` | `state`, `cancel` |
 | `NavigationTools` | `goto`, `stop`, `get_breadcrumbs` |
-| `BlockTools` | `break_block`, `place_block` |
+| `BlockTools` | `break_block`, `place_block`, `replace_block`, `repair_trail` |
 | `InteractionTools` | `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity` |
 | `InventoryActionTools` | `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`, `deposit_chest`, `drop_items`, `suck_items`, `craft` |
 | `InventoryQueryTools` | `get_player`, `get_player_inventory`, `get_chest`, `scan_chests`, `find_item_in_chests`, `find_item`, `get_recipes`, `scan_furnaces`, `get_machine_recipes`, `get_machine_recipe`, `scan_machines`, `machine_ingredients` |
@@ -40,6 +40,32 @@ The registry generates:
 | `WebTools` | `web_search`, `web_fetch`, `wiki_lookup` |
 | `CodeTools` | `execute` |
 | `ScanTools` | `poll_scan` |
+| `OcTools` | `oc_state`, `oc_methods`, `oc_call`, `oc_machine` |
+
+## OpenComputers surface
+
+`OcTools` exposes the whole OpenComputers component API rather than a fixed
+subset. `oc_methods` enumerates the live `@Callback` annotations on the drone's
+component, so OC callbacks and addon components appear without a mod update.
+
+| Tool | Kind | Purpose |
+| --- | --- | --- |
+| `oc_state` | read | machine state, component names/count, energy, tier, status text, LED |
+| `oc_methods` | read | discover/search the callback surface (`query`, `limit`, `docs`) |
+| `oc_call` | action | invoke one callback: `move`, `detect`, `compare`, `suck`, `drain`, `place`, `use`, ... |
+| `oc_machine` | action | machine lifecycle: `start`, `stop`, `pause`, `signal` |
+
+Reads use `OcStateService`; writes use `OcManager` -> `OcCallAction` /
+`OcMachineAction`. `oc_call` refuses any name that is not in the discovered
+callback set, so the full OC API is reachable without exposing arbitrary Java.
+Arguments are positional and follow the OC Lua call order:
+
+```js
+return drone.ocCall({ method: 'move', args: { 1: 10, 2: 1, 3: 0 } });
+return drone.ocCall({ method: 'compare', arguments: '[1, "minecraft:stone"]' });
+return drone.ocMachine({ control: 'signal', value: 'cortexdrone', payload: { 1: 'ping' } });
+```
+
 
 ## Skills
 
@@ -118,6 +144,68 @@ Inside `execute`, `ok:false` throws a JavaScript `ToolError` with `message`,
 - `ASYNC` does not touch the world: `execute`, web tools, skill search/refine.
 
 `ToolInvoker` marshals `MAIN` calls to the server thread with a per-tool
+## Container access
+
+A container slot is a physical interaction, not a remote read.
+
+- **Reach + line of sight.** Writes use the same 4.5-block reach and visible-face
+  rule as block actions (`ContainerAccess`). Out of reach returns
+  `needsMovement` + `standoff`; the JS binding flies there and retries.
+- **No player-relative search.** `withdraw_chest` / `move_item` only consider
+  containers the drone can open. The old version also searched around the
+  player, so the drone could take items from a chest dozens of blocks away.
+- **Animation.** Transfers go through `IInventory.openInventory()` /
+  `closeInventory()`, the same hook a `ContainerChest` uses. A chest lid opens
+  with the `random.chestopen` sound; other containers run their own open hook.
+  The drone also swings the fake player's arm for targets with no inventory
+  hook.
+- **Furnaces stay vanilla.** The mod never writes `furnaceCookTime` or
+  `currentItemBurnTime` and never ticks a furnace. Fuel and input go in from
+  within reach; the world does the smelting at normal speed.
+
+## Damage journal and repair
+
+Navigation tries a detour before tunnelling, so an obstacle is flown around
+when possible. When it does dig, `NavigationManager` records the block, metadata
+and tile NBT in `DamageJournal` *before* the break.
+
+`repair_trail` restores those blocks newest-first, re-creating tile entities. It
+skips any slot that is no longer air, so it never overwrites newer changes.
+
+## Visit memory
+
+When the drone actually reaches a container or machine, `PlaceMemory` stores a
+`machine` entry with its position and the last few breadcrumb points. Entries
+gained through a tunnel are tagged `damaged` and point at `repair_trail`. Only
+reachable targets are recorded — a scan hit the drone never visited is not a
+trail.
+
+## Scan origins
+
+Every scan and radius starts at the **drone**: `scan_blocks`, `scan_room`,
+`scan_veins`, `find_distant`, `get_entities`, `find_build_site`,
+`scan_machines`, and the recipe-availability sweep. The drone is where the
+machine, its energy and its loaded chunks are, so a drone-centred scan does not
+silently miss everything because the player walked away.
+
+Each of those tools accepts `anchor: "drone"` (default) or `"player"`. An
+explicit `x`/`y`/`z` always wins. `get_drops` was already drone-centred.
+
+`scan_blocks` is the advanced search:
+
+| Option | Meaning |
+| --- | --- |
+| `filter` | block/registry/ore-tag/category |
+| `shape` | `cube`, `sphere`, `cylinder`, `shell` (outer layer) |
+| `radius` | 1..64, capped at 32 for time-sliced jobs |
+| `min_y` / `max_y` | vertical window |
+| `limit` | max blocks returned, 1..2000 |
+| `include_air` | include air in the sample |
+| `x` / `y` / `z` | explicit centre |
+
+`shell` finds surface ores and cave walls; `cylinder` is a vertical column
+around the drone; `sphere` keeps a fair Euclidean distance.
+
 timeout. Large `scan_blocks` calls become a time-sliced `ScanJobs` job and return
 `pending:true` + `job_id`; JS `drone.scanBlocks` auto-polls, direct model calls
 should use `poll_scan`.

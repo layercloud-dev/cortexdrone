@@ -56,7 +56,7 @@ public class ToolRegistryTest {
         for (ToolSpec spec : ToolCatalog.standard()) names.add(spec.getName());
         for (String required : Arrays.asList(
                 "state", "cancel", "goto", "stop", "get_breadcrumbs",
-                "break_block", "place_block",
+                "break_block", "place_block", "replace_block", "repair_trail",
                 "interact_block", "use_item", "attack_entity", "pick_entity", "unpick_entity",
                 "move_item", "give_to_player", "take_from_player", "withdraw_chest",
                 "deposit_chest", "drop_items", "suck_items", "craft",
@@ -65,6 +65,7 @@ public class ToolRegistryTest {
                 "execute", "lesson", "memory", "skill", "skill_run", "skill_refine",
                 "web_search", "web_fetch", "wiki_lookup",
                 "scan_blocks", "poll_scan",
+                "oc_state", "oc_methods", "oc_call", "oc_machine",
                 "find_build_site", "survey_build_site", "plan_structure")) {
             assertTrue("Missing tool: " + required, names.contains(required));
         }

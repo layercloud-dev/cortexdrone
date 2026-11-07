@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 public final class JsSource {
     private static final Pattern NULLISH = Pattern.compile("\\?\\?");
     private static final Pattern FOR_DECLARATION = Pattern.compile("\\bfor\\s*\\(\\s*(?:const|let)\\s+");
+    private static final Pattern BLOCK_DECLARATION = Pattern.compile("\\b(?:const|let)\\s+(?=[A-Za-z_$])");
     private static final Pattern OPTIONAL_CATCH = Pattern.compile("\\bcatch\\s*\\{");
     private static final Pattern ARRAY_SPREAD = Pattern.compile("\\[\\.\\.\\.([A-Za-z_$][\\w$.]*)\\]");
     private static final Pattern OBJECT_SPREAD = Pattern.compile("\\{\\.\\.\\.([A-Za-z_$][\\w$.]*)\\}");
@@ -44,6 +45,10 @@ public final class JsSource {
         String result = rewriteOptionalChaining(source);
         result = TypeScriptEraser.replaceOutsideLiterals(result, NULLISH, "||");
         result = TypeScriptEraser.replaceOutsideLiterals(result, FOR_DECLARATION, "for (var ");
+        // Rhino rejects a second `const x` in the same function scope, and models
+        // routinely reuse a name across two loops or blocks. `var` is
+        // function-scoped and redeclarable, which matches what the script means.
+        result = TypeScriptEraser.replaceOutsideLiterals(result, BLOCK_DECLARATION, "var ");
         result = TypeScriptEraser.replaceOutsideLiterals(result, OPTIONAL_CATCH, "catch (__error) {");
         result = TypeScriptEraser.replaceOutsideLiterals(result, ARRAY_SPREAD, "$1.slice()");
         result = TypeScriptEraser.replaceOutsideLiterals(result, OBJECT_SPREAD, "Object.assign({}, $1)");

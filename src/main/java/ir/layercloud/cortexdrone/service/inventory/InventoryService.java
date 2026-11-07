@@ -280,74 +280,89 @@ public class InventoryService {
         return moved;
     }
 
-    public int withdrawMatchingFromNearbyChests(World world, DroneController ctrl, EntityPlayerMP owner, String filter, int maxCount) {
+    /**
+     * Withdraws matching items from containers the drone can physically open.
+     *
+     * <p>Only containers within reach with a clear line of sight are eligible,
+     * and each one is opened and closed through its real inventory hook so the
+     * lid/feedback animates. A distant chest is never touched: the old version
+     * also searched around the player, which let the drone take items from
+     * dozens of blocks away.</p>
+     */
+    public int withdrawMatchingFromNearbyChests(World world, DroneController ctrl, EntityPlayerMP owner,
+                                                String filter, int maxCount) {
         if (world == null || ctrl == null || ctrl.drone == null) return 0;
         String resolved = ItemClassifier.resolveHeldFilter(owner, filter);
-        List<TileEntity> tiles = findAllInventoryTiles(world, ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ, 28);
-        if (owner != null && owner.worldObj == world) {
-            List<TileEntity> ownerTiles = findAllInventoryTiles(world, owner.posX, owner.posY, owner.posZ, 28);
-            for (TileEntity ote : ownerTiles) {
-                if (!tiles.contains(ote)) {
-                    tiles.add(ote);
-                }
-            }
-        }
+        List<TileEntity> candidates = findAllInventoryTiles(
+                world, ctrl.drone.posX, ctrl.drone.posY, ctrl.drone.posZ, 28);
+        List<TileEntity> tiles = ContainerAccess.reachable(world, ctrl.drone, candidates);
+        if (tiles.isEmpty()) return 0;
+
         int totalMoved = 0;
         IInventory dst = ctrl.drone.mainInventory();
+        if (dst == null) return 0;
 
-        boolean hasFreeSlot = false;
-        for (int i = 0; i < dst.getSizeInventory(); i++) {
-            ItemStack st = dst.getStackInSlot(i);
-            if (st == null || st.stackSize <= 0) {
-                hasFreeSlot = true;
-                break;
-            }
-            if (ItemClassifier.matchesBlockOrItemName(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), resolved)
-                    && st.stackSize < st.getMaxStackSize()) {
-                hasFreeSlot = true;
-                break;
-            }
-        }
-        if (!hasFreeSlot) {
-            for (int i = dst.getSizeInventory() - 1; i >= 0; i--) {
-                ItemStack st = dst.getStackInSlot(i);
-                if (st == null) continue;
-                if (!ItemClassifier.matchesBlockOrItemName(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), resolved)) {
-                    boolean swapped = false;
-                    for (TileEntity te : tiles) {
-                        if (te instanceof IInventory) {
-                            ItemStack copy = st.copy();
-                            int ins = insertIntoInventory((IInventory) te, copy);
-                            if (ins == st.stackSize) {
-                                dst.setInventorySlotContents(i, null);
-                                dst.markDirty();
-                                ((IInventory) te).markDirty();
-                                swapped = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!swapped && owner != null && owner.inventory != null && owner.inventory.addItemStackToInventory(st.copy())) {
-                        dst.setInventorySlotContents(i, null);
-                        dst.markDirty();
-                        syncPlayerInventory(owner);
-                        swapped = true;
-                    }
-                    if (swapped) break;
-                }
-            }
+        if (!this.hasRoomFor(dst, resolved)) {
+            this.makeRoom(dst, resolved, world, ctrl, tiles);
         }
 
         for (TileEntity te : tiles) {
             if (totalMoved >= maxCount || isInventoryFull(dst)) break;
-            if (te instanceof IInventory) {
-                totalMoved += withdrawFromInventory((IInventory) te, dst, resolved, maxCount - totalMoved);
-            }
+            if (!(te instanceof IInventory)) continue;
+            final IInventory source = (IInventory) te;
+            final int budget = maxCount - totalMoved;
+            totalMoved += ContainerAnimation.withOpen(world, ctrl.drone, te, () ->
+                    withdrawFromInventory(source, dst, resolved, budget));
         }
         if (totalMoved > 0) {
-            this.logger.log("INV", ctrl, "Withdrew " + totalMoved + " item(s) matching '" + resolved + "' from nearby chest(s)", "");
+            this.logger.log("INV", ctrl, "Withdrew " + totalMoved + " item(s) matching '"
+                    + resolved + "' from a reachable container", "");
         }
         return totalMoved;
+    }
+
+    /** True when the destination can take the filtered item (or any item). */
+    private boolean hasRoomFor(IInventory dst, String resolved) {
+        for (int i = 0; i < dst.getSizeInventory(); i++) {
+            ItemStack st = dst.getStackInSlot(i);
+            if (st == null || st.stackSize <= 0) return true;
+            if (ItemClassifier.matchesBlockOrItemName(st.getDisplayName(),
+                    ItemClassifier.getItemIdentifier(st), st.getItemDamage(), resolved)
+                    && st.stackSize < st.getMaxStackSize()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Frees a slot by moving an unrelated stack into a reachable container.
+     * The player's inventory is deliberately not used: that would be a
+     * teleport, not an interaction.
+     */
+    private void makeRoom(IInventory dst, String resolved, World world, DroneController ctrl,
+                          List<TileEntity> tiles) {
+        for (int i = dst.getSizeInventory() - 1; i >= 0; i--) {
+            ItemStack st = dst.getStackInSlot(i);
+            if (st == null) continue;
+            if (ItemClassifier.matchesBlockOrItemName(st.getDisplayName(),
+                    ItemClassifier.getItemIdentifier(st), st.getItemDamage(), resolved)) {
+                continue;
+            }
+            for (TileEntity te : tiles) {
+                if (!(te instanceof IInventory)) continue;
+                final IInventory target = (IInventory) te;
+                final ItemStack copy = st.copy();
+                final int moved = ContainerAnimation.withOpen(world, ctrl.drone, te,
+                        () -> insertIntoInventory(target, copy));
+                if (moved == st.stackSize) {
+                    dst.setInventorySlotContents(i, null);
+                    dst.markDirty();
+                    target.markDirty();
+                    return;
+                }
+            }
+        }
     }
 
     public int depositDroneItemsIntoTile(Drone d, TileEntity te) {
@@ -387,13 +402,13 @@ public class InventoryService {
         targetInv.markDirty();
 
         if (countInventoryItems(droneInv) > 0 && d.worldObj != null) {
-            List<TileEntity> nearby = findAllInventoryTiles(
-                    d.worldObj,
-                    te.xCoord + 0.5,
-                    te.yCoord + 0.5,
-                    te.zCoord + 0.5,
-                    8
-            );
+            List<TileEntity> nearby = ContainerAccess.reachable(d.worldObj, d,
+                    findAllInventoryTiles(
+                            d.worldObj,
+                            te.xCoord + 0.5,
+                            te.yCoord + 0.5,
+                            te.zCoord + 0.5,
+                            (int) Math.ceil(ContainerAccess.REACH)));
             for (TileEntity other : nearby) {
                 if (other == te || !(other instanceof IInventory)) continue;
                 if (countInventoryItems(droneInv) <= 0) break;

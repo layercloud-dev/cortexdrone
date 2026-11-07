@@ -60,7 +60,7 @@ Key properties:
 - Log every task to `config/cortexdrone/sessions/<outcome>/` (success, failure,
   cancelled, interrupted, incomplete, error) with a searchable index.
 - Run the bundled skill suite: mining/hauling, storage sorting, hunting,
-  guarding, patrolling, carrying players, crop/sugarcane/melon farming, tree
+  guarding, patrolling, carrying players, crop/sugarcane/bamboo/melon farming, tree
   felling and phased structure building.
 - Work recon -> plan -> one script -> verify, then turn successful workflows
   into skills that can call each other.

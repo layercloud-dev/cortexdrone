@@ -33,6 +33,16 @@ pick a goal, start an action or retain work state.
 `MachineTileInspector` / `FurnaceScanner`
 : live tile classification, power/fluid/progress and furnace contents.
 
+## OpenComputers
+
+`OcStateService`
+: read-only snapshot of one drone's OC machine: address, state, running/paused,
+  component count and names, energy buffer, tier, status text, LED colour.
+
+`OcComponentIntrospector`
+: discovers the live `@Callback` surface from runtime annotations and invokes
+  one callback by name. Nothing is hardcoded, so OC and addon components work.
+
 ## World
 
 `WorldScanner`

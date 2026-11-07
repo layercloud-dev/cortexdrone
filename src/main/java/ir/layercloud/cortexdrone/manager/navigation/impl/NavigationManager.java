@@ -389,11 +389,8 @@ public final class NavigationManager implements FlightController {
             return;
         }
 
-        if (session.allowDig && session.dug < session.maxDigBlocks
-                && tryDig(controller, session, state, world, drone)) {
-            return;
-        }
-
+        // Rule: try not to damage anything. Fly a detour first and only tunnel
+        // when no detour exists and this call allows digging.
         double[] detour = nextDetour(session, state, drone, world);
         if (detour != null) {
             session.reason = "detour-" + session.detours;
@@ -403,8 +400,37 @@ public final class NavigationManager implements FlightController {
             return;
         }
 
+        if (session.allowDig && session.dug < session.maxDigBlocks
+                && tryDig(controller, session, state, world, drone)) {
+            return;
+        }
+
+        // Straight-line tunnelling fails underground: the first obstruction is
+        // the floor under the drone and no standoff is reachable. Mine one
+        // vertical step toward the goal instead, exactly like a player.
+        if (session.allowDig && session.dug < session.maxDigBlocks
+                && tryDigVertical(controller, session, state, world, drone)) {
+            return;
+        }
+
         fail(controller, reason + (session.allowDig
                 ? "" : " (this goto call disabled digging)"));
+    }
+
+    /** Mines one step up or down toward a goal that is far above/below the drone. */
+    private boolean tryDigVertical(DroneController controller, Session session,
+                                   NavigationState state, World world, Drone drone) {
+        int[] target = TunnelPlanner.nextVertical(world, drone,
+                CortexDroneMod.findPlayer(controller.ownerName),
+                state.goalX, state.goalY, state.goalZ);
+        if (target == null) return false;
+        long key = pack(target);
+        if (session.rejectedDigs.contains(key)) return false;
+        if (!TunnelPlanner.inReach(drone, target[0], target[1], target[2])) return false;
+        session.digTarget = target;
+        session.reason = "vertical";
+        digPending(controller, session);
+        return true;
     }
 
     /** Finds the obstruction toward the goal and either digs it or flies to its standoff. */
@@ -447,6 +473,9 @@ public final class NavigationManager implements FlightController {
             session.replanCooldown = 1;
             return;
         }
+        // Journal the block before it is gone: repair_trail restores it later.
+        this.manager.getDamageJournal().record(controller, drone.worldObj,
+                target[0], target[1], target[2], "navigation");
         BlockResult result = this.manager.getBuildingManager().handle(
                 controller, CortexDroneMod.findPlayer(controller.ownerName), "break_block",
                 BlockRequest.builder()
@@ -479,17 +508,30 @@ public final class NavigationManager implements FlightController {
     private double[] nextDetour(Session session, NavigationState state,
                                 Drone drone, World world) {
         double[][] candidates = new double[][]{
+                // Over the goal first: most maps are open above.
                 {state.goalX, state.goalY + 4.0D, state.goalZ},
+                {state.goalX, state.goalY + 8.0D, state.goalZ},
+                {state.goalX, state.goalY + 12.0D, state.goalZ},
                 {state.goalX + 6.0D, state.goalY, state.goalZ},
                 {state.goalX - 6.0D, state.goalY, state.goalZ},
                 {state.goalX, state.goalY, state.goalZ + 6.0D},
                 {state.goalX, state.goalY, state.goalZ - 6.0D},
-                {state.goalX, state.goalY + 12.0D, state.goalZ},
+                // Diagonal shoulders around the goal, for tight corners.
+                {state.goalX + 6.0D, state.goalY + 3.0D, state.goalZ + 6.0D},
+                {state.goalX - 6.0D, state.goalY + 3.0D, state.goalZ - 6.0D},
+                {state.goalX + 6.0D, state.goalY + 6.0D, state.goalZ - 6.0D},
+                {state.goalX - 6.0D, state.goalY + 6.0D, state.goalZ + 6.0D},
+                // Local escapes when the drone itself is boxed in.
                 {drone.posX, Math.min(253.0D, drone.posY + 8.0D), drone.posZ},
+                {drone.posX, Math.max(3.0D, drone.posY - 6.0D), drone.posZ},
                 {drone.posX + 6.0D, drone.posY, drone.posZ},
                 {drone.posX - 6.0D, drone.posY, drone.posZ},
                 {drone.posX, drone.posY, drone.posZ + 6.0D},
-                {drone.posX, drone.posY, drone.posZ - 6.0D}
+                {drone.posX, drone.posY, drone.posZ - 6.0D},
+                {drone.posX + 12.0D, drone.posY + 2.0D, drone.posZ},
+                {drone.posX - 12.0D, drone.posY + 2.0D, drone.posZ},
+                {drone.posX, drone.posY + 2.0D, drone.posZ + 12.0D},
+                {drone.posX, drone.posY + 2.0D, drone.posZ - 12.0D}
         };
         while (session.detours < candidates.length) {
             double[] candidate = candidates[session.detours++];
@@ -523,14 +565,6 @@ public final class NavigationManager implements FlightController {
         controller.drone.lightColor_$eq(0x00FFAA);
         controller.drone.statusText_$eq("Arrived\n"
                 + (int) Math.floor(state.goalX) + "," + (int) Math.floor(state.goalZ));
-        if (!this.manager.getSessionManager().session(controller).isScriptRunning()) {
-            EntityPlayerMP owner = CortexDroneMod.findPlayer(controller.ownerName);
-            if (owner != null) {
-                this.manager.droneSay(owner, controller, String.format(
-                        "Arrived at (%.1f, %.1f, %.1f).",
-                        state.goalX, state.goalY, state.goalZ));
-            }
-        }
     }
 
     private void fail(DroneController controller, String reason) {

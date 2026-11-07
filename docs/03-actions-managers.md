@@ -50,6 +50,7 @@ or cancels every managed context for a controller. It contains no behavior.
 | `InteractionManager` | `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity` |
 | `InventoryManager` | `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`, `deposit_chest`, `drop_items`, `suck_items`, `craft` |
 | `VisualsManager` | `set_led`, `set_light`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` |
+| `OcManager` | `oc_call`, `oc_machine` |
 
 ## Lifecycle example
 

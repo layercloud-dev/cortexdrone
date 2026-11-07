@@ -27,11 +27,15 @@ final class MachineRecipeRanker {
     private static final java.util.Map<String, java.util.Map<String, Integer>> COUNT_CACHE = new java.util.HashMap<>();
     private static final java.util.Map<String, Long> COUNT_CACHE_EXPIRY = new java.util.HashMap<>();
 
-    static java.util.Map<String, Integer> countAllNearby(InventoryService inventoryService, World world, EntityPlayerMP player, int radius) {
-        return countAllNearbyCached(inventoryService, world, player, radius);
+    static java.util.Map<String, Integer> countAllNearby(InventoryService inventoryService, World world,
+                                                        li.cil.oc.common.entity.Drone drone,
+                                                        EntityPlayerMP player, int radius) {
+        return countAllNearbyCached(inventoryService, world, drone, player, radius);
     }
 
-    private static java.util.Map<String, Integer> countAllNearbyCached(InventoryService inventoryService, World world, EntityPlayerMP player, int radius) {
+    private static java.util.Map<String, Integer> countAllNearbyCached(InventoryService inventoryService, World world,
+                                                                      li.cil.oc.common.entity.Drone drone,
+                                                                      EntityPlayerMP player, int radius) {
         // Cache the expensive nearby-inventory sweep for ~1s so the
         // getBestMachineRecipe loop (which re-assesses every ranked candidate
         // plus recipeDuration lookups re-enter getBest) does not re-scan
@@ -40,19 +44,21 @@ final class MachineRecipeRanker {
         // movement, so a coarser key avoids an uncached scan per block step.
         long now = System.currentTimeMillis();
         long bucket = radius / 16;
-        int droneX = player != null ? (int) player.posX : 0;
-        int droneZ = player != null ? (int) player.posZ : 0;
+        // Every scan is centred on the drone, so the cache key must be too.
+        int droneX = drone != null ? (int) drone.posX : 0;
+        int droneZ = drone != null ? (int) drone.posZ : 0;
         int dimId = 0;
         if (world != null && world.provider != null) {
             dimId = world.provider.dimensionId;
         }
-        String key = dimId + "|" + droneX / 16 + "|" + droneZ / 16 + "|" + bucket + "|" + (player != null ? player.getCommandSenderName() : "null");
+        String key = dimId + "|" + droneX / 16 + "|" + droneZ / 16 + "|" + bucket + "|"
+                + (drone != null ? drone.getUniqueID() : (player != null ? player.getCommandSenderName() : "null"));
         java.util.Map<String, Integer> hitCache = COUNT_CACHE.get(key);
         Long expiry = COUNT_CACHE_EXPIRY.get(key);
         if (hitCache != null && expiry != null && expiry > now) {
             return new java.util.LinkedHashMap<>(hitCache);
         }
-        java.util.Map<String, Integer> totals = countAllNearbyUncached(inventoryService, world, player, radius);
+        java.util.Map<String, Integer> totals = countAllNearbyUncached(inventoryService, world, drone, player, radius);
         COUNT_CACHE.put(key, new java.util.LinkedHashMap<>(totals));
         COUNT_CACHE_EXPIRY.put(key, now + COUNT_CACHE_TTL_MS);
         if (COUNT_CACHE.size() > 16) {
@@ -73,11 +79,13 @@ final class MachineRecipeRanker {
         return totals;
     }
 
-    static java.util.Map<String, Integer> countAllNearbyUncached(InventoryService inventoryService, World world, EntityPlayerMP player, int radius) {
+    static java.util.Map<String, Integer> countAllNearbyUncached(InventoryService inventoryService, World world,
+                                                                li.cil.oc.common.entity.Drone drone,
+                                                                EntityPlayerMP player, int radius) {
         java.util.Map<String, Integer> totals = new java.util.LinkedHashMap<>();
         try {
             if (world == null) return totals;
-            IInventory droneInv = findDroneInventory(world, player);
+            IInventory droneInv = findDroneInventory(world, drone);
             if (droneInv != null) {
                 for (int i = 0; i < droneInv.getSizeInventory(); i++) {
                     ItemStack st = droneInv.getStackInSlot(i);
@@ -92,9 +100,9 @@ final class MachineRecipeRanker {
                     addToTotals(totals, st);
                 }
             }
-            double cx = player != null ? player.posX : 0;
-            double cy = player != null ? player.posY : 64;
-            double cz = player != null ? player.posZ : 0;
+            double cx = drone != null ? drone.posX : 0;
+            double cy = drone != null ? drone.posY : 64;
+            double cz = drone != null ? drone.posZ : 0;
             List<net.minecraft.tileentity.TileEntity> tiles = inventoryService.findAllInventoryTiles(world, cx, cy, cz, radius);
             for (net.minecraft.tileentity.TileEntity te : tiles) {
                 if (!(te instanceof IInventory)) continue;
@@ -151,29 +159,22 @@ final class MachineRecipeRanker {
         int meta;
     }
 
-    static IInventory findDroneInventory(World world, EntityPlayerMP player) {
+    static IInventory findDroneInventory(World world, li.cil.oc.common.entity.Drone drone) {
+        if (drone == null) return null;
         try {
-            if (player != null && world != null) {
-                for (Object o : world.loadedTileEntityList) {
-                    if (o == null) continue;
-                    String cn = o.getClass().getName();
-                    if (!cn.contains("Drone") && !cn.contains("drone")) continue;
-                    try {
-                        java.lang.reflect.Method m = o.getClass().getMethod("mainInventory");
-                        Object inv = m.invoke(o);
-                        if (inv instanceof IInventory) return (IInventory) inv;
-                    } catch (NoSuchMethodException ignored) {
-                    }
-                }
-            }
+            net.minecraft.inventory.IInventory inv = drone.mainInventory();
+            return inv;
         } catch (Throwable ignored) {
+            return null;
         }
-        return null;
     }
 
-    static MachineRecipeService.Availability assess(InventoryService inventoryService, MachineRecipeService.NormalizedRecipe r, World world, EntityPlayerMP player, int radius) {
+    static MachineRecipeService.Availability assess(InventoryService inventoryService,
+                                                    MachineRecipeService.NormalizedRecipe r,
+                                                    World world, li.cil.oc.common.entity.Drone drone,
+                                                    EntityPlayerMP player, int radius) {
         MachineRecipeService.Availability av = new MachineRecipeService.Availability();
-        java.util.Map<String, Integer> totals = countAllNearby(inventoryService, world, player, radius);
+        java.util.Map<String, Integer> totals = countAllNearby(inventoryService, world, drone, player, radius);
         int needed = 0;
         int have = 0;
         int miss = 0;

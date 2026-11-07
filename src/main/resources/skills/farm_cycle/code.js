@@ -7,6 +7,10 @@ if (crop === 'sugarcane' || crop === 'sugar_cane' || crop === 'cane') {
   harvested = skills.call('sugarcane_farm', {
     radius: cfg.radius || 24, limit: cfg.limit || 48
   });
+} else if (crop === 'bamboo') {
+  harvested = skills.call('bamboo_farm', {
+    radius: cfg.radius || 24, limit: cfg.limit || 64
+  });
 } else if (crop === 'melon' || crop === 'pumpkin') {
   harvested = skills.call('melon_pumpkin_farm', {
     kind: crop, radius: cfg.radius || 24, limit: cfg.limit || 32

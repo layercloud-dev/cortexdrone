@@ -22,7 +22,9 @@ import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
 import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.action.visuals.VisualsState;
+import ir.layercloud.cortexdrone.manager.oc.impl.OcManager;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
+import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
@@ -69,6 +71,7 @@ public class AIDroneManager {
     private final VisualsManager visualsManager;
     private final InteractionManager interactionManager;
     private final InventoryManager inventoryManager;
+    private final OcManager ocManager;
     private final ActionRegistry actionRegistry;
     private final DocLookupService docLookupService;
     private Harness harness;
@@ -81,6 +84,7 @@ public class AIDroneManager {
     private final Map<String, DroneController> controllersByOwner = new ConcurrentHashMap<>();
     private int tickCounter = 0;
     private final OcHardwareBridge ocHardwareBridge = new OcHardwareBridge();
+    private final DamageJournal damageJournal = new DamageJournal();
     private final java.util.Set<UUID> despawnedUuids = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
 
     public AIDroneManager(CortexDroneMod mod, File configRoot) {
@@ -93,7 +97,8 @@ public class AIDroneManager {
         this.visualsManager = new VisualsManager(this, this.logger);
         this.interactionManager = new InteractionManager(this.inventoryService, this.logger);
         this.inventoryManager = new InventoryManager(this, this.inventoryService, this.logger);
-        this.buildingManager = new BuildingManager(this.logger);
+        this.buildingManager = new BuildingManager(this.logger, this.damageJournal);
+        this.ocManager = new OcManager();
         this.navigationManager = new NavigationManager(this, this.logger,
                 this.pathfinder, this.breadcrumbService);
         this.actionRegistry = new ActionRegistry();
@@ -101,6 +106,7 @@ public class AIDroneManager {
         this.actionRegistry.register(this.interactionManager);
         this.actionRegistry.register(this.inventoryManager);
         this.actionRegistry.register(this.visualsManager);
+        this.actionRegistry.register(this.ocManager);
         this.docLookupService = new DocLookupService(this.inventoryService);
         this.tickManager = new TickManager(
                 this,
@@ -171,6 +177,10 @@ public class AIDroneManager {
 
     public AgentService getAgentService() {
         return this.harness != null ? this.harness.agent() : null;
+    }
+
+    public DamageJournal getDamageJournal() {
+        return this.damageJournal;
     }
 
     public SkillLibrary getSkillLibrary() {

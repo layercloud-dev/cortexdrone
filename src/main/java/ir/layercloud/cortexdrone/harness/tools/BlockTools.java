@@ -53,6 +53,35 @@ public final class BlockTools implements ToolProvider {
                             .optionalInt("max_wait_ms", "Upper bound for the movement retry.", 5000, 180_000, 120_000))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(120_000L)
+                    .build(),
+            ToolSpec.builder("replace_block")
+                    .description("Atomically replace one block at x/y/z with a block from the DRONE "
+                            + "inventory. Checks the replacement first, removes the old block and places "
+                            + "the new one in the same call; if placement fails the original block is "
+                            + "restored, so it never leaves a hole. If the block already matches 'block' "
+                            + "(and meta) nothing is changed and alreadyMatching=true. Refuses protected "
+                            + "blocks, chests, machines and unreachable targets. Use this for floors, walls "
+                            + "and ceilings instead of break_block followed by place_block.")
+                    .parameters(ToolSchema.object()
+                            .requiredInt("x", "Target block X.")
+                            .requiredInt("y", "Target block Y.")
+                            .requiredInt("z", "Target block Z.")
+                            .optionalString("block", "Replacement block/item name, registry name or ore "
+                                    + "dictionary tag; 'any' picks any placeable block in the drone "
+                                    + "inventory.", "any")
+                            .optionalInt("meta", "Block metadata, -1 = auto.", -1, 15, -1)
+                            .optionalInt("max_wait_ms", "Upper bound for the movement retry.", 5000, 180_000, 120_000))
+                    .affinity(ToolAffinity.MAIN)
+                    .timeoutMs(120_000L)
+                    .build(),
+            ToolSpec.builder("repair_trail")
+                    .description("Put back the blocks the drone had to break to reach earlier targets. "
+                            + "Navigation avoids damage and only tunnels when no detour exists, but those "
+                            + "breaks are journalled. This closes the tunnel again, restoring block state "
+                            + "and tile entities. Slots that are no longer air are left untouched.")
+                    .parameters(ToolSchema.object())
+                    .affinity(ToolAffinity.MAIN)
+                    .timeoutMs(30_000L)
                     .build()
     );
 
@@ -72,6 +101,11 @@ public final class BlockTools implements ToolProvider {
                 (context, arguments) -> handle(context.controller(), context.player(), "break_block", arguments));
         registry.bind("place_block", getClass().getSimpleName(),
                 (context, arguments) -> handle(context.controller(), context.player(), "place_block", arguments));
+        registry.bind("replace_block", getClass().getSimpleName(),
+                (context, arguments) -> handle(context.controller(), context.player(), "replace_block", arguments));
+        registry.bind("repair_trail", getClass().getSimpleName(),
+                (context, arguments) -> this.building.handle(
+                        context.controller(), context.player(), "repair_trail", arguments));
     }
 
     private JsonObject handle(DroneController controller, EntityPlayerMP player,
@@ -83,11 +117,17 @@ public final class BlockTools implements ToolProvider {
         // Reach is distance AND line of sight: a block behind a wall is not
         // interactable even when its centre is within 4.5 blocks.
         JsonObject unreachable = ReachSupport.unreachable(controller, x, y, z,
-                "break_block".equals(method) ? "break" : "place");
+                "break_block".equals(method) ? "break"
+                        : ("replace_block".equals(method) ? "replace" : "place"));
         if (unreachable != null) return unreachable;
         if ("break_block".equals(method) && !ItemClassifier.isMineableBlock(world, x, y, z)) {
             return ToolJson.error("not_mineable", "Block at (" + x + "," + y + "," + z
                     + ") is air, unbreakable or protected.", "Inspect it with get_block and pick another target.", true);
+        }
+        if ("replace_block".equals(method) && !ItemClassifier.isMineableBlock(world, x, y, z)) {
+            return ToolJson.error("not_replaceable", "Block at (" + x + "," + y + "," + z
+                    + ") is air, unbreakable or protected. Replacement never removes chests, machines, "
+                    + "bedrock or air.", "Choose a normal floor/wall/ceiling block.", true);
         }
         if ("place_block".equals(method) && !ItemClassifier.isReplaceableBlock(world, x, y, z)) {
             return ToolJson.error("occupied", "Target (" + x + "," + y + "," + z

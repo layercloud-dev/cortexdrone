@@ -13,6 +13,7 @@ final class JsBudget {
     private final long deadlineMs;
     private final BooleanSupplier cancelled;
     private volatile boolean tripped;
+    private volatile boolean superseded;
     private volatile String reason;
 
     JsBudget(long deadlineMs, BooleanSupplier cancelled) {
@@ -24,6 +25,7 @@ final class JsBudget {
         if (this.tripped) throw new EvaluatorException(this.reason);
         if (this.cancelled != null && this.cancelled.getAsBoolean()) {
             this.tripped = true;
+            this.superseded = true;
             this.reason = "Script cancelled: the task generation was superseded.";
             throw new EvaluatorException(this.reason);
         }
@@ -36,6 +38,11 @@ final class JsBudget {
 
     boolean tripped() {
         return this.tripped;
+    }
+
+    /** True when the script stopped because a newer task replaced this one. */
+    boolean superseded() {
+        return this.superseded;
     }
 
     String reason() {

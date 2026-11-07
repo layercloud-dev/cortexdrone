@@ -37,11 +37,13 @@ public final class LlmClient {
         this.logger = logger;
     }
 
+    private static final int MAX_ATTEMPTS = 5;
+
     public LlmResponse chat(DroneController ctrl, List<JsonObject> messages,
                             JsonArray tools, boolean jsonMode) throws Exception {
         int attempt = 0;
         Exception last = null;
-        while (attempt < 3) {
+        while (attempt < MAX_ATTEMPTS) {
             attempt++;
             try {
                 JsonObject response = request(ctrl, messages, tools, jsonMode);
@@ -50,14 +52,37 @@ public final class LlmClient {
                 last = new IllegalStateException("Gateway returned no usable assistant message.");
             } catch (GatewayException gateway) {
                 last = gateway;
-                boolean rejected = gateway.httpCode() == 400 || gateway.httpCode() == 404
-                        || gateway.httpCode() == 422;
-                if (gateway.httpCode() == 401 || gateway.httpCode() == 403 || rejected) throw gateway;
-                if (attempt >= 3) throw gateway;
-                sleep(400L * attempt);
+                if (!isTransient(gateway) || attempt >= MAX_ATTEMPTS) throw gateway;
+                if (this.logger != null) {
+                    this.logger.log("LLM", ctrl, "Transient gateway error, retrying",
+                            "attempt=" + attempt + "/" + MAX_ATTEMPTS + " " + gateway.getMessage());
+                }
+                // Back off further each time: 800ms, 1.6s, 2.4s, 3.2s.
+                sleep(800L * attempt);
             }
         }
         throw last != null ? last : new IllegalStateException("LLM request failed");
+    }
+
+    /**
+     * Retry only what can plausibly succeed on a second try.
+     *
+     * <p>A 5xx or a "model not available / all upstreams failed" 403 is the
+     * gateway briefly failing to place the request. A bad key or malformed body
+     * is not, and retrying it just delays the error the player needs to see.</p>
+     */
+    private static boolean isTransient(GatewayException gateway) {
+        int code = gateway.httpCode();
+        if (code >= 500) return true;
+        if (code == 408 || code == 429) return true;
+        if (code != 403) return false;
+        String message = gateway.getMessage() != null
+                ? gateway.getMessage().toLowerCase() : "";
+        return message.contains("model_not_available")
+                || message.contains("all_upstreams_failed")
+                || message.contains("upstream")
+                || message.contains("overload")
+                || message.contains("timeout");
     }
 
     private JsonObject request(DroneController ctrl, List<JsonObject> messages, JsonArray tools,

@@ -80,10 +80,11 @@ public final class StateView {
 
         JsonArray inventory = new JsonArray();
         IInventory inv = drone.mainInventory();
+        int slots = inv != null ? inv.getSizeInventory() : 0;
         int usedSlots = 0;
         int totalItems = 0;
         if (inv != null) {
-            for (int i = 0; i < inv.getSizeInventory(); i++) {
+            for (int i = 0; i < slots; i++) {
                 ItemStack stack = inv.getStackInSlot(i);
                 if (stack != null && stack.stackSize > 0) {
                     usedSlots++;
@@ -92,7 +93,10 @@ public final class StateView {
                 }
             }
         }
-        response.addProperty("freeSlots", Math.max(0, 8 - usedSlots));
+        // Report the drone's real inventory size. The old code assumed 8 slots,
+        // so a drone with no inventory upgrades looked like it had room.
+        response.addProperty("slots", slots);
+        response.addProperty("freeSlots", Math.max(0, slots - usedSlots));
         response.addProperty("totalItems", totalItems);
         response.addProperty("isFull", InventoryService.isInventoryFull(inv));
         response.add("inventory", inventory);

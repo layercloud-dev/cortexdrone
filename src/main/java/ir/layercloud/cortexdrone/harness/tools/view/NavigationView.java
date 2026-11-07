@@ -52,8 +52,8 @@ public final class NavigationView {
                 .standoffY(hasStandoff ? standoff.get("y").getAsInt() : 0)
                 .standoffZ(hasStandoff ? standoff.get("z").getAsInt() : 0)
                 .allowDig(ToolArgs.bool(args, "allowDig", true))
-                .maxDigBlocks(ToolArgs.clampedInt(args, "maxDigBlocks", 48, 0, 512))
-                .recoveryAttempts(ToolArgs.clampedInt(args, "recoveryAttempts", 8, 0, 32))
+                .maxDigBlocks(ToolArgs.clampedInt(args, "maxDigBlocks", 64, 0, 512))
+                .recoveryAttempts(ToolArgs.clampedInt(args, "recoveryAttempts", 12, 0, 32))
                 .build();
     }
 

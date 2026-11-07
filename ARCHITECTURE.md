@@ -24,6 +24,8 @@ Detailed chapters live in `docs/`:
 - [docs/10-build-deploy.md](docs/10-build-deploy.md) — Gradle, tests, validation, deploy
 - [docs/11-extending.md](docs/11-extending.md) — adding tools, actions, services, skills
 - [docs/12-source-inventory.md](docs/12-source-inventory.md) — class-by-class inventory
+- [docs/13-skills.md](docs/13-skills.md) — bundled skill suite, parameters and examples
+- [docs/14-legacy-parity.md](docs/14-legacy-parity.md) — old SMP requests vs current features
 
 ## 1. System at a glance
 

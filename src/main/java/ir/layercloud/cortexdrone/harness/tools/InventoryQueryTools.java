@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.DroneController;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.harness.tool.ToolContext;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
@@ -96,7 +97,8 @@ public class InventoryQueryTools implements ToolProvider {
                         .affinity(ToolAffinity.MAIN).timeoutMs(5_000L).build(),
                 ToolSpec.builder("scan_furnaces")
                         .description("Scan nearby furnaces and report position, burn/cook progress and every "
-                                + "slot's contents. Useful for smelting tasks and fuel checks.")
+                                + "slot's contents. Read-only: it never advances a furnace. To smelt, move "
+                                + "items into it from within reach and let the world tick it.")
                         .parameters(ToolSchema.object()
                                 .optionalInt("radius", "Search radius, 4..36.", 4, 36, 24))
                         .affinity(ToolAffinity.MAIN).timeoutMs(4_000L).build(),
@@ -141,7 +143,11 @@ public class InventoryQueryTools implements ToolProvider {
         for (ToolSpec spec : specs()) {
             final String name = spec.getName();
             registry.bind(name, getClass().getSimpleName(),
-                    (context, arguments) -> handle(context.controller(), context.player(), name, arguments));
+                    (context, arguments) -> {
+                        JsonObject result = handle(context.controller(), context.player(), name, arguments);
+                        rememberScanned(context, name, result);
+                        return result;
+                    });
         }
     }
 
@@ -327,7 +333,7 @@ public class InventoryQueryTools implements ToolProvider {
                 String machine = args.has("machine") ? args.get("machine").getAsString()
                         : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
                 int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
-                return this.inventoryService.getMachineRecipeService().getBestMachineRecipe(world, player, filter, machine, radius);
+                return this.inventoryService.getMachineRecipeService().getBestMachineRecipe(world, d, player, filter, machine, radius);
             }
             case "scan_machines": {
                 String machine = args.has("machine") ? args.get("machine").getAsString()
@@ -335,9 +341,10 @@ public class InventoryQueryTools implements ToolProvider {
                         : (args.has("filter") ? args.get("filter").getAsString() : ""));
                 int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
                 String want = MachineTileInspector.normalizeMachineAlias(machine);
-                double refX = player != null && player.worldObj == world ? player.posX : d.posX;
-                double refY = player != null && player.worldObj == world ? player.posY : d.posY;
-                double refZ = player != null && player.worldObj == world ? player.posZ : d.posZ;
+                // Centre on the drone: it is where the machine and loaded chunks are.
+                double refX = d.posX;
+                double refY = d.posY;
+                double refZ = d.posZ;
                 List<TileEntity> machines = MachineTileInspector.findMachineTiles(world, refX, refY, refZ, radius, want);
                 JsonArray arr = new JsonArray();
                 for (TileEntity te : machines) arr.add(MachineTileInspector.describeMachineTile(world, te));
@@ -352,7 +359,7 @@ public class InventoryQueryTools implements ToolProvider {
                 String machine = args.has("machine") ? args.get("machine").getAsString()
                         : (args.has("machineKind") ? args.get("machineKind").getAsString() : "");
                 int radius = args.has("radius") ? Math.min(64, Math.max(4, args.get("radius").getAsInt())) : 32;
-                JsonObject best = this.inventoryService.getMachineRecipeService().getBestMachineRecipe(world, player, filter, machine, radius);
+                JsonObject best = this.inventoryService.getMachineRecipeService().getBestMachineRecipe(world, d, player, filter, machine, radius);
                 if (!best.has("recipe")) return best;
                 JsonObject recipe = best.getAsJsonObject("recipe");
                 JsonObject out = new JsonObject();
@@ -388,5 +395,41 @@ public class InventoryQueryTools implements ToolProvider {
         res.addProperty("ok", false);
         res.addProperty("error", "Unhandled inventory tool: " + m);
         return res;
+    }
+
+    /**
+     * A scan that finds a machine inside the drone's reach is a visit: remember
+     * its position and the approach trail so a later task can fly straight back.
+     * Nothing is written for machines the drone could not actually open.
+     */
+    private static void rememberScanned(ToolContext context, String name, JsonObject result) {
+        if (result == null || !result.has("ok") || !result.get("ok").getAsBoolean()) return;
+        if (context == null || context.controller() == null
+                || context.controller().drone == null || context.controller().drone.worldObj == null) return;
+        if (!"scan_machines".equals(name) && !"scan_furnaces".equals(name)) return;
+        com.google.gson.JsonArray machines = result.has("machines")
+                ? result.getAsJsonArray("machines")
+                : (result.has("furnaces") ? result.getAsJsonArray("furnaces") : null);
+        if (machines == null || machines.size() == 0) return;
+        net.minecraft.world.World world = context.controller().drone.worldObj;
+        java.util.List<net.minecraft.tileentity.TileEntity> reachable =
+                ir.layercloud.cortexdrone.service.inventory.ContainerAccess.reachable(
+                        world, context.controller().drone, tilesFrom(world, machines));
+        if (reachable.isEmpty()) return;
+        PlaceMemory.rememberTile(context, context.controller(), world, reachable.get(0));
+    }
+
+    private static java.util.List<net.minecraft.tileentity.TileEntity> tilesFrom(
+            net.minecraft.world.World world, com.google.gson.JsonArray entries) {
+        java.util.List<net.minecraft.tileentity.TileEntity> tiles = new java.util.ArrayList<>();
+        for (com.google.gson.JsonElement element : entries) {
+            if (element == null || !element.isJsonObject()) continue;
+            JsonObject object = element.getAsJsonObject();
+            if (!object.has("x") || !object.has("y") || !object.has("z")) continue;
+            net.minecraft.tileentity.TileEntity tile = world.getTileEntity(
+                    object.get("x").getAsInt(), object.get("y").getAsInt(), object.get("z").getAsInt());
+            if (tile != null) tiles.add(tile);
+        }
+        return tiles;
     }
 }

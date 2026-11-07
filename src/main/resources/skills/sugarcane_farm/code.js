@@ -1,4 +1,4 @@
-// Sugar cane harvest. params: { radius, limit, plant_new }
+// Sugar cane harvest. params: { radius, limit }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var radius = clamp(cfg.radius || 24, 4, 32);
 var limit = clamp(cfg.limit || 48, 1, 128);
@@ -21,25 +21,36 @@ for (var i = 0; i < list.length; i++) {
 
 var harvested = 0;
 var columnsTouched = 0;
+var skipped = 0;
 var failed = 0;
 var keys = Object.keys(columns);
 for (var c = 0; c < keys.length && harvested < limit; c++) {
   var column = columns[keys[c]];
   column.sort(function (a, b) { return a.y - b.y; });
-  if (column.length < 2) continue; // one block tall: leave it to grow
+
+  // Skip every column with fewer than two blocks: a single block is the base
+  // (immature cane), so leave it in the ground to grow. Never break column[0].
+  if (column.length < 2) {
+    skipped++;
+    continue;
+  }
   columnsTouched++;
-  // Break from the top down so the upper blocks do not fall into the water.
-  for (var k = column.length - 1; k >= 1 && harvested < limit; k--) {
-    var cane = column[k];
-    try {
-      drone.goto({ standoffOf: { x: cane.x, y: cane.y, z: cane.z }, allow_dig: false });
-      var broke = drone.breakBlock({ x: cane.x, y: cane.y, z: cane.z });
-      if (broke && broke.broken) harvested++;
-      else failed++;
-    } catch (breakError) {
-      failed++;
-      log('cane skip at ' + cane.x + ',' + cane.y + ',' + cane.z + ': ' + breakError.message);
-    }
+
+  // Cut column[1], the first block above the base (the middle of a three-tall
+  // cane). Sugar cane pops every block above the broken one in the same update,
+  // so this single cut removes the whole upper column at once and keeps the
+  // base for regrowth. Breaking from the top down needs one goto+break per
+  // block and leaves stubs behind when a reach check fails.
+  var cut = column[1];
+  var expected = column.length - 1;
+  try {
+    drone.goto({ standoffOf: { x: cut.x, y: cut.y, z: cut.z }, allow_dig: false });
+    var broke = drone.breakBlock({ x: cut.x, y: cut.y, z: cut.z });
+    if (broke && broke.broken) harvested += expected;
+    else failed += expected;
+  } catch (breakError) {
+    failed += expected;
+    log('cane skip at ' + cut.x + ',' + cut.y + ',' + cut.z + ': ' + breakError.message);
   }
 }
 
@@ -55,7 +66,8 @@ return {
   ok: harvested > 0,
   harvested: harvested,
   columns: columnsTouched,
+  skipped: skipped,
   failed: failed,
   collected: collected && collected.collected,
-  note: 'the bottom block stays and regrows on its own; no replanting needed'
+  note: 'cut the first block above the base so the whole upper cane pops at once; the base stays and regrows'
 };

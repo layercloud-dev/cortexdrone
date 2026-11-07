@@ -64,16 +64,10 @@ public final class ItemClassifier {
         if (RegistryIntrospector.isFurnaceTile(world, te)) return true;
         String cls = te.getClass().getName().toLowerCase();
         if (cls.contains("opencomputers") || cls.contains("li.cil.oc")) return true;
-        if (te instanceof IInventory) {
-            IInventory inv = (IInventory) te;
-            for (int i = 0; i < inv.getSizeInventory(); i++) {
-                ItemStack st = inv.getStackInSlot(i);
-                if (st != null && st.stackSize > 0) {
-                    return true;
-                }
-            }
-            return false;
-        }
+        // Any inventory tile is property, empty or not. The old code returned
+        // false for an empty container, so automatic tunnelling happily broke
+        // through an empty crate or chest.
+        if (te instanceof IInventory) return true;
         return true;
     }
 
@@ -84,6 +78,9 @@ public final class ItemClassifier {
         if (b == null || b == Blocks.air || b == Blocks.bedrock) return false;
         if (isLiquidBlock(b)) return false;
         if (b.getBlockHardness(world, x, y, z) < 0.0f) return false;
+        // A chest whose tile entity is not loaded yet is still a chest.
+        if (b instanceof net.minecraft.block.BlockChest
+                || b instanceof net.minecraft.block.BlockEnderChest) return false;
         return !isProtectedTileEntity(world, x, y, z);
     }
 

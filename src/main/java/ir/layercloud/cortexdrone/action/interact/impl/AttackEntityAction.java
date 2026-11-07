@@ -76,7 +76,9 @@ public final class AttackEntityAction implements Action<InteractionContext> {
 
         IInventory inventory = drone.mainInventory();
         int size = inventory != null ? inventory.getSizeInventory() : 0;
-        int slot = request.hasSlot() ? request.getSlot() : fakePlayer.inventory.currentItem;
+        // A drone with no inventory slots can still punch. Only an explicitly
+        // requested slot is an error when it does not exist.
+        int slot = request.hasSlot() ? request.getSlot() : -1;
         String filter = request.getItem();
         if (filter != null) {
             int found = findWeaponSlot(inventory, size, filter);
@@ -86,18 +88,24 @@ public final class AttackEntityAction implements Action<InteractionContext> {
                 return;
             }
             slot = found;
+        } else if (slot < 0 && size > 0) {
+            // Select the best weapon, like a player would. Falls back to the
+            // held slot and then to an unarmed strike.
+            slot = ToolInspector.findBestWeaponSlot(inventory);
+            if (slot < 0) {
+                int held = fakePlayer.inventory != null ? fakePlayer.inventory.currentItem : 0;
+                slot = Math.max(0, Math.min(size - 1, held));
+            }
         }
-        if (slot < 0 || slot >= size) {
-            context.result(InteractionResult.failure("Invalid attack slot " + slot));
-            return;
-        }
-        if (slot >= 9) {
+        if (slot >= size) {
             context.result(InteractionResult.failure(
-                    "Weapon must be in the drone's hotbar (slot 0-8)"));
+                    "Invalid attack slot " + slot + " (drone inventory has " + size + " slot(s))"));
             return;
         }
 
-        fakePlayer.inventory.currentItem = slot;
+        if (fakePlayer.inventory != null) {
+            fakePlayer.inventory.currentItem = slot >= 0 ? Math.min(8, slot) : 0;
+        }
         InteractionSupport.syncFakePlayerToDrone(fakePlayer, drone);
         double dx = target.posX - drone.posX;
         double dy = target.posY - drone.posY;
@@ -107,9 +115,10 @@ public final class AttackEntityAction implements Action<InteractionContext> {
 
         EntityLivingBase living = (EntityLivingBase) target;
         float before = living.getHealth();
-        ItemStack weapon = inventory.getStackInSlot(slot);
-        float damage = ToolInspector.computeAttackDamage(inventory, living, 20.0f);
-        int fireSeconds = ToolInspector.getFireAspectSeconds(inventory);
+        ItemStack weapon = slot >= 0 && inventory != null && slot < size
+                ? inventory.getStackInSlot(slot) : null;
+        float damage = ToolInspector.computeAttackDamage(inventory, slot, living);
+        int fireSeconds = ToolInspector.getFireAspectSeconds(inventory, slot);
         if (fireSeconds > 0) living.setFire(fireSeconds);
         try {
             living.attackEntityFrom(DamageSource.causePlayerDamage(fakePlayer), damage);

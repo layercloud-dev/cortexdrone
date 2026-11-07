@@ -11,6 +11,7 @@ import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
+import ir.layercloud.cortexdrone.harness.skill.SkillCodeGuard;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.session.SessionJournal;
@@ -282,12 +283,21 @@ public final class AgentService {
      * Safety net for the "learn after success" rule: when a successful script
      * performed real work but the model skipped {@code skill_refine}, save the
      * exact code as a skill anyway. The model still owns the good description;
-     * this only guarantees that a working workflow is not thrown away.
+     * this only guarantees that a working workflow is not thrown away. Scripts
+     * that embed instance-specific literals are skipped: a hardcoded recording
+     * is not a reusable skill.
      */
     private void maybeAutoSaveSkill(DroneController controller, String prompt,
                                     String code, boolean refined) {
         if (refined || code == null || code.trim().length() < 200) return;
         if (!performsWorldAction(code)) return;
+        List<SkillCodeGuard.Violation> violations = SkillCodeGuard.inspect(code);
+        if (!violations.isEmpty()) {
+            this.logger.log("SKILL", controller,
+                    "Auto-save skipped: script contains instance-specific literals",
+                    SkillCodeGuard.describe(violations));
+            return;
+        }
         String name = autoSkillName(prompt);
         Skill skill = this.skills.save(name, limit(prompt, 220), "auto",
                 java.util.Collections.singletonList(limit(prompt, 120)), code, "auto");

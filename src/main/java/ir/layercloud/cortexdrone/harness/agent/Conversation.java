@@ -176,7 +176,7 @@ public final class Conversation {
     }
 
     private JsonElement bound(JsonElement element, int depth) {
-        if (element == null) return null;
+        if (element == null || element.isJsonNull()) return com.google.gson.JsonNull.INSTANCE;
         if (element.isJsonPrimitive()) {
             if (element.getAsJsonPrimitive().isString()) {
                 String text = element.getAsString();

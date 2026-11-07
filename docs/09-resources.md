@@ -68,8 +68,10 @@ file in the same directory; it defaults to `code.js`.
 | Skill | Purpose |
 | --- | --- |
 | `mine_blocks` | bounded scan/vein/move/break primitive |
+| `mine_box` | exact 3D volume mining (3x3 under player, tunnel, explicit box) |
 | `deliver_items` | fly to the player and hand over a filter |
 | `mine_and_deliver` | composes `mine_blocks` + `deliver_items` |
+| `gather_distant` | find a far resource/biome, harvest, optionally deliver |
 | `collect_drops` | fly to drop clusters and vacuum them |
 | `store_items` | fly to chest and deposit cargo |
 | `withdraw_items` | find/withdraw a material from player or chests |
@@ -82,7 +84,8 @@ file in the same directory; it defaults to `code.js`.
 | `carry_player` | pick the player up, fly, dismount |
 | `transport_entity` | pick/move/unpick an animal or mob |
 | `harvest_crops` | wheat/carrot/potato harvest + replant |
-| `sugarcane_farm` | keep the base, harvest the upper cane |
+| `sugarcane_farm` | keep the base, middle-cut so the upper cane pops at once |
+| `bamboo_farm` | keep the base, middle-cut so the upper stalk pops at once |
 | `melon_pumpkin_farm` | break fruit, leave stems |
 | `chop_tree` | fell logs top-down, replant a sapling |
 | `farm_cycle` | harvest + collect + deliver/store |
@@ -91,7 +94,10 @@ file in the same directory; it defaults to `code.js`.
 | `build_structure` | survey -> plan -> materials -> place -> verify |
 | `build_wall` | wall via planner + `place_build_plan` |
 | `build_platform` | platform/bridge via the planner |
+| `replace_surface` | atomic room floor/wall/ceiling replacement |
+| `replace_box` | atomic 3D box replacement with source filter |
 | `light_area` | torch grid on solid floors |
+| `follow_player` | bounded follow with stable hover and drop pickup |
 | `return_to_player` | goal navigation back to the owner |
 | `rainbow_show` | LED animation via static primitive |
 

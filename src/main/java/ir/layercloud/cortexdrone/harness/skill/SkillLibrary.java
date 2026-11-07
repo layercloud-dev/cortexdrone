@@ -86,6 +86,7 @@ public final class SkillLibrary {
                                    String docs, String code, String source) {
         if (name == null || name.trim().isEmpty() || code == null || code.trim().isEmpty()) return null;
         if (code.length() > MAX_SKILL_CODE_CHARS) return null;
+        if (!SkillCodeGuard.isClean(code)) return null;
         String key = normalize(name);
         Skill skill = this.skills.get(key);
         if (skill == null) {

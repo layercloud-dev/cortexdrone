@@ -177,14 +177,18 @@ cover:
 
 - mining and hauling — `mine_blocks`, `mine_box`, `mine_and_deliver`, `gather_distant`,
   `deliver_items`;
-- storage — `store_items`, `withdraw_items`, `sort_chests`, `place_double_chest`;
+- digging and shafts — `dig_staircase`, `dig_shaft`, `strip_mine`, `quarry`;
+- storage — `store_items`, `withdraw_items`, `fetch_materials`, `sort_chests`,
+  `place_double_chest`;
+- crafting and smelting — `craft_items`, `smelt_items`, `ore_to_ingots`;
 - combat — `hunt`, `guard_scan`, `guard`, `patrol`;
 - transport — `follow_player`, `carry_player`, `transport_entity`;
 - farming — `harvest_crops` (wheat/carrots/potatoes with replant),
-  `sugarcane_farm`, `bamboo_farm`, `melon_pumpkin_farm`, `chop_tree`, `farm_cycle`;
+  `sugarcane_farm`, `bamboo_farm`, `melon_pumpkin_farm`, `nether_wart_farm`,
+  `cactus_farm`, `plant_farm`, `fertilize_crops`, `chop_tree`, `farm_cycle`;
 - building — `survey_build_site`, `plan_structure` + `place_build_plan`,
-  `build_structure`, `build_wall`, `build_platform`, `replace_surface`,
-  `replace_box`, `light_area`;
+  `build_structure`, `build_wall`, `build_platform`, `build_nether_portal`,
+  `replace_surface`, `replace_box`, `light_area`;
 - utility — `return_to_player`, `collect_drops`, `rainbow_show`.
 
 Skills are split so each one is small and calls its dependencies with
@@ -301,6 +305,12 @@ Never store player secrets or one-off task progress.
   not fake one. Each opened container plays its real open/close feedback.
 - **Furnaces run at vanilla speed.** Move fuel and input in from within reach
   and let the world tick it. Never look for a way to advance cooking.
+  `smelt_items` already handles input/fuel/output slots and waits; prefer it
+  over hand-writing the transfer loop.
+- **Dig with a floor.** A staircase, shaft, tunnel or quarry must never remove
+  the block under the drone or the player. `dig_staircase`, `dig_shaft`,
+  `strip_mine` and `quarry` already order the work that way; do not hand-roll a
+  faster-looking loop that digs the support block first.
 - **Respect reach and line of sight.** A block is only interactable within 4.5
   blocks AND when the drone can actually see it. If a result says
   `block_occluded`, the target is behind another block: break the covering

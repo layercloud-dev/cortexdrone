@@ -60,7 +60,10 @@ public class TickManager {
                 : d.getDistance(navigation.goalX, navigation.goalY, navigation.goalZ);
         boolean longRangeFlight = distFinalGoal > 14.0;
         if (!machineRunningOk || (postTargetDist > 0.30 && (navigation == null || navigation.lastMoveSq < 0.0004)) || longRangeFlight) {
-            double maxSpeed = distFinalGoal > 24.0 ? 1.15 : (longRangeFlight ? 0.85 : 0.42);
+            // Keep the manual integrator below the point where a 1.15-block
+            // step can graze a corner faster than the 0.75-wide drone can
+            // resolve. OC's own maxVelocity is 0.4; 0.75 still gives 15 b/s.
+            double maxSpeed = distFinalGoal > 24.0 ? 0.75 : (longRangeFlight ? 0.55 : 0.40);
             FlightPathfinder.runServerSidePhysicsStep(d, maxSpeed);
         }
     }

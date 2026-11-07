@@ -4,6 +4,11 @@ var filter = cfg.filter || 'ores';
 var radius = clamp(cfg.radius || 24, 4, 32);
 var wanted = clamp(cfg.count || 8, 1, 256);
 var useVeins = cfg.veins !== false;
+// Mining is destructive by definition: allow navigation to tunnel to buried
+// targets unless the caller explicitly forbids it. Baritone's mine process
+// breaks the blocks between the bot and the ore for exactly this reason.
+var allowDig = cfg.allow_dig !== false;
+var maxDigBlocks = clamp(cfg.max_dig_blocks || 96, 0, 512);
 var targets = [];
 
 if (useVeins) {
@@ -55,7 +60,12 @@ for (var t = 0; t < targets.length; t++) {
   }
   var target = targets[t];
   try {
-    var moved = drone.goto({ standoffOf: { x: target.x, y: target.y, z: target.z }, allow_dig: false });
+    var moved = drone.goto({
+      standoffOf: { x: target.x, y: target.y, z: target.z },
+      allow_dig: allowDig,
+      max_dig_blocks: maxDigBlocks,
+      recovery_attempts: 12
+    });
     if (!moved || moved.arrived === false) { failed++; continue; }
     var broke = drone.breakBlock({ x: target.x, y: target.y, z: target.z });
     if (broke && broke.broken) mined.push(target);

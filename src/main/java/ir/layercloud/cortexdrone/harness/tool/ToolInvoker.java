@@ -111,39 +111,63 @@ public final class ToolInvoker {
 
     private JsonObject awaitNavigation(ToolContext context, JsonObject result, JsonObject args) {
         DroneController controller = context.controller();
+        if (result == null || !result.has("started") || !result.get("started").getAsBoolean()) {
+            // Synchronous destination/validation failure. It must never be
+            // reported as a successful arrival.
+            if (result != null && !result.has("arrived")) result.addProperty("arrived", false);
+            return result;
+        }
+        long requestId = result.has("request_id") ? result.get("request_id").getAsLong() : 0L;
         long waitMs = args != null && args.has("max_wait_ms") ? args.get("max_wait_ms").getAsLong() : 120_000L;
-        long deadline = System.currentTimeMillis() + Math.max(5_000L, Math.min(180_000L, waitMs));
+        long waitBudget = Math.max(5_000L, Math.min(180_000L, waitMs));
+        long deadline = System.currentTimeMillis() + waitBudget;
+        NavigationState state = this.manager.getNavigationManager().state(controller);
         while (System.currentTimeMillis() < deadline) {
             if (context.cancelled()) {
                 return ToolJson.error("cancelled", "Navigation was cancelled by a newer task.", null, false);
             }
-            if (!this.manager.getNavigationManager().isActive(controller)) break;
+            if (state != null && state.isRequestFinished(requestId)) break;
+            if (requestId <= 0L && !this.manager.getNavigationManager().isActive(controller)) break;
             sleep(100L);
         }
-        NavigationState state = this.manager.getNavigationManager().state(controller);
-        boolean active = this.manager.getNavigationManager().isActive(controller);
-        boolean failed = state != null && state.error != null && !state.error.isEmpty();
+        boolean finished = state != null && state.isRequestFinished(requestId);
         JsonObject merged = result;
-        merged.addProperty("arrived", !active && !failed);
         merged.addProperty("waited_ms", Math.max(0L, System.currentTimeMillis()
-                - (deadline - Math.max(5_000L, Math.min(180_000L, waitMs)))));
-        if (state != null) {
-            merged.addProperty("navigation_phase", this.manager.getNavigationManager().status(controller).getPhase());
-            if (failed) {
-                merged.addProperty("navigation_error", state.error);
-                merged.addProperty("ok", false);
-                merged.addProperty("code", "navigation_failed");
-                merged.addProperty("error", state.error);
-                merged.addProperty("hint", "Automatic trail, tunnel and detour recovery were exhausted. "
-                        + "Pick a nearer goal or a different destination; do not repeat the same goto.");
-            }
-        }
-        if (active && !failed) {
+                - (deadline - waitBudget)));
+        merged.addProperty("navigation_phase",
+                this.manager.getNavigationManager().status(controller).getPhase());
+        if (!finished) {
             merged.addProperty("ok", false);
+            merged.addProperty("arrived", false);
             merged.addProperty("code", "navigation_timeout");
             merged.addProperty("error", "Navigation did not finish within the wait budget.");
             merged.addProperty("hint", "Increase max_wait_ms, call stop, or choose a closer target.");
+            return merged;
         }
+        if ("arrived".equals(state.finishedOutcome) && state.finishedRequestId == requestId) {
+            merged.addProperty("ok", true);
+            merged.addProperty("arrived", true);
+            return merged;
+        }
+        merged.addProperty("ok", false);
+        merged.addProperty("arrived", false);
+        boolean superseded = state.finishedRequestId != requestId;
+        String error = superseded ? "Navigation was superseded by a newer request."
+                : (state.finishedError != null && !state.finishedError.isEmpty()
+                ? state.finishedError : "Navigation ended without arriving.");
+        if (superseded || "replaced".equals(state.finishedOutcome)
+                || "stopped".equals(state.finishedOutcome)
+                || "cancelled".equals(state.finishedOutcome)) {
+            merged.addProperty("code", "cancelled");
+            merged.addProperty("error", error);
+            merged.addProperty("retryable", false);
+            return merged;
+        }
+        merged.addProperty("code", "navigation_failed");
+        merged.addProperty("error", error);
+        merged.addProperty("navigation_error", error);
+        merged.addProperty("hint", "Automatic trail, tunnel and detour recovery were exhausted. "
+                + "Pick a nearer goal or a different destination; do not repeat the same goto.");
         return merged;
     }
 

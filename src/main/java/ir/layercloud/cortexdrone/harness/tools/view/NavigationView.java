@@ -64,6 +64,9 @@ public final class NavigationView {
         response.addProperty("started", result.isStarted());
         response.addProperty("arrived", result.isArrived());
         response.addProperty("phase", result.getPhase());
+        if (result.getRequestId() > 0L) {
+            response.addProperty("request_id", result.getRequestId());
+        }
         JsonObject goal = new JsonObject();
         goal.addProperty("x", Math.round(result.getGoalX() * 100.0) / 100.0);
         goal.addProperty("y", Math.round(result.getGoalY() * 100.0) / 100.0);

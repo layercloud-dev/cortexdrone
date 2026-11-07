@@ -20,6 +20,14 @@ public class FlightPathfinder {
     // Baritone-inspired multi-coefficient backoff weights for partial path selection
     private static final double[] BARITONE_COEFFICIENTS = new double[]{1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 10.0};
     private static final double MIN_IMPROVEMENT = 0.01;
+    /** Baritone's MIN_DIST_PATH: a partial route shorter than this is not useful. */
+    private static final double MIN_PARTIAL_DIST = 5.0;
+    private static final int MAX_EXPANSIONS = 1400;
+    /** Per-plan wall-clock budget; the server tick must stay responsive. */
+    private static final long SEARCH_BUDGET_NANOS = 4_000_000L;
+    /** Theta* shortcuts are local corrections, not long-range raycasts. */
+    private static final double MAX_THETA_DIST_SQ = 64.0;
+    private static final int SMOOTH_LOOKAHEAD = 16;
 
     @RequiredArgsConstructor
     static class AStarNode implements Comparable<AStarNode> {
@@ -173,9 +181,9 @@ public class FlightPathfinder {
 
         AStarNode reached = null;
         int expanded = 0;
-        int maxExpand = 400;
+        long deadline = System.nanoTime() + SEARCH_BUDGET_NANOS;
 
-        while (!open.isEmpty() && expanded < maxExpand) {
+        while (!open.isEmpty() && expanded < MAX_EXPANSIONS && System.nanoTime() < deadline) {
             AStarNode cur = open.poll();
             long cKey = packBlockPos(cur.x, cur.y, cur.z);
             if (!closed.add(cKey)) continue;
@@ -229,10 +237,15 @@ public class FlightPathfinder {
                             stepCost += 0.35;
                         }
 
-                        // Theta* Any-Angle Pathfinding: if cur.parent has direct 3D DDA line-of-sight to (nx,ny,nz), shortcut directly from cur.parent
+                        // Theta* Any-Angle Pathfinding: if cur.parent has a short
+                        // direct line to this neighbour, shortcut it. Long rays
+                        // made every expansion do seven DDAs and dominated the
+                        // server tick, so this is deliberately local.
                         AStarNode effectiveParent = cur;
                         double ng = cur.g + stepCost;
-                        if (cur.parent != null && !inLiq && VoxelRaycaster3D.isFatLineClear(
+                        if (cur.parent != null && !inLiq
+                                && squaredDistance(cur.parent, nx, ny, nz) <= MAX_THETA_DIST_SQ
+                                && VoxelRaycaster3D.isFatLineClear(
                                 bsi,
                                 cur.parent.x + 0.5, cur.parent.y + 0.65, cur.parent.z + 0.5,
                                 nx + 0.5, ny + 0.65, nz + 0.5
@@ -276,24 +289,17 @@ public class FlightPathfinder {
             nav.lastPathPartial = (reached == null);
         }
 
-        AStarNode targetNode = reached;
+        AStarNode targetNode = reached != null ? reached : bestPartialNode(bestSoFar, startX, startY, startZ);
         if (targetNode == null) {
-            // Select best Baritone backoff node that travels at least 2 blocks from start
-            for (int i = 0; i < BARITONE_COEFFICIENTS.length; i++) {
-                AStarNode cand = bestSoFar[i];
-                if (cand != null) {
-                    int distSq = (cand.x - startX) * (cand.x - startX)
-                            + (cand.y - startY) * (cand.y - startY)
-                            + (cand.z - startZ) * (cand.z - startZ);
-                    if (distSq >= 4) {
-                        targetNode = cand;
-                        break;
-                    }
-                }
+            // Baritone refuses to hand back a route shorter than MIN_DIST_PATH.
+            // Returning the start node here used to produce a one-waypoint
+            // path that immediately blocked, which burned the whole recovery
+            // budget on detours before digging could start.
+            if (nav != null) {
+                nav.lastPathNodesExpanded = expanded;
+                nav.lastPathPartial = true;
             }
-            if (targetNode == null) {
-                targetNode = bestSoFar[BARITONE_COEFFICIENTS.length - 1];
-            }
+            return result;
         }
 
         List<double[]> raw = new ArrayList<>();
@@ -314,9 +320,11 @@ public class FlightPathfinder {
             while (idx < raw.size() - 1) {
                 int furthest = idx + 1;
                 double[] from = idx == 0 ? new double[]{sx, sy, sz} : raw.get(idx);
-                for (int probe = raw.size() - 1; probe > idx + 1; probe--) {
+                int limit = Math.min(raw.size() - 1, idx + SMOOTH_LOOKAHEAD);
+                for (int probe = limit; probe > idx + 1; probe--) {
                     double[] cand = raw.get(probe);
-                    if (isFlightLineClear(world, from[0], from[1], from[2], cand[0], cand[1], cand[2])) {
+                    if (VoxelRaycaster3D.isFatLineClear(bsi,
+                            from[0], from[1], from[2], cand[0], cand[1], cand[2])) {
                         furthest = probe;
                         break;
                     }
@@ -326,6 +334,12 @@ public class FlightPathfinder {
             }
         }
 
+        if (result.size() == 1 && raw.size() == 1) {
+            // A partial path that never left the start cell is not progress.
+            result.clear();
+            if (nav != null) nav.lastPathPartial = true;
+            return result;
+        }
         if (result.isEmpty()) {
             result.add(new double[]{gx, gy, gz});
         }
@@ -346,6 +360,30 @@ public class FlightPathfinder {
             nav.cachedPathCreatedTick = nav.ticks;
         }
         return result;
+    }
+
+    /**
+     * Baritone's {@code bestSoFar} selection: the first coefficient whose
+     * furthest node is at least {@link #MIN_PARTIAL_DIST} blocks from the
+     * start. Never returns the start node.
+     */
+    private static AStarNode bestPartialNode(AStarNode[] bestSoFar,
+                                             int startX, int startY, int startZ) {
+        double minSq = MIN_PARTIAL_DIST * MIN_PARTIAL_DIST;
+        AStarNode firstUseful = null;
+        for (AStarNode cand : bestSoFar) {
+            if (cand == null) continue;
+            double distSq = squaredDistance(cand, startX, startY, startZ);
+            if (distSq >= minSq && firstUseful == null) firstUseful = cand;
+        }
+        return firstUseful;
+    }
+
+    private static double squaredDistance(AStarNode node, int x, int y, int z) {
+        double dx = node.x - x;
+        double dy = node.y - y;
+        double dz = node.z - z;
+        return dx * dx + dy * dy + dz * dz;
     }
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {

@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
+import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import net.minecraft.util.MathHelper;
@@ -97,8 +98,10 @@ public final class BreadcrumbService {
             return null; // already flyable; no trail detour needed
         }
         double currentToTarget = distance(currentX, currentY, currentZ, targetX, targetY, targetZ);
-        int targetHeight = world.getHeightValue(MathHelper.floor_double(targetX),
-                MathHelper.floor_double(targetZ));
+        int tgx = MathHelper.floor_double(targetX);
+        int tgz = MathHelper.floor_double(targetZ);
+        int targetHeight = ChunkAccess.ensureBlockLoaded(world, tgx, tgz)
+                ? world.getHeightValue(tgx, tgz) : (int) Math.floor(targetY);
         boolean targetAtOrAboveSurface = targetY >= targetHeight - 3;
         boolean currentUnderground = !world.canBlockSeeTheSky(
                 MathHelper.floor_double(currentX), MathHelper.floor_double(currentY),

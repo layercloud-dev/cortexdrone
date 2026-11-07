@@ -51,6 +51,8 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
     private static final int RELEASE_GRACE_TICKS = 60;
     /** New chunk loads per 5-tick drone plan update. Prevents flight stutter. */
     private static final int DRONE_LOAD_BUDGET = 4;
+    /** Hard cap for synchronous ray/path reads in one server tick. */
+    private static final int RAYCAST_LOAD_BUDGET = 4;
 
     private final AIDroneManager manager;
     private final CortexDroneMod mod;
@@ -64,6 +66,7 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
     private final Map<World, Set<ChunkCoordIntPair>> aiLoaded = new ConcurrentHashMap<>();
 
     private boolean unloadedAll;
+    private int raycastLoads;
 
     public ChunkLoadingManager(AIDroneManager manager, CortexDroneMod mod, DroneLogger logger) {
         this.manager = manager;
@@ -92,6 +95,7 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
 
     /** Called once per server tick from AIDroneManager. */
     public synchronized void tickPolicy(boolean anyDroneBusy) {
+        this.raycastLoads = 0;
         this.policy.tick(MinecraftServer.getServer());
         if (this.policy.isUnloadAll()) {
             if (!this.unloadedAll) {
@@ -298,8 +302,7 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
                 continue;
             }
             if (PlayerChunkOwnership.isWithinAnyPlayerView(world, old.chunkXPos, old.chunkZPos)
-                    || PlayerChunkOwnership.isDroneNear(ctrl.drone, old.chunkXPos, old.chunkZPos,
-                    NavigationChunkPlanner.DRONE_KEEP_RADIUS)) {
+                    || isAnyDroneNear(world, old)) {
                 pending.remove(old);
                 continue;
             }
@@ -405,6 +408,10 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
         if (PlayerChunkOwnership.isWithinAnyPlayerView(world, chunkX, chunkZ)) return false;
         WorldServer server = (WorldServer) world;
         if (ChunkAccess.isLoaded(server, chunkX, chunkZ)) return true;
+        // A single long fat-ray can touch many chunks. Generate at most a few
+        // per tick; the rest stay opaque and pathfinding retries next tick.
+        if (this.raycastLoads >= RAYCAST_LOAD_BUDGET) return false;
+        this.raycastLoads++;
         loadChunk(server, new ChunkCoordIntPair(chunkX, chunkZ));
         return ChunkAccess.isLoaded(server, chunkX, chunkZ);
     }

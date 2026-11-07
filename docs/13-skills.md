@@ -37,7 +37,7 @@ every compound skill inherits the fix.
 
 | Skill | Parameters (defaults) |
 | --- | --- |
-| `mine_blocks` | `filter=ores`, `radius=24`, `count=8`, `veins=true` |
+| `mine_blocks` | `filter=ores`, `radius=24`, `count=8`, `veins=true`, `allow_dig=true`, `max_dig_blocks=96` |
 | `mine_box` | `anchor=under_player`, `width=3`, `height=3`, `length=3`, `filter=all`, `max_blocks=256` or explicit `x1..z2` |
 | `deliver_items` | `filter=all`, `count=512`, `player`, `only_if_holding=true` |
 | `mine_and_deliver` | `filter=iron_ore`, `radius`, `count`, `deliver_filter=all` |

@@ -22,11 +22,13 @@ The model only supplies the destination (or a standoff).
    manager follows while it is complete or progressing.
 4. **Automatic recovery** — `NavigationManager.recover` keeps the session alive
    instead of returning a failure to the model:
+   - keep an open tunnel; after two legs that never moved, dig immediately;
    - reject the trail and replan;
+   - try detour goals above the goal, beside it, and around the drone;
    - **auto-tunnel** the first obstruction toward the goal
      (`TunnelPlanner`), flying to its standoff and breaking one voxel at a time;
-   - try detour goals above the goal, beside it, and around the drone;
-   - fail only when the attempt budget is exhausted.
+   - fail only when the attempt budget, dig budget or recovery ceiling is
+     exhausted.
 
 ## Per-call recovery arguments
 
@@ -40,8 +42,8 @@ goto({ x, y, z, recovery_attempts: 12 })            // stubborn cave
 ```
 
 - `allow_dig` (default `true`) — permit automatic tunnelling;
-- `max_dig_blocks` (default `48`) — voxels this call may clear;
-- `recovery_attempts` (default `8`) — dig/detour attempts before failing.
+- `max_dig_blocks` (default `64`) — voxels this call may clear;
+- `recovery_attempts` (default `12`) — detours (and recovery cycles without progress) before failing.
 
 With `allow_dig:false` navigation stays non-destructive and uses only the direct
 line, trail, flight and detour recovery. When tunnelling is allowed it is also
@@ -71,8 +73,11 @@ physics. The final result includes:
 ## Standoffs
 
 `goto({standoffOf:{x,y,z}})` asks for a safe reachable position beside a block.
-The returned point is within interaction range. Block/interaction tools use the
-same helper (`FlightPathfinder.findBlockStandoff`) when a target is too far.
+When an open face exists the returned point is within interaction range. When
+the block is buried, navigation tunnels the covering voxels and stops as soon
+as the block is visible and within reach; the target block itself is never dug.
+Block/interaction tools use the same helper
+(`FlightPathfinder.findBlockStandoff`) when a target is too far.
 
 ## Trail and escape
 
@@ -116,12 +121,59 @@ open. With the policy closed, unloaded chunks are treated as solid.
 
 `NavigationManager.recover()` tries, in order:
 
-1. reject the trail and replan;
-2. a detour waypoint (over, around, diagonally or a local escape);
-3. straight-line tunnelling of the first obstruction;
-4. a **vertical step** toward a goal far above or below — mine one block down
+1. **Keep an open tunnel going** — once at least one voxel has been cleared,
+   a trail backtrack would fly away from the hole, so the next obstruction is
+   cleared first. The same dig-first path is taken after two legs that never
+   moved, because detours have clearly failed.
+2. reject the trail and replan (once; no world change);
+3. a detour waypoint (over, around, diagonally or a local escape);
+4. straight-line tunnelling of the first obstruction
+   (`TunnelPlanner.nextObstruction` — a fat ray that covers the drone's
+   0.75-wide body, ignoring the block the caller asked to stand beside);
+5. a **vertical step** toward a goal far above or below — mine one block down
    (or up) and descend/ascend into it, exactly like a player;
-5. fail only when every attempt is exhausted.
+6. fail only when every attempt is exhausted, the `max_dig_blocks` budget is
+   spent, or the per-call `recovery_attempts` is exhausted without progress.
+
+A successful dig resets the soft recovery counter, so a 20-block shaft is one
+continuous tunnel rather than twenty failures. The hard ceiling (96 recovery
+cycles) still prevents an infinite loop.
+
+### Stuck legs (Baritone-style watchdog)
+
+A flight leg is abandoned (and recovery starts) when any of these holds:
+
+- no displacement for 40 ticks (2 s) — the drone is physically wedged;
+- no progress toward the leg waypoint for 120 ticks (6 s) — it is circling;
+- the leg exceeds 60 ticks per block of its initial length (bounded to
+  2 min) — the movement is taking far longer than its estimate.
+
+This mirrors Baritone's `PathExecutor` movement timeout. Without it a blocked
+waypoint could stay "active" forever and every A* replan returned the same
+blocked node.
+
+### Partial paths
+
+A* is budgeted by wall-clock time (4 ms) and node count (1400), not a fixed
+400 expansions. Partial results follow Baritone's rule: the furthest node for
+the first backoff coefficient that is at least **5 blocks** from the start.
+The start node is never returned as a one-waypoint path; if nothing useful is
+reachable the navigator goes straight to detour/dig recovery instead of
+spinning on an empty leg.
+
+### Buried `standoff_of` targets
+
+When `goto({standoffOf})` is called for a block with no open face (a buried
+ore, a chest in a wall), the target is kept as a tunnel goal. The navigator
+clears the covering voxels one at a time and succeeds as soon as the block is
+visible and within reach. The target block itself is never dug by navigation.
+
+### Request tokens
+
+Every `goto` receives a monotonic `request_id`. The tool waiter resolves only
+when *that* request reaches a terminal outcome (`arrived`, `failed`,
+`stopped`, `replaced`, `cancelled`). A session replaced by a newer task can no
+longer be reported as `arrived:true`.
 
 Tunnelling never touches a tile entity: chests, crates, furnaces, machines and
 OpenComputers blocks are property even when empty. Every block that is broken is

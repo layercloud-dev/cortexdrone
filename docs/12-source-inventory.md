@@ -100,7 +100,7 @@
 | --- | --- |
 | `manager.ActionManager` / `ActionRegistry` | lifecycle/registry |
 | `manager.TickManager` | per-tick pipeline |
-| `manager.navigation.*` | goal/request/result + `NavigationManager` |
+| `manager.navigation.*` | goal/request/result + `NavigationManager`, `NavigationSession`, `LegWatchdog`, `DetourPlanner`, `NavigationTargetResolver`, `StallReporter` |
 | `manager.chunk.*` | `ChunkLoadPolicy`, `PlayerChunkOwnership`, `ChunkLoadingManager`, navigation chunk planner |
 | `manager.building.impl` | `BuildingManager` |
 | `manager.interact.impl` | `InteractionManager` |

@@ -76,7 +76,11 @@ public final class VoxelRaycaster3D {
      * deepslate/obsidian walls when A* said "COMPLETE" and velocity was then hard-blocked.
      */
     public static boolean isFatLineClear(ChunkCacheContext bsi, double x0, double y0, double z0, double x1, double y1, double z1) {
-        double[][] offsets = new double[][]{{0.30, 0.0, 0.0}, {-0.30, 0.0, 0.0}, {0.0, 0.0, 0.30}, {0.0, 0.0, -0.30}, {0.0, 0.28, 0.0}, {0.0, -0.22, 0.0}};
+        // OC drones are 0.75 x 0.375. The old +/-0.30 probe left the outer
+        // 0.075 of each side unchecked, so a smoothed segment could graze a
+        // wall and the executor then hard-blocked. Cover the actual half-width
+        // plus a small margin, and probe the top of the body as well.
+        double[][] offsets = new double[][]{{0.39, 0.0, 0.0}, {-0.39, 0.0, 0.0}, {0.0, 0.0, 0.39}, {0.0, 0.0, -0.39}, {0.0, 0.37, 0.0}};
         for (double[] o : offsets) {
             if (!isLineClear(bsi, x0 + o[0], y0 + o[1], z0 + o[2], x1 + o[0], y1 + o[1], z1 + o[2])) {
                 return false;
@@ -89,7 +93,7 @@ public final class VoxelRaycaster3D {
      * Fat-ray line-of-sight directly against World (used for the final waypoint shortcut).
      */
     public static boolean isFatLineClear(World world, double x0, double y0, double z0, double x1, double y1, double z1) {
-        double[][] offsets = new double[][]{{0.30, 0.0, 0.0}, {-0.30, 0.0, 0.0}, {0.0, 0.0, 0.30}, {0.0, 0.0, -0.30}, {0.0, 0.28, 0.0}, {0.0, -0.22, 0.0}};
+        double[][] offsets = new double[][]{{0.39, 0.0, 0.0}, {-0.39, 0.0, 0.0}, {0.0, 0.0, 0.39}, {0.0, 0.0, -0.39}, {0.0, 0.37, 0.0}};
         for (double[] o : offsets) {
             if (!isLineClear(world, x0 + o[0], y0 + o[1], z0 + o[2], x1 + o[0], y1 + o[1], z1 + o[2])) {
                 return false;
@@ -188,6 +192,12 @@ public final class VoxelRaycaster3D {
         int maxSteps = (int) Math.ceil(limit * 3.0) + 4;
 
         for (int step = 0; step < maxSteps && dist <= limit; step++) {
+            if (!world.isRemote && !ChunkAccess.ensureBlockLoaded(world, x, z)) {
+                // Treat the edge of loaded chunks as opaque. The chunk manager
+                // may load it when the policy allows; otherwise the ray must
+                // not silently generate world terrain.
+                return null;
+            }
             if (y > 0 && y < 255 && !world.isAirBlock(x, y, z)) {
                 Block b = world.getBlock(x, y, z);
                 if (b != null && !ItemClassifier.isLiquidBlock(b)) {

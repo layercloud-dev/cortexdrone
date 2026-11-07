@@ -74,7 +74,7 @@ public final class DronePhysicsService {
                 vz *= (0.55 + 0.45 * scale);
             }
 
-            double accelBase = maxVelOverride > 0.5 ? 0.24 : (double) Math.max(0.10f, d.targetAcceleration());
+            double accelBase = maxVelOverride > 0.5 ? 0.14 : (double) Math.max(0.08f, d.targetAcceleration());
             if (inLiquid) accelBase *= 1.6;
             double accel = Math.min(accelBase, distance) / distance;
             vx += dx * accel;

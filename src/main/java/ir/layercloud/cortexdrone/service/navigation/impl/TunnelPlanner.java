@@ -34,6 +34,18 @@ public final class TunnelPlanner {
      */
     public static int[] nextObstruction(World world, Drone drone,
                                         double goalX, double goalY, double goalZ) {
+        return nextObstruction(world, drone, goalX, goalY, goalZ, null);
+    }
+
+    /**
+     * Fat-ray variant: a 0.75-wide drone cannot thread a one-voxel centre line,
+     * so the centre ray and four lateral offsets are sampled and the nearest
+     * solid hit wins. {@code ignore} is the block the caller wants to stand
+     * beside; it must never be treated as an obstruction to dig through.
+     */
+    public static int[] nextObstruction(World world, Drone drone,
+                                        double goalX, double goalY, double goalZ,
+                                        int[] ignore) {
         if (world == null || drone == null) return null;
         double eyeY = BlockSight.eyeY(drone);
         double dx = goalX - drone.posX;
@@ -41,13 +53,35 @@ public final class TunnelPlanner {
         double dz = goalZ - drone.posZ;
         double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (length < 0.35D) return null;
-        JsonObject hit = VoxelRaycaster3D.raycastSolidBlock(world,
-                drone.posX, eyeY, drone.posZ,
-                dx / length, dy / length, dz / length,
-                Math.min(MAX_LOOKAHEAD, length));
-        if (hit == null) return null;
-        if (!hit.has("x") || !hit.has("y") || !hit.has("z")) return null;
-        return new int[]{hit.get("x").getAsInt(), hit.get("y").getAsInt(), hit.get("z").getAsInt()};
+        double nx = dx / length;
+        double ny = dy / length;
+        double nz = dz / length;
+        double maxDist = Math.min(MAX_LOOKAHEAD, length);
+
+        // Side and top/bottom offsets cover the drone's body, not just its
+        // centre. A point hit by the centre ray is preferred, but any fat-ray
+        // hit that is nearer than the centre hit is the real obstruction.
+        double[][] offsets = new double[][]{
+                {0.0D, 0.0D, 0.0D}, {0.39D, 0.0D, 0.0D}, {-0.39D, 0.0D, 0.0D},
+                {0.0D, 0.0D, 0.39D}, {0.0D, 0.0D, -0.39D}, {0.0D, 0.32D, 0.0D}
+        };
+        JsonObject best = null;
+        for (double[] offset : offsets) {
+            JsonObject hit = VoxelRaycaster3D.raycastSolidBlock(world,
+                    drone.posX + offset[0], eyeY + offset[1], drone.posZ + offset[2],
+                    nx, ny, nz, maxDist);
+            if (hit == null || !hit.has("x") || !hit.has("y") || !hit.has("z")) continue;
+            int hx = hit.get("x").getAsInt();
+            int hy = hit.get("y").getAsInt();
+            int hz = hit.get("z").getAsInt();
+            if (ignore != null && hx == ignore[0] && hy == ignore[1] && hz == ignore[2]) continue;
+            if (!ItemClassifier.isMineableBlock(world, hx, hy, hz)) continue;
+            double distance = hit.has("distance") ? hit.get("distance").getAsDouble() : maxDist;
+            if (best == null || distance < best.get("distance").getAsDouble()) best = hit;
+        }
+        if (best == null) return null;
+        return new int[]{best.get("x").getAsInt(), best.get("y").getAsInt(),
+                best.get("z").getAsInt()};
     }
 
     /**
@@ -143,8 +177,11 @@ public final class TunnelPlanner {
         if (!world.blockExists(target[0], target[1], target[2])) return false;
         if (world.isAirBlock(target[0], target[1], target[2])) return false;
         if (!safeToDig(world, player, target[0], target[1], target[2])) return false;
-        return ItemClassifier.isPassableVoxel(world, target[0], target[1] + 1, target[2])
-                && ItemClassifier.isPassableVoxel(world, target[0], target[1] + 2, target[2]);
+        // target is y+2 (the ceiling above the drone's head). After breaking
+        // it the drone rises one block and occupies y+1/y+2, so only y+1 (the
+        // current head space) must be open. The old y+3/y+4 check rejected
+        // perfectly valid one-block shafts.
+        return ItemClassifier.isPassableVoxel(world, target[0], target[1] - 1, target[2]);
     }
 
     /** True when the drone can break the voxel without moving. */

@@ -17,7 +17,18 @@ public final class NavigationState {
     public double goalX;
     public double goalY;
     public double goalZ;
-    public String error = "";
+    public volatile String error = "";
+
+    /**
+     * Monotonic request token and its final outcome. A waiter must compare
+     * {@link #finishedRequestId} with the token returned by {@code goto},
+     * otherwise a replace/stop from another task looks like a successful
+     * arrival (the old session simply disappeared).
+     */
+    public volatile long nextRequestId;
+    public volatile long finishedRequestId;
+    public volatile String finishedOutcome = "";
+    public volatile String finishedError = "";
 
     /** Current A* path and the goal it was planned for. */
     public final List<double[]> pathWaypoints = new ArrayList<>();
@@ -71,6 +82,27 @@ public final class NavigationState {
         this.goalX = x;
         this.goalY = y;
         this.goalZ = z;
+    }
+
+    /** Starts a new request and returns its token. */
+    public long beginRequest() {
+        long id = ++this.nextRequestId;
+        this.error = "";
+        return id;
+    }
+
+    /** Marks a request finished exactly once; later callers keep the first outcome. */
+    public void finishRequest(long requestId, String outcome, String error) {
+        if (requestId <= 0L || requestId <= this.finishedRequestId) return;
+        // Write payload first, id last: a reader that observes the new id is
+        // guaranteed to see the matching outcome/error (volatile ordering).
+        this.finishedOutcome = outcome != null ? outcome : "";
+        this.finishedError = error != null ? error : "";
+        this.finishedRequestId = requestId;
+    }
+
+    public boolean isRequestFinished(long requestId) {
+        return requestId > 0L && this.finishedRequestId >= requestId;
     }
 
     /** Clears the active path without touching the logical goal. */

@@ -96,6 +96,25 @@ public class NavigationRegressionTest {
     }
 
     @Test
+    public void lavaIsNotAFlightCorridor() throws Exception {
+        String classifier = read(MAIN + "service/world/ItemClassifier.java");
+        assertTrue("lava must be distinguished from water",
+                classifier.contains("isDangerousLiquid("));
+        String bsi = read(MAIN + "service/world/raytrace/ChunkCacheContext.java");
+        assertTrue("A* must not pass through lava",
+                bsi.contains("ItemClassifier.isDangerousLiquid(b)"));
+    }
+
+    @Test
+    public void waterDoesNotBounceTheDrone() throws Exception {
+        String physics = read(MAIN + "service/navigation/impl/DronePhysicsService.java");
+        assertFalse("no artificial upward buoyancy while in water",
+                physics.contains("? 0.03 : 0.0"));
+        assertTrue("water caps speed instead of boosting it",
+                physics.contains("if (inLiquid) cap = Math.min(cap, 0.34);"));
+    }
+
+    @Test
     public void tunnellingIsAllowedNextToTheOwner() throws Exception {
         String planner = read(MAIN + "service/navigation/impl/TunnelPlanner.java");
         assertFalse("the old 2.5-block player bubble must be gone",

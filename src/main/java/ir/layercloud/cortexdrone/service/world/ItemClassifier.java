@@ -40,6 +40,15 @@ public final class ItemClassifier {
         return RegistryIntrospector.isFluidBlock(b);
     }
 
+    /** Lava is a fluid, but it must never be a flight corridor. */
+    public static boolean isDangerousLiquid(Block b) {
+        if (b == null) return false;
+        Material m = b.getMaterial();
+        return m == Material.lava
+                || b == net.minecraft.init.Blocks.lava
+                || b == net.minecraft.init.Blocks.flowing_lava;
+    }
+
     public static boolean isReplaceableBlock(World world, int x, int y, int z) {
         if (y <= 1 || y >= 255) return false;
         if (world.isAirBlock(x, y, z)) return true;
@@ -58,7 +67,10 @@ public final class ItemClassifier {
         if (!world.isRemote && !ChunkAccess.ensureBlockLoaded(world, bx, bz)) return false;
         if (world.isAirBlock(bx, by, bz)) return true;
         Block b = world.getBlock(bx, by, bz);
-        if (b == null || isLiquidBlock(b)) return true;
+        if (b == null) return true;
+        // Water is a valid corridor for a flying drone; lava is not.
+        if (isDangerousLiquid(b)) return false;
+        if (isLiquidBlock(b)) return true;
         if (b.getBlocksMovement(world, bx, by, bz)) return true;
         return b.getCollisionBoundingBoxFromPool(world, bx, by, bz) == null;
     }

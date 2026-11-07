@@ -75,6 +75,10 @@ file in the same directory; it defaults to `code.js`.
 | `collect_drops` | fly to drop clusters and vacuum them |
 | `store_items` | fly to chest and deposit cargo |
 | `withdraw_items` | find/withdraw a material from player or chests |
+| `fetch_materials` | batched multi-material restock with per-item blockers |
+| `craft_items` | ingredient-audited batch crafting |
+| `smelt_items` | load a furnace, wait at vanilla speed, withdraw output |
+| `ore_to_ingots` | withdraw ore + smelt + deliver ingots |
 | `sort_chests` | categorise and move stacks between chests |
 | `place_double_chest` | craft two chests and place them |
 | `hunt` | bounded combat loop with drop pickup |
@@ -87,6 +91,10 @@ file in the same directory; it defaults to `code.js`.
 | `sugarcane_farm` | keep the base, middle-cut so the upper cane pops at once |
 | `bamboo_farm` | keep the base, middle-cut so the upper stalk pops at once |
 | `melon_pumpkin_farm` | break fruit, leave stems |
+| `nether_wart_farm` | harvest age-3 wart on soul sand, replant |
+| `cactus_farm` | keep the base, cut above it so the column pops |
+| `plant_farm` | till, sow and report hydration for a new plot |
+| `fertilize_crops` | bone meal where vanilla accepts it |
 | `chop_tree` | fell logs top-down, replant a sapling |
 | `farm_cycle` | harvest + collect + deliver/store |
 | `survey_build_site` | read-only ground/headroom/obstacle survey |
@@ -94,9 +102,14 @@ file in the same directory; it defaults to `code.js`.
 | `build_structure` | survey -> plan -> materials -> place -> verify |
 | `build_wall` | wall via planner + `place_build_plan` |
 | `build_platform` | platform/bridge via the planner |
+| `build_nether_portal` | 4x5 obsidian frame, clear interior, ignite |
 | `replace_surface` | atomic room floor/wall/ceiling replacement |
 | `replace_box` | atomic 3D box replacement with source filter |
 | `light_area` | torch grid on solid floors |
+| `dig_staircase` | safe 1-wide descending staircase keeping the floor |
+| `dig_shaft` | vertical shaft, stops at liquid and bedrock |
+| `strip_mine` | straight tunnel with side branches + ore report |
+| `quarry` | layered rectangular excavation, flat floor |
 | `follow_player` | bounded follow with stable hover and drop pickup |
 | `return_to_player` | goal navigation back to the owner |
 | `rainbow_show` | LED animation via static primitive |

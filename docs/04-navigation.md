@@ -92,6 +92,13 @@ that entered an area.
 drone from coasting or clipping. `TickManager` applies the safety step when the
 drone is stuck, long-range flying, or the OC machine is not running.
 
+Water is a valid flight corridor: A* prices it but does not block it, and the
+physics step caps water speed at 0.34 without adding artificial upward
+buoyancy, so the drone enters or leaves a pool instead of bobbing on its
+surface. Lava is never a corridor: `isDangerousLiquid` makes it impassable for
+both `ItemClassifier.isPassableVoxel` and `ChunkCacheContext`, so paths and
+standoffs cannot route through it.
+
 ## Chunks
 
 `ChunkLoadingManager` gives a navigating drone a rolling loaded corridor. It

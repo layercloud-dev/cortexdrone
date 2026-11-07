@@ -17,10 +17,19 @@ Search with `skill({ action: "search", query: "..." })`; load the code and its
 ```text
 mine_and_deliver -> mine_blocks + deliver_items
 gather_distant   -> mine_blocks + deliver_items
+ore_to_ingots    -> withdraw_items + smelt_items + deliver_items
 replace_surface  -> replace_block primitive
 replace_box      -> replace_block primitive
 farm_cycle       -> harvest_crops / sugarcane_farm / bamboo_farm / melon_pumpkin_farm
                     + collect_drops + deliver_items / store_items
+plant_farm       -> craft_items (wooden hoe) + hoe/seed use_item
+fertilize_crops  -> craft_items (bone meal) + use_item
+craft_items      -> withdraw_items
+fetch_materials  -> withdraw_items
+strip_mine       -> collect_drops
+dig_shaft        -> collect_drops
+quarry           -> collect_drops
+build_nether_portal -> survey_build_site
 guard            -> guard_scan
 patrol           -> guard_scan
 build_structure  -> survey_build_site + place_build_plan
@@ -45,6 +54,10 @@ every compound skill inherits the fix.
 | `collect_drops` | `radius=16`, `filter=all`, `max_clusters=12` |
 | `store_items` | `radius=28`, `chest:{x,y,z}`, `filter` |
 | `withdraw_items` | `filter`, `count`, `radius=32` |
+| `fetch_materials` | `materials:[{filter,count}]` or `{name:count}`, `count=64`, `radius=32` |
+| `craft_items` | `filter`, `count=1`, `withdraw=true`, `radius=32`, `dry_run=false` |
+| `smelt_items` | `filter`, `count=6`, `furnace:{x,y,z}`, `radius=24`, `fuel`, `clear=true`, `wait=true`, `max_wait_s` |
+| `ore_to_ingots` | `ore=iron_ore`, `count=8`, `ingot`, `furnace`, `radius`, `fuel`, `deliver=true` |
 | `sort_chests` | `radius=24`, `max_moves=48`, `dry_run=false` |
 | `place_double_chest` | `x,y,z` or `player` |
 | `hunt` | `target=hostile`, `radius=24`, `max_kills=4`, `duration_s=120` |
@@ -58,16 +71,25 @@ every compound skill inherits the fix.
 | `sugarcane_farm` | `radius=24`, `limit=48`, middle cut above the base |
 | `bamboo_farm` | `radius=24`, `limit=64`, middle cut above the base |
 | `melon_pumpkin_farm` | `kind=melon` (or pumpkin), `radius=24`, `limit=32` |
+| `nether_wart_farm` | `radius=24`, `limit=24`, `replant=true`, `point` |
+| `cactus_farm` | `radius=24`, `limit=24`, `keep=1`, `point` |
+| `plant_farm` | `crop=wheat` (or carrots/potatoes/melon/pumpkin), `x1/z1/x2/z2` or `x/z`+`width`/`length`, `y`, `max_columns=64`, `craft_hoe=true` |
+| `fertilize_crops` | `radius=16`, `limit=32`, `target=crops` (or saplings/stems), `craft_meal=true` |
 | `chop_tree` | `radius=20`, `limit=24`, `replant=true` |
 | `farm_cycle` | `crop`, `radius`, `limit`, `deliver=false`, `store=false` |
 | `survey_build_site` | `x1,z1,x2,z2` or `x,z,width,depth`; `height=4`, `y` |
 | `place_build_plan` | `plan`, `dry_run=false`, `allow_substitute=true`, `verify=true`, `max_place` |
 | `build_structure` | `style=house`, `width=7`, `depth=7`, `height=3`, `roof_style=flat`, `windows=true`, `x/z` or `x1/z1/x2/z2`, `y`, `floor/walls/corners/roof/foundation/window_block`, `door_side`, `allow_liquid=false`, `allow_substitute=true`, `dry_run=false`, `max_place` |
+| `build_nether_portal` | `x/z`, `y`, `axis=x|z`, `clear=true`, `ignite=true`, `dry_run=false`; 14 obsidian, 2x3 interior |
 | `build_wall` | `length=6`, `height=3`, `block=cobblestone`, or explicit corners |
 | `build_platform` | `width=7`, `depth=7`, `block`, `bridge=false`, `y` |
 | `replace_surface` | `surface=floor` (ceiling/walls/north_wall/.../all), `block`, `only_replace=all`, `max_blocks=256`, `dry_run=false` |
 | `replace_box` | `x1,y1,z1,x2,y2,z2`, `block`, `only_replace=all`, `max_blocks=256`, `dry_run=false` |
 | `light_area` | `radius=8`, `spacing=4`, `point` |
+| `dig_staircase` | `direction=north` (or south/east/west/down), `length=16`, `start:{x,y,z}`, `headroom=2`, `width=1`, `max_blocks=256` |
+| `dig_shaft` | `start:{x,y,z}`, `depth=20`, `target_y`, `size=1`, `headroom=2`, `stop_at_bedrock=true`, `collect=true` |
+| `strip_mine` | `direction=north`, `length=32`, `height=2`, `branches=4`, `branch_spacing=8`, `branch_length=12`, `branch_side=left`, `start`, `max_blocks=512`, `ore_scan=true` |
+| `quarry` | `x1/z1/x2/z2` or `width`/`length`, `top_y`, `depth=3`, `filter=all`, `max_blocks=512`, `collect_every=3`, `allow_liquid=false` |
 | `return_to_player` | `player`, `allow_dig=false` |
 | `rainbow_show` | `steps=36`, `delay_ms=120` |
 
@@ -138,3 +160,33 @@ The bundled farm skills follow vanilla 1.7.10 mechanics:
   existing fruit block is removed. Break only the fruit, never the stem.
 - Drops are collected by flying to each cluster and vacuuming with
   `suck_items`; a full drone stops mining instead of dropping items.
+
+- Farmland hydrates when water sits within four blocks horizontally (including
+  diagonals) at the same level or one above; the blocks between do not matter.
+  Hydrated farmland grows crops noticeably faster, and an unplanted dry block
+  eventually reverts to dirt. `plant_farm` reports `waterNearby` instead of
+  placing water, because bucket placement is a look-ray action.
+- Nether wart grows only on soul sand (not soul soil) through four stages and
+  is ready at metadata 3, where it drops 2-4 wart. It ignores light, never
+  needs water and cannot be bone-mealed. `nether_wart_farm` harvests only
+  mature plants.
+- Cactus grows to three blocks on sand with air on all four sides, cannot be
+  bone-mealed, and pops the whole column when a solid neighbour appears.
+  `cactus_farm` cuts above the kept base so the plant regrows; never place a
+  solid block beside it.
+- Bone meal works on crops below age 7 and on saplings (45% per use), not on
+  sugar cane, cactus or nether wart. `fertilize_crops` checks age first so no
+  meal is wasted.
+
+## Minecraft 1.7.10 production notes
+
+- One furnace item takes 200 ticks (10 s). Fuel burn times in ticks: coal or
+  charcoal 1600 (8 items), coal block 16000, blaze rod 2400, lava bucket
+  20000, planks/logs/wood 300, wooden slab 150, stick or sapling 100. Sticks,
+  saplings and slabs cannot finish a 200-tick item on their own.
+- Furnace slots are 0 = input, 1 = fuel, 2 = output. The mod never advances
+  `furnaceCookTime`; `smelt_items` loads the slots and sleeps while the world
+  ticks the furnace, then withdraws the output.
+- A nether portal frame is 4 wide by 5 tall of obsidian with a 2x3 interior;
+  that is 14 obsidian blocks. Lighting any interior bottom cell with flint and
+  steel fills the interior. Obsidian drops nothing without a diamond pickaxe.

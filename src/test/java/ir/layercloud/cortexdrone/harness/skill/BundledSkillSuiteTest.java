@@ -144,6 +144,50 @@ public class BundledSkillSuiteTest {
         assertTrue(library.get("patrol").getCode().contains("skills.call('guard_scan'"));
         assertTrue(library.get("gather_distant").getCode().contains("skills.call('mine_blocks'"));
         assertTrue(library.get("gather_distant").getCode().contains("skills.call('deliver_items'"));
+        assertTrue(library.get("ore_to_ingots").getCode().contains("skills.call('smelt_items'"));
+        assertTrue(library.get("ore_to_ingots").getCode().contains("skills.call('deliver_items'"));
+        assertTrue(library.get("fetch_materials").getCode().contains("skills.call('withdraw_items'"));
+        assertTrue(library.get("craft_items").getCode().contains("skills.call('withdraw_items'"));
+        assertTrue(library.get("plant_farm").getCode().contains("skills.call('craft_items'"));
+        assertTrue(library.get("fertilize_crops").getCode().contains("skills.call('craft_items'"));
+    }
+
+    @Test
+    public void productionSkillsCarryTheirVanillaMechanics() throws Exception {
+        SkillLibrary library = library();
+        // Smelting must wait for the world instead of advancing cook time.
+        String smelt = library.get("smelt_items").getCode();
+        assertTrue("smelt waits for the world", smelt.contains("sleep("));
+        assertFalse("smelt must not write cook time", smelt.contains("furnaceCookTime"));
+        assertTrue("smelt knows the vanilla 200-tick cook", smelt.contains("200"));
+        // The furnace slots are input 0, fuel 1, output 2.
+        assertTrue(smelt.contains("slotInput = 0"));
+        assertTrue(smelt.contains("slotFuel = 1"));
+        assertTrue(smelt.contains("slotOutput = 2"));
+
+        // Nether wart is mature at age 3 and grows on soul sand.
+        String wart = library.get("nether_wart_farm").getCode();
+        assertTrue(wart.contains("matureMeta = 3"));
+        assertTrue(wart.contains("soul sand"));
+
+        // Cactus keeps the base block and pops the column above it.
+        String cactus = library.get("cactus_farm").getCode();
+        assertTrue(cactus.contains("keep"));
+
+        // Staircases keep the floor block: only the step and headroom are dug.
+        String stair = library.get("dig_staircase").getCode();
+        assertTrue(stair.contains("headroom"));
+        assertTrue(stair.contains("standoffOf"));
+    }
+
+    @Test
+    public void portalSkillUsesTheCanonicalFrameGeometry() throws Exception {
+        SkillLibrary library = library();
+        String code = library.get("build_nether_portal").getCode();
+        assertTrue("4 wide", code.contains("frameWidth = 4"));
+        assertTrue("5 tall", code.contains("frameHeight = 5"));
+        assertTrue("obsidian frame", code.contains("'obsidian'"));
+        assertTrue("flint and steel", code.contains("flint_and_steel"));
     }
 
     @Test
@@ -152,9 +196,13 @@ public class BundledSkillSuiteTest {
         for (String name : new String[]{
                 "guard", "patrol", "carry_player", "sort_chests", "hunt",
                 "harvest_crops", "sugarcane_farm", "bamboo_farm", "melon_pumpkin_farm", "chop_tree",
+                "nether_wart_farm", "cactus_farm", "plant_farm", "fertilize_crops",
                 "build_structure", "place_build_plan", "survey_build_site",
+                "build_nether_portal",
                 "replace_surface", "replace_box",
                 "light_area", "deliver_items", "withdraw_items", "collect_drops",
+                "fetch_materials", "smelt_items", "ore_to_ingots", "craft_items",
+                "dig_staircase", "dig_shaft", "strip_mine", "quarry",
                 "return_to_player", "mine_blocks", "mine_box", "mine_and_deliver",
                 "gather_distant", "follow_player"}) {
             assertNotNull("missing bundled skill " + name, library.get(name));
@@ -168,5 +216,8 @@ public class BundledSkillSuiteTest {
         assertEquals("sort_chests", library.search("organise the chests", 3).get(0).getName());
         assertEquals("build_structure", library.search("build me a house", 3).get(0).getName());
         assertEquals("harvest_crops", library.search("replant the wheat farm", 3).get(0).getName());
+        assertEquals("smelt_items", library.search("smelt items in the furnace and wait", 3).get(0).getName());
+        assertEquals("dig_staircase", library.search("dig a staircase down", 3).get(0).getName());
+        assertEquals("build_nether_portal", library.search("build a nether portal", 3).get(0).getName());
     }
 }

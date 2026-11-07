@@ -59,7 +59,9 @@ public final class DronePhysicsService {
             // Cruise profile: vMax(r) = clamp(cap * min(1, r / brakeRadius), minFloor, cap)
             double cap = maxVelOverride > 0.0 ? maxVelOverride : (double) d.maxVelocity();
             if (cap <= 0.0) cap = 1.15;
-            if (inLiquid) cap = Math.max(cap, 0.55);
+            // Water is a medium, not a boost. Raising the cap here made the
+            // drone overshoot the surface and bob instead of entering it.
+            if (inLiquid) cap = Math.min(cap, 0.34);
             double brakeRadius = 6.0;
             double cruiseFrac = Math.min(1.0, distance / brakeRadius);
             double vMax = Math.max(0.28, cap * cruiseFrac);
@@ -75,10 +77,10 @@ public final class DronePhysicsService {
             }
 
             double accelBase = maxVelOverride > 0.5 ? 0.14 : (double) Math.max(0.08f, d.targetAcceleration());
-            if (inLiquid) accelBase *= 1.6;
+            if (inLiquid) accelBase *= 1.1;
             double accel = Math.min(accelBase, distance) / distance;
             vx += dx * accel;
-            vy += dy * accel + (inLiquid && dy >= -0.1 ? 0.03 : 0.0);
+            vy += dy * accel;
             vz += dz * accel;
             vx = Math.max(-vMax, Math.min(vMax, vx));
             vy = Math.max(-vMax, Math.min(vMax, vy));
@@ -89,7 +91,7 @@ public final class DronePhysicsService {
             vz = 0.0;
         }
         d.moveEntity(vx, vy, vz);
-        double drag = inLiquid ? 0.90 : (double) d.drag();
+        double drag = inLiquid ? 0.86 : (double) d.drag();
         d.motionX = vx * drag;
         d.motionY = vy * drag;
         d.motionZ = vz * drag;

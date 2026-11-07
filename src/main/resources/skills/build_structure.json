@@ -1,0 +1,11 @@
+{
+  "name": "build_structure",
+  "description": "Build a correct, detailed structure in one controlled workflow: resolve or find the site, survey the ground (slope, liquid, protected blocks, clearing list), pick a safe floor level, generate the phased blueprint, check and gather every needed material, clear obstacles, place in build order, then verify the result. Supports dry_run to review the plan and material deficit before touching the world. Use for houses, huts, towers, walls, platforms and bridges.",
+  "tags": "build structure house hut tower wall platform bridge blueprint survey foundation roof windows detailed construct",
+  "triggers": ["build me a house", "build a shelter", "construct a tower", "make a platform", "build a bridge", "build here"],
+  "requires": ["survey_build_site", "place_build_plan", "withdraw_items", "mine_blocks"],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "codeFile": "build_structure.js"
+}

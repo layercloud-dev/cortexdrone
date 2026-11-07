@@ -1,10 +1,11 @@
 {
   "name": "return_to_player",
-  "description": "Navigate back to the owner with goal-driven navigation and report whether the drone arrived.",
-  "tags": "return come back player escape cave underground tunnel navigate",
-  "triggers": ["come back", "return to me", "get out of the cave"],
-  "version": 1,
+  "description": "Navigate back to the owner (or a named player) with the self-recovering goto; reports whether the drone actually arrived and where it ended up.",
+  "tags": "return come back player escape cave underground tunnel navigate home",
+  "triggers": ["come back", "return to me", "get out of the cave", "fly back"],
+  "requires": [],
+  "version": 2,
   "uses": 0,
   "source": "bundled",
-  "code": "const p = drone.getPlayer();\nif (!p || p.ok === false) return { ok: false, error: 'player is offline or unavailable' };\nconst moved = drone.goto({ x: p.blockX, y: p.blockY + 2, z: p.blockZ });\nreturn { arrived: !!moved.arrived, position: moved };"
+  "codeFile": "return_to_player.js"
 }

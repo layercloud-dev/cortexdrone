@@ -9,6 +9,7 @@ talking to the player. Return exactly one JSON object and nothing else:
   "description": "One sentence describing when to use this skill and what it delivers.",
   "triggers": ["short phrase", "another phrase"],
   "tags": "space separated retrieval keywords",
+  "requires": ["existing_skill_this_code_calls"],
   "code": "JavaScript body using the synchronous drone tool API"
 }
 ```
@@ -22,8 +23,13 @@ Rules for `code`:
 - Do not redefine `drone`, `tools`, `ctx`, `log`, `sleep`, or `hsvToRgb`.
 - Handle missing data and blocked actions explicitly; return `{ ok:false, error, hint }`.
 - Keep it under 80 lines and return only filtered, relevant data.
-- The skill must be parameterless or define an inner function that takes its
-  own parameters; do not reference values that only existed in the original task.
+- The body receives a `params` object (`params.filter`, `params.radius`, ...).
+  Read every task-specific value from `params` and provide a safe default.
+- Reuse other skills instead of copying their code: call
+  `skills.call('mine_blocks', { filter: params.filter, count: params.count })`.
+  List every called skill in `requires` so retrieval and validation can check
+  they exist. Never call a skill that is not already installed.
+- Do not redefine `drone`, `tools`, `skills`, `ctx`, `log` or `sleep`.
 
 Rules for metadata:
 
@@ -32,3 +38,5 @@ Rules for metadata:
 - `description` states the trigger and the outcome.
 - `triggers` are short player-style phrases that should retrieve this skill.
 - `tags` are extra retrieval terms (blocks, items, machines, actions).
+- `requires` is an array of existing skill names the code calls (empty when the
+  skill is self-contained). Never invent a dependency.

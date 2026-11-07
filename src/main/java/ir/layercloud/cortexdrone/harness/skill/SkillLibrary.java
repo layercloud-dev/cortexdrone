@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.ModPaths;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -30,6 +31,11 @@ import java.util.logging.Logger;
  * Bundled skills are read from {@code resources/skills/} and can be overridden
  * by a saved skill with the same name. The library never decides when to use a
  * skill; it only stores, searches and versions them.</p>
+ *
+ * <p>Bundled skills keep their metadata in a small JSON file and their
+ * JavaScript in a sibling {@code .js} file referenced by {@code codeFile}. A
+ * skill can declare {@code requires} and call those skills at runtime, so
+ * compound workflows stay short instead of copy-pasting other workflows.</p>
  */
 public final class SkillLibrary {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
@@ -58,6 +64,12 @@ public final class SkillLibrary {
 
     public synchronized Skill save(String name, String description, String tags,
                                    List<String> triggers, String code, String source) {
+        return save(name, description, tags, triggers, null, code, source);
+    }
+
+    public synchronized Skill save(String name, String description, String tags,
+                                   List<String> triggers, List<String> requires,
+                                   String code, String source) {
         if (name == null || name.trim().isEmpty() || code == null || code.trim().isEmpty()) return null;
         if (code.length() > MAX_SKILL_CODE_CHARS) return null;
         String key = normalize(name);
@@ -72,6 +84,8 @@ public final class SkillLibrary {
         skill.setDescription(description != null ? description.trim() : "");
         skill.setTags(tags != null ? tags.trim() : "");
         skill.setTriggers(triggers != null ? new ArrayList<>(triggers) : new ArrayList<>());
+        skill.setRequires(requires != null ? new ArrayList<>(requires) : new ArrayList<>());
+        skill.setCodeFile(null);
         skill.setCode(code.trim());
         skill.setSource(source != null ? source : "saved");
         skill.touch();
@@ -96,6 +110,19 @@ public final class SkillLibrary {
         return true;
     }
 
+    /** Names that are missing from the library but required by the given skill. */
+    public synchronized List<String> missingRequires(String name) {
+        List<String> missing = new ArrayList<>();
+        Skill skill = this.skills.get(normalize(name));
+        if (skill == null || skill.getRequires() == null) return missing;
+        for (String dependency : skill.getRequires()) {
+            String key = normalize(dependency);
+            if (key.isEmpty()) continue;
+            if (!this.skills.containsKey(key)) missing.add(key);
+        }
+        return missing;
+    }
+
     public synchronized JsonArray toJsonArray(List<Skill> list, boolean includeCode) {
         JsonArray array = new JsonArray();
         for (Skill skill : list) {
@@ -111,6 +138,11 @@ public final class SkillLibrary {
                 for (String trigger : skill.getTriggers()) triggers.add(new com.google.gson.JsonPrimitive(trigger));
             }
             object.add("triggers", triggers);
+            JsonArray requires = new JsonArray();
+            if (skill.getRequires() != null) {
+                for (String dependency : skill.getRequires()) requires.add(new com.google.gson.JsonPrimitive(dependency));
+            }
+            object.add("requires", requires);
             if (includeCode) object.addProperty("code", skill.getCode());
             array.add(object);
         }
@@ -146,13 +178,37 @@ public final class SkillLibrary {
             skill.setSource("bundled");
             if (skill.getDescription() == null) skill.setDescription("");
             if (skill.getTags() == null) skill.setTags("");
-            if (skill.getCode() == null) skill.setCode("");
             if (skill.getTriggers() == null) skill.setTriggers(new ArrayList<>());
+            if (skill.getRequires() == null) skill.setRequires(new ArrayList<>());
+            if (skill.getCode() == null) skill.setCode("");
+            if (skill.getCodeFile() != null && !skill.getCodeFile().trim().isEmpty()) {
+                String bundledCode = readResource("/skills/" + skill.getCodeFile().trim());
+                if (bundledCode != null) skill.setCode(bundledCode);
+            }
+            skill.setCodeFile(null);
             if (skill.getVersion() <= 0) skill.setVersion(1);
+            if (skill.getCode().trim().isEmpty()) {
+                LOG.warning("Bundled skill '" + skill.getName() + "' has no code; skipped.");
+                return;
+            }
             skill.touch();
             this.skills.put(skill.getName(), skill);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Could not read bundled skill " + fileName, e);
+        }
+    }
+
+    private static String readResource(String path) {
+        InputStream stream = SkillLibrary.class.getResourceAsStream(path);
+        if (stream == null) return null;
+        try (InputStream in = stream) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] chunk = new byte[4096];
+            int read;
+            while ((read = in.read(chunk)) >= 0) out.write(chunk, 0, read);
+            return new String(out.toByteArray(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -169,9 +225,18 @@ public final class SkillLibrary {
                 if (skill.getDescription() == null) skill.setDescription("");
                 if (skill.getTags() == null) skill.setTags("");
                 if (skill.getCode() == null) skill.setCode("");
+                if (skill.getRequires() == null) skill.setRequires(new ArrayList<>());
                 if (skill.getTriggers() == null) skill.setTriggers(deriveTriggers(skill.getTags()));
                 if (skill.getSource() == null) skill.setSource("saved");
                 if (skill.getVersion() <= 0) skill.setVersion(1);
+                skill.setCodeFile(null);
+                // A persisted "bundled" entry is a stale snapshot of a resource
+                // skill, not a user override. Ignoring it lets an upgraded jar
+                // ship corrected bundled workflows instead of being shadowed
+                // by an old copy on disk.
+                if ("bundled".equalsIgnoreCase(skill.getSource())) {
+                    continue;
+                }
                 if (usesRemovedApi(skill.getCode())) {
                     LOG.info("Skipping legacy skill '" + skill.getName()
                             + "': it uses a removed drone API and cannot run on the v2 harness.");
@@ -192,9 +257,17 @@ public final class SkillLibrary {
             LOG.warning("Could not create skill directory " + parent.getAbsolutePath());
             return;
         }
+        // Bundled skills live in the jar; only learned/refined overrides are
+        // persisted. Writing snapshots of bundled skills would pin an old
+        // version forever after an upgrade.
+        List<Skill> persist = new ArrayList<>();
+        for (Skill skill : this.skills.values()) {
+            if (skill == null || "bundled".equalsIgnoreCase(skill.getSource())) continue;
+            persist.add(skill);
+        }
         File temp = new File(this.storageFile.getAbsolutePath() + ".tmp");
         try (Writer writer = new FileWriter(temp)) {
-            CortexDroneMod.GSON.toJson(new ArrayList<>(this.skills.values()), writer);
+            CortexDroneMod.GSON.toJson(persist, writer);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Could not write skills", e);
             return;

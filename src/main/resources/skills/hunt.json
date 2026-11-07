@@ -1,0 +1,11 @@
+{
+  "name": "hunt",
+  "description": "Hunt nearby mobs for a bounded time: pick the closest matching entity, attack until it dies, refresh the target list, then vacuum the drops. target accepts hostile, animal, a mob name, or all. Never attacks players.",
+  "tags": "hunt kill attack mob hostile animal combat loot drops meat",
+  "triggers": ["hunt mobs", "kill the zombies", "clear the monsters", "get me meat"],
+  "requires": [],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "codeFile": "hunt.js"
+}

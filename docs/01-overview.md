@@ -58,8 +58,11 @@ Key properties:
   `config/cortexdrone/lessons.json`, injected before planning similar work.
 - Log every task to `config/cortexdrone/sessions/<outcome>/` (success, failure,
   cancelled, interrupted, incomplete, error) with a searchable index.
+- Run the bundled skill suite: mining/hauling, storage sorting, hunting,
+  guarding, patrolling, carrying players, crop/sugarcane/melon farming, tree
+  felling and phased structure building.
 - Work recon -> plan -> one script -> verify, then turn successful workflows
-  into skills.
+  into skills that can call each other.
 - Run JavaScript for loops, plans, bulk scans and conditional workflows.
 
 ## What it deliberately cannot do

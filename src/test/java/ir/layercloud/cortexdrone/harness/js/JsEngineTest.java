@@ -99,6 +99,47 @@ public class JsEngineTest {
         assertEquals("x", result.getAsJsonObject("result").get("item").getAsString());
     }
 
+    @Test
+    public void skillsCallComposesStoredSkillsWithParameters() throws Exception {
+        ToolRegistry registry = new ToolRegistry();
+        registry.declare(ToolSpec.builder("echo")
+                .description("Echo a value.")
+                .parameters(ToolSchema.object().requiredString("value", "Value."))
+                .affinity(ToolAffinity.ASYNC)
+                .build());
+        registry.bind("echo", "test", (context, args) -> {
+            JsonObject result = ToolJson.ok();
+            result.addProperty("value", args.get("value").getAsString());
+            return result;
+        });
+
+        SkillLibrary library = new SkillLibrary(tempRoot());
+        assertNotNull(library.save("echo_upper", "upper", "", null, null,
+                "var r = drone.echo({ value: params.value }); return r.value + '!';", "test"));
+        assertNotNull(library.save("echo_twice", "twice", "", null,
+                java.util.Collections.singletonList("echo_upper"),
+                "var once = skills.call('echo_upper', { value: params.value });"
+                        + "return once + once;", "test"));
+
+        JsEngine engine = new JsEngine(new ToolInvoker(null, registry, new ScanJobs(null)),
+                registry, new ModConfig(), library);
+        JsonObject result = engine.execute(null,
+                "return skills.call('echo_twice', { value: 'ab' });", 5_000L);
+
+        assertTrue(result.toString(), result.get("ok").getAsBoolean());
+        assertEquals("ab!ab!", result.get("result").getAsString());
+    }
+
+    @Test
+    public void unknownSkillThrowsAClearRuntimeError() throws Exception {
+        ToolRegistry registry = new ToolRegistry();
+        JsEngine engine = new JsEngine(new ToolInvoker(null, registry, new ScanJobs(null)),
+                registry, new ModConfig(), new SkillLibrary(tempRoot()));
+        JsonObject result = engine.execute(null, "return skills.call('nope', {});", 5_000L);
+        assertFalse(result.get("ok").getAsBoolean());
+        assertTrue(result.get("error").getAsString().contains("nope"));
+    }
+
     private static File tempRoot() throws Exception {
         return Files.createTempDirectory("cortexdrone-js").toFile();
     }

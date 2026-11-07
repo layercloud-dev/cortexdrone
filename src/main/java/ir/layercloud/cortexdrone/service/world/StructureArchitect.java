@@ -2,25 +2,40 @@ package ir.layercloud.cortexdrone.service.world;
 
 import ir.layercloud.cortexdrone.DroneController;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
- * Intelligent 3D terrain analyzer and parametric architectural blueprint planner.
- * Finds flat build pads near the player/look-point and generates complete, terrain-adapted
- * 3D building plans (foundation, floor, corners, walls, doorway, windows, roof).
+ * Parametric architectural blueprint planner plus flat-pad search.
+ *
+ * <p>It produces a <em>plan</em>, never actions: a list of placements with an
+ * explicit build phase, a clearing list, material totals and the door/window
+ * openings. The {@code build_structure} skill verifies the site with
+ * {@link SiteSurvey}, adapts materials and places the tasks in phase order.</p>
+ *
+ * <p>Supported styles: {@code house}, {@code hut}, {@code wall}, {@code tower},
+ * {@code platform}, {@code bridge}. Roof styles: {@code flat}, {@code gable},
+ * {@code hip}, {@code pyramid}. Every plan is safe by construction: no task is
+ * placed inside a protected fixture, and clearing only targets mineable blocks.</p>
  */
 public class StructureArchitect {
+    private static final int MAX_TASKS = 6000;
+
+    public enum Phase {
+        FOUNDATION, FLOOR, CORNER, WALL, WINDOW, RAILING, ROOF, DETAIL
+    }
 
     @Getter
     @RequiredArgsConstructor
@@ -32,13 +47,41 @@ public class StructureArchitect {
         private final int floorY;
         private final int maxY;
         private final String doorSide;
+        private final String style;
+        private final String roofStyle;
         private final List<int[]> clearBlocks = new ArrayList<>();
         private final List<BuildTask> buildTasks = new ArrayList<>();
         private final Map<String, Integer> materialCounts = new LinkedHashMap<>();
+        private final Map<String, Integer> phaseCounts = new LinkedHashMap<>();
+        private int doorX;
+        private int doorY;
+        private int doorZ;
 
-        public void addTask(int x, int y, int z, String blockFilter, int meta, boolean replace) {
-            this.buildTasks.add(new BuildTask(x, y, z, blockFilter, meta, replace));
-            this.materialCounts.compute(blockFilter, (k, prev) -> (prev != null ? prev : 0) + 1);
+        public void addTask(int x, int y, int z, String blockFilter, int meta,
+                            boolean replace, Phase phase) {
+            if (this.buildTasks.size() >= MAX_TASKS) return;
+            BuildTask task = new BuildTask(x, y, z, blockFilter, meta, replace,
+                    phase.name().toLowerCase(Locale.ROOT));
+            this.buildTasks.add(task);
+            this.materialCounts.merge(task.getBlockFilter(), 1, Integer::sum);
+            this.phaseCounts.merge(task.getPhase(), 1, Integer::sum);
+        }
+
+        public void setDoor(int x, int y, int z) {
+            this.doorX = x;
+            this.doorY = y;
+            this.doorZ = z;
+        }
+
+        /** Placements ordered so lower phases and lower Y come first. */
+        public List<BuildTask> orderedTasks() {
+            List<BuildTask> ordered = new ArrayList<>(this.buildTasks);
+            ordered.sort(Comparator
+                    .comparingInt(BuildTask::phaseRank)
+                    .thenComparingInt(BuildTask::getY)
+                    .thenComparingInt(BuildTask::getX)
+                    .thenComparingInt(BuildTask::getZ));
+            return ordered;
         }
 
         public JsonObject toJson() {
@@ -48,44 +91,70 @@ public class StructureArchitect {
             out.addProperty("z1", this.z1);
             out.addProperty("x2", this.x2);
             out.addProperty("z2", this.z2);
+            out.addProperty("width", this.x2 - this.x1 + 1);
+            out.addProperty("depth", this.z2 - this.z1 + 1);
             out.addProperty("floorY", this.floorY);
             out.addProperty("maxY", this.maxY);
             out.addProperty("doorSide", this.doorSide);
+            out.addProperty("style", this.style);
+            out.addProperty("roofStyle", this.roofStyle);
             out.addProperty("clearCount", this.clearBlocks.size());
             out.addProperty("buildCount", this.buildTasks.size());
+
+            JsonObject door = new JsonObject();
+            door.addProperty("x", this.doorX);
+            door.addProperty("y", this.doorY);
+            door.addProperty("z", this.doorZ);
+            door.addProperty("side", this.doorSide);
+            out.add("door", door);
+
             JsonObject mats = new JsonObject();
-            for (Map.Entry<String, Integer> e : this.materialCounts.entrySet()) {
-                mats.addProperty(e.getKey(), e.getValue());
+            for (Map.Entry<String, Integer> entry : this.materialCounts.entrySet()) {
+                mats.addProperty(entry.getKey(), entry.getValue());
             }
             out.add("materialsRequired", mats);
+            JsonObject phases = new JsonObject();
+            for (Map.Entry<String, Integer> entry : this.phaseCounts.entrySet()) {
+                phases.addProperty(entry.getKey(), entry.getValue());
+            }
+            out.add("phases", phases);
+
+            JsonArray clear = new JsonArray();
+            for (int[] point : this.clearBlocks) {
+                JsonObject block = new JsonObject();
+                block.addProperty("x", point[0]);
+                block.addProperty("y", point[1]);
+                block.addProperty("z", point[2]);
+                clear.add(block);
+            }
+            out.add("clear", clear);
+
+            JsonArray tasks = new JsonArray();
+            for (BuildTask task : orderedTasks()) {
+                JsonObject entry = new JsonObject();
+                entry.addProperty("x", task.getX());
+                entry.addProperty("y", task.getY());
+                entry.addProperty("z", task.getZ());
+                entry.addProperty("block", task.getBlockFilter());
+                entry.addProperty("phase", task.getPhase());
+                if (task.getMeta() >= 0) entry.addProperty("meta", task.getMeta());
+                tasks.add(entry);
+            }
+            out.add("tasks", tasks);
             return out;
         }
     }
 
-    private static int getSolidGroundY(World world, int x, int z, int refY) {
-        if (!ChunkAccess.isBlockLoaded(world, x, z)) return refY;
-        int top = Math.min(250, Math.max(refY + 14, world.getHeightValue(x, z) + 2));
-        int minY = Math.max(4, refY - 16);
-        for (int y = top; y >= minY; y--) {
-            if (world.isAirBlock(x, y, z)) continue;
-            Block b = world.getBlock(x, y, z);
-            if (b == null) continue;
-            if (ItemClassifier.isLeafBlock(b) || ItemClassifier.isLogBlock(b) || ItemClassifier.isCropOrReedBlock(b)) {
-                continue;
-            }
-            if (ItemClassifier.isReplaceableBlock(world, x, y, z) && !ItemClassifier.isLiquidBlock(b)) {
-                continue;
-            }
-            return y;
-        }
-        return Math.max(4, world.getHeightValue(x, z) - 1);
-    }
+    // ------------------------------------------------------------------
+    // Site search
+    // ------------------------------------------------------------------
 
     /**
-     * Scans around the player's crosshair look point or facing direction to find the flattest,
-     * unobstructed WxD build pad.
+     * Scans around the player's crosshair look point or facing direction to find
+     * the flattest, unobstructed WxD build pad.
      */
-    public JsonObject findBestBuildSite(World world, EntityPlayerMP player, DroneController ctrl, int width, int depth, int maxRadius) {
+    public JsonObject findBestBuildSite(World world, EntityPlayerMP player, DroneController ctrl,
+                                        int width, int depth, int maxRadius) {
         int w = Math.max(3, Math.min(21, width));
         int d = Math.max(3, Math.min(21, depth));
         int r = Math.max(8, Math.min(40, maxRadius));
@@ -99,7 +168,8 @@ public class StructureArchitect {
         int prefCenterZ = MathHelper.floor_double(pz);
         if (player != null) {
             JsonObject look = WorldScanner.raycastPlayerLook(world, player, 32.0);
-            if (look != null && look.has("x") && look.has("z") && look.get("distance").getAsDouble() >= 4.0) {
+            if (look != null && look.has("x") && look.has("z")
+                    && look.get("distance").getAsDouble() >= 4.0) {
                 prefCenterX = look.get("x").getAsInt();
                 prefCenterZ = look.get("z").getAsInt();
             } else {
@@ -125,10 +195,8 @@ public class StructureArchitect {
                 int x2 = x1 + w - 1;
                 int z2 = z1 + d - 1;
 
-                // Keep at least 2 blocks away from the player's standing position
-                if (px >= x1 - 1 && px <= x2 + 2 && pz >= z1 - 1 && pz <= z2 + 2) {
-                    continue;
-                }
+                // Keep at least 2 blocks away from the player's standing position.
+                if (px >= x1 - 1 && px <= x2 + 2 && pz >= z1 - 1 && pz <= z2 + 2) continue;
 
                 int minY = Integer.MAX_VALUE;
                 int maxY = Integer.MIN_VALUE;
@@ -139,15 +207,13 @@ public class StructureArchitect {
 
                 for (int x = x1; x <= x2 && !touchesProtected; x++) {
                     for (int z = z1; z <= z2; z++) {
-                        int gy = getSolidGroundY(world, x, z, refY);
-                        if (ItemClassifier.isProtectedFixture(world, x, gy, z) || ItemClassifier.isProtectedFixture(world, x, gy + 1, z)) {
+                        int gy = SiteSurvey.groundY(world, x, z, refY);
+                        if (ItemClassifier.isProtectedFixture(world, x, gy, z)
+                                || ItemClassifier.isProtectedFixture(world, x, gy + 1, z)) {
                             touchesProtected = true;
                             break;
                         }
-                        Block gb = world.getBlock(x, gy, z);
-                        if (ItemClassifier.isLiquidBlock(gb)) {
-                            liquidPenalty += 25;
-                        }
+                        if (ItemClassifier.isLiquidBlock(world.getBlock(x, gy, z))) liquidPenalty += 25;
                         if (gy < minY) minY = gy;
                         if (gy > maxY) maxY = gy;
                         sumY += gy;
@@ -190,8 +256,8 @@ public class StructureArchitect {
         res.addProperty("centerX", MathHelper.floor_double(centerX));
         res.addProperty("centerZ", MathHelper.floor_double(centerZ));
         res.addProperty("groundY", bestGroundY);
-        res.addProperty("floorY", bestGroundY);
-        res.addProperty("wallBaseY", bestGroundY + 1);
+        res.addProperty("floorY", bestMaxY);
+        res.addProperty("wallBaseY", bestMaxY + 1);
         res.addProperty("minTopY", bestMinY);
         res.addProperty("maxTopY", bestMaxY);
         res.addProperty("slope", bestMaxY - bestMinY);
@@ -199,38 +265,44 @@ public class StructureArchitect {
         return res;
     }
 
-    public static String resolveDoorSideTowardPlayer(double px, double pz, double centerX, double centerZ) {
+    public static String resolveDoorSideTowardPlayer(double px, double pz,
+                                                     double centerX, double centerZ) {
         double dx = px - centerX;
         double dz = pz - centerZ;
-        if (Math.abs(dx) > Math.abs(dz)) {
-            return dx > 0 ? "east" : "west";
-        }
+        if (Math.abs(dx) > Math.abs(dz)) return dx > 0 ? "east" : "west";
         return dz > 0 ? "south" : "north";
     }
 
-    /**
-     * Generates a complete 3D StructurePlan (terrain clearing + foundation + floor + walls + corners + doorway + roof).
-     */
-    public StructurePlan generateStructureBlueprint(World world, EntityPlayerMP player, DroneController ctrl, JsonObject spec) {
+    // ------------------------------------------------------------------
+    // Blueprint
+    // ------------------------------------------------------------------
+
+    public StructurePlan generateStructureBlueprint(World world, EntityPlayerMP player,
+                                                    DroneController ctrl, JsonObject spec) {
         int width = spec.has("width") ? Math.max(3, Math.min(19, spec.get("width").getAsInt())) : 5;
-        int depth = spec.has("depth") ? Math.max(3, Math.min(19, spec.get("depth").getAsInt())) : 5;
+        int depth = spec.has("depth") ? Math.max(3, Math.min(19, spec.get("depth").getAsInt())) : width;
         int wallHeight = spec.has("height") ? Math.max(2, Math.min(12, spec.get("height").getAsInt())) : 3;
-        String style = spec.has("style") ? spec.get("style").getAsString().toLowerCase() : "house";
-        String roofStyle = spec.has("roofStyle") ? spec.get("roofStyle").getAsString().toLowerCase() : "flat";
+        String style = spec.has("style")
+                ? spec.get("style").getAsString().toLowerCase(Locale.ROOT) : "house";
+        String roofStyle = spec.has("roofStyle")
+                ? spec.get("roofStyle").getAsString().toLowerCase(Locale.ROOT) : "flat";
         boolean includeWindows = !spec.has("windows") || spec.get("windows").getAsBoolean();
 
-        String floorBlock = spec.has("floor") ? spec.get("floor").getAsString()
-                : (spec.has("wall") ? spec.get("wall").getAsString()
-                : (spec.has("block") ? spec.get("block").getAsString() : "cobblestone"));
-        String wallBlock = spec.has("walls") ? spec.get("walls").getAsString()
-                : (spec.has("wall") ? spec.get("wall").getAsString()
-                : (spec.has("block") ? spec.get("block").getAsString() : "cobblestone"));
-        String cornerBlock = spec.has("corners") ? spec.get("corners").getAsString()
-                : (spec.has("corner") ? spec.get("corner").getAsString() : wallBlock);
-        String roofBlock = spec.has("roof") ? spec.get("roof").getAsString() : cornerBlock;
+        String fallback = spec.has("block") ? spec.get("block").getAsString() : "cobblestone";
+        String floorBlock = string(spec, "floor", fallback);
+        String wallBlock = string(spec, "walls", fallback);
+        String cornerBlock = string(spec, "corners", wallBlock);
+        String roofBlock = string(spec, "roof", cornerBlock);
+        String windowBlock = string(spec, "windowBlock", "glass");
+        String foundationBlock = string(spec, "foundation", "cobblestone");
 
-        int x1, z1, x2, z2, floorY;
+        int x1;
+        int z1;
+        int x2;
+        int z2;
+        int floorY;
         String doorSide;
+
         if (spec.has("x1") && spec.has("z1") && spec.has("x2") && spec.has("z2")) {
             x1 = Math.min(spec.get("x1").getAsInt(), spec.get("x2").getAsInt());
             x2 = Math.max(spec.get("x1").getAsInt(), spec.get("x2").getAsInt());
@@ -238,13 +310,17 @@ public class StructureArchitect {
             z2 = Math.max(spec.get("z1").getAsInt(), spec.get("z2").getAsInt());
             width = x2 - x1 + 1;
             depth = z2 - z1 + 1;
-            int refY = player != null ? MathHelper.floor_double(player.posY) : MathHelper.floor_double(ctrl.drone.posY);
+            int refY = player != null && player.worldObj == world
+                    ? MathHelper.floor_double(player.posY) : MathHelper.floor_double(ctrl.drone.posY);
             floorY = spec.has("y") ? spec.get("y").getAsInt()
-                    : (spec.has("floorY") ? spec.get("floorY").getAsInt() : getSolidGroundY(world, (x1 + x2) / 2, (z1 + z2) / 2, refY));
-            double px = player != null ? player.posX : ctrl.drone.posX;
-            double pz = player != null ? player.posZ : ctrl.drone.posZ;
-            doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase()
-                    : resolveDoorSideTowardPlayer(px, pz, (x1 + x2) * 0.5, (z1 + z2) * 0.5);
+                    : (spec.has("floorY") ? spec.get("floorY").getAsInt()
+                    : SiteSurvey.groundY(world, (x1 + x2) / 2, (z1 + z2) / 2, refY));
+            if (!spec.has("y") && !spec.has("floorY")) {
+                floorY = highestGround(world, x1, z1, x2, z2, floorY);
+            }
+            doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase(Locale.ROOT)
+                    : resolveDoorSideTowardPlayer(player != null ? player.posX : ctrl.drone.posX,
+                    player != null ? player.posZ : ctrl.drone.posZ, (x1 + x2) * 0.5, (z1 + z2) * 0.5);
         } else if (spec.has("x") && spec.has("z")) {
             int cx = spec.get("x").getAsInt();
             int cz = spec.get("z").getAsInt();
@@ -252,13 +328,15 @@ public class StructureArchitect {
             z1 = cz - depth / 2;
             x2 = x1 + width - 1;
             z2 = z1 + depth - 1;
-            int refY = player != null ? MathHelper.floor_double(player.posY) : MathHelper.floor_double(ctrl.drone.posY);
+            int refY = player != null && player.worldObj == world
+                    ? MathHelper.floor_double(player.posY) : MathHelper.floor_double(ctrl.drone.posY);
             floorY = spec.has("y") ? spec.get("y").getAsInt()
-                    : (spec.has("floorY") ? spec.get("floorY").getAsInt() : getSolidGroundY(world, cx, cz, refY));
-            double px = player != null ? player.posX : ctrl.drone.posX;
-            double pz = player != null ? player.posZ : ctrl.drone.posZ;
-            doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase()
-                    : resolveDoorSideTowardPlayer(px, pz, cx, cz);
+                    : (spec.has("floorY") ? spec.get("floorY").getAsInt()
+                    : highestGround(world, x1, z1, x2, z2,
+                    SiteSurvey.groundY(world, cx, cz, refY)));
+            doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase(Locale.ROOT)
+                    : resolveDoorSideTowardPlayer(player != null ? player.posX : ctrl.drone.posX,
+                    player != null ? player.posZ : ctrl.drone.posZ, cx, cz);
         } else {
             JsonObject site = findBestBuildSite(world, player, ctrl, width, depth, 22);
             x1 = site.get("x1").getAsInt();
@@ -266,16 +344,29 @@ public class StructureArchitect {
             x2 = site.get("x2").getAsInt();
             z2 = site.get("z2").getAsInt();
             floorY = site.get("floorY").getAsInt();
-            doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase() : site.get("doorSide").getAsString();
+            doorSide = spec.has("doorSide") ? spec.get("doorSide").getAsString().toLowerCase(Locale.ROOT)
+                    : site.get("doorSide").getAsString();
         }
 
-        int roofBaseY = floorY + wallHeight + 1;
-        StructurePlan plan = new StructurePlan(x1, z1, x2, z2, floorY, roofBaseY + 2, doorSide);
+        boolean platform = style.equals("platform") || style.equals("pad") || style.equals("floor");
+        boolean wallOnly = style.equals("wall") || style.equals("fence");
+        boolean bridge = style.equals("bridge");
+        boolean tower = style.equals("tower");
+        int effectiveHeight = tower ? Math.max(wallHeight, Math.min(19, Math.max(width, depth) + 2))
+                : wallHeight;
+        int roofBaseY = floorY + effectiveHeight + 1;
+        int maxY = platform || bridge ? floorY : roofBaseY + roofLayers(width, depth, roofStyle);
 
-        // 1) Collect obstacles in interior + above floor that need clearing
-        for (int y = roofBaseY + 2; y >= floorY + 1; y--) {
+        StructurePlan plan = new StructurePlan(x1, z1, x2, z2, floorY, maxY, doorSide,
+                style, roofStyle);
+
+        // 1) Clear everything above and at the floor inside the footprint, top-down.
+        // The floor layer itself is cleared so the new floor replaces dirt/grass
+        // instead of silently failing on an occupied target.
+        for (int y = maxY; y >= floorY; y--) {
             for (int x = x1; x <= x2; x++) {
                 for (int z = z1; z <= z2; z++) {
+                    if (ItemClassifier.isProtectedFixture(world, x, y, z)) continue;
                     if (ItemClassifier.isMineableBlock(world, x, y, z)) {
                         plan.clearBlocks.add(new int[]{x, y, z});
                     }
@@ -283,86 +374,223 @@ public class StructureArchitect {
             }
         }
 
-        // 2) Foundation & Floor at y = floorY (fills dips below floorY on perimeter as well)
+        // 2) Foundation + floor.
         for (int x = x1; x <= x2; x++) {
             for (int z = z1; z <= z2; z++) {
-                for (int fy = floorY - 2; fy < floorY; fy++) {
-                    if (fy > 2 && (x == x1 || x == x2 || z == z1 || z == z2) && ItemClassifier.isReplaceableBlock(world, x, fy, z)) {
-                        plan.addTask(x, fy, z, floorBlock, -1, false);
+                for (int fy = floorY - 1; fy >= floorY - 2; fy--) {
+                    if (!ItemClassifier.isReplaceableBlock(world, x, fy, z)) continue;
+                    boolean perimeter = x == x1 || x == x2 || z == z1 || z == z2;
+                    if (perimeter || fy == floorY - 1) {
+                        plan.addTask(x, fy, z, foundationBlock, -1, false, Phase.FOUNDATION);
                     }
                 }
-                plan.addTask(x, floorY, z, floorBlock, -1, true);
+                plan.addTask(x, floorY, z, floorBlock, -1, true, Phase.FLOOR);
             }
         }
 
-        if ("platform".equals(style) || "pad".equals(style) || "floor".equals(style)) {
+        if (platform) {
+            addRailings(plan, x1, z1, x2, z2, floorY + 1, wallBlock, doorSide);
+            return plan;
+        }
+
+        if (bridge) {
+            addPiers(plan, x1, z1, x2, z2, floorY, foundationBlock);
+            addRailings(plan, x1, z1, x2, z2, floorY + 1, wallBlock, doorSide);
             return plan;
         }
 
         int midX = (x1 + x2) / 2;
         int midZ = (z1 + z2) / 2;
 
-        // 3) Walls, Corners, Doorway & Window Openings
-        for (int y = floorY + 1; y <= floorY + wallHeight; y++) {
+        // 3) Walls, corners, door opening and windows.
+        for (int y = floorY + 1; y <= floorY + effectiveHeight; y++) {
             int relY = y - floorY;
             for (int x = x1; x <= x2; x++) {
                 for (int z = z1; z <= z2; z++) {
-                    boolean isPerim = (x == x1 || x == x2 || z == z1 || z == z2);
-                    if (!isPerim) continue;
+                    boolean perimeter = x == x1 || x == x2 || z == z1 || z == z2;
+                    if (!perimeter) continue;
 
-                    boolean isCorner = (x == x1 || x == x2) && (z == z1 || z == z2);
-                    if (isCorner) {
-                        plan.addTask(x, y, z, cornerBlock, -1, true);
+                    boolean corner = (x == x1 || x == x2) && (z == z1 || z == z2);
+                    if (corner) {
+                        plan.addTask(x, y, z, cornerBlock, -1, true, Phase.CORNER);
                         continue;
                     }
 
-                    // 1x2 Doorway on chosen doorSide
-                    boolean isDoor = false;
-                    if (relY <= 2) {
-                        if ("north".equals(doorSide) && z == z1 && x == midX) isDoor = true;
-                        else if ("south".equals(doorSide) && z == z2 && x == midX) isDoor = true;
-                        else if ("west".equals(doorSide) && x == x1 && z == midZ) isDoor = true;
-                        else if ("east".equals(doorSide) && x == x2 && z == midZ) isDoor = true;
-                    }
-                    if (isDoor) continue;
-
-                    // Optional window openings at eye level (relY == 2) on non-door wall centers for footprints >= 5
-                    if (includeWindows && relY == 2 && wallHeight >= 3) {
-                        boolean isWin = (!"north".equals(doorSide) && z == z1 && x == midX && width >= 5)
-                                || (!"south".equals(doorSide) && z == z2 && x == midX && width >= 5)
-                                || (!"west".equals(doorSide) && x == x1 && z == midZ && depth >= 5)
-                                || (!"east".equals(doorSide) && x == x2 && z == midZ && depth >= 5);
-                        if (isWin) continue;
+                    boolean doorOpening = isDoorCell(x, z, midX, midZ, doorSide, x1, x2, z1, z2)
+                            && relY <= 2;
+                    if (doorOpening) {
+                        if (relY == 1) plan.setDoor(x, y, z);
+                        continue;
                     }
 
-                    plan.addTask(x, y, z, wallBlock, -1, true);
+                    boolean window = includeWindows && effectiveHeight >= 3 && relY == 2
+                            && isWindowCell(x, z, midX, midZ, doorSide, x1, x2, z1, z2, width, depth);
+                    plan.addTask(x, y, z, window ? windowBlock : wallBlock, -1, true,
+                            window ? Phase.WINDOW : Phase.WALL);
                 }
             }
         }
 
-        // 4) Roof (flat, pyramid, or gable)
-        if ("pyramid".equals(roofStyle) || "pitched".equals(roofStyle)) {
-            int maxLayer = Math.min(width, depth) / 2;
-            for (int layer = 0; layer <= maxLayer; layer++) {
-                int ry = roofBaseY + layer;
-                int rx1 = x1 + layer, rx2 = x2 - layer;
-                int rz1 = z1 + layer, rz2 = z2 - layer;
-                for (int x = rx1; x <= rx2; x++) {
-                    for (int z = rz1; z <= rz2; z++) {
-                        if (layer == maxLayer || x == rx1 || x == rx2 || z == rz1 || z == rz2) {
-                            plan.addTask(x, ry, z, roofBlock, -1, true);
+        if (wallOnly) {
+            // A wall is four enclosing sides with no roof; the gate is the door gap.
+            return plan;
+        }
+
+        // 4) Roof.
+        addRoof(plan, x1, z1, x2, z2, roofBaseY, roofStyle, roofBlock);
+        return plan;
+    }
+
+    private static void addRoof(StructurePlan plan, int x1, int z1, int x2, int z2,
+                                int roofBaseY, String roofStyle, String roofBlock) {
+        String style = roofStyle != null ? roofStyle : "flat";
+        if (style.equals("gable") || style.equals("pitched") || style.equals("peak")) {
+            boolean alongX = (x2 - x1) >= (z2 - z1);
+            int span = alongX ? (z2 - z1) : (x2 - x1);
+            int start = alongX ? z1 : x1;
+            int end = alongX ? z2 : x2;
+            int layers = (span + 1) / 2;
+            for (int layer = 0; layer < layers; layer++) {
+                int y = roofBaseY + layer;
+                int low = start + layer;
+                int high = end - layer;
+                if (low > high) break;
+                for (int x = x1; x <= x2; x++) {
+                    for (int z = z1; z <= z2; z++) {
+                        boolean edge = alongX ? (z == low || z == high) : (x == low || x == high);
+                        boolean ridge = low == high;
+                        if (edge || ridge) {
+                            plan.addTask(x, y, z, roofBlock, -1, true, Phase.ROOF);
                         }
                     }
                 }
             }
-        } else {
-            for (int x = x1; x <= x2; x++) {
-                for (int z = z1; z <= z2; z++) {
-                    plan.addTask(x, roofBaseY, z, roofBlock, -1, true);
+            return;
+        }
+        if (style.equals("hip") || style.equals("pyramid") || style.equals("pitched")) {
+            int layers = Math.min(x2 - x1, z2 - z1) / 2 + 1;
+            for (int layer = 0; layer < layers; layer++) {
+                int y = roofBaseY + layer;
+                int rx1 = x1 + layer;
+                int rx2 = x2 - layer;
+                int rz1 = z1 + layer;
+                int rz2 = z2 - layer;
+                if (rx1 > rx2 || rz1 > rz2) break;
+                for (int x = rx1; x <= rx2; x++) {
+                    for (int z = rz1; z <= rz2; z++) {
+                        boolean edge = x == rx1 || x == rx2 || z == rz1 || z == rz2;
+                        boolean cap = rx1 == rx2 || rz1 == rz2;
+                        if (edge || cap) {
+                            plan.addTask(x, y, z, roofBlock, -1, true, Phase.ROOF);
+                        }
+                    }
                 }
             }
+            return;
         }
+        // Flat roof with a one-block lip so it reads as a roof, not a floating slab.
+        for (int x = x1; x <= x2; x++) {
+            for (int z = z1; z <= z2; z++) {
+                plan.addTask(x, roofBaseY, z, roofBlock, -1, true, Phase.ROOF);
+            }
+        }
+    }
 
-        return plan;
+    private static int roofLayers(int width, int depth, String roofStyle) {
+        String style = roofStyle != null ? roofStyle : "flat";
+        if (style.equals("gable") || style.equals("pitched") || style.equals("peak")) {
+            int span = Math.max(width, depth) - 1;
+            return Math.max(1, (span + 1) / 2);
+        }
+        if (style.equals("hip") || style.equals("pyramid")) {
+            return Math.max(1, Math.min(width, depth) / 2 + 1);
+        }
+        return 1;
+    }
+
+    private static void addPiers(StructurePlan plan, int x1, int z1, int x2, int z2,
+                                 int floorY, String block) {
+        int[][] corners = new int[][]{
+                {x1, z1}, {x2, z1}, {x1, z2}, {x2, z2}
+        };
+        for (int[] corner : corners) {
+            for (int y = floorY - 1; y >= floorY - 3; y--) {
+                plan.addTask(corner[0], y, corner[1], block, -1, false, Phase.FOUNDATION);
+            }
+        }
+        // Mid-span support for long bridges.
+        int midX = (x1 + x2) / 2;
+        int midZ = (z1 + z2) / 2;
+        if (x2 - x1 > 8) {
+            for (int y = floorY - 1; y >= floorY - 3; y--) {
+                plan.addTask(midX, y, z1, block, -1, false, Phase.FOUNDATION);
+                plan.addTask(midX, y, z2, block, -1, false, Phase.FOUNDATION);
+            }
+        }
+        if (z2 - z1 > 8) {
+            for (int y = floorY - 1; y >= floorY - 3; y--) {
+                plan.addTask(x1, y, midZ, block, -1, false, Phase.FOUNDATION);
+                plan.addTask(x2, y, midZ, block, -1, false, Phase.FOUNDATION);
+            }
+        }
+    }
+
+    private static void addRailings(StructurePlan plan, int x1, int z1, int x2, int z2,
+                                    int y, String block, String doorSide) {
+        for (int x = x1; x <= x2; x++) {
+            for (int z = z1; z <= z2; z++) {
+                boolean perimeter = x == x1 || x == x2 || z == z1 || z == z2;
+                if (!perimeter) continue;
+                boolean corner = (x == x1 || x == x2) && (z == z1 || z == z2);
+                if (!corner && ((x + z) % 3 != 0)) continue;
+                boolean doorGap = isDoorCell(x, z, (x1 + x2) / 2, (z1 + z2) / 2,
+                        doorSide, x1, x2, z1, z2);
+                if (doorGap) continue;
+                plan.addTask(x, y, z, block, -1, true, Phase.RAILING);
+            }
+        }
+    }
+
+    private static boolean isDoorCell(int x, int z, int midX, int midZ, String side,
+                                      int x1, int x2, int z1, int z2) {
+        if (side == null) return false;
+        switch (side) {
+            case "north":
+                return z == z1 && x == midX;
+            case "south":
+                return z == z2 && x == midX;
+            case "west":
+                return x == x1 && z == midZ;
+            case "east":
+                return x == x2 && z == midZ;
+            default:
+                return false;
+        }
+    }
+
+    private static boolean isWindowCell(int x, int z, int midX, int midZ, String doorSide,
+                                        int x1, int x2, int z1, int z2, int width, int depth) {
+        if (width >= 5 && z == z1 && x == midX && !"north".equals(doorSide)) return true;
+        if (width >= 5 && z == z2 && x == midX && !"south".equals(doorSide)) return true;
+        if (depth >= 5 && x == x1 && z == midZ && !"west".equals(doorSide)) return true;
+        if (depth >= 5 && x == x2 && z == midZ && !"east".equals(doorSide)) return true;
+        return false;
+    }
+
+    private static int highestGround(World world, int x1, int z1, int x2, int z2, int fallback) {
+        int highest = fallback;
+        for (int x = x1; x <= x2; x++) {
+            for (int z = z1; z <= z2; z++) {
+                int y = SiteSurvey.groundY(world, x, z, fallback);
+                if (y > highest) highest = y;
+            }
+        }
+        return highest;
+    }
+
+    private static String string(JsonObject spec, String key, String fallback) {
+        if (spec == null || !spec.has(key) || spec.get(key).isJsonNull()) return fallback;
+        String value = spec.get(key).getAsString();
+        return value != null && !value.trim().isEmpty() ? value.trim() : fallback;
     }
 }

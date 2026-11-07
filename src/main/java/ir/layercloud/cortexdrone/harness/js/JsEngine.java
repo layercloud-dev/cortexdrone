@@ -47,6 +47,7 @@ import java.util.function.BooleanSupplier;
  */
 public final class JsEngine {
     private static final ThreadLocal<JsBudget> BUDGET = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> RUNNING = new ThreadLocal<>();
     private static final int MAX_LOG_ENTRIES = 200;
     private static final int MAX_LOG_CHARS = 24_000;
     private static final String BOOTSTRAP = loadBootstrap();
@@ -80,6 +81,11 @@ public final class JsEngine {
         };
     }
 
+    /** True while this thread is already inside a script (nested execute is unsafe). */
+    public static boolean isExecuting() {
+        return Boolean.TRUE.equals(RUNNING.get());
+    }
+
     public JsonObject execute(ToolContext context, String code, long timeoutMs) {
         long started = System.currentTimeMillis();
         if (code == null || code.trim().isEmpty()) {
@@ -91,7 +97,9 @@ public final class JsEngine {
         JsBudget budget = new JsBudget(started + Math.max(1_000L, timeoutMs),
                 context != null ? context::cancelled : null);
         JsBudget previous = BUDGET.get();
+        Boolean previousRunning = RUNNING.get();
         BUDGET.set(budget);
+        RUNNING.set(Boolean.TRUE);
         try {
             return this.factory.call(new ContextAction<JsonObject>() {
                 @Override
@@ -104,6 +112,8 @@ public final class JsEngine {
         } finally {
             if (previous != null) BUDGET.set(previous);
             else BUDGET.remove();
+            if (previousRunning != null) RUNNING.set(previousRunning);
+            else RUNNING.remove();
         }
     }
 
@@ -231,7 +241,9 @@ public final class JsEngine {
         ScriptableObject.putProperty(scope, "tools", tools);
     }
 
-    private void bindSkills(Context cx, Scriptable scope, final ToolContext context) {
+    private void bindSkills(Context cx, final Scriptable scope, final ToolContext context) {
+        final SkillLibrary library = context != null && context.skills() != null
+                ? context.skills() : this.skills;
         ScriptableObject skillsObject = (ScriptableObject) cx.newObject(scope);
         ScriptableObject.putProperty(skillsObject, "search", new BaseFunction() {
             @Override
@@ -256,6 +268,17 @@ public final class JsEngine {
                 return JsConvert.toJs(result, inner, innerScope);
             }
         });
+        // Skill composition: run another skill in this same runtime. The called
+        // skill sees the same tools and helpers but not the caller's locals.
+        ScriptableObject.putProperty(skillsObject, "call", new BaseFunction() {
+            @Override
+            public Object call(Context inner, Scriptable innerScope, Scriptable thisObj, Object[] args) {
+                String name = args.length > 0 ? Context.toString(args[0]) : "";
+                return SkillRuntime.call(inner, innerScope, library, name,
+                        args.length > 1 ? args[1] : null);
+            }
+        });
+        ScriptableObject.putProperty(skillsObject, "run", ScriptableObject.getProperty(skillsObject, "call"));
         ScriptableObject.putProperty(scope, "skills", skillsObject);
     }
 

@@ -29,6 +29,35 @@ public class SkillLibraryTest {
     }
 
     @Test
+    public void persistedBundledSnapshotsDoNotShadowShippedSkills() throws Exception {
+        File root = Files.createTempDirectory("cortexdrone-skills-stale").toFile();
+        File storage = new File(root, "skills.json");
+        String stale = "[{\"name\":\"mine_and_deliver\",\"description\":\"old\","
+                + "\"code\":\"return 'stale';\",\"source\":\"bundled\",\"version\":1}]";
+        Files.write(storage.toPath(), stale.getBytes("UTF-8"));
+
+        SkillLibrary library = new SkillLibrary(root);
+        Skill skill = library.get("mine_and_deliver");
+        assertNotNull(skill);
+        assertTrue("stale bundled snapshot must not shadow the jar resource",
+                skill.getCode().contains("skills.call('mine_blocks'"));
+        assertFalse(skill.getCode().contains("stale"));
+    }
+
+    @Test
+    public void savingWritesOnlyLearnedOverrides() throws Exception {
+        File root = Files.createTempDirectory("cortexdrone-skills-persist").toFile();
+        SkillLibrary library = new SkillLibrary(root);
+        library.save("my_skill", "mine", "", null, null, "return 1;", "saved");
+
+        String stored = new String(Files.readAllBytes(library.storageFile().toPath()), "UTF-8");
+        assertTrue(stored.contains("my_skill"));
+        assertFalse("bundled skills must stay in the jar",
+                stored.contains("\"source\": \"bundled\""));
+        assertFalse(stored.contains("\"source\":\"bundled\""));
+    }
+
+    @Test
     public void saveVersionsAndReloadsFromConfigDirectory() throws Exception {
         File root = Files.createTempDirectory("cortexdrone-skills-save").toFile();
         SkillLibrary library = new SkillLibrary(root);

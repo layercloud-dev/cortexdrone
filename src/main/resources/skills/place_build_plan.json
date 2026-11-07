@@ -1,0 +1,11 @@
+{
+  "name": "place_build_plan",
+  "description": "Execute a structure plan safely: clear listed obstacles top-down, then place every task in phase order (foundation, floor, corner, wall, window, railing, roof), verify occupied targets instead of overwriting them, withdraw missing materials automatically and optionally substitute a similar block. Supports dry_run to check material totals without building.",
+  "tags": "build place plan structure foundation wall roof clear verify materials substitute",
+  "triggers": ["place the blueprint", "build the plan", "execute the structure plan"],
+  "requires": ["withdraw_items"],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "codeFile": "place_build_plan.js"
+}

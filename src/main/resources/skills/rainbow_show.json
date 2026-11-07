@@ -1,10 +1,11 @@
 {
   "name": "rainbow_show",
-  "description": "Animate the drone LED through a rainbow with the static setLed primitive.",
+  "description": "Animate the drone LED through a rainbow using the static set_led primitive and the hsvToRgb helper. Purely cosmetic.",
   "tags": "rainbow led color light fun show music",
-  "triggers": ["rainbow lights", "led show", "change colors"],
-  "version": 1,
+  "triggers": ["rainbow lights", "led show", "change colors", "do a light show"],
+  "requires": [],
+  "version": 2,
   "uses": 0,
   "source": "bundled",
-  "code": "for (var i = 0; i < 40; i++) {\n  drone.setLed({ color: hsvToRgb((i * 18) % 360, 1, 1) });\n  sleep(100);\n}\nreturn { ok: true, colors: 40 };"
+  "codeFile": "rainbow_show.js"
 }

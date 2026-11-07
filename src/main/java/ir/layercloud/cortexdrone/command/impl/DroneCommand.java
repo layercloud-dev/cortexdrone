@@ -38,7 +38,7 @@ public class DroneCommand extends BaseCommand {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/" + this.cmdName + " <spawn|link|despawn|list|status|debug|config|memory|lesson|sessions|js|help>";
+        return "/" + this.cmdName + " <spawn|link|despawn|list|status|debug|config|memory|lesson|sessions|skills|js|help>";
     }
 
     @Override
@@ -57,7 +57,7 @@ public class DroneCommand extends BaseCommand {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
                     "spawn", "link", "despawn", "list", "status",
-                    "debug", "config", "memory", "lesson", "sessions", "js", "help");
+                    "debug", "config", "memory", "lesson", "sessions", "skills", "js", "help");
         }
         if (args.length == 2) {
             String sub = args[0].toLowerCase();
@@ -78,6 +78,9 @@ public class DroneCommand extends BaseCommand {
                 return getListOfStringsMatchingLastWord(args,
                         "list", "stats", "show", "success", "failure", "cancelled",
                         "interrupted", "incomplete", "error");
+            }
+            if (sub.equals("skills")) {
+                return getListOfStringsMatchingLastWord(args, "list", "search", "show");
             }
         }
         return null;
@@ -103,6 +106,7 @@ public class DroneCommand extends BaseCommand {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone lesson [list|search <q>|forget <id|title>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone sessions [list [success|failure|...] [n]|stats|show <id>]");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone skills [list [n]|search <q>|show <name>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
             return;
         }
@@ -167,6 +171,9 @@ public class DroneCommand extends BaseCommand {
                 return;
             case "sessions":
                 handleSessions(sender, args);
+                return;
+            case "skills":
+                handleSkills(sender, args);
                 return;
             case "config":
                 boolean isOp = player == null || player.canCommandSenderUseCommand(2, "drone");
@@ -279,6 +286,72 @@ public class DroneCommand extends BaseCommand {
 
         String fullPrompt = joinArgs(args, 0);
         this.manager.handleNaturalInstruction(player, fullPrompt);
+    }
+
+    private void handleSkills(ICommandSender sender, String[] args) {
+        ir.layercloud.cortexdrone.harness.skill.SkillLibrary library = this.manager.getHarness() != null
+                ? this.manager.getHarness().skills() : null;
+        if (library == null) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                    + "[Drone] Skill library is not initialized yet.");
+            return;
+        }
+        String action = args.length >= 2 ? args[1].toLowerCase() : "list";
+
+        if (action.equals("show") || action.equals("load")) {
+            String name = args.length >= 3 ? joinArgs(args, 2) : "";
+            ir.layercloud.cortexdrone.harness.skill.Skill skill = library.get(name);
+            if (skill == null) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                        + "[Drone] No skill named '" + name + "'. Use /drone skills search <q>.");
+                return;
+            }
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Skill "
+                    + skill.getName() + " v" + skill.getVersion() + " ("
+                    + skill.getSource() + ", uses " + skill.getUses() + ") ===");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + skill.getDescription());
+            if (skill.getRequires() != null && !skill.getRequires().isEmpty()) {
+                java.util.List<String> missing = library.missingRequires(skill.getName());
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "requires: "
+                        + EnumChatFormatting.WHITE + skill.getRequires()
+                        + (missing.isEmpty() ? EnumChatFormatting.GRAY + " (all present)"
+                        : EnumChatFormatting.RED + " missing " + missing));
+            }
+            String[] lines = skill.getCode().split("\n");
+            int shown = Math.min(lines.length, 8);
+            for (int i = 0; i < shown; i++) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.DARK_GRAY + "  "
+                        + EnumChatFormatting.GRAY + capChat(lines[i], 160));
+            }
+            if (lines.length > shown) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.DARK_GRAY
+                        + "  ... " + (lines.length - shown) + " more lines");
+            }
+            return;
+        }
+
+        java.util.List<ir.layercloud.cortexdrone.harness.skill.Skill> found;
+        if (action.equals("search")) {
+            found = library.search(args.length >= 3 ? joinArgs(args, 2) : "", 12);
+        } else {
+            int limit = args.length >= 3 ? parseInt(args[2], 40) : 40;
+            found = library.search("", Math.min(80, limit));
+        }
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Skills ("
+                + found.size() + " shown, " + library.all().size() + " total) ===");
+        for (ir.layercloud.cortexdrone.harness.skill.Skill skill : found) {
+            StringBuilder line = new StringBuilder();
+            line.append(EnumChatFormatting.AQUA).append(skill.getName())
+                    .append(EnumChatFormatting.GRAY).append(" v").append(skill.getVersion());
+            if (skill.getRequires() != null && !skill.getRequires().isEmpty()) {
+                line.append(EnumChatFormatting.DARK_GRAY).append(" -> ")
+                        .append(EnumChatFormatting.GRAY)
+                        .append(String.join(", ", skill.getRequires()));
+            }
+            CortexDroneMod.sendMsg(sender, line.toString());
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.DARK_GRAY + "   "
+                    + capChat(skill.getDescription(), 120));
+        }
     }
 
     private void handleSessions(ICommandSender sender, String[] args) {

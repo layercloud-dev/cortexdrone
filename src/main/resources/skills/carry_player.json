@@ -1,0 +1,11 @@
+{
+  "name": "carry_player",
+  "description": "Pick the player (or another passenger) up with pick_entity, fly to a destination, then dismount with unpick_entity. Refuses to move a player who is not the task player unless explicitly named.",
+  "tags": "carry player transport ride passenger fly move unpick mount",
+  "triggers": ["carry me", "fly me there", "take me to", "give me a ride"],
+  "requires": [],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "codeFile": "carry_player.js"
+}

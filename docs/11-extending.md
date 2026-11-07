@@ -51,13 +51,31 @@ through a tool. A service must not start actions, retain work, or import
 
 ## Add a skill
 
-- Bundled: add a JSON file compatible with `Skill` and list it in
-  `resources/skills/index.json`.
+- Bundled: add `<name>.json` plus `<name>.js` (referenced by `codeFile`) and
+  list the JSON in `resources/skills/index.json`.
 - Learned: call `skill_refine({task, code, notes})` after a successful workflow.
 - Manual: add an entry to `config/cortexdrone/skills.json` (or use the tool).
 
-Skill code is a function body: use synchronous `drone.*` calls and `return` a
-small result.
+Skill code is a function body that receives `params`: use synchronous
+`drone.*` calls, read options from `params`, and `return` a small result.
+
+Rules for keeping skills composable:
+
+1. One skill does one job. Do not copy mining, delivery or farming code; call
+   the primitive with `skills.call('mine_blocks', { ... })`.
+2. List every called skill in `requires`. `skill_run` refuses to run a skill
+   whose dependencies are missing, and `skill` action=load reports them.
+3. Return `{ ok, ...evidence }` so a caller can decide what to do next; never
+   `throw` for an expected condition such as "no ore nearby".
+4. Keep the body under ~80 lines. If it grows, split the reusable part out.
+5. Parameterise, don't special-case: `params.filter`, `params.count`,
+   `params.radius`, `params.dry_run`.
+6. Add a case to `BundledSkillSuiteTest` when the skill is part of the default
+   suite (compiles, dependencies exist, compound skills call their primitives).
+
+Building skills should always survey first (`survey_build_site`) and place a
+`plan_structure` blueprint through `place_build_plan`; do not add a second
+block-placement loop.
 
 ## Add a memory-backed tool
 

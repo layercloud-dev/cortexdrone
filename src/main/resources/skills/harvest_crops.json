@@ -1,0 +1,11 @@
+{
+  "name": "harvest_crops",
+  "description": "Harvest mature wheat, carrots or potatoes: break only fully grown crops, then replant with seeds or the crop item on the farmland below and collect the drops. Uses crop metadata so young plants are left alone.",
+  "tags": "farm harvest replant wheat carrots potatoes crops seeds food agriculture",
+  "triggers": ["harvest the farm", "replant the wheat", "collect the crops", "tend the farm"],
+  "requires": ["collect_drops"],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "codeFile": "harvest_crops.js"
+}

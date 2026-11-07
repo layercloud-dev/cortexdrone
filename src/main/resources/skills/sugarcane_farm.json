@@ -1,0 +1,11 @@
+{
+  "name": "sugarcane_farm",
+  "description": "Harvest sugar cane columns next to water: keep the bottom block so the column regrows, break the upper blocks top-down, then collect the drops. Optionally plants spare cane on valid water-adjacent soil.",
+  "tags": "farm sugarcane sugar cane reed paper harvest replant water",
+  "triggers": ["harvest the sugarcane", "farm sugar cane", "get sugar cane", "make paper"],
+  "requires": ["collect_drops"],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "codeFile": "sugarcane_farm.js"
+}

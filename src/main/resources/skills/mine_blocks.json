@@ -1,10 +1,11 @@
 {
   "name": "mine_blocks",
-  "description": "Find matching blocks, move to a safe standoff, and break a bounded set; returns the mined list and remaining count.",
-  "tags": "mining mine ore block tunnel dig gather",
-  "triggers": ["mine iron", "dig ore", "gather stone", "tunnel to ore"],
-  "version": 1,
+  "description": "Find matching blocks or veins near the drone, fly to each safe standoff and break a bounded set; returns the mined coordinates, failures and remaining count. The mining primitive every other mining skill calls.",
+  "tags": "mining mine ore block vein dig gather tunnel primitive",
+  "triggers": ["mine iron", "dig ore", "gather stone", "tunnel to ore", "break blocks"],
+  "requires": [],
+  "version": 2,
   "uses": 0,
   "source": "bundled",
-  "code": "const filter = typeof filterName === 'string' ? filterName : 'ores';\nconst found = drone.scanBlocks({ filter: filter, radius: 24 });\nif (!found.count) return { ok: false, error: 'no matching blocks within 24m', hint: 'scan wider or move to another area' };\nconst mined = [];\nfor (var i = 0; i < found.blocks.length && i < 8; i++) {\n  const block = found.blocks[i];\n  const moved = drone.goto({ standoffOf: { x: block.x, y: block.y, z: block.z } });\n  if (!moved.arrived) continue;\n  const broke = drone.breakBlock({ x: block.x, y: block.y, z: block.z });\n  if (broke.ok !== false && broke.broken) mined.push(block);\n}\nreturn { mined: mined.length, blocks: mined, remaining: Math.max(0, (found.count || 0) - mined.length) };"
+  "codeFile": "mine_blocks.js"
 }

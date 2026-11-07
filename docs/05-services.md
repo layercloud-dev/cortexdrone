@@ -38,7 +38,7 @@ pick a goal, start an action or retain work state.
   summaries.
 
 `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `ChunkAccess`,
-`StructureArchitect`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`,
+`StructureArchitect`, `SiteSurvey`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`,
 `LexicalItemMatcher`, `EntityAndBiomeClassifier`
 : geometry, connectivity, targeting, registry introspection, item matching and
   structure planning.

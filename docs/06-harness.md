@@ -15,7 +15,8 @@ ToolRegistry             the single tool surface
 JsEngine                 in-process Rhino runtime
 MemoryStore              persistent facts + named locations
 LessonStore              learned procedural rules
-SkillLibrary / Refiner   memory + recursive skill compiler
+SkillLibrary / Refiner   bundled + learned skills, recursive compiler
+SkillRuntime             composes skills via skills.call(name, params)
 ```
 
 ## Task and session
@@ -190,7 +191,20 @@ Inspect with `/drone sessions list`, `/drone sessions stats` or
 ## Skills
 
 `SkillLibrary` stores bundled + learned skills in
-`config/cortexdrone/skills.json`. `skill` searches/lists/loads; `skill_refine`
-sends the task, working code and notes to the model with a compiler prompt,
-normalizes name/description/triggers/tags/code, and saves a new version. If the
+`config/cortexdrone/skills.json`. `skill` searches/lists/loads, `skill_run`
+executes one with a parameter object, and `skill_refine` sends the task, working
+code and notes to the model with a compiler prompt, normalizes
+name/description/triggers/tags/requires/code, and saves a new version. If the
 compiler call fails, the working code is saved verbatim under a derived name.
+
+Bundled skills keep metadata in `resources/skills/<name>.json` and their body
+in a sibling `<name>.js` referenced by `codeFile`. Bodies stay small because
+they compose: `mine_and_deliver` calls `mine_blocks` and `deliver_items`,
+`guard`/`patrol` call `guard_scan`, `farm_cycle` calls the harvesting skills, and
+`build_structure` calls `survey_build_site` then `place_build_plan`. The
+`requires` list records those dependencies; loading a skill reports missing
+ones and `skill_run` refuses to run with an incomplete dependency set.
+
+`SkillRuntime.call` compiles each body as `(function(params) { ... })` in the
+same Rhino scope as `execute`, under a depth guard (8). Skills therefore share
+the tool surface and helpers but not the caller's local variables.

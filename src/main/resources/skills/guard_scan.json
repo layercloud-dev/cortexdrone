@@ -1,0 +1,11 @@
+{
+  "name": "guard_scan",
+  "description": "One defensive sweep: list hostile mobs within the guard radius, fly to the nearest and attack until the attack budget is spent. Returns threats, attacks and kills. Used by guard and patrol.",
+  "tags": "guard defend attack mob hostile combat sweep protect",
+  "triggers": ["clear the mobs", "check for monsters", "defend the area"],
+  "requires": [],
+  "version": 1,
+  "uses": 0,
+  "source": "bundled",
+  "codeFile": "guard_scan.js"
+}

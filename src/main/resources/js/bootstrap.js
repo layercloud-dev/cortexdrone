@@ -69,3 +69,76 @@ function summarizeItems(items, limit) {
   }
   return out.length ? out.join(", ") : "empty";
 }
+
+/* Lowercase word tokens of a display name, registry name or phrase. */
+function __words(text) {
+  var raw = String(text === undefined || text === null ? "" : text).toLowerCase();
+  var parts = raw.split(/[^a-z0-9]+/);
+  var out = [];
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i].length > 0) out.push(parts[i]);
+  }
+  return out;
+}
+
+/* Trims a trailing plural "s" so "ores" matches "Iron Ore". */
+function __singular(token) {
+  if (!token || token.length <= 3) return token;
+  if (token.slice(-3) === "ies" && token.length > 4) return token.slice(0, -3) + "y";
+  if (token.slice(-1) === "s" && token.slice(-2) !== "ss"
+      && token !== "glass" && token !== "grass") {
+    return token.slice(0, -1);
+  }
+  return token;
+}
+
+/*
+ * Loose item/block name matcher used by skills.
+ * Supports "|" alternatives and "!" exclusion. A filter matches when every
+ * token of one alternative is present in the display name or registry name.
+ */
+function nameMatches(name, registry, filter) {
+  if (filter === undefined || filter === null) return true;
+  var f = String(filter).trim().toLowerCase();
+  if (f === "" || f === "all" || f === "any" || f === "*") return true;
+  var combined = __words(name).concat(__words(registry));
+  var clauses = f.split("|");
+  for (var i = 0; i < clauses.length; i++) {
+    var clause = clauses[i].trim();
+    if (!clause) continue;
+    var negated = false;
+    if (clause.charAt(0) === "!") { negated = true; clause = clause.slice(1).trim(); }
+    var tokens = __words(clause);
+    if (!tokens.length) continue;
+    var all = true;
+    for (var t = 0; t < tokens.length; t++) {
+      var want = __singular(tokens[t]);
+      var found = false;
+      for (var c = 0; c < combined.length; c++) {
+        if (__singular(combined[c]) === want) { found = true; break; }
+      }
+      if (!found) { all = false; break; }
+    }
+    if (all) return !negated;
+  }
+  return false;
+}
+
+/* Total item count in a `state()` inventory array matching a filter. */
+function countInInventory(inventory, filter) {
+  var total = 0;
+  if (!inventory) return total;
+  for (var i = 0; i < inventory.length; i++) {
+    var stack = inventory[i];
+    if (!stack) continue;
+    if (nameMatches(stack.name, stack.registryName || stack.item, filter)) {
+      total += Number(stack.count || 0);
+    }
+  }
+  return total;
+}
+
+/* Small 3D coordinate key for de-duplicating build placements. */
+function key3(x, y, z) {
+  return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
+}

@@ -24,7 +24,6 @@ Detailed chapters live in `docs/`:
 - [docs/10-build-deploy.md](docs/10-build-deploy.md) — Gradle, tests, validation, deploy
 - [docs/11-extending.md](docs/11-extending.md) — adding tools, actions, services, skills
 - [docs/12-source-inventory.md](docs/12-source-inventory.md) — class-by-class inventory
-- [docs/removed-tasks.md](docs/removed-tasks.md) — deliberately removed legacy paths
 
 ## 1. System at a glance
 
@@ -205,6 +204,13 @@ them with the `lesson` tool after a failure or non-obvious success and they are
 injected next to memory. Skills stay executable code; the harness also
 auto-saves a successful script when the model skips `skill_refine`.
 
+`SkillLibrary` bundles 27 workflows whose bodies live in sibling `.js` files.
+Each skill is small and declares the skills it calls in `requires`; at runtime
+`skills.call(name, params)` composes them in the same Rhino scope (for example
+`mine_and_deliver` -> `mine_blocks` + `deliver_items`, `build_structure` ->
+`survey_build_site` + `place_build_plan`). `skill_run` executes a skill with
+parameters, and `skill_refine` records a new version with its dependencies.
+
 `SessionJournal` writes one JSON + Markdown transcript per task under
 `config/cortexdrone/sessions/<outcome>/` and appends an index line. Outcomes
 are `success`, `failure`, `cancelled`, `interrupted`, `incomplete` and `error`;
@@ -232,7 +238,7 @@ lesson       lesson
 skills       skill skill_refine
 world        get_block get_blocks_in_box get_top_y scan_room scan_blocks
              scan_veins find_distant get_entities get_drops raycast_player
-             doc_lookup find_build_site plan_structure
+             doc_lookup find_build_site survey_build_site plan_structure
 query        get_player get_player_inventory get_chest scan_chests
              find_item_in_chests find_item get_recipes scan_furnaces
              get_machine_recipes get_machine_recipe scan_machines
@@ -242,15 +248,15 @@ transport    poll_scan
 ```
 
 Removed composite tools (`mine`, `hunt`, `farm`, `buildStructure`, etc.) are not
-coming back as hidden paths. See `docs/removed-tasks.md`.
+coming back as hidden Java paths. Their useful behaviour lives in the composable
+skill suite instead, which the model can inspect, run and refine.
 
 ## 8. Runtime lifecycle
 
 1. `CortexDroneMod.preInit` resolves `config/cortexdrone/`, creates
    `AIDroneManager`, registers events.
 2. `serverStarting` migrates legacy world files, loads `config.json`, creates the
-   skill library, builds the `Harness`, registers `/drone`, starts HTTP on
-   `config/cortexdrone/`.
+   skill library, builds the `Harness`, and registers `/drone`.
 3. START tick: ensure OC machine state, start tick profiler.
 4. END tick: drain main-thread queue, drain scan jobs, tick every controller,
    reconnect unlinked world drones every 40 ticks.

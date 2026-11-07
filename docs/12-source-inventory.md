@@ -47,6 +47,11 @@
 | `harness.session.SessionManager` | One session per controller |
 | `harness.session.SessionJournal` | Per-task transcript files, outcome/topic index |
 | `harness.session.SessionOutcome` | success/failure/cancelled/interrupted/incomplete/error |
+| `harness.js.SkillRuntime` | Compiles and runs a skill body with `params`, depth-guarded |
+| `harness.skill.Skill` | Skill metadata + `codeFile`, `requires` |
+| `service.world.SiteSurvey` | Read-only build-site columns, slope, headroom, fixtures |
+| `service.world.BuildTask` | One phased blueprint placement |
+| `service.world.StructureArchitect` | Pad search + phased house/wall/tower/platform/bridge plans |
 | `harness.task.TaskCoordinator` | Single-session intent policy |
 | `harness.task.TaskIntentClassifier` / `TaskIntent` | Deterministic intent |
 
@@ -106,7 +111,7 @@
 | `service.inventory` | `InventoryService`, `ContainerSearchService`, `CraftingService`, `PlayerInventoryOps`, `FluidOpsService`, `ToolInspector`, `CraftResult` |
 | `service.machine` | `MachineRecipeService`, hooks/parser/ranker/reflection, `MachineTileInspector`, `FurnaceScanner` |
 | `service.navigation` | `Breadcrumb`, `TrailPlan`, `BreadcrumbService`, `FlightPathfinder`, `DronePhysicsService`, `TunnelPlanner` |
-| `service.world` | `WorldScanner`, `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `BlockSight`, `ChunkAccess`, `StructureArchitect`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`, `LexicalItemMatcher`, `EntityAndBiomeClassifier`, `DocLookupService`, `WebLookupService`, `raytrace/*` |
+| `service.world` | `WorldScanner`, `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `BlockSight`, `ChunkAccess`, `StructureArchitect`, `SiteSurvey`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`, `LexicalItemMatcher`, `EntityAndBiomeClassifier`, `DocLookupService`, `WebLookupService`, `raytrace/*` |
 
 ## Config, command, OC
 
@@ -126,6 +131,7 @@
 `harness/js/JsSourceTest`, `harness/js/JsEngineTest`,
 `harness/lesson/LessonStoreTest`,
 `harness/memory/MemoryStoreTest`, `harness/memory/MemoryCaptureTest`,
+`harness/skill/BundledSkillSuiteTest`,
 `service/world/BlockSightTest`,
 `harness/skill/SkillLibraryTest`, `harness/session/DroneSessionTest`,
 `harness/session/SessionJournalTest`,

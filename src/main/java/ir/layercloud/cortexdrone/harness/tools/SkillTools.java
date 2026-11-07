@@ -1,13 +1,14 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.skill.SkillRefiner;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
+import ir.layercloud.cortexdrone.harness.tool.ToolContext;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
@@ -15,23 +16,26 @@ import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
  * Skill memory tools.
  *
- * <p>{@code skill} loads/searches saved workflows; {@code skill_refine} invokes
- * the recursive compiler to turn a successful trajectory into a reusable,
- * versioned skill. Loading a skill does not execute it: the model receives the
- * code (and can run it with execute) so it can adapt parameters first.</p>
+ * <p>{@code skill} searches and loads workflows, {@code skill_run} executes one
+ * with parameters in the in-process runtime, and {@code skill_refine} compiles
+ * a successful trajectory into a reusable skill. Skills compose at runtime with
+ * {@code skills.call(name, params)}, so a compound workflow references small
+ * primitives instead of duplicating them.</p>
  */
 public final class SkillTools implements ToolProvider {
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("skill")
                     .description("Search, list or load reusable skills. action=search matches name, "
                             + "description, tags and trigger phrases with BM25; action=load returns the full "
-                            + "code for one skill; action=list shows recently updated skills. Search before "
-                            + "writing a workflow from scratch, then adapt the loaded code to the current task.")
+                            + "code, its parameters and the skills it requires; action=list shows recently "
+                            + "updated skills. Search before writing a workflow from scratch, then run it with "
+                            + "skill_run or adapt the loaded code to the current task.")
                     .parameters(ToolSchema.object()
                             .optionalEnum("action", "Operation to perform.", "search", "search", "list", "load")
                             .optionalString("name", "Skill name (required for action=load).")
@@ -40,13 +44,28 @@ public final class SkillTools implements ToolProvider {
                     .affinity(ToolAffinity.ASYNC)
                     .timeoutMs(5_000L)
                     .build(),
+            ToolSpec.builder("skill_run")
+                    .description("Run a stored skill by name with a parameter object. The skill body executes "
+                            + "in the in-process JavaScript runtime with the full synchronous tool surface, so "
+                            + "it can fly, mine, build, fight and call other skills. This is the fastest way to "
+                            + "perform a known workflow: search with `skill`, then run it here. Parameters are "
+                            + "skill-specific; action=load shows the code. Returns the skill's own result "
+                            + "object plus logs. Prefer this over hand-writing a script for guard, patrol, "
+                            + "farm, sort, hunt, carry or build tasks.")
+                    .parameters(ToolSchema.object()
+                            .requiredString("name", "Skill name (snake_case, from `skill` search).")
+                            .optionalObject("params", "Parameter object passed to the skill as `params`.")
+                            .optionalInt("timeout_ms", "Wall-clock budget, 1000..280000.", 1_000, 280_000, 180_000))
+                    .affinity(ToolAffinity.ASYNC)
+                    .timeoutMs(300_000L)
+                    .build(),
             ToolSpec.builder("skill_refine")
                     .description("Compile a successful workflow into a reusable skill using the recursive "
                             + "skill compiler (RLM). Pass the player's task, the working JavaScript and short "
                             + "notes about parameters/blockers. The compiler writes a stable name, trigger "
-                            + "phrases, retrieval tags and parameterized code, then saves a versioned skill in "
-                            + "config/cortexdrone/skills.json. Use it after a multi-step task succeeds, not for "
-                            + "one-off trivia.")
+                            + "phrases, retrieval tags, a `requires` list and parameterized code, then saves a "
+                            + "versioned skill in config/cortexdrone/skills.json. Use it after a multi-step "
+                            + "task succeeds, not for one-off trivia.")
                     .parameters(ToolSchema.object()
                             .requiredString("task", "The original player request that the code fulfils.")
                             .requiredString("code", "The working JavaScript body (same syntax as execute).")
@@ -73,6 +92,8 @@ public final class SkillTools implements ToolProvider {
     public void register(ToolRegistry registry) {
         registry.bind("skill", getClass().getSimpleName(),
                 (context, arguments) -> skill(arguments));
+        registry.bind("skill_run", getClass().getSimpleName(),
+                (context, arguments) -> run(context, arguments));
         registry.bind("skill_refine", getClass().getSimpleName(),
                 (context, arguments) -> refine(context.controller(), arguments));
     }
@@ -94,7 +115,10 @@ public final class SkillTools implements ToolProvider {
             }
             this.skills.recordUse(skill.getName());
             JsonObject result = ToolJson.ok();
-            result.add("skill", this.skills.toJsonArray(java.util.Collections.singletonList(skill), true).get(0));
+            result.add("skill", this.skills.toJsonArray(Collections.singletonList(skill), true).get(0));
+            List<String> missing = this.skills.missingRequires(skill.getName());
+            result.addProperty("missing_requires_count", missing.size());
+            result.add("missing_requires", new com.google.gson.Gson().toJsonTree(missing));
             return result;
         }
 
@@ -105,6 +129,51 @@ public final class SkillTools implements ToolProvider {
         result.addProperty("count", found.size());
         result.add("skills", this.skills.toJsonArray(found, false));
         return result;
+    }
+
+    private JsonObject run(ToolContext context, JsonObject args) {
+        if (JsEngine.isExecuting()) {
+            return ToolJson.error("nested_execute",
+                    "skill_run cannot start a second script from inside execute.",
+                    "Call skills.call(name, params) from the running script instead.", false);
+        }
+        String name = args.has("name") ? args.get("name").getAsString() : "";
+        Skill skill = this.skills.get(name);
+        if (skill == null) {
+            JsonObject error = ToolJson.error("skill_not_found",
+                    "No skill named '" + name + "'.",
+                    "Search with skill({action:\"search\", query:\"...\"}) and retry with the exact name.",
+                    true);
+            error.add("suggestions", this.skills.toJsonArray(this.skills.search(name, 3), false));
+            return error;
+        }
+        JsEngine js = context != null ? context.js() : null;
+        if (js == null) {
+            return ToolJson.error("engine_unavailable",
+                    "The JavaScript runtime is not initialized.", null, false);
+        }
+        List<String> missing = this.skills.missingRequires(skill.getName());
+        if (!missing.isEmpty()) {
+            JsonObject error = ToolJson.error("missing_requires",
+                    "Skill '" + skill.getName() + "' needs " + missing + " which are not installed.",
+                    "Load them from the bundled set or build the workflow with execute.", false);
+            error.add("missing_requires", new com.google.gson.Gson().toJsonTree(missing));
+            return error;
+        }
+        JsonObject params = args.has("params") && args.get("params").isJsonObject()
+                ? args.getAsJsonObject("params") : new JsonObject();
+        long timeout = args.has("timeout_ms") ? args.get("timeout_ms").getAsLong() : 180_000L;
+        String code = "return skills.call(" + quote(skill.getName()) + ", "
+                + params.toString() + ");";
+        JsonObject result = js.execute(context, code, timeout);
+        if (result != null) {
+            result.addProperty("skill", skill.getName());
+        }
+        return result;
+    }
+
+    private static String quote(String value) {
+        return new com.google.gson.JsonPrimitive(value != null ? value : "").toString();
     }
 
     private JsonObject refine(ir.layercloud.cortexdrone.DroneController controller, JsonObject args) {
@@ -127,7 +196,7 @@ public final class SkillTools implements ToolProvider {
         }
         JsonObject result = ToolJson.ok();
         result.addProperty("saved", true);
-        result.add("skill", this.skills.toJsonArray(java.util.Collections.singletonList(skill), true).get(0));
+        result.add("skill", this.skills.toJsonArray(Collections.singletonList(skill), true).get(0));
         return result;
     }
 }

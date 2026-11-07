@@ -82,9 +82,11 @@ public final class SkillRefiner {
         if (description == null || description.trim().isEmpty()) description = limit(task, 220);
         String tags = text(compiled, "tags");
         List<String> triggers = triggers(compiled.get("triggers"));
+        List<String> requires = triggers(compiled.get("requires"));
         String compiledCode = text(compiled, "code");
         if (compiledCode == null || compiledCode.trim().isEmpty()) compiledCode = code;
-        Skill skill = this.library.save(name, description, tags, triggers, compiledCode, "refined");
+        Skill skill = this.library.save(name, description, tags, triggers, requires,
+                compiledCode, "refined");
         if (skill != null) {
             this.logger.log("SKILL", null, "Refined skill '" + skill.getName() + "' v"
                     + skill.getVersion(), "triggers=" + triggers);
@@ -99,7 +101,7 @@ public final class SkillRefiner {
         if (task != null && !task.trim().isEmpty()) {
             triggers.add(limit(task.trim(), 80));
         }
-        Skill skill = this.library.save(name, limit(task, 220), "", triggers, code, "refined");
+        Skill skill = this.library.save(name, limit(task, 220), "", triggers, null, code, "refined");
         if (skill != null) {
             this.logger.log("SKILL", null, "Saved fallback skill '" + skill.getName() + "' v"
                     + skill.getVersion(), "compiler unavailable or invalid JSON");

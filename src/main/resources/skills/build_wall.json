@@ -1,10 +1,11 @@
 {
   "name": "build_wall",
-  "description": "Place one block at a time along a line using blocks already in the drone inventory; reports how many are missing.",
-  "tags": "build wall place cobblestone shelter home",
-  "triggers": ["build a wall", "wall off this area", "make a shelter wall"],
-  "version": 1,
+  "description": "Build a straight wall in front of the player (or between explicit corners) with a gate gap and a proper foundation. Uses the structure planner and place_build_plan instead of placing blocks blindly.",
+  "tags": "build wall fence shelter gate enclosure place stone",
+  "triggers": ["build a wall", "wall off this area", "make a fence", "enclose this"],
+  "requires": ["survey_build_site", "place_build_plan"],
+  "version": 2,
   "uses": 0,
   "source": "bundled",
-  "code": "const p = drone.getPlayer();\nconst blockName = typeof wallBlock === 'string' ? wallBlock : 'cobblestone';\nconst length = typeof wallLength === 'number' ? wallLength : 5;\nlet placed = 0;\nlet missing = 0;\nfor (var dx = 0; dx < length; dx++) {\n  const r = drone.placeBlock({ x: p.blockX + dx, y: p.blockY, z: p.blockZ + 2, block: blockName });\n  if (r && r.placed) placed++; else missing++;\n}\nreturn { placed: placed, missing: missing, hint: missing ? 'gather ' + blockName + ' into the drone inventory first' : '' };"
+  "codeFile": "build_wall.js"
 }

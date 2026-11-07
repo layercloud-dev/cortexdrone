@@ -365,7 +365,6 @@ public final class ItemClassifier {
 
     public static boolean matchesEntityFilter(EntityLivingBase el, String filter) {
         if (el == null || el.isDead || el.getHealth() <= 0.0f) return false;
-        if (el instanceof EntityPlayer) return false;
         String f = (filter == null || filter.trim().isEmpty()) ? "animal" : filter.trim().toLowerCase();
         String combined = RegistryIntrospector.getEntityIdentifier(el);
         List<String> entityTokens = LexicalItemMatcher.tokenize(combined);
@@ -389,7 +388,12 @@ public final class ItemClassifier {
                 case "food":
                     if (RegistryIntrospector.isPassiveEntity(el)) return true;
                     break;
+                case "player":
+                case "players":
+                    if (el instanceof EntityPlayer) return true;
+                    continue;
             }
+            if (el instanceof EntityPlayer) continue;
             if (tok.equals("hostile") || tok.equals("hostiles") || tok.equals("monster") || tok.equals("monsters")
                     || LexicalItemMatcher.fuzzyTokenMatches("mutant", tok) || tok.equals("enemy") || tok.equals("enemies")) {
                 if (RegistryIntrospector.isHostileEntity(el)) return true;

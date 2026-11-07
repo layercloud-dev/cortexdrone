@@ -17,6 +17,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.SiteSurvey;
 import ir.layercloud.cortexdrone.service.world.StructureArchitect;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import li.cil.oc.common.entity.Drone;
@@ -140,28 +141,54 @@ public class WorldTools implements ToolProvider {
                         .affinity(ToolAffinity.MAIN).timeoutMs(6_000L).build(),
                 ToolSpec.builder("find_build_site")
                         .description("Find a flat, clear build pad near the player and return its corners, "
-                                + "floor Y and door side. Feed the result into plan_structure.")
+                                + "floor Y and door side. Feed the result into survey_build_site and "
+                                + "plan_structure.")
                         .parameters(ToolSchema.object()
                                 .optionalInt("width", "Desired width, 3..19.", 3, 19, 5)
                                 .optionalInt("depth", "Desired depth, 3..19.", 3, 19, 5)
                                 .optionalInt("max_radius", "Search radius, 4..64.", 4, 64, 24))
                         .affinity(ToolAffinity.MAIN).timeoutMs(6_000L).build(),
-                ToolSpec.builder("plan_structure")
-                        .description("Generate a structure blueprint and exact material counts. style: house, "
-                                + "wall, tower, platform. Either pass x/z (center) or x1/z1/x2/z2 (site box). "
-                                + "Blocks accept item names. Returns placements and per-material totals; placing "
-                                + "them is your job with place_block.")
+                ToolSpec.builder("survey_build_site")
+                        .description("Read-only build-site survey: per-column ground height, slope, headroom, "
+                                + "obstacles, liquids, trees and protected fixtures (chests, machines, "
+                                + "OpenComputers blocks), plus the exact materials that would need clearing. "
+                                + "Always call this before planning or building, and never build on a site with "
+                                + "protected columns or liquid columns. Returns columns (sample), warnings and "
+                                + "groundYMin/Max/Avg plus suggestedFloorY.")
                         .parameters(ToolSchema.object()
-                                .optionalString("style", "Structure style.", "house")
+                                .optionalInt("x1", "Site min X (with z1/x2/z2).")
+                                .optionalInt("z1", "Site min Z.")
+                                .optionalInt("x2", "Site max X.")
+                                .optionalInt("z2", "Site max Z.")
+                                .optionalInt("x", "Center X instead of a box.")
+                                .optionalInt("z", "Center Z instead of a box.")
+                                .optionalInt("width", "Width when using a center, 3..33.", 3, 33, 5)
+                                .optionalInt("depth", "Depth when using a center, 3..33.", 3, 33, 5)
+                                .optionalInt("height", "Headroom to check above the ground, 1..24.", 1, 24, 4)
+                                .optionalInt("y", "Reference floor Y; defaults to the player's Y."))
+                        .affinity(ToolAffinity.MAIN).timeoutMs(8_000L).build(),
+                ToolSpec.builder("plan_structure")
+                        .description("Generate a detailed structure blueprint: ordered build tasks with an "
+                                + "explicit phase (foundation, floor, corner, wall, window, railing, roof), "
+                                + "the blocks that must be cleared, door coordinates and exact material counts. "
+                                + "styles: house, hut, wall, tower, platform, bridge. roofs: flat, gable, hip, "
+                                + "pyramid. Either pass x/z (center) or x1/z1/x2/z2 (surveyed site box); y is the "
+                                + "floor level. This is a plan, not an action: placing is done by the "
+                                + "build_structure / place_build_plan skills.")
+                        .parameters(ToolSchema.object()
+                                .optionalString("style", "house, hut, wall, tower, platform, bridge.", "house")
                                 .optionalInt("width", "Width, 3..19.", 3, 19, 5)
                                 .optionalInt("depth", "Depth, 3..19.", 3, 19, 5)
                                 .optionalInt("height", "Wall height, 2..12.", 2, 12, 3)
-                                .optionalString("roof_style", "flat, gable, hip.", "flat")
-                                .optionalBoolean("windows", "Include windows.", true)
+                                .optionalEnum("roof_style", "Roof shape.", "flat",
+                                        "flat", "gable", "hip", "pyramid")
+                                .optionalBoolean("windows", "Include window openings.", true)
                                 .optionalString("floor", "Floor block.", "cobblestone")
                                 .optionalString("walls", "Wall block.", "cobblestone")
                                 .optionalString("corners", "Corner block.", "cobblestone")
                                 .optionalString("roof", "Roof block.", "cobblestone")
+                                .optionalString("foundation", "Foundation block.", "cobblestone")
+                                .optionalString("window_block", "Window block.", "glass")
                                 .optionalInt("x", "Center X.")
                                 .optionalInt("z", "Center Z.")
                                 .optionalInt("y", "Floor Y.")
@@ -170,7 +197,7 @@ public class WorldTools implements ToolProvider {
                                 .optionalInt("x2", "Site max X.")
                                 .optionalInt("z2", "Site max Z.")
                                 .optionalString("door_side", "north, south, east, west.", "south"))
-                        .affinity(ToolAffinity.MAIN).timeoutMs(6_000L).build()
+                        .affinity(ToolAffinity.MAIN).timeoutMs(8_000L).build()
         );
     }
 
@@ -418,6 +445,7 @@ public class WorldTools implements ToolProvider {
                                 eo.addProperty("type", el.getClass().getSimpleName());
                                 eo.addProperty("hostile", ItemClassifier.isHostileOrMutantEntity(el));
                                 eo.addProperty("animal", el instanceof EntityAnimal);
+                                eo.addProperty("player", el instanceof net.minecraft.entity.player.EntityPlayer);
                                 eo.addProperty("health", el.getHealth());
                                 eo.addProperty("x", Math.round(el.posX * 10.0) / 10.0);
                                 eo.addProperty("y", Math.round(el.posY * 10.0) / 10.0);
@@ -489,6 +517,25 @@ public class WorldTools implements ToolProvider {
                 int depth = args.has("depth") ? args.get("depth").getAsInt() : width;
                 int maxR = args.has("maxRadius") ? args.get("maxRadius").getAsInt() : 24;
                 return this.structureArchitect.findBestBuildSite(world, player, ctrl, width, depth, maxR);
+            }
+            case "survey_build_site": {
+                int height = args.has("height") ? Math.max(1, Math.min(24, args.get("height").getAsInt())) : 4;
+                Integer explicitY = args.has("y") ? args.get("y").getAsInt() : null;
+                if (args.has("x1") && args.has("z1") && args.has("x2") && args.has("z2")) {
+                    return SiteSurvey.survey(world, player,
+                            args.get("x1").getAsInt(), args.get("z1").getAsInt(),
+                            args.get("x2").getAsInt(), args.get("z2").getAsInt(), explicitY, height);
+                }
+                int width = args.has("width") ? Math.max(3, Math.min(33, args.get("width").getAsInt())) : 5;
+                int depth = args.has("depth") ? Math.max(3, Math.min(33, args.get("depth").getAsInt())) : width;
+                int centerX = args.has("x") ? args.get("x").getAsInt()
+                        : MathHelper.floor_double(player != null ? player.posX : d.posX);
+                int centerZ = args.has("z") ? args.get("z").getAsInt()
+                        : MathHelper.floor_double(player != null ? player.posZ : d.posZ);
+                return SiteSurvey.survey(world, player,
+                        centerX - width / 2, centerZ - depth / 2,
+                        centerX - width / 2 + width - 1, centerZ - depth / 2 + depth - 1,
+                        explicitY, height);
             }
             case "plan_structure":
                 StructureArchitect.StructurePlan plan = this.structureArchitect.generateStructureBlueprint(world, player, ctrl, args);

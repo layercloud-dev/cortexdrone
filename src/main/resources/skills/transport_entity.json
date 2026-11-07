@@ -1,10 +1,11 @@
 {
   "name": "transport_entity",
-  "description": "Pick up the nearest matching entity, fly to a destination, then dismount it using the interaction primitives.",
-  "tags": "entity transport pick unpick player carry move",
-  "triggers": ["carry a mob", "transport this animal", "pick up and move"],
-  "version": 1,
+  "description": "Pick up the nearest matching entity (animal or mob), fly to a destination, then dismount it. Refuses players by default; use carry_player for those.",
+  "tags": "entity transport pick unpick animal mob move carry pasture",
+  "triggers": ["carry a mob", "transport this animal", "move the cows", "pick up and move"],
+  "requires": [],
+  "version": 2,
   "uses": 0,
   "source": "bundled",
-  "code": "const filter = (typeof entityFilter === 'string') ? entityFilter : 'animal';\nconst p = drone.getPlayer();\nconst found = drone.getEntities({ radius: 8, filter: filter });\nif (!found || !found.entities || !found.entities.length) return { ok: false, error: 'no matching entity nearby', filter: filter };\nconst id = found.entities[0].id;\nconst picked = drone.pickEntity({ entity_id: id });\nif (!picked || picked.ok === false || picked.picked !== true) return picked;\nconst dest = (typeof destination === 'object' && destination !== null)\n  ? destination\n  : { x: p.blockX + 4, y: p.blockY + 2, z: p.blockZ };\nconst moved = drone.goto({ x: dest.x, y: dest.y, z: dest.z });\nif (!moved || moved.ok === false || moved.arrived !== true) {\n  drone.unpickEntity({ entity_id: id });\n  return { ok: false, error: 'could not fly to destination', moved: moved };\n}\nreturn drone.unpickEntity({ entity_id: id });"
+  "codeFile": "transport_entity.js"
 }

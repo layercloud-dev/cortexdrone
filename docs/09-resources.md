@@ -25,14 +25,33 @@
 
 | Skill | Purpose |
 | --- | --- |
-| `mine_blocks` | bounded scan/move/break loop |
-| `mine_and_deliver` | mine a batch, return, hand over |
+| `mine_blocks` | bounded scan/vein/move/break primitive |
+| `deliver_items` | fly to the player and hand over a filter |
+| `mine_and_deliver` | composes `mine_blocks` + `deliver_items` |
+| `collect_drops` | fly to drop clusters and vacuum them |
 | `store_items` | fly to chest and deposit cargo |
+| `withdraw_items` | find/withdraw a material from player or chests |
+| `sort_chests` | categorise and move stacks between chests |
 | `place_double_chest` | craft two chests and place them |
+| `hunt` | bounded combat loop with drop pickup |
+| `guard_scan` | one defensive sweep (attack nearest hostiles) |
+| `guard` | hold a position, repeat `guard_scan` |
+| `patrol` | fly a route and sweep at each waypoint |
+| `carry_player` | pick the player up, fly, dismount |
+| `transport_entity` | pick/move/unpick an animal or mob |
+| `harvest_crops` | wheat/carrot/potato harvest + replant |
+| `sugarcane_farm` | keep the base, harvest the upper cane |
+| `melon_pumpkin_farm` | break fruit, leave stems |
+| `chop_tree` | fell logs top-down, replant a sapling |
+| `farm_cycle` | harvest + collect + deliver/store |
+| `survey_build_site` | read-only ground/headroom/obstacle survey |
+| `place_build_plan` | clear + place a plan in phase order + verify |
+| `build_structure` | survey -> plan -> materials -> place -> verify |
+| `build_wall` | wall via planner + `place_build_plan` |
+| `build_platform` | platform/bridge via the planner |
+| `light_area` | torch grid on solid floors |
 | `return_to_player` | goal navigation back to the owner |
 | `rainbow_show` | LED animation via static primitive |
-| `build_wall` | line placement with inventory blocks |
-| `transport_entity` | pick, fly, unpick template |
 
 Saved/refined skills override bundled skills with the same normalized name and
 increment `version`. Storage is `config/cortexdrone/skills.json`, never the
@@ -48,10 +67,15 @@ world save.
   "triggers": ["player-style phrase", "another phrase"],
   "version": 1,
   "uses": 0,
+  "requires": ["skill_this_code_calls"],
   "source": "bundled|saved|refined",
-  "code": "JavaScript body using synchronous drone tools"
+  "codeFile": "optional bundled .js sibling (bundled skills only)",
+  "code": "JavaScript body using synchronous drone tools and `params`"
 }
 ```
+
+A bundled JSON file may keep `code` empty and point at `codeFile`; the loader
+inlines the `.js` body. Saved/refined skills always store `code` inline.
 
 ## Config files
 

@@ -30,8 +30,8 @@ for (var i = 0; i < blocks.length; i++) {
   if (!b || b.isAir) continue;
   if (b.isLiquid && skipLiquids) continue;
   if (onlyReplace !== 'all' && onlyReplace !== 'any'
-      && !nameMatches(b.name, b.registryName, onlyReplace)) continue;
-  if (nameMatches(b.name, b.registryName, block) && (meta < 0 || b.meta === meta)) continue;
+      && !nameMatches(b.name, b.registryName, onlyReplace, b.oreDict)) continue;
+  if (nameMatches(b.name, b.registryName, block, b.oreDict) && (meta < 0 || b.meta === meta)) continue;
   candidates.push(b);
 }
 

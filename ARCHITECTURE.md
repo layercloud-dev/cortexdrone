@@ -97,6 +97,13 @@ src/main/java/ir/layercloud/cortexdrone/
   oc/                       OpenComputers reflection bridge
 ```
 
+All filters (mine, scan, withdraw, give, take, find, place, craft, smelt)
+resolve through Forge's OreDictionary as well as display and registry names.
+`OreDictResolver` maps a player's word to the real tags (`tin` ->
+`oreTin`/`ingotTin`; `#oreTag`/`oredict:`/`dict:` for an exact tag), so modded
+items whose display name differs from the material still match. Item/block
+JSON carries an `oreDict` array, and `find_oredict` exposes the mapping.
+
 JSON is confined to the tool boundary (`harness/tools/view`) and the LLM
 protocol. Actions, managers and services work with typed request/result classes.
 
@@ -199,6 +206,13 @@ Saved Forge tickets are deliberately released on world load rather than
 re-adopted, so a restart cannot keep stale AI chunks loaded outside the current
 player view.
 
+Because navigation owns loading, the drone may fly into terrain no player has
+loaded. A request is not refused just because the destination is far away: the
+rolling corridor generates the route as the drone advances. The exceptions are
+the 10-second login blackout and chunks inside a player's view (vanilla owns
+those). Direct world reads at arbitrary distant coordinates still require the
+chunk to be loaded; use `goto` first, then scan.
+
 ## 6. Harness summary
 
 `TaskCoordinator` implements one task/session:
@@ -272,7 +286,7 @@ lesson       lesson
 skills       skill skill_refine
 world        get_block get_blocks_in_box get_top_y scan_room scan_blocks
              scan_veins find_distant get_entities get_drops raycast_player
-             doc_lookup find_build_site survey_build_site plan_structure
+             find_oredict doc_lookup find_build_site survey_build_site plan_structure
 query        get_player get_player_inventory get_chest scan_chests
              find_item_in_chests find_item get_recipes scan_furnaces
              get_machine_recipes get_machine_recipe scan_machines

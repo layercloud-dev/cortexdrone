@@ -21,7 +21,9 @@ exposed clusters, then falls back to a flat block scan.
 
 ## Parameters
 
-- `filter` - block, registry name, ore tag or category (`ores`, `logs`, `stone`, ...). Default `ores`.
+- `filter` - block, registry name, ore tag (bare or `#tag`) or category
+  (`ores`, `logs`, `stone`, ...). Default `ores`. A plain material word such as
+  `tin` resolves through the OreDictionary to `oreTin`/`ingotTin`.
 - `radius` - search radius 4..32. Default 24.
 - `count` - maximum blocks to break, 1..256. Default 8.
 - `veins` - set `false` to skip the vein pass and use `scan_blocks` only.

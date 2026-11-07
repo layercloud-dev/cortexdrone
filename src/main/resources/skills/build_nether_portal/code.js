@@ -139,7 +139,7 @@ for (var f = 0; f < frame.length; f++) {
     // A frame cell inside a hillside must be opened before obsidian goes in.
     var occupied = drone.getBlock({ x: target.x, y: target.y, z: target.z });
     if (occupied && !occupied.isAir) {
-      var isObsidian = nameMatches(occupied.name, occupied.registryName, 'obsidian');
+      var isObsidian = nameMatches(occupied.name, occupied.registryName, 'obsidian', occupied.oreDict);
       if (isObsidian) { placed++; continue; }
       if (occupied.isLiquid === true || Number(occupied.hardness) < 0) {
         failed++;
@@ -152,7 +152,7 @@ for (var f = 0; f < frame.length; f++) {
     if (result && result.placed) placed++;
     else {
       var existing = drone.getBlock({ x: target.x, y: target.y, z: target.z });
-      if (existing && nameMatches(existing.name, existing.registryName, 'obsidian')) placed++;
+      if (existing && nameMatches(existing.name, existing.registryName, 'obsidian', existing.oreDict)) placed++;
       else failed++;
     }
   } catch (placeError) {

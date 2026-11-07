@@ -80,12 +80,13 @@ public class WorldTools implements ToolProvider {
                         .affinity(ToolAffinity.MAIN).timeoutMs(4_000L).build(),
                 ToolSpec.builder("scan_blocks")
                         .description("Find blocks matching a filter within a radius centred on the DRONE. "
-                                + "filter accepts a block name, registry name, ore dictionary tag, or category "
-                                + "('ores', 'logs', 'stone', 'liquid', 'plants'...). Large radii (>32) are "
+                                + "filter accepts a block name, registry name, ore dictionary tag (bare 'oreTin' or "
+                                + "'#oreTin'), or category ('ores', 'logs', 'stone', 'liquid', 'plants'...). "
+                                + "A plain material word such as 'tin' resolves to its ore tags. Large radii (>32) are "
                                 + "time-sliced: the result is pending:true with a job_id; poll with poll_scan "
                                 + "until done:true. Inside execute, drone.scanBlocks(...) polls automatically.")
                         .parameters(ToolSchema.object()
-                                .optionalString("filter", "Block name, registry name, ore tag or category.", "ores")
+                                .optionalString("filter", "Block name, registry name, ore tag (bare or #tag) or category.", "ores")
                                 .optionalString("anchor", "drone (default) or player.", "drone")
                                 .optionalInt("radius", "Search radius in blocks, 1..64 (capped at 32 for "
                                         + "time-sliced scans).", 1, 64, 24)
@@ -104,7 +105,7 @@ public class WorldTools implements ToolProvider {
                                 + "cluster's center, size and bounding box. More useful than scan_blocks when "
                                 + "you need a mining plan. Centred on the DRONE by default.")
                         .parameters(ToolSchema.object()
-                                .optionalString("filter", "Block name, registry name or ore tag.", "ores")
+                                .optionalString("filter", "Block name, registry name or ore tag (bare or #tag).", "ores")
                                 .optionalString("anchor", "drone (default) or player.", "drone")
                                 .optionalInt("radius", "Search radius, 4..48.", 4, 48, 28)
                                 .optionalInt("x", "Center X; defaults to the drone.")
@@ -115,9 +116,11 @@ public class WorldTools implements ToolProvider {
                         .description("Search terrain farther than normal scan range for a resource block or "
                                 + "biome name (e.g. 'jungle', 'desert', 'meteorite', 'oil_sand'). Returns the "
                                 + "nearest hits and distance so you can plan a long flight. Searches outward "
-                                + "from the DRONE, not the player.")
+                                + "from the DRONE, not the player. Loading distant chunks is navigation's job: "
+                                + "this tool only inspects chunks that are already loaded, so combine it with "
+                                + "goto (which force-loads a corridor) for far targets.")
                         .parameters(ToolSchema.object()
-                                .requiredString("target", "Block/ore/biome name or category to find.")
+                                .requiredString("target", "Block/ore/biome name, ore tag or category to find.")
                                 .optionalInt("max_radius", "Maximum search distance, 64..1500.", 64, 1500, 1200))
                         .affinity(ToolAffinity.MAIN).timeoutMs(10_000L).build(),
                 ToolSpec.builder("get_entities")
@@ -264,6 +267,8 @@ public class WorldTools implements ToolProvider {
                 res.addProperty("passable", ItemClassifier.isPassableVoxel(world, x, y, z));
                 res.addProperty("hardness", b != null ? b.getBlockHardness(world, x, y, z) : 0.0f);
                 res.addProperty("light", world.getBlockLightValue(x, y, z));
+                com.google.gson.JsonArray getBlockTags = ItemClassifier.blockOreDictJson(b, meta);
+                if (getBlockTags != null) res.add("oreDict", getBlockTags);
                 return res;
             }
             case "get_blocks_in_box": {
@@ -304,6 +309,8 @@ public class WorldTools implements ToolProvider {
                                 bo.addProperty("meta", meta);
                                 bo.addProperty("isAir", air);
                                 bo.addProperty("isLiquid", ItemClassifier.isLiquidBlock(b));
+                                JsonArray boxTags = air ? null : ItemClassifier.blockOreDictJson(b, meta);
+                                if (boxTags != null) bo.add("oreDict", boxTags);
                                 blocksArr.add(bo);
                             }
                         }
@@ -377,6 +384,8 @@ public class WorldTools implements ToolProvider {
                 matched.sort(Comparator.comparingInt(a -> a[4]));
                 JsonArray arr = new JsonArray();
                 int returned = Math.min(limit, matched.size());
+                Map<String, JsonArray> tagCache = new HashMap<>();
+                Set<String> tagless = new HashSet<>();
                 for (int i = 0; i < returned; i++) {
                     int[] mpt = matched.get(i);
                     int x = mpt[0], y = mpt[1], z = mpt[2], meta = mpt[3];
@@ -391,6 +400,17 @@ public class WorldTools implements ToolProvider {
                     bo.addProperty("id", b != null ? Block.getIdFromBlock(b) : 0);
                     bo.addProperty("meta", meta);
                     bo.addProperty("dist", Math.round(Math.sqrt(mpt[4]) * 10.0) / 10.0);
+                    String tagKey = (reg != null ? reg : "") + ":" + meta;
+                    JsonArray cachedTags = tagCache.get(tagKey);
+                    if (cachedTags == null && !tagless.contains(tagKey)) {
+                        cachedTags = ItemClassifier.blockOreDictJson(b, meta);
+                        if (cachedTags != null) {
+                            tagCache.put(tagKey, cachedTags);
+                        } else {
+                            tagless.add(tagKey);
+                        }
+                    }
+                    if (cachedTags != null) bo.add("oreDict", cachedTags);
                     arr.add(bo);
                 }
                 res.addProperty("count", matched.size());
@@ -488,7 +508,8 @@ public class WorldTools implements ToolProvider {
                             if (ei.isDead) continue;
                             ItemStack st = ei.getEntityItem();
                             if (st == null || st.stackSize <= 0 || st.getItem() == null) continue;
-                            if (!matchAll && !ItemClassifier.matchesBlockOrItemName(st.getDisplayName(), ItemClassifier.getItemIdentifier(st), st.getItemDamage(), filter)) {
+                            if (!matchAll && !ItemClassifier.matchesBlockOrItemName(st.getDisplayName(),
+                                    ItemClassifier.getItemIdentifier(st), st.getItemDamage(), filter)) {
                                 continue;
                             }
                             JsonObject io = ItemClassifier.itemStackToJson(-1, st);
@@ -619,9 +640,16 @@ public class WorldTools implements ToolProvider {
         return null;
     }
 
-    private static JsonObject chunkNotLoaded(String source) {        JsonObject res = new JsonObject();
-        res.addProperty("ok", false);
-        res.addProperty("error", "Chunk is not loaded: " + source);
-        return res;
+    /**
+     * A read at a coordinate whose chunk is not loaded. The drone can still
+     * reach the area: navigation force-loads a corridor as it flies, so the
+     * hint is to travel first and read again, not to give up.
+     */
+    private static JsonObject chunkNotLoaded(String source) {
+        return ToolJson.error("chunk_not_loaded",
+                "Chunk is not loaded: " + source,
+                "This area is outside the loaded world right now. Fly there with goto "
+                        + "(it force-loads a corridor as the drone advances), then repeat the read.",
+                true);
     }
 }

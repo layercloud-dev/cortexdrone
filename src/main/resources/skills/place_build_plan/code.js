@@ -113,7 +113,7 @@ for (var t = 0; t < tasks.length && t < limit; t++) {
     if (message.indexOf('occupied') >= 0) {
       try {
         var existing = drone.getBlock({ x: task.x, y: task.y, z: task.z });
-        if (existing && nameMatches(existing.name, existing.registryName, block)) alreadyThere++;
+        if (existing && nameMatches(existing.name, existing.registryName, block, existing.oreDict)) alreadyThere++;
         else failed++;
       } catch (checkError) {
         failed++;

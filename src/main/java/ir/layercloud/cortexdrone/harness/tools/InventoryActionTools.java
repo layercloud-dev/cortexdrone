@@ -29,7 +29,7 @@ public final class InventoryActionTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .requiredString("from", "Source: drone, player or chest.")
                             .requiredString("to", "Destination: drone, player or chest.")
-                            .optionalString("filter", "Item name, registry name, ore dictionary tag or 'all'.")
+                            .optionalString("filter", "Item name, registry name, ore dictionary tag (bare or #tag) or 'all'.")
                             .optionalInt("count", "Maximum items to move; 0 = as many as possible.", 0, 2304, 0)
                             .optionalInt("from_slot", "Exact source slot, or -1 for any.", -1, 255, -1)
                             .optionalInt("to_slot", "Exact destination slot, or -1 for any.", -1, 255, -1)

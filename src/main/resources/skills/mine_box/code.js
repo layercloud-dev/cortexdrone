@@ -77,7 +77,7 @@ for (var i = 0; i < all.length; i++) {
   var b = all[i];
   if (!b || b.isAir) continue;
   if (b.isLiquid && !includeLiquids) continue;
-  if (filter !== 'all' && filter !== 'any' && !nameMatches(b.name, b.registryName, filter)) continue;
+  if (filter !== 'all' && filter !== 'any' && !nameMatches(b.name, b.registryName, filter, b.oreDict)) continue;
   targets.push(b);
 }
 

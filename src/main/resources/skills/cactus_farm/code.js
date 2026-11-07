@@ -65,7 +65,7 @@ for (var k = 0; k < keys.length && columnsCut < limit; k++) {
   // Top up any stubs the pop left behind (should be rare, keeps columns clean).
   try {
     var top = drone.getBlock({ x: cut.x, y: baseY + keep, z: cut.z });
-    if (top && nameMatches(top.name, top.registryName, 'cactus')) {
+    if (top && nameMatches(top.name, top.registryName, 'cactus', top.oreDict)) {
       drone.breakBlock({ x: cut.x, y: baseY + keep, z: cut.z });
     }
   } catch (stubError) {

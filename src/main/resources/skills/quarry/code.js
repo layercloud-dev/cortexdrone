@@ -69,7 +69,7 @@ for (var layer = 0; layer < layers; layer++) {
     if (probe.isLiquid === true && !allowLiquid) { skipped++; continue; }
     if (Number(probe.hardness) < 0) { skipped++; continue; }
     if (filter !== 'all' && filter !== 'any'
-        && !nameMatches(probe.name, probe.registryName, filter)) { skipped++; continue; }
+        && !nameMatches(probe.name, probe.registryName, filter, probe.oreDict)) { skipped++; continue; }
 
     try {
       var moved = drone.goto({ standoffOf: { x: cell.x, y: layerY, z: cell.z },

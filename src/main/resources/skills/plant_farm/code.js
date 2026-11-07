@@ -124,9 +124,9 @@ for (var x = x1; x <= x2 && !full; x++) {
     if (!above || !above.isAir) { skipped++; continue; }
     if (!soil || soil.isAir || soil.isLiquid) { skipped++; continue; }
 
-    var isFarmland = nameMatches(soil.name, soil.registryName, 'farmland');
-    var isTillable = nameMatches(soil.name, soil.registryName, 'grass')
-      || nameMatches(soil.name, soil.registryName, 'dirt');
+    var isFarmland = nameMatches(soil.name, soil.registryName, 'farmland', soil.oreDict);
+    var isTillable = nameMatches(soil.name, soil.registryName, 'grass', soil.oreDict)
+      || nameMatches(soil.name, soil.registryName, 'dirt', soil.oreDict);
     if (isFarmland && Number(soil.meta) <= 0) dry++;
     if (!isFarmland && !isTillable) { skipped++; continue; }
 
@@ -141,7 +141,7 @@ for (var x = x1; x <= x2 && !full; x++) {
         if (tilledResult && tilledResult.used) {
           tilled++;
           var nowSoil = drone.getBlock({ x: x, y: soilY, z: z });
-          if (!nowSoil || !nameMatches(nowSoil.name, nowSoil.registryName, 'farmland')) {
+          if (!nowSoil || !nameMatches(nowSoil.name, nowSoil.registryName, 'farmland', nowSoil.oreDict)) {
             skipped++;
             continue;
           }

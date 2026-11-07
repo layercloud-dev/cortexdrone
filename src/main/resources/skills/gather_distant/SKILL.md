@@ -22,7 +22,9 @@ Search far terrain, travel to the first hit, harvest, and return.
 
 ## Parameters
 
-- `target` - block, ore, category or biome name. Required.
+- `target` - block, ore tag, category or biome name. Required. Accepts an
+  OreDictionary tag (`#oreTin`, `oreIron`) or a plain material word (`tin`,
+  `spruce`), which resolves through the dictionary.
 - `max_radius` - search distance 64..1500. Default 1200.
 - `count` - maximum item/block harvest 1..256. Default 32.
 - `deliver` - return to the player and hand over the haul. Default `true`.
@@ -38,7 +40,8 @@ delivered, delivery, hint }`
 ## Notes
 
 - `find_distant` samples loaded chunks first and then a bounded number of new
-  chunks, so this is a search, not a guaranteed find.
+  chunks, so this is a search, not a guaranteed find. The drone itself may fly
+  into unloaded terrain; `goto` force-loads the corridor as it advances.
 - Travel uses one long `goto`; if it fails because the target is underground or
   walled in, retry with `allow_dig:true`.
 - Composes `mine_blocks` then `deliver_items`; no separate travel/queue state.

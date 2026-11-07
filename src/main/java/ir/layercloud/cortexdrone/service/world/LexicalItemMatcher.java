@@ -65,6 +65,11 @@ public final class LexicalItemMatcher {
         out.add(rawTok);
     }
 
+    /** True for shape/derivative tokens: stairs, slab, dust, nugget, plate, ... */
+    public static boolean isDerivativeShapeToken(String token) {
+        return token != null && DERIVATIVE_SHAPE_TOKENS.contains(token);
+    }
+
     public static String singularize(String token) {
         if (token == null || token.length() <= 3) return token;
         if (token.endsWith("ies") && token.length() > 4) {

@@ -29,6 +29,10 @@ unavailable, so a single missing plank does not abort the whole trip.
 - `count` - default amount when an entry has no count. Default 64.
 - `radius` - chest/player search radius 4..64. Default 32.
 
+Every `filter` goes through the OreDictionary too, so `{ "iron": 64 }` counts
+any `ingotIron` variant and `{ "tin": 32 }` finds the mod's actual tin, even
+when its display name differs. Use `#oreTin` to pin an exact tag.
+
 ## Returns
 
 `{ ok, requested, satisfied, fetched:[{filter, wanted, got, have}],

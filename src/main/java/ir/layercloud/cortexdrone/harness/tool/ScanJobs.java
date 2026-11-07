@@ -340,6 +340,8 @@ public final class ScanJobs {
             Collections.sort(sorted, Comparator.comparingInt(a -> a[4]));
             JsonArray array = new JsonArray();
             int limit = Math.min(MAX_RESULTS, sorted.size());
+            World world = this.controller != null && this.controller.drone != null
+                    ? this.controller.drone.worldObj : null;
             for (int i = 0; i < limit; i++) {
                 int[] hit = sorted.get(i);
                 JsonObject block = new JsonObject();
@@ -348,6 +350,21 @@ public final class ScanJobs {
                 block.addProperty("z", hit[2]);
                 block.addProperty("meta", hit[3]);
                 block.addProperty("dist", Math.round(Math.sqrt(hit[4]) * 10.0) / 10.0);
+                // Name + dictionary tags make a sliced scan as informative as
+                // the direct one, so a skill can tell "Cassiterite" from "tin".
+                if (world != null) {
+                    try {
+                        Block type = world.getBlock(hit[0], hit[1], hit[2]);
+                        if (type != null) {
+                            block.addProperty("name", ItemClassifier.getBlockDisplayName(type, hit[3]));
+                            String reg = Block.blockRegistry.getNameForObject(type);
+                            block.addProperty("registryName", reg != null ? reg : "");
+                            JsonArray tags = ItemClassifier.blockOreDictJson(type, hit[3]);
+                            if (tags != null) block.add("oreDict", tags);
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                }
                 array.add(block);
             }
             return array;

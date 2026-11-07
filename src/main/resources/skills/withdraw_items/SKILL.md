@@ -20,7 +20,9 @@ crafting workflows.
 
 ## Parameters
 
-- `filter` - item/block/ore tag. Required in practice.
+- `filter` - item/block/ore tag. Required in practice. A bare material word
+  (`tin`, `iron`) or an explicit tag (`#oreTin`, `ingotIron`) works; the
+  dictionary decides which stacks count.
 - `count` - how many items to obtain. Default 64.
 - `radius` - chest/player search radius. Default 32.
 

@@ -96,18 +96,51 @@ function __singular(token) {
  * Loose item/block name matcher used by skills.
  * Supports "|" alternatives and "!" exclusion. A filter matches when every
  * token of one alternative is present in the display name or registry name.
+ *
+ * OreDictionary-aware:
+ *   - "#oreTin", "oredict:oreTin", "dict:plankWood", "tag:..." match the tag list;
+ *   - a bare tag name ("oreIron", "ingotTin") matches that tag;
+ *   - a plain word ("tin") also matches a tag that contains it as a whole token
+ *     (oreTin, ingotTin), so players can ask for "tin" rather than a tag.
+ * Pass the stack's `oreDict` array as the third argument when available.
  */
-function nameMatches(name, registry, filter) {
+function nameMatches(name, registry, filter, oreDict) {
   if (filter === undefined || filter === null) return true;
   var f = String(filter).trim().toLowerCase();
   if (f === "" || f === "all" || f === "any" || f === "*") return true;
   var combined = __words(name).concat(__words(registry));
+  var tags = [];
+  if (oreDict && oreDict.length) {
+    for (var g = 0; g < oreDict.length; g++) {
+      if (oreDict[g]) tags.push(String(oreDict[g]));
+    }
+    // Tag words are searchable too, so "oreIron" style queries find them.
+    for (var h = 0; h < tags.length; h++) {
+      combined = combined.concat(__tagWords(tags[h]));
+    }
+  }
   var clauses = f.split("|");
   for (var i = 0; i < clauses.length; i++) {
     var clause = clauses[i].trim();
     if (!clause) continue;
     var negated = false;
     if (clause.charAt(0) === "!") { negated = true; clause = clause.slice(1).trim(); }
+    var explicitTag = false;
+    var prefixes = ["#", "oredict:", "ore_dict:", "ore-dict:", "dict:", "tag:"];
+    for (var p = 0; p < prefixes.length; p++) {
+      if (clause.indexOf(prefixes[p]) === 0) {
+        explicitTag = true;
+        clause = clause.slice(prefixes[p].length).trim();
+        break;
+      }
+    }
+    if (explicitTag) {
+      if (__tagMatches(tags, clause)) return !negated;
+      continue;
+    }
+    // A bare phrase also matches a registered tag: "tin" -> oreTin/ingotTin,
+    // "oreIron" -> oreIron. Falls through to display/registry tokens.
+    if (__tagMatches(tags, clause)) return !negated;
     var tokens = __words(clause);
     if (!tokens.length) continue;
     var all = true;
@@ -124,6 +157,40 @@ function nameMatches(name, registry, filter) {
   return false;
 }
 
+/* True when one of the stack's OreDictionary tags matches a tag phrase. */
+function __tagMatches(tags, phrase) {
+  if (!tags || !tags.length) return false;
+  var want = String(phrase).toLowerCase().replace(/[^a-z0-9]/g, "");
+  var words = __words(phrase);
+  for (var i = 0; i < tags.length; i++) {
+    var original = String(tags[i]);
+    if (original.toLowerCase().replace(/[^a-z0-9]/g, "") === want) return true;
+    // Split camelCase before lowercasing: "oreTin" -> ore + tin.
+    var have = __tagWords(original);
+    var all = words.length > 0;
+    for (var w = 0; w < words.length; w++) {
+      var found = false;
+      for (var h = 0; h < have.length; h++) {
+        if (__singular(have[h]) === __singular(words[w])) { found = true; break; }
+      }
+      if (!found) { all = false; break; }
+    }
+    if (all) return true;
+  }
+  return false;
+}
+
+/*
+ * Splits an OreDictionary tag into words. Tags are camelCase
+ * ("oreIron" -> ore, iron), which __words alone does not split.
+ */
+function __tagWords(tag) {
+  var raw = String(tag === undefined || tag === null ? "" : tag);
+  var spaced = raw.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+  return __words(spaced);
+}
+
 /* Total item count in a `state()` inventory array matching a filter. */
 function countInInventory(inventory, filter) {
   var total = 0;
@@ -131,7 +198,7 @@ function countInInventory(inventory, filter) {
   for (var i = 0; i < inventory.length; i++) {
     var stack = inventory[i];
     if (!stack) continue;
-    if (nameMatches(stack.name, stack.registryName || stack.item, filter)) {
+    if (nameMatches(stack.name, stack.registryName || stack.item, filter, stack.oreDict)) {
       total += Number(stack.count || 0);
     }
   }

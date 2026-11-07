@@ -50,7 +50,7 @@ for (var h = 0; h < mature.length; h++) {
   try {
     if (countInInventory(drone.state().inventory, 'nether_wart') <= 0) continue;
     var below = drone.getBlock({ x: plant.x, y: plant.y - 1, z: plant.z });
-    if (!below || !nameMatches(below.name, below.registryName, 'soul sand')) continue;
+    if (!below || !nameMatches(below.name, below.registryName, 'soul sand', below.oreDict)) continue;
     drone.goto({ standoffOf: { x: plant.x, y: plant.y - 1, z: plant.z }, allow_dig: false });
     var used = drone.useItem({ item: 'nether_wart', x: plant.x, y: plant.y - 1,
       z: plant.z, side: 1 });

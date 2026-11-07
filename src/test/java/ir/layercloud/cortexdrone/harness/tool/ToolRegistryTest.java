@@ -66,7 +66,8 @@ public class ToolRegistryTest {
                 "web_search", "web_fetch", "wiki_lookup",
                 "scan_blocks", "poll_scan",
                 "oc_state", "oc_methods", "oc_call", "oc_machine",
-                "find_build_site", "survey_build_site", "plan_structure")) {
+                "find_build_site", "survey_build_site", "plan_structure",
+                "find_oredict")) {
             assertTrue("Missing tool: " + required, names.contains(required));
         }
     }

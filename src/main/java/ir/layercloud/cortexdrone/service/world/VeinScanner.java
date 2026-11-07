@@ -106,6 +106,8 @@ public final class VeinScanner {
             JsonObject vo = new JsonObject();
             vo.addProperty("name", veinName);
             vo.addProperty("registryName", reg != null ? reg : "");
+            JsonArray veinTags = ItemClassifier.blockOreDictJson(rootBlock, targetMeta);
+            if (veinTags != null) vo.add("oreDict", veinTags);
             vo.addProperty("id", targetId);
             vo.addProperty("meta", targetMeta);
             vo.addProperty("count", n);

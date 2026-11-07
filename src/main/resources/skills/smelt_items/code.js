@@ -77,8 +77,8 @@ if (!target) {
     var f = list[i];
     var out = slotFirst(f, slotOutput);
     var input = slotFirst(f, slotInput);
-    var outputFree = !out || (out.name && nameMatches(out.name, out.registryName, filter));
-    var inputFree = !input || nameMatches(input.name, input.registryName, filter);
+    var outputFree = !out || (out.name && nameMatches(out.name, out.registryName, filter, out.oreDict));
+    var inputFree = !input || nameMatches(input.name, input.registryName, filter, input.oreDict);
     if (!outputFree) continue;
     if (!inputFree && !clearInput) continue;
     if (!best || Number(f.dist) < Number(best.dist)) best = f;
@@ -118,7 +118,7 @@ if (slotCount(before, slotOutput) > 0) {
 
 // 2) Load the input.
 var currentInput = slotFirst(before, slotInput);
-if (currentInput && !nameMatches(currentInput.name, currentInput.registryName, filter)) {
+if (currentInput && !nameMatches(currentInput.name, currentInput.registryName, filter, currentInput.oreDict)) {
   if (!clearInput) {
     return { ok: false, error: 'the furnace input slot holds ' + currentInput.name,
       furnace: furnace, hint: 'pass clear:true to move it out first' };
@@ -134,7 +134,7 @@ if (currentInput && !nameMatches(currentInput.name, currentInput.registryName, f
 }
 
 var already = 0;
-if (currentInput && nameMatches(currentInput.name, currentInput.registryName, filter)) {
+if (currentInput && nameMatches(currentInput.name, currentInput.registryName, filter, currentInput.oreDict)) {
   already = slotCount(before, slotInput);
 }
 var toLoad = Math.max(0, wanted - already);
@@ -187,14 +187,14 @@ if (batch > 0) {
   var fuelSlotName = fuelSlot ? fuelSlot.name : null;
   var fuelSlotCount = slotCount(afterLoad, slotFuel);
   var fuelSlotUsable = !!fuelSlot && burnTicks(fuelSlotName, fuelSlot.registryName) > 0
-    && (!cfg.fuel || nameMatches(fuelSlotName, fuelSlot.registryName, cfg.fuel));
+    && (!cfg.fuel || nameMatches(fuelSlotName, fuelSlot.registryName, cfg.fuel, fuelSlot.oreDict));
   if (!fuelSlotUsable) {
     var inventory = drone.state().inventory || [];
     var candidates = [];
     for (var s = 0; s < inventory.length; s++) {
       var stack = inventory[s];
       if (!stack || !stack.count) continue;
-      var explicit = cfg.fuel && nameMatches(stack.name, stack.registryName, cfg.fuel);
+      var explicit = cfg.fuel && nameMatches(stack.name, stack.registryName, cfg.fuel, stack.oreDict);
       var burn = burnTicks(stack.name, stack.registryName);
       if (burn <= 0 && !explicit) continue;
       if (burn <= 0) burn = 1600; // unknown modded fuel: assume coal-like

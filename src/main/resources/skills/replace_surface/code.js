@@ -103,11 +103,11 @@ for (var t = 0; t < planned; t++) {
   }
   if (!current || current.isAir) { skipped++; continue; }
   if (onlyReplace !== 'all' && onlyReplace !== 'any'
-      && !nameMatches(current.name, current.registryName, onlyReplace)) {
+      && !nameMatches(current.name, current.registryName, onlyReplace, current.oreDict)) {
     skipped++;
     continue;
   }
-  if (nameMatches(current.name, current.registryName, block)
+  if (nameMatches(current.name, current.registryName, block, current.oreDict)
       && (meta < 0 || current.meta === meta)) {
     already++;
     continue;

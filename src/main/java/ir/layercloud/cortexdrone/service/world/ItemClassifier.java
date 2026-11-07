@@ -1,6 +1,8 @@
 package ir.layercloud.cortexdrone.service.world;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -277,7 +279,7 @@ public final class ItemClassifier {
                 if (neg != null) {
                     if (neg.endsWith(" blocks")) neg = neg.substring(0, neg.length() - 7).trim();
                     if (!neg.isEmpty()) {
-                        if (LexicalItemMatcher.scoreSingleMatch(displayName, fullId, meta, neg) > 0
+                        if (scoreSingleClause(displayName, fullId, meta, neg) > 0
                                 || (!neg.contains(":") && (disp.contains(neg) || id.contains(neg)))) {
                             return 0;
                         }
@@ -287,14 +289,29 @@ public final class ItemClassifier {
                     if (clause.equals("all") || clause.equals("any") || clause.equals("*") || clause.equals("solid") || clause.equals("block")) {
                         bestPositiveScore = Math.max(bestPositiveScore, 50);
                     } else {
-                        int s = LexicalItemMatcher.scoreSingleMatch(displayName, fullId, meta, clause);
+                        int s = scoreSingleClause(displayName, fullId, meta, clause);
                         if (s > bestPositiveScore) bestPositiveScore = s;
                     }
                 }
             }
             return hasPositive ? bestPositiveScore : 50;
         }
-        return LexicalItemMatcher.scoreSingleMatch(displayName, fullId, meta, raw);
+        return scoreSingleClause(displayName, fullId, meta, raw);
+    }
+
+    /**
+     * One filter clause: lexical display-name/registry match first (cheap and
+     * exact), then the OreDictionary fallback so a player word like "tin"
+     * still reaches a mod block named "Cassiterite". An explicit tag filter
+     * ({@code #oreTin}, {@code oredict:...}) always decides on its own.
+     */
+    private static int scoreSingleClause(String displayName, String fullId, int meta, String clause) {
+        if (OreDictResolver.hasExplicitPrefix(clause)) {
+            return OreDictResolver.scoreIdentifierTagMatch(fullId, clause);
+        }
+        int lexical = LexicalItemMatcher.scoreSingleMatch(displayName, fullId, meta, clause);
+        if (lexical > 0) return lexical;
+        return OreDictResolver.scoreIdentifierTagMatch(fullId, clause);
     }
 
     public static boolean matchesBlockOrItemName(String displayName, String fullId, int meta, String rawFilter) {
@@ -366,6 +383,16 @@ public final class ItemClassifier {
             case "plants":
                 return isCropOrReedBlock(b);
         }
+        // An explicit tag filter decides on the dictionary alone: "#oreTin"
+        // must not accidentally match a block just because its name says "tin".
+        if (OreDictResolver.hasExplicitPrefix(filter.trim())) {
+            return OreDictResolver.scoreIdentifierTagMatch(id, filter.trim()) > 0;
+        }
+        // OreDictionary fallback for a player word: "tin" reaches a mod block
+        // named "Cassiterite" because the cached identifier carries oreTin.
+        if (!f.isEmpty() && OreDictResolver.scoreIdentifierTagMatch(id, f) > 0) {
+            return true;
+        }
         if (id.contains("ore" + f.replace(" ", ""))) {
             return true;
         }
@@ -430,6 +457,15 @@ public final class ItemClassifier {
         return false;
     }
 
+    /** Compact OreDictionary tag array for a block, or null when unregistered. */
+    public static JsonArray blockOreDictJson(Block b, int meta) {
+        List<String> tags = getOreDictNames(b, meta);
+        if (tags.isEmpty()) return null;
+        JsonArray out = new JsonArray();
+        for (String tag : tags) out.add(new JsonPrimitive(tag));
+        return out;
+    }
+
     public static JsonObject itemStackToJson(int slot, ItemStack st) {
         JsonObject io = new JsonObject();
         if (slot >= 0) io.addProperty("slot", slot);
@@ -446,6 +482,16 @@ public final class ItemClassifier {
         io.addProperty("meta", meta);
         io.addProperty("damage", meta);
         io.addProperty("count", st.stackSize);
+        // Compact OreDictionary tags so scripts can match "tin ingot" against
+        // oreTin/ingotTin without a per-call Java round trip.
+        List<String> tags = getOreDictNames(st);
+        if (!tags.isEmpty()) {
+            JsonArray oreTags = new JsonArray();
+            for (int i = 0; i < tags.size() && i < 6; i++) {
+                oreTags.add(new JsonPrimitive(tags.get(i)));
+            }
+            io.add("oreDict", oreTags);
+        }
         return io;
     }
 }

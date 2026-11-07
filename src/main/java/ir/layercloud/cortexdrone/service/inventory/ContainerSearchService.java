@@ -161,6 +161,16 @@ public class ContainerSearchService {
 
         res.addProperty("query", query);
         res.addProperty("found", grandTotalMatching > 0);
+        com.google.gson.JsonArray resolvedTags = new com.google.gson.JsonArray();
+        for (String tag : ir.layercloud.cortexdrone.service.world.OreDictResolver.resolveTagQuery(query)) {
+            resolvedTags.add(new com.google.gson.JsonPrimitive(tag));
+        }
+        if (resolvedTags.size() > 0) {
+            res.add("oreDictTags", resolvedTags);
+            res.addProperty("matchedBy", "name+oredict");
+        } else {
+            res.addProperty("matchedBy", "name");
+        }
         res.addProperty("totalMatchingItems", grandTotalMatching);
         res.addProperty("matchingChestCount", chestsOut.size());
         res.add("totalsByItem", totalsJson);

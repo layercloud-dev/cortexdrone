@@ -99,6 +99,14 @@ public class DocLookupService {
         res.addProperty("matchCount", registryMatches.size());
         res.add("items", registryMatches);
 
+        // 1b) OreDictionary resolution: how a natural-language filter maps to
+        // registered tags, plus the stacks registered under each tag. This is
+        // what lets "tin" find oreTin even when the display name is different.
+        JsonObject dict = OreDictResolver.describeTagQuery(query, 24);
+        if (dict.has("tagCount") && dict.get("tagCount").getAsInt() > 0) {
+            res.add("oreDictionary", dict);
+        }
+
         // 2) Inspect CraftingManager recipes matching query
         JsonObject craftObj = this.inventoryService.getRecipesForFilter(query);
         if (craftObj != null && craftObj.has("recipes")) {

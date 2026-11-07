@@ -77,7 +77,7 @@ public class InventoryQueryTools implements ToolProvider {
                                 + "count, per-container counts and the best container. Faster than find_item "
                                 + "when the player only cares about storage.")
                         .parameters(ToolSchema.object()
-                                .requiredString("filter", "Item name, registry name or ore dictionary tag.")
+                                .requiredString("filter", "Item name, registry name or ore dictionary tag (bare or #tag).")
                                 .optionalInt("radius", "Search radius, 4..64.", 4, 64, 28))
                         .affinity(ToolAffinity.MAIN).timeoutMs(5_000L).build(),
                 ToolSpec.builder("find_item")
@@ -85,7 +85,7 @@ public class InventoryQueryTools implements ToolProvider {
                                 + "filtered item. Returns exact counts per source and the best chest. Call this "
                                 + "before crafting/withdrawing so you know where the ingredients are.")
                         .parameters(ToolSchema.object()
-                                .requiredString("filter", "Item name, registry name or ore dictionary tag.")
+                                .requiredString("filter", "Item name, registry name or ore dictionary tag (bare or #tag).")
                                 .optionalInt("radius", "Chest search radius, 4..64.", 4, 64, 32))
                         .affinity(ToolAffinity.MAIN).timeoutMs(5_000L).build(),
                 ToolSpec.builder("get_recipes")

@@ -51,9 +51,12 @@ pick a goal, start an action or retain work state.
 
 `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `ChunkAccess`,
 `StructureArchitect`, `SiteSurvey`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`,
-`LexicalItemMatcher`, `EntityAndBiomeClassifier`
+`LexicalItemMatcher`, `OreDictResolver`, `EntityAndBiomeClassifier`
 : geometry, connectivity, targeting, registry introspection, item matching and
-  structure planning.
+  structure planning. `OreDictResolver` maps player words to Forge
+  OreDictionary tags (`tin` -> `oreTin`/`ingotTin`, `#oreIron`, `ingotIron`),
+  so filters work against modded items whose display names differ. Scans return
+  an `oreDict` array beside each item/block stack.
 
 `ChunkAccess`
 : loaded-chunk checks plus the policy-gated loading bridge used by A*. The

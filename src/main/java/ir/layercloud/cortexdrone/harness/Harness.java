@@ -25,6 +25,7 @@ import ir.layercloud.cortexdrone.harness.tools.LessonTools;
 import ir.layercloud.cortexdrone.harness.tools.MemoryTools;
 import ir.layercloud.cortexdrone.harness.tools.NavigationTools;
 import ir.layercloud.cortexdrone.harness.tools.OcTools;
+import ir.layercloud.cortexdrone.harness.tools.OreDictTools;
 import ir.layercloud.cortexdrone.harness.tools.ScanTools;
 import ir.layercloud.cortexdrone.harness.tools.SessionTools;
 import ir.layercloud.cortexdrone.harness.tools.SkillTools;
@@ -90,6 +91,7 @@ public final class Harness {
                 new LessonTools(manager, lessons),
                 new VisualsTools(manager),
                 new WorldTools(manager, manager.getWorldScanner()),
+                new OreDictTools(),
                 new SkillTools(manager, skills, refiner),
                 new WebTools(manager),
                 new CodeTools(manager),

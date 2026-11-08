@@ -15,11 +15,11 @@ import net.minecraft.util.MathHelper;
  * <p>Extracted from {@link NavigationManager} to keep that class inside its
  * modular line budget; the behaviour is two predicates, not a policy.</p>
  */
-final class RiderGuard {
+public final class RiderGuard {
     private RiderGuard() {
     }
 
-    static boolean isCarrying(Drone drone) {
+    public static boolean isCarrying(Drone drone) {
         return drone != null && drone.riddenByEntity instanceof EntityLivingBase;
     }
 

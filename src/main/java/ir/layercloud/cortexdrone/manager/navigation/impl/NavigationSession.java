@@ -49,6 +49,8 @@ final class NavigationSession {
     boolean allowDig = true;
     int maxDigBlocks = 128;
     int recoveryAttempts = 12;
+    /** Per-call speed multiplier; 0 = fall back to the configured value. */
+    double speedMultiplier;
     int[] digTarget;
     /**
      * True when a living entity (a player or a mob) is riding the drone for

@@ -22,7 +22,11 @@ final class LegWatchdog {
     static final int STUCK_TICKS = 40;
     /** 10 s without reducing the waypoint distance by 0.25: the leg is looping. */
     static final int NO_PROGRESS_TICKS = 200;
-    /** Hard ceiling derived from the initial leg length (60 ticks per block). */
+    /**
+     * Hard ceiling derived from the initial leg length (60 ticks per block).
+     * A boosted drone finishes a leg sooner, so the budget is divided by the
+     * speed multiplier to keep the same "too slow" meaning.
+     */
     static final int MAX_TICKS_PER_BLOCK = 60;
     static final int MIN_MAX_TICKS = 160;
     static final int MAX_MAX_TICKS = 2400;
@@ -33,14 +37,22 @@ final class LegWatchdog {
     private double initialDistance;
     private double bestDistance;
     private int maxTicks = MIN_MAX_TICKS;
+    /** The leg's speed multiplier; 1.0 is the tuned baseline. */
+    private double speedMultiplier = 1.0;
 
     void begin(double distanceToTarget) {
+        begin(distanceToTarget, 1.0);
+    }
+
+    void begin(double distanceToTarget, double speedMultiplier) {
         this.ticks = 0;
         this.stuckTicks = 0;
         this.noProgressTicks = 0;
         this.initialDistance = Math.max(0.0, distanceToTarget);
         this.bestDistance = this.initialDistance;
-        long budget = (long) Math.ceil(this.initialDistance * MAX_TICKS_PER_BLOCK);
+        this.speedMultiplier = Math.max(0.25, Math.min(5.0, speedMultiplier));
+        long budget = (long) Math.ceil(this.initialDistance * MAX_TICKS_PER_BLOCK
+                / this.speedMultiplier);
         this.maxTicks = (int) Math.max(MIN_MAX_TICKS, Math.min(MAX_MAX_TICKS, budget));
     }
 
@@ -69,6 +81,11 @@ final class LegWatchdog {
 
     int ticks() {
         return this.ticks;
+    }
+
+    /** Hard ceiling for the current leg; package-private for the tests. */
+    int maxTicks() {
+        return this.maxTicks;
     }
 
     double bestDistance() {

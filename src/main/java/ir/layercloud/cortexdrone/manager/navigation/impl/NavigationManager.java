@@ -17,6 +17,7 @@ import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
+import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 import ir.layercloud.cortexdrone.service.navigation.TrailPlan;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
@@ -44,13 +45,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code max_dig_blocks} is spent. A per-leg watchdog (Baritone's movement
  * timeout) prevents a wedged drone from spinning forever. The model only sees
  * a failure after every recovery attempt is exhausted.</p>
- *
- * <p>It also owns every per-drone navigation field (goal, error, path, stall
- * counters, request token, path-cache signature and tick clock). The controller
- * carries none of them.</p>
  */
 public final class NavigationManager implements FlightController {
-    private static final double ARRIVAL_RADIUS = 0.85;
     private static final int MAX_FLIGHT_TICKS = 12000;
     /** Absolute recovery ceiling; successful digging resets the soft budget. */
     private static final int MAX_RECOVERIES = 96;
@@ -118,8 +114,10 @@ public final class NavigationManager implements FlightController {
         session.requestId = requestId;
         session.allowDig = request.isAllowDig();
         session.carryingRider = RiderGuard.isCarrying(controller.drone);
+        session.speedMultiplier = NavigationSpeed.requested(request, this.manager.getConfig());
         session.maxDigBlocks = request.getMaxDigBlocks();
         session.recoveryAttempts = request.getRecoveryAttempts();
+        state.speedMultiplier = NavigationSpeed.capped(session);
         if (target.isBlockApproach()) {
             session.targetBlock = new int[]{
                     request.getStandoffX(), request.getStandoffY(), request.getStandoffZ()};
@@ -159,8 +157,7 @@ public final class NavigationManager implements FlightController {
     /**
      * Called once per server tick from the runtime pipeline.
      */
-    public void tick(DroneController controller) {
-        if (controller == null || controller.drone == null) return;
+    public void tick(DroneController controller) {        if (controller == null || controller.drone == null) return;
         NavigationState state = state(controller);
         state.ticks++;
         if (state.repathCooldown > 0) state.repathCooldown--;
@@ -199,7 +196,10 @@ public final class NavigationManager implements FlightController {
             arrive(controller, session);
             return;
         }
-        if (session.targetBlock == null && distance <= ARRIVAL_RADIUS) {
+        // The arrival tolerance grows with speed: a 5x drone covers 0.85 blocks
+        // in a fraction of a tick, so the tuned radius would never be met.
+        if (session.targetBlock == null
+                && distance <= DroneSpeed.arrivalRadius(state.speedMultiplier)) {
             arrive(controller, session);
             return;
         }
@@ -242,7 +242,11 @@ public final class NavigationManager implements FlightController {
         return controller != null && this.sessions.containsKey(controller);
     }
 
-    public Status status(DroneController controller) {
+    /** Flight-speed multiplier for this drone; 1.0 is the tuned baseline. */
+    public double speedMultiplier(DroneController controller) {
+        return NavigationSpeed.of(this.sessions.get(controller), controller,
+                this.manager.getConfig());
+    }    public Status status(DroneController controller) {
         NavigationSession session = this.sessions.get(controller);
         if (session == null) return Status.idle();
         NavigationState state = state(controller);
@@ -355,7 +359,8 @@ public final class NavigationManager implements FlightController {
         if (context.isActive()) {
             context.retain();
             session.leg = new NavigationSession.Leg(action, context);
-            session.watchdog.begin(distance(controller.drone, targetX, targetY, targetZ));
+            session.watchdog.begin(distance(controller.drone, targetX, targetY, targetZ),
+                    state(controller).speedMultiplier);
             session.lastLegMoved = false;
         } else {
             session.leg = null;
@@ -670,6 +675,7 @@ public final class NavigationManager implements FlightController {
         }
         this.stallReporter.failure(controller, state, session, reason);
     }
+
     @Getter
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Status {

@@ -62,6 +62,9 @@ public final class NavigationView {
                 .allowDig(allowDig)
                 .maxDigBlocks(maxDigBlocks)
                 .recoveryAttempts(ToolArgs.clampedInt(args, "recoveryAttempts", 12, 0, 32))
+                // 0 means "use the configured multiplier". DroneSpeed clamps
+                // whatever arrives into its supported range.
+                .speedMultiplier(ToolArgs.decimal(args, "speed", 0.0D))
                 .build();
     }
 

@@ -51,7 +51,10 @@ public final class NavigationTools implements ToolProvider {
                                     + "non-destructive travel.", true)
                             .optionalInt("max_dig_blocks", "Maximum blocks this call may clear, 0..512.", 0, 512, 128)
                             .optionalInt("recovery_attempts", "Maximum dig/detour attempts for this call, "
-                                    + "0..32.", 0, 32, 12))
+                                    + "0..32.", 0, 32, 12)
+                            .optionalNumber("speed", "Flight-speed multiplier for this call: 1 = normal, "
+                                    + "the ceiling is 5. Default uses the configured value. A carried "
+                                    + "passenger is always flown at normal speed.", null))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(180_000L)
                     .build(),

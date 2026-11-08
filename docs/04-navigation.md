@@ -268,6 +268,31 @@ Decorative/modded stone and ore blocks that merely carry a tile entity are
 mineable. Every block that is broken is recorded in `DamageJournal` for
 `repair_trail`.
 
+## 5b. Flight speed
+
+`DroneSpeed` owns the whole policy; no manager holds a raw velocity number.
+
+- **Tiers** — near (≤14 blocks) 0.40, mid (≤24) 0.55, far (>24) 0.75
+  blocks/tick. These are the tuned baseline and are exactly what a multiplier
+  of `1.0` produces.
+- **Multiplier** — `droneSpeedMultiplier` in `config.json`, default `5.0`.
+  It scales every tier; `HARD_CAP` is `0.75 × 5 = 3.75` blocks/tick (75 b/s).
+  Anything above 5 is clamped by `DroneSpeed.clampMultiplier`, so a bad config
+  or a model-supplied `goto({speed: 100})` can never exceed the ceiling.
+- **Per call** — `goto({speed: 2})` overrides the config for that request;
+  `0` or an absent value uses the config. `1.0` always means the tuned speed,
+  which is the escape hatch when working near lava or a build.
+- **Passengers** — a live rider resolves to `1.0` regardless of config and
+  request. Their head is 1.8 blocks above the drone, and the closing speed at
+  5× kills them under a low ceiling.
+- **Compensating controls** — a faster drone needs a matching braking
+  distance, acceleration ramp, arrival/waypoint tolerance (sub-linear, so
+  arrival stays precise), watchdog budget (`distance × 60 / multiplier`) and
+  collision sub-stepping (0.35-block sweeps). All of these live next to the
+  speed policy so they cannot drift apart.
+- **Operator control** — `/drone config speed <value>` prints the clamped
+  result; `/drone config` shows the active multiplier.
+
 Defaults are `max_dig_blocks=128` and `recovery_attempts=12`; both are per-call
 arguments on `goto`.
 

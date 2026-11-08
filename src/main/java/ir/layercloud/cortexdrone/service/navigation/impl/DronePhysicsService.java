@@ -13,6 +13,13 @@ import net.minecraft.world.World;
  */
 @UtilityClass
 public final class DronePhysicsService {
+    /**
+     * Longest single collision sweep. The drone body is 0.75 wide, so a step
+     * under half of that keeps wall and corner resolution accurate.
+     */
+    private static final double MAX_SUBSTEP = 0.35;
+    /** Per-tick step ceiling; 3.75 / 0.35 rounds to 11. */
+    private static final int MAX_SUBSTEPS = 16;
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {
         int bx = MathHelper.floor_double(x);
@@ -62,7 +69,10 @@ public final class DronePhysicsService {
             // Water is a medium, not a boost. Raising the cap here made the
             // drone overshoot the surface and bob instead of entering it.
             if (inLiquid) cap = Math.min(cap, 0.34);
-            double brakeRadius = 6.0;
+            // The braking distance must grow with the cap, otherwise a boosted
+            // drone enters the ease-in zone far too fast and oscillates around
+            // the target. 6 blocks is the tuned radius for the 0.75 far cap.
+            double brakeRadius = 6.0 * Math.max(1.0, cap / 0.75);
             double cruiseFrac = Math.min(1.0, distance / brakeRadius);
             double vMax = Math.max(0.28, cap * cruiseFrac);
             // If already carrying too much velocity toward the target, brake early (predictive stopping)
@@ -76,7 +86,11 @@ public final class DronePhysicsService {
                 vz *= (0.55 + 0.45 * scale);
             }
 
+            // Acceleration also scales, but sub-linearly: a linear 0.70 ramp at
+            // 5x overshoots and oscillates. sqrt gives a ~12-tick spin-up and
+            // keeps the proportional controller stable.
             double accelBase = maxVelOverride > 0.5 ? 0.14 : (double) Math.max(0.08f, d.targetAcceleration());
+            if (cap > 0.75) accelBase = Math.max(accelBase, 0.14 * Math.sqrt(cap / 0.75));
             if (inLiquid) accelBase *= 1.1;
             double accel = Math.min(accelBase, distance) / distance;
             vx += dx * accel;
@@ -90,11 +104,38 @@ public final class DronePhysicsService {
             vy = 0.0;
             vz = 0.0;
         }
-        d.moveEntity(vx, vy, vz);
+        moveWithSubsteps(d, vx, vy, vz);
         double drag = inLiquid ? 0.86 : (double) d.drag();
         d.motionX = vx * drag;
         d.motionY = vy * drag;
         d.motionZ = vz * drag;
+    }
+
+    /**
+     * Moves the drone in collision-safe sub-steps.
+     *
+     * <p>Vanilla {@code moveEntity} sweeps the AABB along one axis at a time,
+     * which is correct for the ~0.4-block steps the drone was originally tuned
+     * for. A 5x speed cap produces steps of up to 3.75 blocks in one tick; a
+     * single sweep that long can resolve against a wall it should have stopped
+     * at and then leave the drone embedded, or let it "step over" a one-block
+     * gap. Splitting the step into chunks shorter than the drone's own half
+     * width keeps the sweep resolution granular enough to behave like normal
+     * flight.</p>
+     */
+    private static void moveWithSubsteps(Drone d, double vx, double vy, double vz) {
+        double distance = Math.sqrt(vx * vx + vy * vy + vz * vz);
+        if (distance <= MAX_SUBSTEP) {
+            d.moveEntity(vx, vy, vz);
+            return;
+        }
+        int steps = Math.min(MAX_SUBSTEPS, (int) Math.ceil(distance / MAX_SUBSTEP));
+        double sx = vx / steps;
+        double sy = vy / steps;
+        double sz = vz / steps;
+        for (int i = 0; i < steps; i++) {
+            d.moveEntity(sx, sy, sz);
+        }
     }
 
     public static boolean hasHeadroom(World world, int x, int y, int z) {

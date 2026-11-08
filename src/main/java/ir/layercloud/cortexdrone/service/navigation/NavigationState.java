@@ -67,6 +67,12 @@ public final class NavigationState {
     public double lastY;
     public double lastZ;
     public double lastMoveSq;
+    /**
+     * Flight-speed multiplier of the active request (1.0 = tuned speed). Kept
+     * here because the arrival and waypoint tolerances must grow with the
+     * closing speed, and the action only receives this object.
+     */
+    public double speedMultiplier = 1.0;
 
     public NavigationState(double goalX, double goalY, double goalZ) {
         this.goalX = goalX;

@@ -67,7 +67,8 @@ Use them directly; never describe a tool call in prose and never emit a JSON
   `find_item_in_chests`, `find_oredict`, `get_block`, `get_blocks_in_box`, `get_top_y`,
   `scan_room`, `scan_blocks`, `scan_veins`, `find_distant`, `get_entities`,
   `get_drops`, `raycast_player`, `find_build_site`, `plan_structure`.
-- **Action primitives** — `goto` (self-recovering), `stop`, `find_safe_landing`, `break_block`, `place_block`,
+- **Action primitives** — `goto` (self-recovering, optional `speed` multiplier),
+  `stop`, `find_safe_landing`, `break_block`, `place_block`,
   `replace_block`, `repair_trail`, `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity`,
   `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`,
   `deposit_chest`, `drop_items`, `suck_items`, `craft`.
@@ -390,6 +391,14 @@ Never store player secrets or one-off task progress.
   `break_block` calls after a navigation error and do not repeat the same
   `goto`; only pick another destination or ask the player when the drone truly
   cannot reach the area.
+- **Flight speed is a multiplier, capped at 5x.** The drone cruises at the
+  configured multiplier (`droneSpeedMultiplier`, default 5.0; 1.0 = the old
+  tuned speed, ceiling 5.0). Do not assume a trip is slow: a 500-block hop
+  takes a fraction of the old time. Pass `speed` on `goto` to slow down for
+  careful work near hazards (`speed: 0.5`) or to pick any value up to `5`.
+  A carried passenger is always flown at 1x regardless of config, because the
+  extra closing speed is lethal under a low ceiling. Values above the ceiling
+  are clamped, never accepted.
 - **A rider is not cargo.** Never call `pick_entity` on a player and then fly
   at ground level: a carried player is 1.8 blocks tall, dies from anything over
   a 3-block fall, suffocates in a 1-wide tunnel and is crushed by low ceilings.

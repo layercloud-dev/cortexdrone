@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.manager.navigation.impl;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -72,5 +73,58 @@ public class LegWatchdogTest {
             tripped = shortLeg.tick(1.0 - i * 0.005, 0.04);
         }
         assertFalse("a slowly closing short leg must not hit the hard ceiling early", tripped);
+    }
+
+    @Test
+    public void aFasterDroneGetsAProportionallyShorterBudget() {
+        // A short leg is below the hard-ceiling clamp, so the budget is exactly
+        // proportional to distance / speed.
+        LegWatchdog normal = new LegWatchdog();
+        normal.begin(10.0, 1.0);
+        LegWatchdog fast = new LegWatchdog();
+        fast.begin(10.0, 5.0);
+        assertTrue("the boosted budget must be shorter: normal=" + normal.maxTicks()
+                        + " fast=" + fast.maxTicks(),
+                fast.maxTicks() < normal.maxTicks());
+    }
+
+    @Test
+    public void aLongLegShrinksItsBudgetWhenBoosted() {
+        // 30 blocks x 60 ticks = 1800 at normal speed, 360 at 5x; both are
+        // below the MAX_MAX_TICKS clamp so the ratio is visible.
+        LegWatchdog normal = new LegWatchdog();
+        normal.begin(30.0, 1.0);
+        LegWatchdog fast = new LegWatchdog();
+        fast.begin(30.0, 5.0);
+        assertEquals(1800, normal.maxTicks());
+        assertEquals(360, fast.maxTicks());
+    }
+
+    @Test
+    public void theHardCeilingStillAppliesWhenBoosted() {
+        LegWatchdog fast = new LegWatchdog();
+        fast.begin(10_000.0, 5.0);
+        assertEquals("a huge leg is clamped, never unbounded",
+                LegWatchdog.MAX_MAX_TICKS, fast.maxTicks());
+    }
+
+    @Test
+    public void anOutOfRangeMultiplierIsClamped() {
+        // A bad value must not produce a zero or negative tick budget.
+        LegWatchdog wild = new LegWatchdog();
+        wild.begin(10.0, 1_000.0);
+        assertTrue(wild.maxTicks() > 0);
+        LegWatchdog negative = new LegWatchdog();
+        negative.begin(10.0, -5.0);
+        assertTrue(negative.maxTicks() > 0);
+
+        // Both clamp into the supported range, which is still ordered: a
+        // clamped-max multiplier shortens the budget, a clamped-min one
+        // lengthens it (slow flight legitimately needs more ticks).
+        LegWatchdog normal = new LegWatchdog();
+        normal.begin(10.0, 1.0);
+        assertEquals("1000x clamps to 5x", 160, wild.maxTicks());
+        assertTrue("a negative value clamps to the floor and slows the leg",
+                negative.maxTicks() >= normal.maxTicks());
     }
 }

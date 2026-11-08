@@ -7,6 +7,8 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
+import ir.layercloud.cortexdrone.manager.navigation.impl.RiderGuard;
+import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import li.cil.oc.common.entity.Drone;
@@ -60,10 +62,14 @@ public class TickManager {
                 : d.getDistance(navigation.goalX, navigation.goalY, navigation.goalZ);
         boolean longRangeFlight = distFinalGoal > 14.0;
         if (!machineRunningOk || (postTargetDist > 0.30 && (navigation == null || navigation.lastMoveSq < 0.0004)) || longRangeFlight) {
-            // Keep the manual integrator below the point where a 1.15-block
-            // step can graze a corner faster than the 0.75-wide drone can
-            // resolve. OC's own maxVelocity is 0.4; 0.75 still gives 15 b/s.
-            double maxSpeed = distFinalGoal > 24.0 ? 0.75 : (longRangeFlight ? 0.55 : 0.40);
+            // Speed comes from DroneSpeed: the tuned tiers scaled by the
+            // configured multiplier, hard-capped at 5x. A carried rider never
+            // gets a boost because the extra closing speed is lethal under a
+            // low ceiling.
+            boolean carrying = RiderGuard.isCarrying(d);
+            double maxSpeed = DroneSpeed.resolve(distFinalGoal,
+                    DroneSpeed.configured(this.manager.getConfig()),
+                    this.navigationManager.speedMultiplier(ctrl), carrying);
             FlightPathfinder.runServerSidePhysicsStep(d, maxSpeed);
         }
     }

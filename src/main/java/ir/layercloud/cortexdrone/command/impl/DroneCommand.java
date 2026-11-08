@@ -65,7 +65,7 @@ public class DroneCommand extends BaseCommand {
                 return getListOfStringsMatchingLastWord(args, "on", "off", "tail", "clear");
             }
             if (sub.equals("config")) {
-                return getListOfStringsMatchingLastWord(args, "url", "model", "key");
+                return getListOfStringsMatchingLastWord(args, "url", "model", "key", "speed");
             }
             if (sub.equals("memory")) {
                 return getListOfStringsMatchingLastWord(args,
@@ -189,8 +189,12 @@ public class DroneCommand extends BaseCommand {
                             + EnumChatFormatting.YELLOW + "URL: " + EnumChatFormatting.WHITE + config.getApiUrl()
                             + EnumChatFormatting.YELLOW + " | Model: " + EnumChatFormatting.WHITE + config.getModel()
                             + EnumChatFormatting.YELLOW + " | Key: " + EnumChatFormatting.WHITE + maskedKey);
+                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "[Drone] Speed: "
+                            + EnumChatFormatting.WHITE + config.getDroneSpeedMultiplier() + "x"
+                            + EnumChatFormatting.GRAY + " (1 = normal, max "
+                            + ir.layercloud.cortexdrone.service.navigation.DroneSpeed.MAX_MULTIPLIER + "x)");
                     CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY
-                            + "Usage: /drone config <url|model|key> <value>");
+                            + "Usage: /drone config <url|model|key|speed> <value>");
                     return;
                 }
                 String key = args[1].toLowerCase();
@@ -205,12 +209,29 @@ public class DroneCommand extends BaseCommand {
                     case "key":
                         config.setApiKey(val.equalsIgnoreCase("clear") ? "" : val);
                         break;
+                    case "speed":
+                        double multiplier;
+                        try {
+                            multiplier = Double.parseDouble(val);
+                        } catch (NumberFormatException invalid) {
+                            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                                    + "[Drone] Speed must be a number such as 1, 2.5 or 5.");
+                            return;
+                        }
+                        config.setDroneSpeedMultiplier(
+                                ir.layercloud.cortexdrone.service.navigation.DroneSpeed
+                                        .clampMultiplier(multiplier));
+                        break;
                     default:
-                        CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "Usage: /drone config <url|model|key> <value>");
+                        CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "Usage: /drone config <url|model|key|speed> <value>");
                         return;
                 }
                 this.manager.saveConfig();
-                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] Updated AI config '" + key + "' and saved to config/cortexdrone/config.json.");
+                String applied = "speed".equals(key)
+                        ? String.valueOf(config.getDroneSpeedMultiplier()) + "x"
+                        : "saved";
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] Updated AI config '" + key
+                        + "' (" + applied + ") and saved to config/cortexdrone/config.json.");
                 return;
         }
 

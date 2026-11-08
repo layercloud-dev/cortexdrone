@@ -6,6 +6,7 @@ import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
+import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
@@ -126,7 +127,8 @@ public final class NavigateAction implements Action<NavigationContext> {
             this.state.pathGoalX = effGx;
             this.state.pathGoalY = effGy;
             this.state.pathGoalZ = effGz;
-            this.state.repathCooldown = horizDist > 18.0 ? 8 : 12;
+            this.state.repathCooldown = DroneSpeed.repathTicks(horizDist > 18.0 ? 8 : 12,
+                    this.state.speedMultiplier);
         }
 
         while (this.state.pathIndex < this.state.pathWaypoints.size()) {
@@ -137,9 +139,9 @@ public final class NavigateAction implements Action<NavigationContext> {
                     (waypoint[0] - effGx) * (waypoint[0] - effGx)
                             + (waypoint[1] - effGy) * (waypoint[1] - effGy)
                             + (waypoint[2] - effGz) * (waypoint[2] - effGz));
-            if (distWp <= 0.75 && !last) {
+            if (distWp <= DroneSpeed.waypointRadius(this.state.speedMultiplier) && !last) {
                 this.state.pathIndex++;
-            } else if (distWp <= 0.75
+            } else if (distWp <= DroneSpeed.waypointRadius(this.state.speedMultiplier)
                     && (this.state.lastPathPartial || distWpToGoal > 0.90)
                     && this.state.repathCooldown <= 0) {
                 this.state.pathIndex++;
@@ -173,7 +175,8 @@ public final class NavigateAction implements Action<NavigationContext> {
         FlightPathfinder.setDroneFlightTarget(drone, activeWp[0], activeWp[1], activeWp[2], 0.1f);
         context.countTick();
 
-        if (drone.getDistance(context.targetX(), context.targetY(), context.targetZ()) <= 0.85) {
+        if (drone.getDistance(context.targetX(), context.targetY(), context.targetZ())
+                <= DroneSpeed.arrivalRadius(this.state.speedMultiplier)) {
             context.result(NavigateResult.done());
             context.complete();
             return;

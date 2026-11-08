@@ -49,6 +49,14 @@ public class ModConfig {
     private boolean allowJavaReflection = true;
     private boolean webSearchEnabled = true;
 
+    // --- movement ----------------------------------------------------------
+    /**
+     * Flight-speed multiplier applied to the tuned cruise tiers.
+     * 1.0 = the original speed; the defined ceiling is 5.0 (the default here).
+     * Values outside 0.25..5.0 are clamped by {@code DroneSpeed}.
+     */
+    private double droneSpeedMultiplier = 5.0D;
+
     // --- persisted drone bindings -----------------------------------------
     private List<SavedDroneInfo> savedDrones = new ArrayList<>();
 
@@ -102,6 +110,12 @@ public class ModConfig {
         if (this.executeTimeoutMs <= 0) this.executeTimeoutMs = 120_000;
         if (this.maxToolResultChars <= 0) this.maxToolResultChars = 8_000;
         if (this.maxContextChars <= 0) this.maxContextChars = 96_000;
+        if (this.droneSpeedMultiplier <= 0.0D || Double.isNaN(this.droneSpeedMultiplier)) {
+            this.droneSpeedMultiplier = 1.0D;
+        }
+        this.droneSpeedMultiplier = Math.max(ir.layercloud.cortexdrone.service.navigation.DroneSpeed.MIN_MULTIPLIER,
+                Math.min(ir.layercloud.cortexdrone.service.navigation.DroneSpeed.MAX_MULTIPLIER,
+                        this.droneSpeedMultiplier));
         if (this.savedDrones == null) this.savedDrones = new ArrayList<>();
         return this;
     }

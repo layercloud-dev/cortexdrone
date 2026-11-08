@@ -25,6 +25,9 @@ public class NavigationRequest {
     int standoffY;
     int standoffZ;
 
+    /** Per-call flight-speed multiplier; 0 = use the configured value. */
+    double speedMultiplier;
+
     /** Per-call recovery policy chosen by the model. */
     boolean allowDig;
     int maxDigBlocks;

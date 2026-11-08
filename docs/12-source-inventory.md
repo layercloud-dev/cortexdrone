@@ -114,7 +114,7 @@
 | --- | --- |
 | `service.inventory` | `InventoryService`, `ContainerSearchService`, `CraftingService`, `PlayerInventoryOps`, `ToolInspector` |
 | `service.machine` | `MachineRecipeService`, hooks/parser/ranker/reflection, `MachineTileInspector`, `FurnaceScanner` |
-| `service.navigation` | `NavigationState`, `Breadcrumb`, `TrailPlan`, `BreadcrumbService`, `FlightPathfinder`, `DronePhysicsService`, `TunnelPlanner` |
+| `service.navigation` | `NavigationState`, `DroneSpeed`, `Breadcrumb`, `TrailPlan`, `BreadcrumbService`, `FlightPathfinder`, `DronePhysicsService`, `TunnelPlanner` |
 | `service.world` | `WorldScanner`, `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `BlockSight`, `ChunkAccess`, `StructureArchitect`, `SiteSurvey`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`, `LexicalItemMatcher`, `EntityAndBiomeClassifier`, `DocLookupService`, `WebLookupService`, `raytrace/*` |
 | `service.combat` | `CombatAssessment`, `CombatAssessmentService`, `CombatMath` |
 

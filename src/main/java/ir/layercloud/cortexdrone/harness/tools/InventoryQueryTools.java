@@ -186,12 +186,26 @@ public class InventoryQueryTools implements ToolProvider {
                 JsonObject lookBlock = WorldScanner.raycastPlayerLook(world, p, 80.0);
                 ItemStack held = p.getCurrentEquippedItem();
                 res.addProperty("name", p.getCommandSenderName());
+                res.addProperty("entityId", p.getEntityId());
                 res.addProperty("x", p.posX);
                 res.addProperty("y", p.posY);
                 res.addProperty("z", p.posZ);
                 res.addProperty("blockX", bx);
                 res.addProperty("blockY", by);
                 res.addProperty("blockZ", bz);
+                // Pickup and carry planning need these three facts, and the live
+                // logs show the model guessing them: a stale entity id failed
+                // pick_entity, and an underground player was picked up through
+                // solid rock. Report the truth here instead.
+                res.addProperty("canSeeSky", world.canBlockSeeTheSky(bx, by + 1, bz));
+                int surfaceY = world.getHeightValue(bx, bz);
+                res.addProperty("surfaceY", surfaceY);
+                res.addProperty("underground", !world.canBlockSeeTheSky(bx, by + 1, bz)
+                        && surfaceY - by > 2);
+                res.addProperty("riding", p.ridingEntity != null);
+                res.addProperty("ridingEntityId", p.ridingEntity != null ? p.ridingEntity.getEntityId() : -1);
+                res.addProperty("ridingEntityName", p.ridingEntity != null
+                        ? p.ridingEntity.getCommandSenderName() : "");
                 res.addProperty("footBlock", world.isAirBlock(bx, by, bz) ? "Air" : ItemClassifier.getBlockDisplayName(foot, world.getBlockMetadata(bx, by, bz)));
                 String underName = world.isAirBlock(bx, by - 1, bz)
                         ? (supportBlock != null && supportBlock.has("name") ? supportBlock.get("name").getAsString() : "Air")

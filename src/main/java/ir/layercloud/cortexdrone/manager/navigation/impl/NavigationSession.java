@@ -50,6 +50,13 @@ final class NavigationSession {
     int maxDigBlocks = 128;
     int recoveryAttempts = 12;
     int[] digTarget;
+    /**
+     * True when a living entity (a player or a mob) is riding the drone for
+     * this request. A rider is 1.8 blocks tall: a one-wide tunnel suffocates
+     * them and a low ceiling crushes them, so navigation must never tunnel
+     * while carrying one. The caller opens a 2x2 escape shaft instead.
+     */
+    boolean carryingRider;
     /** A block the caller asked to stand beside; enables tunnel-to-target. */
     int[] targetBlock;
     final Set<Long> rejectedDigs = new HashSet<>();

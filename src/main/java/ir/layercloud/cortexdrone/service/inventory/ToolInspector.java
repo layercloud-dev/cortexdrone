@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.service.inventory;
 
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import lombok.experimental.UtilityClass;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
@@ -86,6 +87,25 @@ public final class ToolInspector {
     private static ItemStack stackIn(IInventory inv, int slot) {
         if (inv == null || slot < 0 || slot >= inv.getSizeInventory()) return null;
         return inv.getStackInSlot(slot);
+    }
+
+    /**
+     * Slot of the first inventory item matching an item/ore/name filter, or -1.
+     * Shared by {@code attack_entity} and the combat assessment service so a
+     * forecast always uses the weapon the action would actually swing.
+     */
+    public static int findMatchingWeaponSlot(IInventory inv, String filter) {
+        if (inv == null || filter == null || filter.trim().isEmpty()) return -1;
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack candidate = inv.getStackInSlot(i);
+            if (candidate == null || candidate.getItem() == null) continue;
+            if (ItemClassifier.scoreBlockOrItemMatch(
+                    candidate.getDisplayName(), ItemClassifier.getItemIdentifier(candidate),
+                    candidate.getItemDamage(), filter) > 0) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** Fire aspect on the selected weapon, in seconds. */

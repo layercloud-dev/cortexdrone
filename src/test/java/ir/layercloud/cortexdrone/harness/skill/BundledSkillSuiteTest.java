@@ -133,6 +133,8 @@ public class BundledSkillSuiteTest {
         assertTrue(library.get("mine_and_deliver").getCode().contains("skills.call('mine_blocks'"));
         assertTrue(library.get("mine_and_deliver").getCode().contains("skills.call('deliver_items'"));
         assertTrue(library.get("guard").getCode().contains("skills.call('guard_scan'"));
+        assertTrue(library.get("guard_scan").getCode().contains("skills.call('attack_to_death'"));
+        assertTrue(library.get("hunt").getCode().contains("skills.call('attack_to_death'"));
 
         com.google.gson.JsonObject loaded = library.toJsonArray(
                 java.util.Collections.singletonList(library.get("guard")), true)
@@ -194,7 +196,8 @@ public class BundledSkillSuiteTest {
     public void expectedCapabilitiesAreBundled() throws Exception {
         SkillLibrary library = library();
         for (String name : new String[]{
-                "guard", "patrol", "carry_player", "sort_chests", "hunt",
+                "guard", "guard_scan", "attack_to_death", "patrol", "carry_player",
+                "sort_chests", "hunt",
                 "harvest_crops", "sugarcane_farm", "bamboo_farm", "melon_pumpkin_farm", "chop_tree",
                 "nether_wart_farm", "cactus_farm", "plant_farm", "fertilize_crops",
                 "build_structure", "place_build_plan", "survey_build_site",
@@ -213,6 +216,7 @@ public class BundledSkillSuiteTest {
     public void searchFindsTheRightCapability() throws Exception {
         SkillLibrary library = library();
         assertEquals("guard", library.search("guard the base at night", 3).get(0).getName());
+        assertEquals("attack_to_death", library.search("make sure the mob dies from its health", 3).get(0).getName());
         assertEquals("sort_chests", library.search("organise the chests", 3).get(0).getName());
         assertEquals("build_structure", library.search("build me a house", 3).get(0).getName());
         assertEquals("harvest_crops", library.search("replant the wheat farm", 3).get(0).getName());

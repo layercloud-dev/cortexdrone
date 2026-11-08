@@ -85,6 +85,11 @@ tools.call(name, args)          registry escape hatch
 tools.list()                    compact tool list
 skills.search(query, limit)     loaded skill metadata
 skills.load(name)               full skill code
+skills.<skill_name>(params)     every stored skill as a callable function
+skills.<skillName>(params)      same, camelCase
+skills.call(name, params)       run a skill by runtime name
+skills.fn(name)                 the skill function, without running it
+skills.names()                  every loaded skill name
 ctx                             {droneId, droneName, owner, player, loopId}
 log / console.log               collected and returned
 sleep(ms)                       capped at 10s
@@ -95,6 +100,12 @@ Java.type(name), Packages, java.* (reflection when enabled)
 Behavior:
 
 - Tools are synchronous; `await`/`async` are removed by `JsSource`.
+- Skills are bound as functions at scope setup, so
+  `skills.carryPlayer({ destination: dest })` is a direct call and not a lookup
+  through a tool. A skill still runs through `SkillRuntime`, keeping its own
+  `params` and sharing the caller's tools and helpers.
+- `search`, `load`, `call`, `run`, `fn` and `names` are reserved helper names;
+  a stored skill with one of those names is reachable via `skills.call`.
 - `needs_movement` results are retried automatically by the JS binding.
 - Large `scan_blocks` jobs are polled automatically.
 - `goto` waits for arrival inside `ToolInvoker`.
@@ -204,7 +215,8 @@ compiler call fails, the working code is saved verbatim under a derived name.
 Bundled skills keep `SKILL.md` (frontmatter + usage docs) and `code.js` in
 `resources/skills/<name>/`. Bodies stay small because
 they compose: `mine_and_deliver` calls `mine_blocks` and `deliver_items`,
-`guard`/`patrol` call `guard_scan`, `farm_cycle` calls the harvesting skills, and
+`guard`/`patrol` call `guard_scan`, `guard_scan` and `hunt` call
+`attack_to_death`, `farm_cycle` calls the harvesting skills, and
 `build_structure` calls `survey_build_site` then `place_build_plan`. The
 `requires` list records those dependencies; loading a skill reports missing
 ones and `skill_run` refuses to run with an incomplete dependency set.

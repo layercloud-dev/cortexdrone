@@ -58,6 +58,7 @@ public class ToolRegistryTest {
                 "state", "cancel", "goto", "stop", "get_breadcrumbs",
                 "break_block", "place_block", "replace_block", "repair_trail",
                 "interact_block", "use_item", "attack_entity", "pick_entity", "unpick_entity",
+                "get_entity_health", "attack_plan",
                 "move_item", "give_to_player", "take_from_player", "withdraw_chest",
                 "deposit_chest", "drop_items", "suck_items", "craft",
                 "set_led", "set_light", "spawn_particles", "play_sound", "play_note",

@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.tool.Tool;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
@@ -254,7 +255,20 @@ public final class JsEngine {
     private void bindSkills(Context cx, final Scriptable scope, final ToolContext context) {
         final SkillLibrary library = context != null && context.skills() != null
                 ? context.skills() : this.skills;
-        ScriptableObject skillsObject = (ScriptableObject) cx.newObject(scope);
+        SkillNamespace skillsObject = new SkillNamespace();
+        skillsObject.setParentScope(scope);
+        skillsObject.setPrototype(ScriptableObject.getObjectPrototype(scope));
+        if (library != null) {
+            // Every stored skill becomes a callable function, so a script can
+            // compose workflows exactly like tools:
+            //   skills.mineBlocks({ filter: 'iron_ore', count: 12 })
+            //   skills.carryPlayer({ destination: { x, y, z } })
+            for (Skill skill : library.all()) {
+                if (skill == null || skill.getName() == null) continue;
+                skillsObject.bindSkill(skill.getName(), camelCase(skill.getName()),
+                        new SkillNamespace.SkillFunction(library, skill.getName()));
+            }
+        }
         ScriptableObject.putProperty(skillsObject, "search", new BaseFunction() {
             @Override
             public Object call(Context inner, Scriptable innerScope, Scriptable thisObj, Object[] args) {
@@ -289,6 +303,29 @@ public final class JsEngine {
             }
         });
         ScriptableObject.putProperty(skillsObject, "run", ScriptableObject.getProperty(skillsObject, "call"));
+        // skills.fn('carry_player') returns the callable without running it, so
+        // a script can pass a workflow around as a value.
+        ScriptableObject.putProperty(skillsObject, "fn", new BaseFunction() {
+            @Override
+            public Object call(Context inner, Scriptable innerScope, Scriptable thisObj, Object[] args) {
+                String name = args.length > 0 ? Context.toString(args[0]) : "";
+                return SkillNamespace.lookup(library, name);
+            }
+        });
+        ScriptableObject.putProperty(skillsObject, "names", new BaseFunction() {
+            @Override
+            public Object call(Context inner, Scriptable innerScope, Scriptable thisObj, Object[] args) {
+                JsonArray array = new JsonArray();
+                if (library != null) {
+                    for (Skill skill : library.all()) {
+                        if (skill != null && skill.getName() != null) {
+                            array.add(new com.google.gson.JsonPrimitive(skill.getName()));
+                        }
+                    }
+                }
+                return JsConvert.toJs(array, inner, innerScope);
+            }
+        });
         ScriptableObject.putProperty(scope, "skills", skillsObject);
     }
 

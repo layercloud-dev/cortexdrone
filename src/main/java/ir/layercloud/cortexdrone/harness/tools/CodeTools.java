@@ -25,7 +25,9 @@ public final class CodeTools implements ToolProvider {
                             + "synchronous; `await` is accepted but unnecessary. Return a small value with "
                             + "`return`. Tool failures throw (catch with try/catch) and successful calls "
                             + "return plain objects. Globals: drone (all tools, camelCase or snake_case), "
-                            + "tools.call/list, skills.search/load, ctx, log/console.log, sleep (<=10s), "
+                            + "tools.call/list, skills (every stored skill is a callable function: "
+                            + "skills.carry_player(params) or skills.carryPlayer(params); plus "
+                            + "skills.search/load/call/fn/names), ctx, log/console.log, sleep (<=10s), "
                             + "hsvToRgb, and Java.type when reflection is enabled. Large scans auto-poll via "
                             + "drone.scanBlocks. Keep the script under ~80 lines and return only what you need.")
                     .parameters(ToolSchema.object()

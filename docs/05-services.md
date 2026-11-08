@@ -49,6 +49,20 @@ pick a goal, start an action or retain work state.
 : room scans, connected veins, distant resource/biome search and nearby resource
   summaries.
 
+## Combat
+
+`CombatAssessmentService`
+: read-only assessment of one entity id: health, max health and absorption
+  (`totalHealth`), armor, Resistance level, hurt-immunity ticks, position and
+  reach. It also resolves the drone's selected weapon through `ToolInspector`
+  and reports raw damage, mitigated `damagePerHit`, `attacksToKill` and the
+  wait before the next landed hit. It never attacks, moves or mutates state.
+
+`CombatMath`
+: pure vanilla 1.7.10 formulas: armor `(25 - armor) / 25`, then Resistance
+  `(25 - 5 * level) / 25`, hurt-resistance threshold `maxHurtResistantTime / 2`,
+  and the `attack_entity` cooldown. Covered by `CombatMathTest`.
+
 `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `ChunkAccess`,
 `StructureArchitect`, `SiteSurvey`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`,
 `LexicalItemMatcher`, `OreDictResolver`, `EntityAndBiomeClassifier`

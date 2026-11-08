@@ -270,3 +270,25 @@ mineable. Every block that is broken is recorded in `DamageJournal` for
 
 Defaults are `max_dig_blocks=128` and `recovery_attempts=12`; both are per-call
 arguments on `goto`.
+
+### Carrying a passenger
+
+A rider changes the constraints completely, so navigation tracks it on the
+session (`RiderGuard`):
+
+- **No tunnelling.** A one-block tunnel suffocates a 1.8-block passenger;
+  `recover()` and `startDig()` both refuse to dig while a living entity is
+  mounted. The recovery failure says so explicitly. The caller opens a 2x2
+  shaft with `escape_cave` instead of a 1-wide hole.
+- **Open sky only.** A horizontal leg whose target cell has no sky access is
+  refused, because the drone's 0.375-block body fits a corridor that the
+  rider's head does not. The exception is the short final descent beside a
+  covered landing cell.
+
+`find_safe_landing` is the read-only query for the other half of the problem:
+it reports whether a column is a legal dismount (solid floor, clear 2-block
+pocket, no water/lava/canopy/falling block overhead, at most a 2-block drop)
+and returns the nearest safe hover point. `unpick_entity` enforces the same rule
+in Java, so no tool call, generated script or model mistake can drop a player
+mid-air; it answers `needsMovement` with the safe hover point instead.
+

@@ -67,10 +67,15 @@ Use them directly; never describe a tool call in prose and never emit a JSON
   `find_item_in_chests`, `find_oredict`, `get_block`, `get_blocks_in_box`, `get_top_y`,
   `scan_room`, `scan_blocks`, `scan_veins`, `find_distant`, `get_entities`,
   `get_drops`, `raycast_player`, `find_build_site`, `plan_structure`.
-- **Action primitives** — `goto` (self-recovering), `stop`, `break_block`, `place_block`,
+- **Action primitives** — `goto` (self-recovering), `stop`, `find_safe_landing`, `break_block`, `place_block`,
   `replace_block`, `repair_trail`, `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity`,
   `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`,
   `deposit_chest`, `drop_items`, `suck_items`, `craft`.
+- **Combat** — `get_entity_health` reads a target's health pool; `attack_plan`
+  returns the health-based hit count, damage per hit, inter-hit wait and a
+  blocker when the target cannot be killed. `attack_entity` is one physical
+  hit; use the `attack_to_death` skill instead of spamming swings, because
+  vanilla ignores hits inside the hurt-resistance window.
 - **Feedback** — `say`, `set_status_text`, `set_led`, `set_light`,
   `spawn_particles`, `play_sound`, `play_note`.
 - **OpenComputers** — `oc_state` and `oc_methods` read the live machine and
@@ -103,10 +108,18 @@ There is **no Node.js process, no temp file and no RPC hop**.
 - `log(...)` / `console.log(...)` collect output; it is returned in `logs`.
 - `sleep(ms)` is capped at 10 seconds. Do not use it for polling; tools already
   wait for their physical completion.
-- `skills.search(query)` / `skills.load(name)` load workflow code, which you
-  can re-evaluate with `new Function(skill.code)()` if needed.
-- `skills.call(name, params)` runs another stored skill in this same runtime.
-  Skills compose: `mine_and_deliver` calls `mine_blocks` then `deliver_items`,
+- `skills.search(query)` / `skills.load(name)` load workflow code and metadata.
+- **Every stored skill is a function.** Call it like a tool:
+  `skills.carryPlayer({ destination: { x, y, z } })`, or with the snake_case
+  name, `skills.carry_player({...})`. Since name lookup also folds case and
+  separators, `skills.CarryPlayer(...)` works too. Use `skill({action:"load"})`
+  first when you need to know a skill's parameters.
+- `skills.call(name, params)` does the same thing with a runtime name string;
+  `skills.fn(name)` returns the function without running it; `skills.names()`
+  lists every available skill. `skills.search`, `load`, `call`, `run`, `fn` and
+  `names` are reserved helpers and always take priority over a skill that
+  happens to share their name.
+- Skills compose: `mine_and_deliver` calls `mine_blocks` then `deliver_items`,
   `build_structure` calls `survey_build_site` then `place_build_plan`.
 - `tools.call(name, argsObj)` / `tools.list()` are the registry escape hatches.
 - Java interop is available when the server enables reflection
@@ -170,6 +183,21 @@ Example — prefer a skill when one exists:
 return skills.call("mine_and_deliver", { filter: "iron_ore", count: 12 });
 ```
 
+The same call as a function (both spellings work):
+
+```js
+return skills.mineAndDeliver({ filter: "iron_ore", count: 12 });
+```
+
+Example — compose several skills in one script, with your own logic between:
+
+```js
+var ride = skills.carryPlayer({ destination: { x: 120, y: 70, z: -40 } });
+if (!ride.ok) return ride;                       // the skill reports why
+var mined = skills.mine_blocks({ filter: "iron_ore", count: 32 });
+return { landedAt: ride.landedAt, mined: mined.mined };
+```
+
 Example — mine a bounded set and deliver it:
 
 ```js
@@ -186,6 +214,25 @@ drone.goto({ x: p.blockX, y: p.blockY + 2, z: p.blockZ });
 const given = drone.giveToPlayer({ filter: "iron_ore", count: 512 });
 return { broken: broken, given: given };
 ```
+
+## Combat
+
+Never guess a hit count. `attack_plan` (or `get_entity_health`) reads the live
+target and the drone's weapon:
+
+- `health + absorption` is the pool to remove; armor and a Resistance potion
+  reduce each hit; `attacks_to_kill` is the exact number of landed hits.
+- `next_attack_in_ms` is how long to wait before the next hit deals damage.
+  Vanilla ignores a hit while the target is still hurt-resistant, so a tight
+  loop of `attack_entity` calls wastes swings and looks like "it won't die".
+- `can_damage:false` with a `blocker` means more attacks cannot help (player,
+  invulnerable, damage fully absorbed). Report that instead of swinging.
+
+Use `skill_run({name:"attack_to_death", params:{entity_id}})` for one duel; it
+plans the kill, paces the hits, re-plans after three no-damage swings and
+returns `killed` plus `blocker`. `hunt`, `guard_scan`, `guard` and `patrol`
+already run their combat through it. Only `attack_entity` in a loop when the
+`attack_plan` fields tell you exactly how many swings and how much wait.
 
 ## Item filters and OreDictionary
 
@@ -230,8 +277,8 @@ cover:
 - storage — `store_items`, `withdraw_items`, `fetch_materials`, `sort_chests`,
   `place_double_chest`;
 - crafting and smelting — `craft_items`, `smelt_items`, `ore_to_ingots`;
-- combat — `hunt`, `guard_scan`, `guard`, `patrol`;
-- transport — `follow_player`, `carry_player`, `transport_entity`;
+- combat — `hunt`, `attack_to_death`, `guard_scan`, `guard`, `patrol`;
+- transport — `follow_player`, `carry_player`, `transport_entity`, `escape_cave`;
 - farming — `harvest_crops` (wheat/carrots/potatoes with replant),
   `sugarcane_farm`, `bamboo_farm`, `melon_pumpkin_farm`, `nether_wart_farm`,
   `cactus_farm`, `plant_farm`, `fertilize_crops`, `chop_tree`, `farm_cycle`;
@@ -343,6 +390,24 @@ Never store player secrets or one-off task progress.
   `break_block` calls after a navigation error and do not repeat the same
   `goto`; only pick another destination or ask the player when the drone truly
   cannot reach the area.
+- **A rider is not cargo.** Never call `pick_entity` on a player and then fly
+  at ground level: a carried player is 1.8 blocks tall, dies from anything over
+  a 3-block fall, suffocates in a 1-wide tunnel and is crushed by low ceilings.
+  Use `carry_player` (it climbs first, cruises high, then descends) and do not
+  reimplement it with raw `goto`. Before any `unpick_entity`, call
+  `find_safe_landing` and dismount only at the returned safe spot: no mountain
+  slopes, tree canopies, roofs, water, lava or cave voids. If no safe spot
+  exists within search range, keep the player onboard, say so, and choose a
+  better destination instead of dropping them. Two live deaths came from
+  skipping this check ("hit the ground too hard", "fell from a high place").
+- **In a cave, a 2x2 shaft is the only exit.** If the player or the drone is
+  underground (no sky access, surface far above) and the goal is outside, call
+  `escape_cave` first. It opens a two-block-wide vertical shaft to open sky and
+  flies up through it. A 1-wide tunnel is never acceptable with a passenger:
+  they suffocate. `escape_cave` refuses liquids, protected blocks and
+  unbreakable rock, so a stopped shaft means "find another direction", not
+  "try a 1-wide hole". Do not modify terrain to escape unless the player asked
+  for that, except for this escape shaft, which is mandatory for survival.
 - **Containers and machines are never dug.** Automatic tunnelling treats every
   tile entity as property, even an empty one.
 - **If you had to tunnel, close it.** Navigation journals every block it

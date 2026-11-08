@@ -252,12 +252,14 @@ them with the `lesson` tool after a failure or non-obvious success and they are
 injected next to memory. Skills stay executable code; the harness also
 auto-saves a successful script when the model skips `skill_refine`.
 
-`SkillLibrary` bundles 27 workflows whose bodies live in sibling `.js` files.
+`SkillLibrary` bundles 48 workflows whose bodies live in sibling `.js` files.
 Each skill is small and declares the skills it calls in `requires`; at runtime
-`skills.call(name, params)` composes them in the same Rhino scope (for example
-`mine_and_deliver` -> `mine_blocks` + `deliver_items`, `build_structure` ->
-`survey_build_site` + `place_build_plan`). `skill_run` executes a skill with
-parameters, and `skill_refine` records a new version with its dependencies.
+every stored skill is bound on the `skills` object as a function
+(`skills.carryPlayer(params)`), and `skills.call(name, params)` composes them in
+the same Rhino scope (for example `mine_and_deliver` -> `mine_blocks` +
+`deliver_items`, `build_structure` -> `survey_build_site` +
+`place_build_plan`). `skill_run` executes a skill with parameters, and
+`skill_refine` records a new version with its dependencies.
 
 `SessionJournal` writes one JSON + Markdown transcript per task under
 `config/cortexdrone/sessions/<outcome>/` and appends an index line. Outcomes
@@ -273,9 +275,10 @@ unbound declarations are startup errors. There is no catch-all router.
 
 ```text
 session      state cancel
-navigation   goto stop get_breadcrumbs
+navigation   goto stop find_safe_landing get_breadcrumbs
 block        break_block place_block
 interaction  interact_block use_item attack_entity pick_entity unpick_entity
+combat       get_entity_health attack_plan
 inventory    move_item give_to_player take_from_player withdraw_chest
              deposit_chest drop_items suck_items craft
 visuals      set_led set_light spawn_particles play_sound play_note say

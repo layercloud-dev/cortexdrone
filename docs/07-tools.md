@@ -30,6 +30,7 @@ The registry generates:
 | `NavigationTools` | `goto`, `stop`, `get_breadcrumbs` |
 | `BlockTools` | `break_block`, `place_block`, `replace_block`, `repair_trail` |
 | `InteractionTools` | `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity` |
+| `CombatTools` | `get_entity_health`, `attack_plan` |
 | `InventoryActionTools` | `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`, `deposit_chest`, `drop_items`, `suck_items`, `craft` |
 | `InventoryQueryTools` | `get_player`, `get_player_inventory`, `get_chest`, `scan_chests`, `find_item_in_chests`, `find_item`, `get_recipes`, `scan_furnaces`, `get_machine_recipes`, `get_machine_recipe`, `scan_machines`, `machine_ingredients` |
 | `VisualsTools` | `set_led`, `set_light`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` |
@@ -67,12 +68,39 @@ return drone.ocMachine({ control: 'signal', value: 'cortexdrone', payload: { 1: 
 ```
 
 
+## Combat reconnaissance
+
+`get_entity_health` and `attack_plan` are read-only. The first returns the live
+health pool (health, max, absorption, armor, Resistance level, hurt-immunity
+ticks); the second adds the drone's selected weapon, damage per hit after
+armor/resistance, `attacks_to_kill`, `next_attack_in_ms` and a seconds estimate.
+`can_damage:false` plus `blocker` means more swings cannot help — a player,
+an invulnerable target, or damage fully absorbed.
+
+`attack_entity` still performs exactly one physical hit; vanilla ignores hits
+inside the hurt-resistance window, so a script should pace swings with
+`attack_plan.next_attack_in_ms`. The `attack_to_death` skill packages that loop
+and is used by `hunt`, `guard_scan`, `guard` and `patrol`.
+
 ## Skills
 
 `skill` answers what exists (search/list/load), `skill_run` executes a stored
-skill with `params`, and `skills.call(name, params)` composes one skill from
-another inside a script. `skill_refine` compiles a successful workflow into a
-new version with a `requires` list.
+skill with `params`, and every stored skill is also a callable function inside
+`execute`:
+
+```js
+// all three forms run the same workflow
+skills.call('carry_player', { destination: dest })
+skills.carry_player({ destination: dest })
+skills.carryPlayer({ destination: dest })
+```
+
+`skills.fn(name)` returns the function without running it, so it can be stored
+or passed to `map`/`filter`; `skills.names()` lists every loaded skill;
+`skills.search/load` return metadata and code. Names are matched ignoring case
+and separators, and the helper names (`search`, `load`, `call`, `run`, `fn`,
+`names`) always win over a skill that shares one. `skill_refine` compiles a
+successful workflow into a new version with a `requires` list.
 
 A bundled skill is a small metadata JSON plus a sibling `.js` body. Skills call
 each other instead of duplicating logic:

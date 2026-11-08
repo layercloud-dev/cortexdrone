@@ -8,9 +8,17 @@ Bundled workflows live in `resources/skills/<name>/`: a `SKILL.md`
 skill_run({ "name": "guard", "params": { "duration_s": 120, "radius": 16 } })
 ```
 
-Inside `execute`, the same call is `skills.call("guard", { duration_s: 120 })`.
-Search with `skill({ action: "search", query: "..." })`; load the code and its
-`requires` list with `action: "load"`.
+Inside `execute`, every stored skill is a callable function:
+
+```js
+skills.guard({ duration_s: 120, radius: 16 })
+skills.carry_player({ destination: { x: 10, y: 70, z: -4 } })
+skills.call('guard', { duration_s: 120 })   // runtime name form
+```
+
+Names match ignoring case and separators, and `skills.fn(name)` returns the
+function without running it. Search with `skill({ action: "search", query: "..." })`;
+load the code and its `requires` list with `action: "load"`.
 
 ## Composition
 
@@ -31,6 +39,8 @@ dig_shaft        -> collect_drops
 quarry           -> collect_drops
 build_nether_portal -> survey_build_site
 guard            -> guard_scan
+guard_scan       -> attack_to_death
+hunt             -> attack_to_death
 patrol           -> guard_scan
 build_structure  -> survey_build_site + place_build_plan
                     + withdraw_items + mine_blocks
@@ -60,13 +70,15 @@ every compound skill inherits the fix.
 | `ore_to_ingots` | `ore=iron_ore`, `count=8`, `ingot`, `furnace`, `radius`, `fuel`, `deliver=true` |
 | `sort_chests` | `radius=24`, `max_moves=48`, `dry_run=false` |
 | `place_double_chest` | `x,y,z` or `player` |
-| `hunt` | `target=hostile`, `radius=24`, `max_kills=4`, `duration_s=120` |
-| `guard_scan` | `radius=16`, `max_attacks=6`, `target=hostile` |
-| `guard` | `duration_s=120`, `radius=16`, `point`, `anchor=player`, `hold=true` |
+| `hunt` | `target=hostile`, `radius=24`, `max_kills=4`, `duration_s=120`, `max_attacks=60` |
+| `attack_to_death` | `entity_id` or `entity`, `item`, `slot`, `max_attacks=60`, `max_seconds=60`, `collect=false` |
+| `guard_scan` | `radius=16`, `max_attacks=40` (ceiling), `max_targets=4`, `duration_s=30`, `target=hostile` |
+| `guard` | `duration_s=120`, `radius=16`, `max_attacks=40`, `point`, `anchor=player`, `hold=true` |
 | `follow_player` | `player`, `duration_s=120`, `distance=2.2`, `height=1.1`, `auto_pickup=true`, `allow_dig=false` |
-| `patrol` | `waypoints:[{x,y,z}]` or `center:{x,y,z}` + `radius=12`, `loops=1`, `guard_radius=12`, `allow_dig=false` |
+| `patrol` | `waypoints:[{x,y,z}]` or `center:{x,y,z}` + `radius=12`, `loops=1`, `guard_radius=12`, `guard_attacks=40`, `allow_dig=false` |
 | `carry_player` | `player`, `destination:{x,y,z}` (defaults to the crosshair block) |
-| `transport_entity` | `entity=animal`, `destination:{x,y,z}`, `radius=8` |
+| `transport_entity` | `entity=animal`, `destination:{x,y,z}`, `radius=10` |
+| `escape_cave` | `x`, `z`, `top_y`, `max_blocks` (2x2 shaft to the surface) |
 | `harvest_crops` | `crop=wheat` (or carrots/potatoes), `radius=24`, `limit=16`, `replant=true` |
 | `sugarcane_farm` | `radius=24`, `limit=48`, middle cut above the base |
 | `bamboo_farm` | `radius=24`, `limit=64`, middle cut above the base |
@@ -125,6 +137,22 @@ A `build_structure` dry run never touches the world. It returns the surveyed
 site, slope, floor Y, clearing list, blueprint task count and the exact
 material deficit. Re-run the same call without `dry_run` to withdraw materials,
 clear, place and verify.
+
+## Combat example
+
+```json
+skill_run({ "name": "attack_to_death", "params": { "entity_id": 4821 } })
+```
+
+`attack_to_death` first calls `attack_plan` for that id: health + absorption,
+armor, Resistance level, the selected weapon's damage per hit, the exact
+`attacks_to_kill` and `next_attack_in_ms`. It then swings only that many times,
+sleeps the safe window between hits and re-plans after three no-damage swings.
+It returns `killed` and, when it could not finish, a `blocker` such as
+`players are never attacked` or `armor/resistance fully absorbs this weapon`.
+
+`hunt`, `guard_scan`, `guard` and `patrol` all route their combat through it, so
+a mob's health (not a fixed swing cap) decides when it dies.
 
 ## Building safety
 

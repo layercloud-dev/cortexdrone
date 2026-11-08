@@ -11,6 +11,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import ir.layercloud.cortexdrone.harness.tools.view.BreadcrumbView;
+import ir.layercloud.cortexdrone.harness.tools.view.LandingView;
 import ir.layercloud.cortexdrone.harness.tools.view.NavigationView;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -69,15 +70,36 @@ public final class NavigationTools implements ToolProvider {
                             .optionalInt("limit", "Number of most recent trail points, 1..256.", 1, 256, 64))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(3_000L)
+                    .build(),
+            ToolSpec.builder("find_safe_landing")
+                    .description("Read-only landing check. Returns whether a passenger can be set down "
+                            + "safely at/around a point: solid floor, a clear 2-block pocket, no water or "
+                            + "lava, no tree canopy, no falling block overhead, and at most a 2-block drop. "
+                            + "Use it before unpick_entity, and always after a goto that carries a player: "
+                            + "never dismount over a mountain slope, a tree, a roof or a cave void. The "
+                            + "result includes a nearby safe spot with exact hover coordinates when the "
+                            + "requested point itself is unsafe.")
+                    .parameters(ToolSchema.object()
+                            .optionalInt("x", "Centre X; defaults to the drone.")
+                            .optionalInt("y", "Reference Y; defaults to the drone's Y.")
+                            .optionalInt("z", "Centre Z; defaults to the drone.")
+                            .optionalInt("radius", "Horizontal search radius, 1..24.", 1, 24, 12)
+                            .optionalBoolean("covered_ok", "Also accept a covered pocket such as a cave "
+                                    + "floor. Default false: a carried passenger is only flown into open "
+                                    + "sky, because entering a cave crushes them.", false))
+                    .affinity(ToolAffinity.MAIN)
+                    .timeoutMs(4_000L)
                     .build()
     );
 
     private final NavigationView navigation;
     private final BreadcrumbView breadcrumbs;
+    private final LandingView landing;
 
     public NavigationTools(AIDroneManager manager) {
         this.navigation = new NavigationView(manager.getNavigationManager());
         this.breadcrumbs = new BreadcrumbView(manager.getBreadcrumbService());
+        this.landing = new LandingView();
     }
 
     public static List<ToolSpec> specs() {
@@ -92,5 +114,7 @@ public final class NavigationTools implements ToolProvider {
                 (context, arguments) -> this.navigation.handle(context.controller(), context.player(), "stop", arguments));
         registry.bind("get_breadcrumbs", getClass().getSimpleName(),
                 (context, arguments) -> this.breadcrumbs.read(context.controller(), arguments));
+        registry.bind("find_safe_landing", getClass().getSimpleName(),
+                (context, arguments) -> this.landing.handle(context.controller(), arguments));
     }
 }

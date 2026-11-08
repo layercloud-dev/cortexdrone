@@ -4,8 +4,6 @@ import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.action.block.BlockRequest;
-import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.action.navigation.FlightController;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.action.navigation.NavigationMode;
@@ -63,6 +61,7 @@ public final class NavigationManager implements FlightController {
     private final BreadcrumbService breadcrumbService;
     private final ChunkLoadingManager chunkLoader;
     private final StallReporter stallReporter;
+    private final TunnelDigger digger;
     private final Map<DroneController, NavigationSession> sessions = new ConcurrentHashMap<>();
     private final Map<DroneController, NavigationState> states = new ConcurrentHashMap<>();
 
@@ -75,6 +74,7 @@ public final class NavigationManager implements FlightController {
         this.breadcrumbService = breadcrumbService;
         this.chunkLoader = chunkLoader;
         this.stallReporter = new StallReporter(logger);
+        this.digger = new TunnelDigger(manager, logger);
     }
 
     /** Per-drone navigation state, created on first use. */
@@ -117,6 +117,7 @@ public final class NavigationManager implements FlightController {
         NavigationSession session = new NavigationSession();
         session.requestId = requestId;
         session.allowDig = request.isAllowDig();
+        session.carryingRider = RiderGuard.isCarrying(controller.drone);
         session.maxDigBlocks = request.getMaxDigBlocks();
         session.recoveryAttempts = request.getRecoveryAttempts();
         if (target.isBlockApproach()) {
@@ -335,6 +336,13 @@ public final class NavigationManager implements FlightController {
 
     private void startLeg(DroneController controller, NavigationSession session,
                           double targetX, double targetY, double targetZ, String label) {
+        // A passenger is only flown in open sky; see RiderGuard for why a
+        // two-high corridor that fits the drone still crushes the rider.
+        if (RiderGuard.blocksTunnel(session)
+                && !RiderGuard.routeAllowed(controller.drone, targetX, targetY, targetZ)) {
+            fail(controller, RiderGuard.routeRefusal(targetX, targetY, targetZ));
+            return;
+        }
         session.phase = NavigationSession.Phase.FLIGHT;
         NavigationContext context = new NavigationContext(controller, null, NavigationMode.FLIGHT,
                 targetX, targetY, targetZ, label);
@@ -472,6 +480,14 @@ public final class NavigationManager implements FlightController {
             return;
         }
 
+        // A passenger cannot survive a one-wide tunnel: they suffocate, and a
+        // low ceiling crushes them. Navigation never digs while carrying one;
+        // the caller must open a 2x2 shaft with escape_cave instead.
+        if (RiderGuard.blocksTunnel(session)) {
+            fail(controller, RiderGuard.refusal(reason));
+            return;
+        }
+
         if (session.allowDig && (session.dug > 0
                 || session.failedRecoveries >= MAX_INSTANT_FAILURES)) {
             if (TunnelRecovery.circling(this.logger, controller, session)) {
@@ -552,6 +568,10 @@ public final class NavigationManager implements FlightController {
     /** Starts digging {@code target}, or flies to its reachable standoff. */
     private boolean startDig(DroneController controller, NavigationSession session, int[] target) {
         if (target == null) return false;
+        // The rider guard belongs at the single choke point every dig passes
+        // through, not only in recover(): a standoff/tunnel-to-block request
+        // must not clear a 1-wide hole under a passenger either.
+        if (RiderGuard.blocksTunnel(session)) return false;
         if (session.targetBlock != null && sameBlock(target, session.targetBlock)) return false;
         World world = controller.drone.worldObj;
         EntityPlayerMP player = CortexDroneMod.findPlayer(controller.ownerName);
@@ -578,7 +598,6 @@ public final class NavigationManager implements FlightController {
     /** Breaks the pending obstruction, then replans the route. */
     private void digPending(DroneController controller, NavigationSession session) {
         NavigationState state = state(controller);
-        Drone drone = controller.drone;
         int[] target = session.digTarget;
         session.digTarget = null;
         if (target == null) {
@@ -586,34 +605,7 @@ public final class NavigationManager implements FlightController {
             session.replanCooldown = 1;
             return;
         }
-        BlockResult result = this.manager.getBuildingManager().handle(
-                controller, CortexDroneMod.findPlayer(controller.ownerName), "break_block",
-                BlockRequest.builder()
-                        .x(target[0])
-                        .y(target[1])
-                        .z(target[2])
-                        .build());
-        if (result == null || !result.isOk()) {
-            session.rejectedDigs.add(FlightPathfinder.packBlockPos(
-                    target[0], target[1], target[2]));
-            session.phase = NavigationSession.Phase.PLAN;
-            session.replanCooldown = 1;
-            return;
-        }
-        session.dug++;
-        session.recoveries = 0;
-        session.failedRecoveries = 0;
-        TunnelRecovery.trackDigProgress(session, drone, state);
-        // Journal only blocks that actually disappeared, so repair_trail never
-        // records a refused or still-present voxel.
-        this.manager.getDamageJournal().record(controller, drone.worldObj,
-                target[0], target[1], target[2], "navigation");
-        this.logger.log("NAV", controller, "Auto-tunnelling",
-                String.format("broke %s at (%d,%d,%d) dug=%d/%d",
-                        result.getBlock(), target[0], target[1], target[2],
-                        session.dug, session.maxDigBlocks));
-        state.clearPath();
-        state.stuckTicks = 0;
+        this.digger.dig(controller, session, state, target);
         session.phase = NavigationSession.Phase.PLAN;
         session.replanCooldown = 1;
     }

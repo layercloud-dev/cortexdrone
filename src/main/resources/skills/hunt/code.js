@@ -1,15 +1,20 @@
-// Hunting. params: { target, radius, max_kills, duration_s }
+// Hunting. params: { target, radius, max_kills, duration_s, collect }
+// Every kill goes through attack_to_death, so "attack until it dies" is
+// health-based (attack_plan) instead of a blind swing budget.
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var target = cfg.target || 'hostile';
 var radius = clamp(cfg.radius || 24, 4, 64);
 var maxKills = clamp(cfg.max_kills || 4, 1, 32);
 var seconds = clamp(cfg.duration_s || 120, 15, 240);
+var maxAttacksPerMob = clamp(cfg.max_attacks || 60, 1, 200);
 
 var deadline = Date.now() + seconds * 1000;
 var kills = 0;
 var attacks = 0;
 var names = [];
+var blocked = [];
 var emptyScans = 0;
+var stalls = 0;
 
 while (kills < maxKills && Date.now() < deadline) {
   var found = drone.getEntities({ radius: radius, filter: target });
@@ -34,15 +39,31 @@ while (kills < maxKills && Date.now() < deadline) {
   }
   if (names.length < 8 && names.indexOf(victim.name) < 0) names.push(victim.name);
 
+  var result = null;
   try {
-    var hit = drone.attackEntity({ entity_id: victim.id });
-    attacks++;
-    if (hit && hit.killed) kills++;
-  } catch (attackError) {
-    // Target may have died, despawned or moved; the next scan re-targets.
-    sleep(250);
+    result = skills.call('attack_to_death', {
+      entity_id: victim.id,
+      max_attacks: maxAttacksPerMob,
+      max_seconds: Math.max(5, Math.min(60, Math.round((deadline - Date.now()) / 1000)))
+    });
+  } catch (killError) {
+    log('kill failed for ' + victim.name + ': ' + killError.message);
   }
-  if (attacks > maxKills * 40 + 20) break;
+  if (result) {
+    attacks += result.attacks || 0;
+    if (result.killed) {
+      kills++;
+      stalls = 0;
+    } else if (result.blocker && blocked.length < 4 && blocked.indexOf(result.blocker) < 0) {
+      blocked.push(result.blocker);
+    }
+    if (!result.killed && !(result.attacks > 0)) {
+      // The target survived without a single swing: retrying the same id would
+      // spin. Drop it after a few scans and try the next entity.
+      stalls++;
+      if (stalls >= 3) break;
+    }
+  }
 }
 
 if ((kills > 0 || attacks > 0) && cfg.collect !== false) {
@@ -55,6 +76,7 @@ return {
   kills: kills,
   attacks: attacks,
   hunted: names,
+  blocked: blocked,
   remainingSeconds: Math.max(0, Math.round((deadline - Date.now()) / 1000)),
   hint: attacks > 0 ? '' : 'no reachable target; widen radius or move to a spawn area'
 };

@@ -8,8 +8,8 @@ import ir.layercloud.cortexdrone.action.interact.InteractionResult;
 import ir.layercloud.cortexdrone.action.interact.InteractionState;
 import ir.layercloud.cortexdrone.action.interact.InteractionSupport;
 import ir.layercloud.cortexdrone.context.impl.InteractionContext;
+import ir.layercloud.cortexdrone.service.combat.CombatMath;
 import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
-import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.Entity;
@@ -69,8 +69,10 @@ public final class AttackEntityAction implements Action<InteractionContext> {
         }
         InteractionState state = this.state;
         if (state.attackCooldown > 0) {
+            int waitMs = state.attackCooldown * 50;
             context.result(InteractionResult.failure(
-                    "Attack cooling down", "retryTicks", state.attackCooldown));
+                    "Attack cooling down", "retryTicks", state.attackCooldown,
+                    "retryAfterMs", waitMs));
             return;
         }
 
@@ -81,7 +83,7 @@ public final class AttackEntityAction implements Action<InteractionContext> {
         int slot = request.hasSlot() ? request.getSlot() : -1;
         String filter = request.getItem();
         if (filter != null) {
-            int found = findWeaponSlot(inventory, size, filter);
+            int found = ToolInspector.findMatchingWeaponSlot(inventory, filter);
             if (found < 0) {
                 context.result(InteractionResult.failure(
                         "No matching weapon/item in drone inventory for filter: " + filter));
@@ -130,28 +132,27 @@ public final class AttackEntityAction implements Action<InteractionContext> {
 
         state.attackCooldown = 4;
         float after = living.getHealth();
+        float damageDealt = Math.max(0.0f, before - after);
+        boolean killed = target.isDead || after <= 0.0f;
+        int hurtWaitMs = CombatMath.hurtWaitMs(
+                Math.max(0, living.hurtResistantTime), Math.max(0, living.maxHurtResistantTime),
+                state.attackCooldown);
+        int attacksRemaining = killed || damageDealt <= 0.0f ? (killed ? 0 : -1)
+                : (int) Math.ceil((after + Math.max(0.0f, living.getAbsorptionAmount())) / damageDealt);
         context.result(InteractionResult.success(
                 "attacked", true,
                 "entityId", id,
                 "name", target.getCommandSenderName(),
                 "healthBefore", before,
                 "healthAfter", after,
+                "maxHealth", living.getMaxHealth(),
+                "absorption", living.getAbsorptionAmount(),
                 "damage", Math.round(damage * 10.0) / 10.0,
-                "killed", target.isDead || after <= 0.0f,
+                "damageDealt", Math.round(damageDealt * 10.0) / 10.0,
+                "attacksRemaining", attacksRemaining,
+                "nextAttackInMs", hurtWaitMs,
+                "killed", killed,
                 "item", weapon != null && weapon.getItem() != null ? weapon.getDisplayName() : "Fist",
                 "distance", Math.round(distance * 100.0) / 100.0));
-    }
-
-    private static int findWeaponSlot(IInventory inventory, int size, String filter) {
-        for (int i = 0; i < size; i++) {
-            ItemStack candidate = inventory.getStackInSlot(i);
-            if (candidate == null || candidate.getItem() == null) continue;
-            if (ItemClassifier.scoreBlockOrItemMatch(
-                    candidate.getDisplayName(), ItemClassifier.getItemIdentifier(candidate),
-                    candidate.getItemDamage(), filter) > 0) {
-                return i;
-            }
-        }
-        return -1;
     }
 }

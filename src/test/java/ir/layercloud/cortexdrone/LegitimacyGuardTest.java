@@ -58,9 +58,14 @@ public class LegitimacyGuardTest {
 
     @Test
     public void navigationJournalsWhatItBreaks() throws Exception {
+        // The journal call may live in NavigationManager or in the TunnelDigger
+        // choke point every dig passes through; it must exist in exactly the
+        // path that actually breaks a block.
         String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        String digger = read(MAIN + "manager/navigation/impl/TunnelDigger.java");
         assertTrue("auto-dig must be journalled for repair_trail",
-                manager.contains("getDamageJournal().record("));
+                manager.contains("getDamageJournal().record(")
+                        || digger.contains("getDamageJournal().record("));
     }
 
     @Test

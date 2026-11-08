@@ -51,7 +51,8 @@ public final class SkillTools implements ToolProvider {
                             + "perform a known workflow: search with `skill`, then run it here. Parameters are "
                             + "skill-specific; action=load shows the code. Returns the skill's own result "
                             + "object plus logs. Prefer this over hand-writing a script for guard, patrol, "
-                            + "farm, sort, hunt, carry or build tasks.")
+                            + "farm, sort, hunt, carry or build tasks. Inside `execute` the same skill is "
+                            + "callable directly as skills.<name>(params), e.g. skills.carryPlayer({...}).")
                     .parameters(ToolSchema.object()
                             .requiredString("name", "Skill name (snake_case, from `skill` search).")
                             .optionalObject("params", "Parameter object passed to the skill as `params`.")

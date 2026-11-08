@@ -51,9 +51,14 @@ public final class InteractionTools implements ToolProvider {
             ToolSpec.builder("attack_entity")
                     .description("Perform exactly one melee attack with the selected/held item. Get the "
                             + "entity_id from get_entities. The drone flies into reach first if needed. "
-                            + "One attack per call: loop in execute for combat.")
+                            + "One attack per call; vanilla ignores hits inside the hurt-resistance window "
+                            + "(the result reports nextAttackInMs), so pace swings with attack_plan or use "
+                            + "the attack_to_death skill instead of spamming. Never attacks players.")
                     .parameters(ToolSchema.object()
-                            .requiredInt("entity_id", "Entity id returned by get_entities."))
+                            .requiredInt("entity_id", "Entity id returned by get_entities.")
+                            .optionalString("item", "Weapon name/registry/ore tag to swing instead of "
+                                    + "the auto-selected best weapon.")
+                            .optionalInt("slot", "Drone inventory slot to swing instead of a name.", 0, 7, null))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(30_000L)
                     .build(),
@@ -66,9 +71,15 @@ public final class InteractionTools implements ToolProvider {
                     .timeoutMs(30_000L)
                     .build(),
             ToolSpec.builder("unpick_entity")
-                    .description("Dismount the current rider, or a specific entity when entity_id is given.")
+                    .description("Dismount the current rider, or a specific entity when entity_id is given. "
+                            + "Refuses to release a living rider unless the drone is over a safe landing "
+                            + "column (solid floor, 2-block pocket, no water/lava/canopy); the result then has "
+                            + "needsMovement with the nearest safe hover point. Fly there and call it again. "
+                            + "Never drop a player mid-air: it is a lethal fall.")
                     .parameters(ToolSchema.object()
-                            .optionalInt("entity_id", "Entity id to dismount; omit for the current rider.", null))
+                            .optionalInt("entity_id", "Entity id to dismount; omit for the current rider.", null)
+                            .optionalBoolean("force", "Release even when the landing check fails. Only when the "
+                                    + "player explicitly asked to be dropped here.", false))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(20_000L)
                     .build()

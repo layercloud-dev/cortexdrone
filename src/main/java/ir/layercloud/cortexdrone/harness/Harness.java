@@ -18,6 +18,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import ir.layercloud.cortexdrone.harness.tools.BlockTools;
 import ir.layercloud.cortexdrone.harness.tools.CodeTools;
+import ir.layercloud.cortexdrone.harness.tools.CombatTools;
 import ir.layercloud.cortexdrone.harness.tools.InteractionTools;
 import ir.layercloud.cortexdrone.harness.tools.InventoryActionTools;
 import ir.layercloud.cortexdrone.harness.tools.InventoryQueryTools;
@@ -85,6 +86,7 @@ public final class Harness {
                 new NavigationTools(manager),
                 new BlockTools(manager),
                 new InteractionTools(manager),
+                new CombatTools(manager),
                 new InventoryActionTools(manager),
                 new InventoryQueryTools(manager.getInventoryService()),
                 new MemoryTools(manager, memory),

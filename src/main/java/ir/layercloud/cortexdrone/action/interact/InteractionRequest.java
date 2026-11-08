@@ -20,6 +20,12 @@ public class InteractionRequest {
     int entityId;
     boolean entityRequested;
 
+    /**
+     * Explicitly accepts an unsafe dismount. Only set by a caller that has
+     * already warned the player; the default false keeps riders safe.
+     */
+    boolean force;
+
     public boolean hasEntity() {
         return this.entityRequested;
     }

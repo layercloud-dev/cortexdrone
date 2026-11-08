@@ -58,7 +58,9 @@ public class SkillBehaviorTest {
                     "get_recipes", "get_drops", "goto", "break_block", "place_block",
                     "use_item", "craft", "move_item", "give_to_player", "withdraw_chest",
                     "suck_items", "take_from_player", "deposit_chest", "find_item",
-                    "survey_build_site", "plan_structure", "get_blocks_in_box"}) {
+                    "survey_build_site", "plan_structure", "get_blocks_in_box",
+                    "get_entities", "get_entity_health", "attack_plan", "attack_entity",
+                    "pick_entity", "unpick_entity", "find_safe_landing"}) {
                 declare(registry, name);
                 registry.bind(name, "test", (context, args) -> {
                     this.calls.add(new Call(name, copy(args)));
@@ -75,6 +77,15 @@ public class SkillBehaviorTest {
             JsonObject result = this.engine.execute(null,
                     "return skills.call('" + skill + "', " + paramsJson + ");", 30_000L);
             assertTrue(skill + " threw: " + result, result.get("ok").getAsBoolean());
+            return result.getAsJsonObject("result");
+        }
+
+        /** Runs the skill through its bound function name, not skills.call. */
+        JsonObject runAsFunction(String skill, String paramsJson) {
+            JsonObject result = this.engine.execute(null,
+                    "return skills." + skill + "(" + paramsJson + ");", 30_000L);
+            assertTrue(skill + " (function form) threw: " + result,
+                    result.get("ok").getAsBoolean());
             return result.getAsJsonObject("result");
         }
     }
@@ -165,6 +176,27 @@ public class SkillBehaviorTest {
                 schema.optionalInt("x1", "X").optionalInt("y1", "Y").optionalInt("z1", "Z")
                         .optionalInt("x2", "X").optionalInt("y2", "Y").optionalInt("z2", "Z")
                         .optionalBoolean("includeAir", "Air", false);
+                break;
+            case "get_entities":
+                schema.optionalString("filter", "Filter").optionalInt("radius", "Radius", 4, 180, 64)
+                        .optionalString("anchor", "Anchor");
+                break;
+            case "get_entity_health":
+            case "attack_plan":
+            case "attack_entity":
+                schema.optionalInt("entity_id", "Entity").optionalString("item", "Item")
+                        .optionalInt("slot", "Slot", 0, 7, null);
+                break;
+            case "pick_entity":
+                schema.requiredInt("entity_id", "Entity");
+                break;
+            case "unpick_entity":
+                schema.optionalInt("entity_id", "Entity");
+                break;
+            case "find_safe_landing":
+                schema.optionalInt("x", "X").optionalInt("y", "Y").optionalInt("z", "Z")
+                        .optionalInt("radius", "Radius", 1, 24, 12)
+                        .optionalBoolean("covered_ok", "Covered", false);
                 break;
             default:
                 break;
@@ -268,6 +300,61 @@ public class SkillBehaviorTest {
                 result.add("blocks", new JsonArray());
                 result.add("countsByType", new JsonObject());
                 return result;
+            case "get_entities":
+                result.addProperty("count", 0);
+                result.add("entities", new JsonArray());
+                return result;
+            case "get_entity_health":
+            case "attack_plan":
+                result.addProperty("found", true);
+                result.addProperty("entity_id", args.has("entity_id")
+                        ? args.get("entity_id").getAsInt() : 1);
+                result.addProperty("name", "Zombie");
+                result.addProperty("alive", true);
+                result.addProperty("player", false);
+                result.addProperty("health", 20);
+                result.addProperty("total_health", 20);
+                result.addProperty("can_damage", true);
+                result.addProperty("attacks_to_kill", 3);
+                result.addProperty("damage_per_hit", 7);
+                result.addProperty("hurt_resistant_ticks", 0);
+                result.addProperty("next_attack_in_ms", 200);
+                return result;
+            case "attack_entity":
+                result.addProperty("killed", true);
+                result.addProperty("healthAfter", 0);
+                result.addProperty("damageDealt", 7);
+                result.addProperty("nextAttackInMs", 500);
+                return result;
+            case "pick_entity":
+                result.addProperty("picked", true);
+                result.addProperty("entityId", args.has("entity_id")
+                        ? args.get("entity_id").getAsInt() : 1);
+                return result;
+            case "unpick_entity":
+                result.addProperty("unpicked", true);
+                return result;
+            case "find_safe_landing": {
+                // Default fake world: open flat ground at y=64, so a landing is
+                // always found unless a test overrides this.
+                result.addProperty("found", true);
+                result.addProperty("safe", true);
+                result.addProperty("safeAtRequested", true);
+                result.addProperty("movedFromRequest", false);
+                JsonObject spot = new JsonObject();
+                spot.addProperty("x", args.has("x") ? args.get("x").getAsInt() : 0);
+                spot.addProperty("y", 64);
+                spot.addProperty("z", args.has("z") ? args.get("z").getAsInt() : 0);
+                spot.addProperty("hoverX", (args.has("x") ? args.get("x").getAsInt() : 0) + 0.5);
+                spot.addProperty("hoverY", 64.35);
+                spot.addProperty("hoverZ", (args.has("z") ? args.get("z").getAsInt() : 0) + 0.5);
+                spot.addProperty("safe", true);
+                spot.addProperty("openSky", true);
+                spot.addProperty("surfaceLevel", true);
+                spot.addProperty("floor", "Stone");
+                result.add("spot", spot);
+                return result;
+            }
             default:
                 return result;
         }
@@ -462,8 +549,98 @@ public class SkillBehaviorTest {
     }
 
     @Test
-    public void smeltingReportsAFuelStallInsteadOfHanging() throws Exception {
-        JsonObject furnace = new JsonObject();
+    public void attackToDeathUsesTheHealthPlanAndPacesSwings() throws Exception {
+        final float[] health = new float[]{20.0f};
+        final int[] swings = new int[]{0};
+        Harness harness = new Harness(library(), state(),
+                (name, args) -> {
+                    if ("attack_plan".equals(name)) {
+                        JsonObject plan = ToolJson.ok();
+                        plan.addProperty("found", true);
+                        plan.addProperty("entity_id", args.get("entity_id").getAsInt());
+                        plan.addProperty("name", "Zombie");
+                        plan.addProperty("alive", health[0] > 0);
+                        plan.addProperty("player", false);
+                        plan.addProperty("health", health[0]);
+                        plan.addProperty("total_health", health[0]);
+                        plan.addProperty("can_damage", true);
+                        plan.addProperty("attacks_to_kill", 3);
+                        plan.addProperty("damage_per_hit", 7);
+                        plan.addProperty("hurt_resistant_ticks", 20);
+                        plan.addProperty("immune", false);
+                        plan.addProperty("next_attack_in_ms", 0);
+                        return plan;
+                    }
+                    if ("attack_entity".equals(name)) {
+                        swings[0]++;
+                        health[0] = Math.max(0.0f, health[0] - 7.0f);
+                        JsonObject hit = ToolJson.ok();
+                        hit.addProperty("killed", health[0] <= 0.0f);
+                        hit.addProperty("healthAfter", health[0]);
+                        hit.addProperty("damageDealt", 7);
+                        hit.addProperty("nextAttackInMs", 0);
+                        return hit;
+                    }
+                    return null;
+                });
+        JsonObject result = harness.run("attack_to_death", "{entity_id:42,max_seconds:5}");
+        assertTrue("the loop must finish the target: " + result,
+                result.get("killed").getAsBoolean());
+        assertEquals("a 20 HP zombie with a 7-damage sword needs three hits",
+                3, result.get("attacks").getAsInt());
+        assertEquals("the loop must not overswing", 3, swings[0]);
+
+        for (Call call : harness.calls) {
+            if ("attack_entity".equals(call.name)) {
+                assertEquals("the plan's entity id is used",
+                        42, call.args.get("entity_id").getAsInt());
+            }
+        }
+    }
+
+    @Test
+    public void attackToDeathRefusesPlayersAndReportsBlockers() throws Exception {
+        Harness harness = new Harness(library(), state(),
+                (name, args) -> {
+                    if (!"attack_plan".equals(name)) return null;
+                    JsonObject plan = ToolJson.ok();
+                    plan.addProperty("found", true);
+                    plan.addProperty("entity_id", args.get("entity_id").getAsInt());
+                    plan.addProperty("name", "Tester");
+                    plan.addProperty("alive", true);
+                    plan.addProperty("player", true);
+                    plan.addProperty("can_damage", false);
+                    plan.addProperty("blocker", "players are never attacked");
+                    return plan;
+                });
+        JsonObject result = harness.run("attack_to_death", "{entity_id:7}");
+        assertFalse("a player must never be killed by the loop",
+                result.get("killed").getAsBoolean());
+        assertTrue("the blocker must explain why", result.get("blocker").getAsString()
+                .toLowerCase().contains("player"));
+        for (Call call : harness.calls) {
+            assertNotEquals("no swing may reach a player", "attack_entity", call.name);
+        }
+    }
+
+    @Test
+    public void realBundledSkillRunsThroughItsFunctionName() throws Exception {
+        Harness harness = new Harness(library(), state(), null);
+        // escape_cave is a real bundled skill; its 2x2 shaft logic runs from the
+        // function call exactly as it does from skills.call.
+        JsonObject viaCall = harness.run("escape_cave", "{x:0,z:0}");
+        assertTrue("bundled skill must run via skills.call: " + viaCall,
+                viaCall.get("ok").getAsBoolean());
+
+        JsonObject direct = harness.runAsFunction("escape_cave", "{x:0,z:0,top_y:66}");
+        assertTrue("bundled skill must run as skills.escape_cave(...): " + direct,
+                direct.get("ok").getAsBoolean());
+        assertEquals("the shaft must stop at the requested top", 66,
+                direct.get("surfaceY").getAsInt());
+    }
+
+    @Test
+    public void smeltingReportsAFuelStallInsteadOfHanging() throws Exception {        JsonObject furnace = new JsonObject();
         furnace.addProperty("x", 0);
         furnace.addProperty("y", 64);
         furnace.addProperty("z", 0);
@@ -492,5 +669,207 @@ public class SkillBehaviorTest {
         assertFalse("nothing was smelted", result.get("ok").getAsBoolean());
         assertEquals("no fuel means a clean fuel stall", "fuel",
                 result.get("stalled").getAsString());
+    }
+
+    @Test
+    public void carryPlayerClimbsCruisesThenLandsOnTheScannedSpot() throws Exception {
+        JsonObject player = new JsonObject();
+        player.addProperty("ok", true);
+        player.addProperty("name", "Tester");
+        player.addProperty("x", 0.5);
+        player.addProperty("y", 64.0);
+        player.addProperty("z", 0.5);
+        player.addProperty("blockX", 0);
+        player.addProperty("blockY", 64);
+        player.addProperty("blockZ", 0);
+        player.addProperty("riding", false);
+        player.addProperty("underground", false);
+        JsonObject entity = new JsonObject();
+        entity.addProperty("id", 42);
+        entity.addProperty("name", "Tester");
+        entity.addProperty("x", 0.5);
+        entity.addProperty("y", 64.0);
+        entity.addProperty("z", 0.5);
+        entity.addProperty("dist", 1.2);
+        entity.addProperty("player", true);
+        JsonArray entities = new JsonArray();
+        entities.add(entity);
+
+        Harness harness = new Harness(library(), state(), (name, args) -> {
+            if ("get_player".equals(name)) return player;
+            if ("get_entities".equals(name)) {
+                JsonObject found = ToolJson.ok();
+                found.addProperty("count", 1);
+                found.add("entities", entities);
+                return found;
+            }
+            if ("get_top_y".equals(name)) {
+                JsonObject top = ToolJson.ok();
+                // A hill between the drone and the destination: the cruise
+                // altitude must rise above it, not fly through it.
+                top.addProperty("topY", args.get("x").getAsInt() == 100 ? 96 : 64);
+                return top;
+            }
+            return null;
+        });
+        JsonObject result = harness.run("carry_player",
+                "{destination:{x:100,y:64,z:0}}");
+        assertTrue("the carry should succeed: " + result, result.get("ok").getAsBoolean());
+        assertTrue("cruise altitude must clear a 96-block hill: "
+                        + result.get("cruiseY").getAsInt(),
+                result.get("cruiseY").getAsInt() >= 96 + 8);
+
+        Call pick = null;
+        Call unpick = null;
+        List<Call> gotoLegs = new ArrayList<>();
+        for (Call call : harness.calls) {
+            if ("pick_entity".equals(call.name)) pick = call;
+            else if ("unpick_entity".equals(call.name)) unpick = call;
+            else if ("goto".equals(call.name)) gotoLegs.add(call);
+        }
+        assertNotNull("the player must actually be mounted", pick);
+        assertNotNull("the player must be dismounted", unpick);
+        assertTrue("the drop must name the rider", unpick.args.has("entity_id"));
+        assertEquals("the drop must be the player that was picked",
+                pick.args.get("entity_id").getAsInt(), unpick.args.get("entity_id").getAsInt());
+
+        assertTrue("carry needs climb + cruise + descent legs", gotoLegs.size() >= 3);
+        int climbY = gotoLegs.get(0).args.get("y").getAsInt();
+        int cruiseY = gotoLegs.get(1).args.get("y").getAsInt();
+        int descendY = gotoLegs.get(2).args.get("y").getAsInt();
+        assertTrue("the first leg must climb, not fly sideways: " + climbY,
+                climbY >= result.get("cruiseY").getAsInt());
+        assertTrue("the cruise leg must stay high: " + cruiseY,
+                cruiseY >= result.get("cruiseY").getAsInt());
+        assertTrue("the last leg must descend to the landing, not hover high: " + descendY,
+                descendY < cruiseY);
+        assertEquals("the descent must reach the scanned spot", 64,
+                gotoLegs.get(2).args.get("y").getAsInt() == 64 ? 64
+                        : gotoLegs.get(2).args.get("y").getAsInt());
+        for (Call call : gotoLegs) {
+            assertFalse("a carried player is never flown with digging enabled: " + call.args,
+                    call.args.has("allow_dig") && call.args.get("allow_dig").getAsBoolean());
+        }
+    }
+
+    @Test
+    public void carryPlayerRefusesToDismountWithoutASafeLanding() throws Exception {
+        JsonObject player = new JsonObject();
+        player.addProperty("ok", true);
+        player.addProperty("name", "Tester");
+        player.addProperty("x", 0.5);
+        player.addProperty("y", 64.0);
+        player.addProperty("z", 0.5);
+        player.addProperty("blockX", 0);
+        player.addProperty("blockY", 64);
+        player.addProperty("blockZ", 0);
+        player.addProperty("riding", false);
+        player.addProperty("underground", false);
+        JsonObject entity = new JsonObject();
+        entity.addProperty("id", 7);
+        entity.addProperty("name", "Tester");
+        entity.addProperty("x", 0.5);
+        entity.addProperty("y", 64.0);
+        entity.addProperty("z", 0.5);
+        entity.addProperty("dist", 1.0);
+        entity.addProperty("player", true);
+        JsonArray entities = new JsonArray();
+        entities.add(entity);
+
+        Harness harness = new Harness(library(), state(), (name, args) -> {
+            if ("get_player".equals(name)) return player;
+            if ("get_entities".equals(name)) {
+                JsonObject found = ToolJson.ok();
+                found.addProperty("count", 1);
+                found.add("entities", entities);
+                return found;
+            }
+            if ("find_safe_landing".equals(name)) {
+                // No safe spot anywhere: a mountain face, water, or a void.
+                JsonObject none = ToolJson.ok();
+                none.addProperty("found", false);
+                none.addProperty("safe", false);
+                none.addProperty("safeAtRequested", false);
+                return none;
+            }
+            return null;
+        });
+        JsonObject result = harness.run("carry_player",
+                "{destination:{x:20,y:120,z:20}}");
+        assertFalse("a trip with no safe landing must not report success", 
+                result.get("ok").getAsBoolean());
+        boolean dismounted = false;
+        for (Call call : harness.calls) {
+            if ("unpick_entity".equals(call.name) && call.args.has("entity_id")
+                    && call.args.get("entity_id").getAsInt() == 7) dismounted = true;
+        }
+        assertFalse("the rider must not be released without a safe landing", dismounted);
+    }
+
+    @Test
+    public void escapeCaveOpensATwoByTwoShaftNotAOneWideHole() throws Exception {
+        Harness harness = new Harness(library(), state(), (name, args) -> {
+            if ("get_top_y".equals(name)) {
+                JsonObject top = ToolJson.ok();
+                top.addProperty("topY", 67);
+                return top;
+            }
+            if ("get_block".equals(name)) {
+                JsonObject stone = ToolJson.ok();
+                stone.addProperty("name", "Stone");
+                stone.addProperty("registryName", "minecraft:stone");
+                stone.addProperty("isAir", false);
+                stone.addProperty("isLiquid", false);
+                stone.addProperty("hardness", 2);
+                return stone;
+            }
+            return null;
+        });
+        JsonObject result = harness.run("escape_cave", "{x:0,z:0}");
+        assertTrue("the shaft should complete: " + result, result.get("ok").getAsBoolean());
+
+        java.util.Set<String> columns = new java.util.HashSet<>();
+        for (Call call : harness.calls) {
+            if (!"break_block".equals(call.name)) continue;
+            columns.add(call.args.get("x").getAsInt() + "," + call.args.get("z").getAsInt());
+        }
+        assertEquals("the shaft must clear exactly a 2x2 footprint", 4, columns.size());
+        for (int dx = 0; dx <= 1; dx++) {
+            for (int dz = 0; dz <= 1; dz++) {
+                assertTrue("missing footprint column " + dx + "," + dz,
+                        columns.contains(dx + "," + dz));
+            }
+        }
+    }
+
+    @Test
+    public void escapeCaveStopsAtLiquidInsteadOfFloodingTheShaft() throws Exception {
+        Harness harness = new Harness(library(), state(), (name, args) -> {
+            if ("get_top_y".equals(name)) {
+                JsonObject top = ToolJson.ok();
+                top.addProperty("topY", 70);
+                return top;
+            }
+            if ("get_block".equals(name)) {
+                boolean lava = args.get("y").getAsInt() == 66;
+                JsonObject block = ToolJson.ok();
+                block.addProperty("name", lava ? "Lava" : "Stone");
+                block.addProperty("registryName", lava ? "minecraft:lava" : "minecraft:stone");
+                block.addProperty("isAir", false);
+                block.addProperty("isLiquid", lava);
+                block.addProperty("hardness", lava ? 0 : 2);
+                return block;
+            }
+            return null;
+        });
+        JsonObject result = harness.run("escape_cave", "{x:0,z:0}");
+        assertFalse("a lava layer must stop the shaft", result.get("ok").getAsBoolean());
+        assertTrue("the result must explain the liquid",
+                result.get("stopped").getAsString().toLowerCase().contains("liquid"));
+        for (Call call : harness.calls) {
+            if (!"break_block".equals(call.name)) continue;
+            assertNotEquals("nothing at or above the lava may be broken",
+                    true, call.args.get("y").getAsInt() >= 66);
+        }
     }
 }

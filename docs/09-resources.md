@@ -82,11 +82,13 @@ file in the same directory; it defaults to `code.js`.
 | `sort_chests` | categorise and move stacks between chests |
 | `place_double_chest` | craft two chests and place them |
 | `hunt` | bounded combat loop with drop pickup |
-| `guard_scan` | one defensive sweep (attack nearest hostiles) |
+| `attack_to_death` | one target: health-based hit count, paced swings, blocker on failure |
+| `guard_scan` | one defensive sweep, finishing each mob through `attack_to_death` |
 | `guard` | hold a position, repeat `guard_scan` |
 | `patrol` | fly a route and sweep at each waypoint |
-| `carry_player` | pick the player up, fly, dismount |
-| `transport_entity` | pick/move/unpick an animal or mob |
+| `carry_player` | pick the player up, climb high, cruise, land on a scanned safe cell |
+| `transport_entity` | pick/move/unpick an animal or mob with the same landing rules |
+| `escape_cave` | open a 2x2 vertical shaft to open sky and fly out |
 | `harvest_crops` | wheat/carrot/potato harvest + replant |
 | `sugarcane_farm` | keep the base, middle-cut so the upper cane pops at once |
 | `bamboo_farm` | keep the base, middle-cut so the upper stalk pops at once |

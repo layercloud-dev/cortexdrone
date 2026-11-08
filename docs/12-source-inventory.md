@@ -65,6 +65,7 @@
 | `harness.tools.NavigationTools` | `goto`, `stop`, `get_breadcrumbs` |
 | `harness.tools.BlockTools` | `break_block`, `place_block` |
 | `harness.tools.InteractionTools` | `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity` |
+| `harness.tools.CombatTools` | `get_entity_health`, `attack_plan` |
 | `harness.tools.InventoryActionTools` | transfer/craft tools |
 | `harness.tools.InventoryQueryTools` | player/chest/recipe/machine inspection |
 | `harness.tools.VisualsTools` | LED/light/particles/sound/chat/status |
@@ -115,6 +116,7 @@
 | `service.machine` | `MachineRecipeService`, hooks/parser/ranker/reflection, `MachineTileInspector`, `FurnaceScanner` |
 | `service.navigation` | `NavigationState`, `Breadcrumb`, `TrailPlan`, `BreadcrumbService`, `FlightPathfinder`, `DronePhysicsService`, `TunnelPlanner` |
 | `service.world` | `WorldScanner`, `RoomScanner`, `VeinScanner`, `PlayerTargetScanner`, `BlockSight`, `ChunkAccess`, `StructureArchitect`, `SiteSurvey`, `BuildTask`, `RegistryIntrospector`, `ItemClassifier`, `LexicalItemMatcher`, `EntityAndBiomeClassifier`, `DocLookupService`, `WebLookupService`, `raytrace/*` |
+| `service.combat` | `CombatAssessment`, `CombatAssessmentService`, `CombatMath` |
 
 ## Config, command, OC
 

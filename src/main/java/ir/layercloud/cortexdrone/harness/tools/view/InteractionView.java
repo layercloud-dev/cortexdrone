@@ -50,6 +50,7 @@ public final class InteractionView {
                         ? args.get("slot").getAsInt() : null)
                 .entityId(entityId)
                 .entityRequested(entityRequested)
+                .force(ToolArgs.bool(args, "force", false))
                 .build();
     }
 

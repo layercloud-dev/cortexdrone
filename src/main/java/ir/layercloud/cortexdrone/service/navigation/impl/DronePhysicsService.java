@@ -53,62 +53,38 @@ public final class DronePhysicsService {
                 MathHelper.floor_double(d.posY),
                 MathHelper.floor_double(d.posZ)
         )));
-        double dx = (double) d.targetX() - d.posX;
-        double dy = (double) d.targetY() - d.posY;
-        double dz = (double) d.targetZ() - d.posZ;
-        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         double vx = d.motionX;
         double vy = d.motionY;
         double vz = d.motionZ;
+        double distanceBefore = d.getDistance(d.targetX(), d.targetY(), d.targetZ());
         double speedSq = vx * vx + vy * vy + vz * vz;
 
-        if (distance > 0.0 && (distance > 0.005 || speedSq > 0.000025)) {
-            // Cruise profile: vMax(r) = clamp(cap * min(1, r / brakeRadius), minFloor, cap)
-            double cap = maxVelOverride > 0.0 ? maxVelOverride : (double) d.maxVelocity();
-            if (cap <= 0.0) cap = 1.15;
-            // Water is a medium, not a boost. Raising the cap here made the
-            // drone overshoot the surface and bob instead of entering it.
-            if (inLiquid) cap = Math.min(cap, 0.34);
-            // The braking distance must grow with the cap, otherwise a boosted
-            // drone enters the ease-in zone far too fast and oscillates around
-            // the target. 6 blocks is the tuned radius for the 0.75 far cap.
-            double brakeRadius = 6.0 * Math.max(1.0, cap / 0.75);
-            double cruiseFrac = Math.min(1.0, distance / brakeRadius);
-            double vMax = Math.max(0.28, cap * cruiseFrac);
-            // If already carrying too much velocity toward the target, brake early (predictive stopping)
-            double closing = distance > 0.001 ? ((vx * dx + vy * dy + vz * dz) / distance) : 0.0;
-            double stopDist = (closing * closing) / (2.0 * 0.35) + 0.4;
-            if (stopDist > distance && closing > 0.0) {
-                double brake = Math.min(closing, (distance + 0.4) * 0.45 + 0.05);
-                double scale = closing > 0.001 ? (brake / closing) : 1.0;
-                vx *= (0.55 + 0.45 * scale);
-                vy *= (0.55 + 0.45 * scale);
-                vz *= (0.55 + 0.45 * scale);
-            }
-
-            // Acceleration also scales, but sub-linearly: a linear 0.70 ramp at
-            // 5x overshoots and oscillates. sqrt gives a ~12-tick spin-up and
-            // keeps the proportional controller stable.
-            double accelBase = maxVelOverride > 0.5 ? 0.14 : (double) Math.max(0.08f, d.targetAcceleration());
-            if (cap > 0.75) accelBase = Math.max(accelBase, 0.14 * Math.sqrt(cap / 0.75));
-            if (inLiquid) accelBase *= 1.1;
-            double accel = Math.min(accelBase, distance) / distance;
-            vx += dx * accel;
-            vy += dy * accel;
-            vz += dz * accel;
-            vx = Math.max(-vMax, Math.min(vMax, vx));
-            vy = Math.max(-vMax, Math.min(vMax, vy));
-            vz = Math.max(-vMax, Math.min(vMax, vz));
-        } else {
-            vx = 0.0;
-            vy = 0.0;
-            vz = 0.0;
+        if (distanceBefore > 0.0 && (distanceBefore > 0.005 || speedSq > 0.000025)) {
+            // All the cruise/brake/accelerate maths lives in FlightSpeedModel so
+            // it can be simulated in tests; this method only reads the entity,
+            // runs one model tick and writes the result back.
+            FlightSpeedModel.State state = new FlightSpeedModel.State(d.posX, d.posY, d.posZ);
+            state.motionX = vx;
+            state.motionY = vy;
+            state.motionZ = vz;
+            float accelFloor = d.targetAcceleration();
+            double drag = inLiquid ? 0.86 : (double) d.drag();
+            FlightSpeedModel.step(state, d.targetX(), d.targetY(), d.targetZ(),
+                    maxVelOverride, inLiquid, drag, accelFloor);
+            double stepX = state.x - d.posX;
+            double stepY = state.y - d.posY;
+            double stepZ = state.z - d.posZ;
+            moveWithSubsteps(d, stepX, stepY, stepZ);
+            d.motionX = state.motionX;
+            d.motionY = state.motionY;
+            d.motionZ = state.motionZ;
+            return;
         }
-        moveWithSubsteps(d, vx, vy, vz);
-        double drag = inLiquid ? 0.86 : (double) d.drag();
-        d.motionX = vx * drag;
-        d.motionY = vy * drag;
-        d.motionZ = vz * drag;
+        // At the target: stop instead of coasting.
+        d.moveEntity(0.0, 0.0, 0.0);
+        d.motionX = 0.0;
+        d.motionY = 0.0;
+        d.motionZ = 0.0;
     }
 
     /**

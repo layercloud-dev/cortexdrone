@@ -137,11 +137,18 @@ public class NavigationRegressionTest {
 
     @Test
     public void waterDoesNotBounceTheDrone() throws Exception {
-        String physics = read(MAIN + "service/navigation/impl/DronePhysicsService.java");
+        // The integrator now delegates its maths to FlightSpeedModel, so the
+        // water cap is asserted on the code that actually applies it.
+        String model = read(MAIN + "service/navigation/impl/FlightSpeedModel.java");
         assertFalse("no artificial upward buoyancy while in water",
-                physics.contains("? 0.03 : 0.0"));
+                model.contains("? 0.03 : 0.0"));
         assertTrue("water caps speed instead of boosting it",
-                physics.contains("if (inLiquid) cap = Math.min(cap, 0.34);"));
+                model.contains("if (inLiquid) effectiveCap = Math.min(effectiveCap, 0.34);"));
+        // And the behaviour itself: water must hold the drone below 0.34
+        // blocks/tick even at a 5x multiplier.
+        String physics = read(MAIN + "service/navigation/impl/DronePhysicsService.java");
+        assertTrue("the physics step must delegate to the model",
+                physics.contains("FlightSpeedModel.step("));
     }
 
     @Test

@@ -81,6 +81,49 @@ public class DroneSpeedTest {
     }
 
     @Test
+    public void theStrideCoversTheBrakingDistanceSoTheDroneCanCruise() {
+        // 16 blocks is fine at normal speed; at 5x the old fixed stride made the
+        // drone brake immediately, which is why the live flight measured only
+        // ~20 b/s instead of 75.
+        assertEquals(16.0, DroneSpeed.stride(1.0, 16.0), 1e-9);
+        assertEquals(80.0, DroneSpeed.stride(5.0, 16.0), 1e-9);
+        assertTrue("a 5x stride must exceed its braking distance",
+                DroneSpeed.stride(5.0, 16.0) > DroneSpeed.brakingRadius(5.0));
+        // Out-of-range multipliers cannot produce an absurd stride.
+        assertEquals(80.0, DroneSpeed.stride(500.0, 16.0), 1e-9);
+    }
+
+    @Test
+    public void aSlowDroneStrideIsRaisedToClearItsBrakingZone() {
+        // Scaling alone gives 4 blocks at 0.25x, which is inside the 6-block
+        // braking zone: the drone would never leave ease-in and would crawl
+        // even slower than requested.
+        assertTrue(DroneSpeed.stride(0.25, 16.0) > DroneSpeed.brakingRadius(0.25));
+    }
+
+    @Test
+    public void everySupportedSpeedCanActuallyReachCruise() {
+        // This is the invariant the live bug violated: the sub-leg must be long
+        // enough to exit the braking zone, otherwise the drone never cruises and
+        // the extra cap is unreachable.
+        for (double m = DroneSpeed.MIN_MULTIPLIER; m <= DroneSpeed.MAX_MULTIPLIER; m += 0.25) {
+            double stride = DroneSpeed.stride(m, 16.0);
+            double brake = DroneSpeed.brakingRadius(m);
+            assertTrue("stride " + stride + " must exceed braking radius " + brake
+                            + " at " + m + "x",
+                    stride > brake);
+        }
+    }
+
+    @Test
+    public void theStrideTriggerAlsoGrowsSoShortHopsStillFlyDirect() {
+        assertEquals(18.0, DroneSpeed.strideTrigger(18.0, 1.0), 1e-9);
+        assertEquals(45.0, DroneSpeed.strideTrigger(18.0, 5.0), 1e-9);
+        // Never below the tuned value, even for a very slow multiplier.
+        assertEquals(18.0, DroneSpeed.strideTrigger(18.0, 0.25), 1e-9);
+    }
+
+    @Test
     public void cooldownsNeverShortenBelowTheTunedValue() {
         assertEquals("a slow drone stays on the tuned replan cadence",
                 8, DroneSpeed.repathTicks(8, 1.0));

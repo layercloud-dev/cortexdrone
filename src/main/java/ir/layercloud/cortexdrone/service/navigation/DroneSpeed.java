@@ -148,4 +148,43 @@ public final class DroneSpeed {
         return Math.max(REPATH_FLOOR,
                 (int) Math.round(baseTicks / clampMultiplier(multiplier)));
     }
+
+    /**
+     * Braking distance for a cap, mirroring {@code DronePhysicsService}: the
+     * ease-in radius is {@code 6 × max(1, cap / 0.75)}.
+     */
+    public static double brakingRadius(double multiplier) {
+        double cap = clampCap(FAR * clampMultiplier(multiplier));
+        return 6.0 * Math.max(1.0, cap / 0.75);
+    }
+
+    /**
+     * Long-range sub-leg stride.
+     *
+     * <p>The navigator flies toward a point {@code stride} blocks ahead and
+     * re-plans when it gets close. At normal speed 16 blocks is well past the
+     * 6-block braking distance, so the drone reaches cruise. At 5x the braking
+     * distance is ~30 blocks: a 16-block stride made it start braking almost
+     * immediately and never cruise, which is why the measured speed stayed near
+     * the old baseline. At slow multipliers the opposite happens: a shrunk
+     * stride would sit inside the braking zone and the drone would crawl.</p>
+     *
+     * <p>The invariant is therefore "stride &gt; braking radius" at every
+     * supported multiplier, with a margin so the drone actually holds cruise
+     * for a while instead of touching it for one tick.</p>
+     */
+    public static double stride(double multiplier, double baseStride) {
+        double scaled = baseStride * clampMultiplier(multiplier);
+        return Math.max(scaled, brakingRadius(multiplier) * 1.5);
+    }
+
+    /**
+     * Distance at which a long-range sub-leg is worth cutting.
+     *
+     * <p>Sub-legs exist to follow terrain, so a short hop should fly direct.
+     * At 5x the drone needs more runway before a stride makes sense.</p>
+     */
+    public static double strideTrigger(double baseTrigger, double multiplier) {
+        return baseTrigger * Math.max(1.0, clampMultiplier(multiplier) * 0.5);
+    }
 }

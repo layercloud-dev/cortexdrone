@@ -93,15 +93,22 @@ public final class NavigateAction implements Action<NavigationContext> {
                     effGz = curBz + 0.5;
                 }
             }
-        } else if (horizDist > (inOpenSky ? 18.0 : 32.0)) {
-            double step = inOpenSky ? 16.0 : 24.0;
+        } else if (horizDist > DroneSpeed.strideTrigger(inOpenSky ? 18.0 : 32.0,
+                this.state.speedMultiplier)) {
+            // The stride must cover the braking distance at the current speed,
+            // otherwise the drone enters ease-in, decelerates, and starts a new
+            // sub-leg before it ever reaches cruise. That is what capped a 5x
+            // drone at ~20 b/s even though its cap was 75 b/s.
+            double step = DroneSpeed.stride(this.state.speedMultiplier,
+                    inOpenSky ? 16.0 : 24.0);
             effGx = drone.posX + (gx - drone.posX) / horizDist * step;
             effGz = drone.posZ + (gz - drone.posZ) / horizDist * step;
             if (inOpenSky) {
-                int subBx = MathHelper.floor_double(effGx);
-                int subBz = MathHelper.floor_double(effGz);
-                int topSub = ChunkAccess.ensureBlockLoaded(world, subBx, subBz)
-                        ? world.getHeightValue(subBx, subBz) : curBy;
+                // Sample the whole stride, not only its end. At 5x the stride is
+                // up to 80 blocks and a mountain in the middle would be missed
+                // by an endpoint-only height check.
+                int topSub = highestOnStride(world, drone.posX, drone.posZ,
+                        effGx, effGz, curBy);
                 effGy = Math.max(gy, Math.max(topSub, topCur) + 4.5);
             } else {
                 effGy = drone.posY + (gy - drone.posY) * (step / horizDist);
@@ -187,5 +194,29 @@ public final class NavigateAction implements Action<NavigationContext> {
             return;
         }
         context.result(NavigateResult.moved(this.state.lastPathPartial));
+    }
+
+    /**
+     * Highest terrain column along a horizontal segment.
+     *
+     * <p>A long high-speed stride must clear every hill between the drone and
+     * the sub-goal, not just the one at its far end. Sampling every 8 blocks is
+     * enough for the 4.5-block clearance margin and keeps the cost tiny.</p>
+     */
+    private static int highestOnStride(World world, double fromX, double fromZ,
+                                       double toX, double toZ, int fallback) {
+        double dx = toX - fromX;
+        double dz = toZ - fromZ;
+        double length = Math.hypot(dx, dz);
+        int samples = Math.max(1, (int) Math.ceil(length / 8.0));
+        int top = fallback;
+        for (int i = 1; i <= samples; i++) {
+            double t = (double) i / samples;
+            int bx = MathHelper.floor_double(fromX + dx * t);
+            int bz = MathHelper.floor_double(fromZ + dz * t);
+            if (!ChunkAccess.ensureBlockLoaded(world, bx, bz)) continue;
+            top = Math.max(top, world.getHeightValue(bx, bz));
+        }
+        return top;
     }
 }

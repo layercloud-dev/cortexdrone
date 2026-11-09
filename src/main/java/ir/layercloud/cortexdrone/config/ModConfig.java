@@ -42,7 +42,12 @@ public class ModConfig {
     // initialisers and sanitized(), so a hand-edited config cannot drift
     // against the compiled defaults.
     public static final int DEFAULT_MAX_TURNS = 60;
-    public static final int DEFAULT_TASK_DEADLINE_SECONDS = 480;
+    /**
+     * Wall-clock budget for one generation. A "keep going until I say stop"
+     * task is bounded by the turn count and by this budget; 8 minutes used to
+     * cut an in-flight task mid-leg, so the default is 30 minutes.
+     */
+    public static final int DEFAULT_TASK_DEADLINE_SECONDS = 1800;
     /**
      * Completion budget for one assistant turn.
      *

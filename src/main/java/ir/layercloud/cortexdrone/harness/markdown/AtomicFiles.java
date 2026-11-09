@@ -38,9 +38,14 @@ public final class AtomicFiles {
         try (Writer writer = new FileWriter(temp)) {
             writer.write(content != null ? content : "");
         } catch (Exception e) {
+            // Never leave a half-written .tmp behind: on the next run it reads as
+            // a real file to tools and confuses the user.
+            temp.delete();
             return false;
         }
-        return replace(temp, target);
+        if (replace(temp, target)) return true;
+        temp.delete();
+        return false;
     }
 
     /** Moves {@code temp} over {@code target}, falling back to a plain replace. */

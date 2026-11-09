@@ -17,6 +17,9 @@ import java.util.List;
  * adjust the plan or cancel.</p>
  */
 final class AgentInbox {
+    /** Extra time to land a carried player when the task budget runs out. */
+    static final long RIDER_WRAP_UP_MS = 180_000L;
+
     private AgentInbox() {
     }
 
@@ -31,6 +34,25 @@ final class AgentInbox {
                     + "Treat it as part of this task: answer it, adjust your plan, or call "
                     + "cancel if they asked you to stop. Do not ignore a change.");
         }
+    }
+
+    /**
+     * Adds one landing instruction when a generation's budget ends while a
+     * player is riding. Returns false when the drone carries nobody.
+     */
+    static boolean beginRiderWrapUp(DroneController controller, Conversation conversation,
+                                    DroneLogger logger) {
+        if (controller == null || controller.drone == null
+                || controller.drone.riddenByEntity == null) {
+            return false;
+        }
+        logger.log("AGENT", controller,
+                "Task budget reached while carrying a player; wrap-up granted",
+                "extra_ms=" + RIDER_WRAP_UP_MS);
+        conversation.user("The task time budget is exhausted, but a player is riding you. "
+                + "Land them safely now: find a safe landing spot, descend, unpick, then give "
+                + "a short summary. Never leave them in the air.");
+        return true;
     }
 
     /**

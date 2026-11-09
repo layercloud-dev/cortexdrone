@@ -32,4 +32,19 @@ public class LlmClientTokenBudgetTest {
                 "max_tokens is too large")));
         assertFalse(LlmClient.isTokenBudgetRejection(null));
     }
+
+    /**
+     * Regression: the gateway sometimes accepts a request and then closes the
+     * socket ("Unexpected end of file from server"). That is not an HTTP status,
+     * so it bypassed the retry loop and a single upstream hiccup ended the task.
+     */
+    @Test
+    public void aDroppedConnectionIsRetryable() {
+        assertTrue(LlmClient.isNetworkFailure(new IllegalStateException(
+                "Could not read the gateway response",
+                new java.net.SocketException("Unexpected end of file from server"))));
+        assertTrue(LlmClient.isNetworkFailure(new java.io.EOFException("closed")));
+        assertTrue(LlmClient.isNetworkFailure(new java.net.SocketTimeoutException("read timed out")));
+        assertFalse(LlmClient.isNetworkFailure(new IllegalArgumentException("bad key")));
+    }
 }

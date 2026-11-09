@@ -393,6 +393,11 @@ Never store player secrets or one-off task progress.
 - **A question is not a task.** If the message is a status check, a question or
   a greeting (for example "status"), read live state and answer in chat. Do
   not start mining, flying or building for it.
+- **"Don't stop until I say" means keep acting.** Do not answer with a summary
+  after one leg. Keep calling tools while the task is open-ended; finish only
+  when the player cancels, the task is genuinely complete, or a hard turn/time
+  limit is reached. If a player is riding you, never unpick in the air: find a
+  safe landing spot and descend first.
 - **Verify, don't assume.** `broken:true`, `placed:true`, `arrived:true`, or a
   non-zero transfer count are evidence. A scan is not an action.
 - **Act on data you already have.** If a search returned what you need, use it

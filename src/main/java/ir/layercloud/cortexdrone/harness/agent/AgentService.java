@@ -95,6 +95,7 @@ public final class AgentService {
         int emptyResponses = 0;
         // 0 = the configured max_tokens; raised after a truncated thinking turn.
         int outputTokens = 0;
+        boolean riderWrapUp = false;
         String lastWorkflowScript = null;
         boolean refinedSkill = false;
 
@@ -112,6 +113,12 @@ public final class AgentService {
                     return;
                 }
                 if (System.currentTimeMillis() > deadline) {
+                    if (!riderWrapUp
+                            && AgentInbox.beginRiderWrapUp(controller, conversation, this.logger)) {
+                        riderWrapUp = true;
+                        deadline = System.currentTimeMillis() + AgentInbox.RIDER_WRAP_UP_MS;
+                        continue;
+                    }
                     String message = partialMessage("time limit", session);
                     finishRun(run, SessionOutcome.INCOMPLETE, "deadline", message);
                     speak(player, controller, message);
@@ -360,14 +367,7 @@ public final class AgentService {
     }
 
     private static String partialMessage(String reason, DroneSession session) {
-        String last = session != null ? session.lastThought() : "";
-        StringBuilder message = new StringBuilder("Stopped at the ").append(reason)
-                .append(". No further progress was possible without more information.");
-        if (last != null && !last.isEmpty()) {
-            message.append(" Last state: ").append(LoopTracer.snippet(last, 180)).append('.');
-        }
-        message.append(" Re-send the task to continue from here.");
-        return message.toString();
+        return AgentTurnRecovery.partial(reason, session);
     }
 
     private boolean superseded(DroneController controller, DroneSession session, int loopId) {

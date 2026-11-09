@@ -40,7 +40,7 @@ public final class LlmClient {
         this.logger = logger;
     }
 
-    private static final int MAX_ATTEMPTS = 5;
+    private static final int MAX_ATTEMPTS = 7;
 
     public LlmResponse chat(DroneController ctrl, List<JsonObject> messages,
                             JsonArray tools, boolean jsonMode) throws Exception {
@@ -68,28 +68,35 @@ public final class LlmClient {
                 LlmResponse parsed = parse(response);
                 if (parsed != null) return parsed;
                 last = new IllegalStateException("Gateway returned no usable assistant message.");
-            } catch (GatewayException gateway) {
-                last = gateway;
-                if (!budgetFellBack && budget > this.config.getMaxTokens()
-                        && isTokenBudgetRejection(gateway)) {
-                    // Recovery widened the budget past what this model accepts.
-                    // Fall back to the configured value instead of failing the task.
-                    budgetFellBack = true;
-                    budget = this.config.getMaxTokens();
-                    if (this.logger != null) {
-                        this.logger.log("LLM", ctrl,
-                                "Gateway rejected the raised max_tokens; using the configured budget",
-                                gateway.getMessage());
+            } catch (Exception failure) {
+                last = failure;
+                if (failure instanceof GatewayException) {
+                    GatewayException gateway = (GatewayException) failure;
+                    if (!budgetFellBack && budget > this.config.getMaxTokens()
+                            && isTokenBudgetRejection(gateway)) {
+                        // Recovery widened the budget past what this model accepts.
+                        // Fall back to the configured value instead of failing the task.
+                        budgetFellBack = true;
+                        budget = this.config.getMaxTokens();
+                        if (this.logger != null) {
+                            this.logger.log("LLM", ctrl,
+                                    "Gateway rejected the raised max_tokens; using the configured budget",
+                                    gateway.getMessage());
+                        }
+                        continue;
                     }
-                    continue;
                 }
-                if (!isTransient(gateway) || attempt >= MAX_ATTEMPTS) throw gateway;
+                boolean retryable = failure instanceof GatewayException
+                        ? isTransient((GatewayException) failure)
+                        : isNetworkFailure(failure);
+                if (!retryable || attempt >= MAX_ATTEMPTS) throw failure;
                 if (this.logger != null) {
-                    this.logger.log("LLM", ctrl, "Transient gateway error, retrying",
-                            "attempt=" + attempt + "/" + MAX_ATTEMPTS + " " + gateway.getMessage());
+                    this.logger.log("LLM", ctrl, "Transient LLM failure, retrying",
+                            "attempt=" + attempt + "/" + MAX_ATTEMPTS + " " + failure);
                 }
-                // Back off further each time: 800ms, 1.6s, 2.4s, 3.2s.
-                sleep(800L * attempt);
+                // Back off further each time, capped so one bad gateway cannot
+                // hold a task forever: 1s, 4s, 9s, 15s, ...
+                sleep(Math.min(15_000L, 1_000L * attempt * attempt));
             }
         }
         throw last != null ? last : new IllegalStateException("LLM request failed");
@@ -114,6 +121,30 @@ public final class LlmClient {
                 || message.contains("upstream")
                 || message.contains("overload")
                 || message.contains("timeout");
+    }
+
+    /**
+     * True for a dropped connection, a TLS reset or a read timeout.
+     *
+     * <p>The gateway sometimes accepts the request and then closes the socket
+     * without a response ("Unexpected end of file from server"). That used to
+     * escape the retry loop because it is not an HTTP status, so a single
+     * upstream hiccup ended the task with {@code llm_error}.</p>
+     */
+    static boolean isNetworkFailure(Throwable failure) {
+        Throwable cause = failure;
+        for (int depth = 0; cause != null && depth < 8; depth++) {
+            if (cause instanceof java.io.EOFException
+                    || cause instanceof java.net.SocketException
+                    || cause instanceof java.net.SocketTimeoutException
+                    || cause instanceof java.net.ConnectException
+                    || cause instanceof javax.net.ssl.SSLException
+                    || cause instanceof java.io.InterruptedIOException) {
+                return true;
+            }
+            cause = cause.getCause() == cause ? null : cause.getCause();
+        }
+        return false;
     }
 
     /**

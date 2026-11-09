@@ -101,6 +101,18 @@ final class AgentTurnRecovery {
         return "length".equalsIgnoreCase(response.finishReason());
     }
 
+    /** Player-facing explanation for a loop that ran out of budget. */
+    static String partial(String reason, DroneSession session) {
+        String last = session != null ? session.lastThought() : "";
+        StringBuilder message = new StringBuilder("Stopped at the ").append(reason)
+                .append(". No further progress was possible without more information.");
+        if (last != null && !last.isEmpty()) {
+            message.append(" Last state: ").append(LoopTracer.snippet(last, 180)).append('.');
+        }
+        message.append(" Re-send the task to continue from here.");
+        return message.toString();
+    }
+
     private static String finishReason(LlmResponse response) {
         return response.finishReason() == null || response.finishReason().isEmpty()
                 ? "unknown" : response.finishReason();

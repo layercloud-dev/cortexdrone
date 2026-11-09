@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
@@ -131,7 +133,7 @@ public final class DigPathfinder {
                         int nx = cur.x + dx;
                         int ny = cur.y + dy;
                         int nz = cur.z + dz;
-                        if (ny <= 2 || ny >= 254) continue;
+                        if (!WorldBounds.diggable(ny)) continue;
                         long nKey = FlightPathfinder.packBlockPos(nx, ny, nz);
                         if (closed.contains(nKey)) continue;
                         Step step = classify(world, nx, ny, nz, rejected);
@@ -213,9 +215,9 @@ public final class DigPathfinder {
     }
 
     private static Clamped clampGoal(int sx, int sy, int sz, double gx, double gy, double gz) {
-        double dx = gx - (sx + 0.5D);
-        double dy = gy - (sy + 0.5D);
-        double dz = gz - (sz + 0.5D);
+        double dx = gx - (sx + DroneGeometry.CELL_CENTER);
+        double dy = gy - (sy + DroneGeometry.CELL_CENTER);
+        double dz = gz - (sz + DroneGeometry.CELL_CENTER);
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (distance > MAX_RADIUS) {
             double scale = MAX_RADIUS / distance;
@@ -223,10 +225,10 @@ public final class DigPathfinder {
             dy *= scale;
             dz *= scale;
         }
-        int x = MathHelper.floor_double(sx + 0.5D + dx);
+        int x = MathHelper.floor_double(sx + DroneGeometry.CELL_CENTER + dx);
         int y = MathHelper.floor_double(sy + 0.5D + dy);
-        int z = MathHelper.floor_double(sz + 0.5D + dz);
-        return new Clamped(x, Math.max(3, Math.min(253, y)), z);
+        int z = MathHelper.floor_double(sz + DroneGeometry.CELL_CENTER + dz);
+        return new Clamped(x, WorldBounds.clampDigY(y), z);
     }
 
     private static double heuristic(int x, int y, int z, int gx, int gy, int gz) {

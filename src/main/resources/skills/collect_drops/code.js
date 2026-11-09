@@ -1,8 +1,8 @@
 // Drop pickup. params: { radius, filter, max_clusters }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var radius = clamp(cfg.radius || 16, 2, 64);
+var radius = clamp(cfg.radius || SKILL_LIMITS.mediumRadiusDefault, LIMITS.dropRadiusMin, LIMITS.scanRadiusMax);
 var filter = cfg.filter || 'all';
-var maxClusters = clamp(cfg.max_clusters || 12, 1, 32);
+var maxClusters = clamp(cfg.max_clusters || 12, 1, SKILL_LIMITS.clusterCap32);
 
 var drops = drone.getDrops({ radius: radius, filter: filter });
 if (!drops || !drops.count) {

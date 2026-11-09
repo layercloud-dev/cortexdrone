@@ -5,14 +5,14 @@ var surface = String(cfg.surface || 'floor').toLowerCase();
 var block = cfg.block || cfg.with || null;
 var onlyReplace = cfg.only_replace || 'all';
 var meta = cfg.meta === undefined ? -1 : cfg.meta;
-var maxBlocks = clamp(cfg.max_blocks || 256, 1, 1200);
+var maxBlocks = clamp(cfg.max_blocks || 256, 1, SKILL_LIMITS.budget1200);
 var dryRun = cfg.dry_run === true;
 
 if (!block) {
   return { ok: false, error: 'replace_surface needs a target block name' };
 }
 
-var roomRequest = { max_radius: cfg.max_radius || 18 };
+var roomRequest = { max_radius: cfg.max_radius || LIMITS.roomRadiusDefault };
 if (cfg.x !== undefined && cfg.y !== undefined && cfg.z !== undefined) {
   roomRequest.x = cfg.x;
   roomRequest.y = cfg.y;

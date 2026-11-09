@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.service.inventory;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.DroneController;
 
 import com.google.gson.JsonArray;
@@ -52,7 +53,7 @@ public class ContainerSearchService {
         EntityPlayerMP owner = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
         String query = ItemClassifier.resolveHeldFilter(owner, rawQuery != null ? rawQuery.trim() : "all");
         boolean matchAll = query.isEmpty() || query.equalsIgnoreCase("all") || query.equalsIgnoreCase("any") || query.equals("*");
-        int r = Math.min(64, Math.max(4, radius));
+        int r = ir.layercloud.cortexdrone.service.inventory.InventoryLimits.clampRadius(radius);
 
         List<TileEntity> tiles = this.inventoryService.findAllInventoryTiles(world, d.posX, d.posY, d.posZ, r);
         if (owner != null && owner.worldObj == world) {
@@ -123,7 +124,7 @@ public class ContainerSearchService {
             int bMeta = world.getBlockMetadata(bx, by, bz);
             String bName = ItemClassifier.getBlockDisplayName(b, bMeta);
             String bReg = b != null ? Block.blockRegistry.getNameForObject(b) : "";
-            double dist = Math.round(d.getDistance(bx + 0.5, by + 0.5, bz + 0.5) * 10.0) / 10.0;
+            double dist = Math.round(d.getDistance(bx + DroneGeometry.CELL_CENTER, by + DroneGeometry.CELL_CENTER, bz + DroneGeometry.CELL_CENTER) * 10.0) / 10.0;
 
             JsonObject co = new JsonObject();
             co.addProperty("x", bx);

@@ -3,13 +3,13 @@
 //   branch_side, start, max_blocks, ore_scan, collect }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var direction = String(cfg.direction || 'north').toLowerCase();
-var length = clamp(cfg.length || 32, 1, 96);
-var height = clamp(cfg.height || 2, 1, 3);
-var branches = clamp(cfg.branches || 4, 0, 16);
-var spacing = clamp(cfg.branch_spacing || 8, 2, 24);
-var branchLength = clamp(cfg.branch_length || 12, 1, 32);
+var length = clamp(cfg.length || 32, 1, SKILL_LIMITS.smallScanLimit);
+var height = clamp(cfg.height || 2, 1, SKILL_LIMITS.shaftMax);
+var branches = clamp(cfg.branches || 4, 0, SKILL_LIMITS.smallMax16);
+var spacing = clamp(cfg.branch_spacing || 8, SKILL_LIMITS.branchSpacingMin, SKILL_LIMITS.branchSpacingMax);
+var branchLength = clamp(cfg.branch_length || 12, 1, SKILL_LIMITS.branchLengthMax);
 var side = String(cfg.branch_side || 'left').toLowerCase();
-var maxBlocks = clamp(cfg.max_blocks || 512, 1, 1024);
+var maxBlocks = clamp(cfg.max_blocks || 512, 1, SKILL_LIMITS.budget1024);
 var collect = cfg.collect !== false;
 
 var axes = {
@@ -108,7 +108,7 @@ if (cfg.ore_scan !== false) {
 var collected = null;
 if (collect) {
   try {
-    collected = skills.call('collect_drops', { radius: 10, filter: 'all', max_clusters: 8 });
+    collected = skills.call('collect_drops', { radius: 10, filter: 'all', max_clusters: SKILL_LIMITS.maxClustersSmall });
   } catch (collectError) {
     log('drop sweep skipped: ' + collectError.message);
   }

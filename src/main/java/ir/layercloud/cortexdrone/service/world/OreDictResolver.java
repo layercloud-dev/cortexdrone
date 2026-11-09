@@ -39,10 +39,6 @@ public final class OreDictResolver {
             "oredict:", "ore_dict:", "ore-dict:", "dict:", "tag:", "#"
     };
 
-    private static final String[] AGGREGATE_PREFIXES = {
-            "listall", "filler"
-    };
-
     /** Tag shapes that mean an actual obtainable material, best first. */
     private static final String[] RESOURCE_SHAPE_PREFIXES = {
             "ore", "raw", "ingot", "gem", "crystal", "cluster", "dust", "nugget",
@@ -67,7 +63,6 @@ public final class OreDictResolver {
 
     private static volatile Map<String, String> compactIndex = Collections.emptyMap();
     private static volatile Map<String, List<String>> tokenIndex = Collections.emptyMap();
-    private static volatile int indexedTagCount = -1;
 
     /** True when the filter explicitly names an OreDictionary tag. */
     public static boolean hasExplicitPrefix(String rawFilter) {
@@ -119,7 +114,7 @@ public final class OreDictResolver {
      */
     public static List<String> resolveTags(String rawFilter, List<String> knownTags) {
         if (knownTags == null || knownTags.isEmpty()) return Collections.emptyList();
-        Index index = buildIndex(knownTags.toArray(new String[0]));
+        OreDictIndex.Snapshot index = OreDictIndex.buildFor(knownTags.toArray(new String[0]));
         return resolveAgainst(normalizeRaw(rawFilter), index.compact, index.tokens);
     }
 
@@ -163,9 +158,6 @@ public final class OreDictResolver {
     }
 
     /** True when the query resolves to at least one registered tag. */
-    public static boolean isTagQuery(String rawFilter) {
-        return !resolveTagQuery(rawFilter).isEmpty();
-    }
 
     /**
      * Dictionary score for an item stack. 100 = explicit tag hit, 95 = exact
@@ -198,10 +190,6 @@ public final class OreDictResolver {
         return explicit ? 0 : 80;
     }
 
-    public static boolean matchesItemTag(ItemStack stack, String rawFilter) {
-        return scoreItemTagMatch(stack, rawFilter) > 0;
-    }
-
     /**
      * Dictionary score for an already-built item/block identifier string.
      *
@@ -229,34 +217,9 @@ public final class OreDictResolver {
     }
 
     /** JSON description of tags and their registered stacks, for {@code doc_lookup}. */
+    /** @see OreDictDescribe#tagsAndItems(String, int, java.util.List) */
     public static com.google.gson.JsonObject describeTagQuery(String rawFilter, int limit) {
-        com.google.gson.JsonObject out = new com.google.gson.JsonObject();
-        out.addProperty("query", normalizeRaw(rawFilter));
-        com.google.gson.JsonArray tagsJson = new com.google.gson.JsonArray();
-        com.google.gson.JsonArray itemsJson = new com.google.gson.JsonArray();
-        List<String> tags = resolveTagQuery(rawFilter);
-        int max = Math.max(1, limit);
-        Set<String> seenEntries = new HashSet<>();
-        for (String tag : tags) {
-            tagsJson.add(new com.google.gson.JsonPrimitive(tag));
-            if (itemsJson.size() >= max) continue;
-            List<ItemStack> entries = safeGetOres(tag);
-            for (ItemStack stack : entries) {
-                if (itemsJson.size() >= max) break;
-                if (stack == null || stack.getItem() == null) continue;
-                String key = Item.itemRegistry.getNameForObject(stack.getItem())
-                        + ":" + stack.getItemDamage();
-                if (!seenEntries.add(key)) continue;
-                com.google.gson.JsonObject io = ItemClassifier.itemStackToJson(-1, stack);
-                io.addProperty("oreDict", tag);
-                itemsJson.add(io);
-            }
-        }
-        out.add("tags", tagsJson);
-        out.add("items", itemsJson);
-        out.addProperty("tagCount", tagsJson.size());
-        out.addProperty("itemCount", itemsJson.size());
-        return out;
+        return OreDictDescribe.tagsAndItems(normalizeRaw(rawFilter), limit, resolveTagQuery(rawFilter));
     }
 
     // ------------------------------------------------------------------
@@ -264,53 +227,9 @@ public final class OreDictResolver {
     // ------------------------------------------------------------------
 
     private static void refreshIndex() {
-        String[] names;
-        try {
-            names = OreDictionary.getOreNames();
-        } catch (Throwable unavailable) {
-            names = new String[0];
-        }
-        if (names == null) names = new String[0];
-        if (names.length == indexedTagCount) return;
-        Index index = buildIndex(names);
-        compactIndex = index.compact;
-        tokenIndex = index.tokens;
-        indexedTagCount = names.length;
-        QUERY_CACHE.clear();
-    }
-
-    private static final class Index {
-        final Map<String, String> compact;
-        final Map<String, List<String>> tokens;
-
-        Index(Map<String, String> compact, Map<String, List<String>> tokens) {
-            this.compact = compact;
-            this.tokens = tokens;
-        }
-    }
-
-    private static Index buildIndex(String[] names) {
-        Map<String, String> compact = new HashMap<>();
-        Map<String, List<String>> tokens = new HashMap<>();
-        if (names == null) return new Index(compact, tokens);
-        for (String name : names) {
-            if (name == null || name.isEmpty()) continue;
-            String lower = name.toLowerCase(Locale.ROOT);
-            if (startsWithAny(lower, AGGREGATE_PREFIXES)) continue;
-            compact.putIfAbsent(compactKey(name), name);
-            List<String> parts = LexicalItemMatcher.tokenize(name);
-            if (parts.isEmpty()) continue;
-            List<String> sorted = new ArrayList<>(parts);
-            Collections.sort(sorted);
-            String key = joinTokens(sorted);
-            List<String> bucket = tokens.get(key);
-            if (bucket == null) {
-                bucket = new ArrayList<>();
-                tokens.put(key, bucket);
-            }
-            bucket.add(name);
-        }
-        return new Index(compact, tokens);
+        OreDictIndex.refresh();
+        compactIndex = OreDictIndex.compact();
+        tokenIndex = OreDictIndex.tokens();
     }
 
     private static List<String> tagsContainingAll(List<String> queryTokens,
@@ -407,28 +326,9 @@ public final class OreDictResolver {
     }
 
     private static Set<String> lowerTags(ItemStack stack) {
-        Set<String> out = new HashSet<>();
-        try {
-            int[] ids = OreDictionary.getOreIDs(stack);
-            for (int id : ids) {
-                String name = OreDictionary.getOreName(id);
-                if (name != null && !name.isEmpty() && !"Unknown".equalsIgnoreCase(name)) {
-                    out.add(name.toLowerCase(Locale.ROOT));
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        return out;
+        return OreDictIndex.tagsOf(stack);
     }
 
-    private static List<ItemStack> safeGetOres(String tag) {
-        try {
-            List<ItemStack> stacks = OreDictionary.getOres(tag, false);
-            return stacks != null ? stacks : Collections.emptyList();
-        } catch (Throwable ignored) {
-            return Collections.emptyList();
-        }
-    }
 
     /** Canonical tag for a block/metadata pair, or null when unregistered. */
     public static String tagForBlock(Block block, int meta) {
@@ -444,53 +344,24 @@ public final class OreDictResolver {
         }
     }
 
-    // ------------------------------------------------------------------
-    // Text helpers
-    // ------------------------------------------------------------------
+    // Text helpers live in OreDictText; these delegates keep the old call sites.
 
     private static String normalizeRaw(String raw) {
-        return raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        return OreDictText.normalizeRaw(raw);
     }
 
-    /** Lowercase letters+digits only; lets ore_iron/ore iron/oreIron collide. */
+    /** @see OreDictText#compactKey(String) */
     public static String compactKey(String value) {
-        if (value == null || value.isEmpty()) return "";
-        StringBuilder out = new StringBuilder(value.length());
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            if (Character.isLetterOrDigit(c)) out.append(Character.toLowerCase(c));
-        }
-        return out.toString();
+        return OreDictText.compactKey(value);
     }
 
     private static String joinTokens(List<String> tokens) {
-        StringBuilder sb = new StringBuilder();
-        for (String token : tokens) {
-            if (sb.length() > 0) sb.append('|');
-            sb.append(token);
-        }
-        return sb.toString();
+        return OreDictText.joinTokens(tokens);
     }
 
-    private static boolean startsWithAny(String value, String[] prefixes) {
-        for (String prefix : prefixes) {
-            if (value.startsWith(prefix)) return true;
-        }
-        return false;
-    }
 
-    /** True when {@code word} occurs in {@code text} with non-alphanumeric boundaries. */
+    /** @see OreDictText#containsWord(String, String) */
     static boolean containsWord(String text, String word) {
-        if (text == null || word == null || word.isEmpty()) return false;
-        int from = 0;
-        while (true) {
-            int idx = text.indexOf(word, from);
-            if (idx < 0) return false;
-            boolean leftOk = idx == 0 || !Character.isLetterOrDigit(text.charAt(idx - 1));
-            int end = idx + word.length();
-            boolean rightOk = end >= text.length() || !Character.isLetterOrDigit(text.charAt(end));
-            if (leftOk && rightOk) return true;
-            from = idx + 1;
-        }
+        return OreDictText.containsWord(text, word);
     }
 }

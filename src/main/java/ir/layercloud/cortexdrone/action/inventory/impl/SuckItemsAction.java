@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.inventory.impl;
 
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
@@ -25,7 +26,8 @@ public final class SuckItemsAction implements Action<InventoryContext> {
             return;
         }
         double radius = request.getRadius() > 0
-                ? Math.min(16.0, Math.max(1.0, request.getRadius())) : 6.5;
+                ? InventoryLimits.clampSuckRadius(request.getRadius())
+                : InventoryLimits.DEFAULT_SUCK_RADIUS;
         int before = InventoryService.countInventoryItems(drone.mainInventory());
         InventoryService.suckNearbyItems(drone, drone.posX, drone.posY, drone.posZ, radius);
         int after = InventoryService.countInventoryItems(drone.mainInventory());

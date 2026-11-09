@@ -2,7 +2,7 @@
 // Opens a two-wide shaft from the drone's feet to the surface so a carried
 // player cannot suffocate in a one-block tunnel.
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var depth = cfg.max_blocks || 128;
+var depth = cfg.max_blocks || LIMITS.defaultDigBlocks;
 var state = drone.state();
 if (!state || state.ok === false) {
   return { ok: false, error: 'no live drone state' };
@@ -120,7 +120,7 @@ while (y < goalY) {
 var collected = null;
 if (cfg.collect !== false && mined > 0) {
   try {
-    collected = skills.call('collect_drops', { radius: 8, filter: 'all', max_clusters: 4 });
+    collected = skills.call('collect_drops', { radius: 8, filter: 'all', max_clusters: SKILL_LIMITS.maxClustersTiny });
   } catch (collectError) {
     log('escape_cave drop sweep skipped: ' + collectError.message);
   }

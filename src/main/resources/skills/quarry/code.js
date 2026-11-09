@@ -12,8 +12,8 @@ if (cfg.x1 !== undefined && cfg.z1 !== undefined && cfg.x2 !== undefined && cfg.
   x1 = Math.min(cfg.x1, cfg.x2); x2 = Math.max(cfg.x1, cfg.x2);
   z1 = Math.min(cfg.z1, cfg.z2); z2 = Math.max(cfg.z1, cfg.z2);
 } else {
-  var width = clamp(cfg.width || 5, 1, 33);
-  var length = clamp(cfg.length || width, 1, 33);
+  var width = clamp(cfg.width || 5, LIMITS.dimensionMin, LIMITS.siteSideMax);
+  var length = clamp(cfg.length || width, LIMITS.dimensionMin, LIMITS.siteSideMax);
   var cx = Math.round(state.x);
   var cz = Math.round(state.z);
   x1 = cx - Math.floor(width / 2);
@@ -23,10 +23,10 @@ if (cfg.x1 !== undefined && cfg.z1 !== undefined && cfg.x2 !== undefined && cfg.
 }
 
 var topY = cfg.top_y !== undefined ? Math.round(cfg.top_y) : Math.round(state.y) - 1;
-var layers = clamp(cfg.depth || cfg.layers || 3, 1, 32);
+var layers = clamp(cfg.depth || cfg.layers || 3, 1, SKILL_LIMITS.clusterCap32);
 var filter = cfg.filter || 'all';
-var maxBlocks = clamp(cfg.max_blocks || 512, 1, 1024);
-var collectEvery = clamp(cfg.collect_every === undefined ? 3 : cfg.collect_every, 0, 16);
+var maxBlocks = clamp(cfg.max_blocks || 512, 1, SKILL_LIMITS.budget1024);
+var collectEvery = clamp(cfg.collect_every === undefined ? 3 : cfg.collect_every, 0, SKILL_LIMITS.smallMax16);
 var allowLiquid = cfg.allow_liquid === true;
 
 var mined = 0;
@@ -88,7 +88,7 @@ for (var layer = 0; layer < layers; layer++) {
 
   if (collectEvery > 0 && (layer + 1) % collectEvery === 0) {
     try {
-      skills.call('collect_drops', { radius: 12, filter: 'all', max_clusters: 8 });
+      skills.call('collect_drops', { radius: 12, filter: 'all', max_clusters: SKILL_LIMITS.maxClustersSmall });
     } catch (collectError) {
       log('quarry drop sweep skipped: ' + collectError.message);
     }

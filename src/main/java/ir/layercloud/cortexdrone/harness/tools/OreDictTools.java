@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
@@ -22,6 +23,7 @@ import java.util.List;
  * handler here lets {@link WorldTools} stay focused on spatial queries.</p>
  */
 public final class OreDictTools implements ToolProvider {
+    private static final int MIN_LIMIT = 1;
     private static final int DEFAULT_LIMIT = 24;
     private static final int MAX_LIMIT = 64;
 
@@ -37,9 +39,9 @@ public final class OreDictTools implements ToolProvider {
                         .parameters(ToolSchema.object()
                                 .requiredString("query", "Name, tag or phrase, e.g. 'tin', 'oreIron', '#ingotTin'.")
                                 .optionalString("mod_id", "Restrict item results to one mod prefix, e.g. 'hbm'.")
-                                .optionalInt("limit", "Maximum item stacks to list, 1..64.", 1, MAX_LIMIT,
+                                .optionalInt("limit", "Maximum item stacks to list, " + MIN_LIMIT + ".." + MAX_LIMIT + ".", MIN_LIMIT, MAX_LIMIT,
                                         DEFAULT_LIMIT))
-                        .affinity(ToolAffinity.MAIN).timeoutMs(4_000L).build()
+                        .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FAST_MS).build()
         );
     }
 

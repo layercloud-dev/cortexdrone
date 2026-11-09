@@ -5,7 +5,9 @@ import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Immutable declaration of one tool: name, model-facing description, JSON
@@ -19,6 +21,7 @@ public final class ToolSpec {
     private final ToolAffinity affinity;
     private final boolean internal;
     private final long timeoutMs;
+    private final Set<ToolCapability> capabilities;
 
     private ToolSpec(Builder builder) {
         this.name = builder.name;
@@ -27,6 +30,10 @@ public final class ToolSpec {
         this.affinity = builder.affinity;
         this.internal = builder.internal;
         this.timeoutMs = builder.timeoutMs;
+        this.capabilities = Collections.unmodifiableSet(
+                builder.capabilities.isEmpty()
+                        ? EnumSet.of(ToolCapability.READ_ONLY)
+                        : builder.capabilities);
     }
 
     public static Builder builder(String name) {
@@ -55,6 +62,21 @@ public final class ToolSpec {
 
     public long getTimeoutMs() {
         return this.timeoutMs;
+    }
+
+    /** Declared behavioural capabilities; defaults to {@link ToolCapability#READ_ONLY}. */
+    public Set<ToolCapability> getCapabilities() {
+        return this.capabilities;
+    }
+
+    /** True when the tool declares {@code capability}. */
+    public boolean has(ToolCapability capability) {
+        return capability != null && this.capabilities.contains(capability);
+    }
+
+    /** True when the tool changes the world or an inventory. */
+    public boolean mutatesAnything() {
+        return has(ToolCapability.MUTATES_WORLD) || has(ToolCapability.MUTATES_INVENTORY);
     }
 
     /** Ordered property names, used to map positional JavaScript arguments. */
@@ -107,7 +129,8 @@ public final class ToolSpec {
         private JsonObject parameters = ToolSchema.object().build();
         private ToolAffinity affinity = ToolAffinity.MAIN;
         private boolean internal = false;
-        private long timeoutMs = 8_000L;
+        private long timeoutMs = ToolTimeouts.DEFAULT_TOOL_MS;
+        private final Set<ToolCapability> capabilities = EnumSet.noneOf(ToolCapability.class);
 
         private Builder(String name) {
             if (name == null || name.trim().isEmpty()) {
@@ -144,6 +167,24 @@ public final class ToolSpec {
 
         public Builder timeoutMs(long value) {
             this.timeoutMs = value;
+            return this;
+        }
+
+        /** Declares one behavioural capability. */
+        public Builder capability(ToolCapability value) {
+            if (value != null) {
+                this.capabilities.add(value);
+                // An explicit READ_ONLY is meaningless next to a mutation.
+                if (value != ToolCapability.READ_ONLY) this.capabilities.remove(ToolCapability.READ_ONLY);
+            }
+            return this;
+        }
+
+        /** Declares several behavioural capabilities. */
+        public Builder capabilities(ToolCapability... values) {
+            if (values != null) {
+                for (ToolCapability value : values) capability(value);
+            }
             return this;
         }
 

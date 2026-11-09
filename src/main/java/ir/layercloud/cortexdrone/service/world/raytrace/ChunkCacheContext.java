@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.service.world.raytrace;
 
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -51,11 +52,11 @@ public class ChunkCacheContext {
     }
 
     static long pack(int x, int y, int z) {
-        return (((long) x & 0x3FFFFFFL) << 38) | (((long) z & 0x3FFFFFFL) << 12) | ((long) y & 0xFFFL);
+        return ir.layercloud.cortexdrone.service.world.BlockPosKey.pack(x, y, z);
     }
 
     public Block getBlock(int x, int y, int z) {
-        if (y <= 0 || y >= 256) return Blocks.bedrock;
+        if (!WorldBounds.inWorld(y)) return Blocks.bedrock;
         int cx = (x >> 4) - this.baseChunkX;
         int cz = (z >> 4) - this.baseChunkZ;
         if (cx >= 0 && cx < this.gridSize && cz >= 0 && cz < this.gridSize) {
@@ -79,7 +80,7 @@ public class ChunkCacheContext {
     }
 
     public boolean isPassable(int x, int y, int z) {
-        if (y <= 1 || y >= 255) return false;
+        if (!WorldBounds.inWorld(y)) return false;
         long key = pack(x, y, z);
         Boolean cached = this.passableCache.get(key);
         if (cached != null) return cached;

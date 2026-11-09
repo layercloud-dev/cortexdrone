@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.inventory.impl;
 
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.CortexDroneMod;
@@ -29,7 +30,7 @@ public final class TakeFromPlayerAction implements Action<InventoryContext> {
             player = CortexDroneMod.findPlayer(controller.ownerName);
         }
         String filter = request.getFilter() != null ? request.getFilter() : "any";
-        int count = request.getCount() > 0 ? request.getCount() : 512;
+        int count = request.getCount() > 0 ? request.getCount() : InventoryLimits.DEFAULT_TRANSFER_COUNT;
         int moved = this.inventoryService.takeFromPlayerInventory(controller, player, filter, count);
         context.result(InventoryResult.success("transferred", moved));
     }

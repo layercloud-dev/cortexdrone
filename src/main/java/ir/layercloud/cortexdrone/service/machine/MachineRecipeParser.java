@@ -7,9 +7,6 @@ import lombok.experimental.UtilityClass;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * JSON schema parsing for HBM machine recipes. Moved verbatim from
  * MachineRecipeService.normalizeJsonRecipe and its entry helpers so the
@@ -25,337 +22,35 @@ final class MachineRecipeParser {
         try {
             MachineRecipeService.NormalizedRecipe r = new MachineRecipeService.NormalizedRecipe();
             r.machine = machine;
-            r.name = o.has("name") ? o.get("name").getAsString() : fileName.replace(".json", "") + "." + r.inputs.size();
-            r.displayName = o.has("nameWrapper") ? o.get("nameWrapper").getAsString() : r.name;
-            if (o.has("duration")) r.duration = o.get("duration").getAsInt();
-            if (o.has("frequency") && o.get("frequency").isJsonPrimitive() && o.get("frequency").getAsJsonPrimitive().isNumber())
-                r.duration = Math.max(r.duration, o.get("frequency").getAsInt());
-            if (o.has("power")) r.power = o.get("power").getAsLong();
-            if (o.has("consumption")) r.power = Math.max(r.power, o.get("consumption").getAsLong());
-            if (o.has("momentum") && o.get("momentum").isJsonPrimitive() && o.get("momentum").getAsJsonPrimitive().isNumber())
-                r.power = Math.max(r.power, o.get("momentum").getAsLong());
-            if (o.has("steam") && o.get("steam").isJsonPrimitive() && o.get("steam").getAsJsonPrimitive().isNumber())
-                r.power = Math.max(r.power, o.get("steam").getAsLong());
-            if (o.has("flux") && o.get("flux").isJsonPrimitive() && o.get("flux").getAsJsonPrimitive().isNumber())
-                r.power = Math.max(r.power, o.get("flux").getAsLong());
-            if (o.has("antimatter") && o.get("antimatter").isJsonPrimitive() && o.get("antimatter").getAsJsonPrimitive().isNumber())
-                r.power = Math.max(r.power, o.get("antimatter").getAsLong());
-            if (o.has("tierLower")) r.tierLower = o.get("tierLower").getAsInt();
-            if (o.has("tierUpper")) r.tierUpper = o.get("tierUpper").getAsInt();
-            if (o.has("overlay")) r.overlay = o.get("overlay").getAsString();
-            if (o.has("consumptionPerTick")) r.power = Math.max(r.power, o.get("consumptionPerTick").getAsLong());
-            if (o.has("outputType")) {
-                r.outputFluids.add(parseFluidEntryJson(o.get("outputType").getAsString(), 0));
-                if (r.outputFluids.get(0) != null) {
-                    JsonObject fj = r.outputFluids.get(0);
-                    fj.remove("amount");
-                } else {
-                    r.outputFluids.clear();
-                }
-            }
-            if (o.has("recipes") && o.get("recipes").isJsonArray()) {
-                JsonArray nestedArr = o.getAsJsonArray("recipes");
-                List<JsonObject> nested = new ArrayList<>();
-                for (JsonElement e : nestedArr) {
-                    if (e.isJsonObject()) nested.add(e.getAsJsonObject());
-                }
-                if (!nested.isEmpty()) {
-                    JsonObject base = new JsonObject();
-                    base.addProperty("outputType", o.has("outputType") ? o.get("outputType").getAsString() : "");
-                    JsonArray inner = new JsonArray();
-                    for (JsonObject n : nested) inner.add(n);
-                    base.add("recipes", inner);
-                    java.util.List<MachineRecipeService.NormalizedRecipe> expanded = new ArrayList<>();
-                    for (JsonObject n : nested) {
-                        MachineRecipeService.NormalizedRecipe nr = normalizeSingleRecipe(n, machine, fileName);
-                        if (nr != null) {
-                            String fluidName = o.has("outputType") ? o.get("outputType").getAsString() : "";
-                            int outAmt = n.has("outputAmount") ? n.get("outputAmount").getAsInt() : 0;
-                            if (!fluidName.isEmpty() && outAmt > 0) {
-                                JsonObject fj = parseFluidEntryJson(fluidName, outAmt);
-                                if (fj != null) {
-                                    fj.addProperty("isMixingOutput", true);
-                                    nr.outputFluids.add(fj);
-                                }
-                            }
-                            if (n.has("duration")) nr.duration = n.get("duration").getAsInt();
-                            expanded.add(nr);
-                        }
-                    }
-                    for (MachineRecipeService.NormalizedRecipe e : expanded) {
-                        if (e.inputs.isEmpty() && e.outputs.isEmpty() && e.inputFluids.isEmpty() && e.outputFluids.isEmpty())
-                            continue;
-                        if (e.displayName == null || e.displayName.isEmpty()) e.displayName = e.name;
-                        return e;
-                    }
-                }
-            }
-            if (o.has("inputItem") && o.get("inputItem").isJsonArray()) {
-                for (JsonElement e : o.getAsJsonArray("inputItem")) {
-                    JsonObject io = parseInputEntry(e);
-                    if (io != null) r.inputs.add(io);
-                }
-            }
-            if (o.has("inputs") && o.get("inputs").isJsonArray()) {
-                for (JsonElement e : o.getAsJsonArray("inputs")) {
-                    JsonObject io = parseInputEntry(e);
-                    if (io != null) r.inputs.add(io);
-                }
-            }
-            String[] inputKeys = new String[]{"input", "input1", "input2", "ingredients", "ingredient", "toppings", "pcb", "solder", "wafer", "solidInput", "acid", "hydrogen", "flux", "stamp", "particle", "gas", "gasIn", "itemIn"};
-            for (String key : inputKeys) {
-                if (!o.has(key)) continue;
-                JsonElement el = o.get(key);
-                if (el == null || el.isJsonNull()) continue;
-                if (el.isJsonArray()) {
-                    JsonArray arr = el.getAsJsonArray();
-                    if (arr.size() > 0 && arr.get(0).isJsonArray()) {
-                        for (JsonElement e : arr) {
-                            // Crucible-style inner arrays are [FluidName, amount] (molten
-                            // transfer, e.g. ["Iron", 16]) rather than item dicts. Route
-                            // them to inputFluids so crucible recipes carry molten
-                            // inputs instead of being dropped silently.
-                            JsonObject fj = tryParseFluidShapedInput(e);
-                            if (fj != null) {
-                                r.inputFluids.add(fj);
-                                continue;
-                            }
-                            JsonObject io = parseInputEntry(e);
-                            if (io != null) r.inputs.add(io);
-                        }
-                    } else if (arr.size() > 0 && arr.get(0).isJsonPrimitive() && !arr.get(0).getAsString().equals("item") && !arr.get(0).getAsString().equals("dict") && !arr.get(0).getAsString().equals("nbt") && !arr.get(0).getAsString().equals("dictframe")) {
-                        // fluid-typed single entry like ["BITUMEN", 16000] or ["REDMUD", 450] or pedestal 9-slot grid
-                        if (arr.size() >= 2 && arr.get(1).isJsonPrimitive() && arr.get(1).getAsJsonPrimitive().isNumber()) {
-                            JsonObject fj = parseFluidEntryJson(arr.get(0).getAsString(), arr.get(1).getAsInt());
-                            if (fj != null) r.inputFluids.add(fj);
-                        } else {
-                            JsonObject io = parseInputEntry(el);
-                            if (io != null) r.inputs.add(io);
-                        }
-                    } else {
-                        JsonObject io = parseInputEntry(el);
-                        if (io != null) r.inputs.add(io);
-                        else {
-                            for (JsonElement e : arr) {
-                                JsonObject io2 = parseInputEntry(e);
-                                if (io2 != null) r.inputs.add(io2);
-                            }
-                        }
-                    }
-                } else if (el.isJsonPrimitive()) {
-                    String fluidName = el.getAsString();
-                    if (!fluidName.isEmpty() && !fluidName.equalsIgnoreCase("NONE")) {
-                        JsonObject fj = parseFluidEntryJson(fluidName, 0);
-                        if (fj != null) r.inputFluids.add(fj);
-                    }
-                }
-            }
-            if (o.has("input") && o.get("input").isJsonPrimitive() && !o.get("input").isJsonNull()) {
-                String fluidName = o.get("input").getAsString();
-                if (!fluidName.isEmpty()) {
-                    JsonObject fj = parseFluidEntryJson(fluidName, 0);
-                    if (fj != null) r.inputFluids.add(fj);
-                }
-            }
-            String[] itemInKeys = new String[]{"inputItems", "inputItem", "inputFluids", "inputFluid"};
-            for (String key : itemInKeys) {
-                if (!o.has(key)) continue;
-                JsonElement el = o.get(key);
-                if (el == null || el.isJsonNull()) continue;
-                if (key.contains("Fluid")) {
-                    if (el.isJsonArray()) {
-                        JsonArray arr = el.getAsJsonArray();
-                        if (arr.size() > 0 && arr.get(0).isJsonArray()) {
-                            for (JsonElement e : arr) {
-                                JsonObject io = parseFluidEntry(e);
-                                if (io != null) r.inputFluids.add(io);
-                            }
-                        } else if (arr.size() > 0) {
-                            JsonObject io = parseFluidEntry(el);
-                            if (io != null) r.inputFluids.add(io);
-                        }
-                    }
-                } else {
-                    if (el.isJsonArray()) {
-                        JsonArray arr = el.getAsJsonArray();
-                        if (arr.size() > 0 && arr.get(0).isJsonArray()) {
-                            for (JsonElement e : arr) {
-                                JsonObject io = parseInputEntry(e);
-                                if (io != null) r.inputs.add(io);
-                            }
-                        } else if (arr.size() > 0) {
-                            JsonObject io = parseInputEntry(el);
-                            if (io != null) r.inputs.add(io);
-                        }
-                    }
-                }
-            }
-            String[] outputKeys = new String[]{"output", "output1", "output2", "output3", "output4", "output0", "outputItem", "outputItems", "outputs", "solid", "solidOutput", "byproduct", "byproducts", "outputFluid", "outputFluids", "fluidOutput", "byproducts"};
-            for (String key : outputKeys) {
-                if (!o.has(key)) continue;
-                JsonElement el = o.get(key);
-                if (el == null || el.isJsonNull()) continue;
-                if (key.contains("Fluid") || key.equals("fluidOutput")) {
-                    if (el.isJsonArray()) {
-                        JsonArray arr = el.getAsJsonArray();
-                        if (arr.size() > 0 && arr.get(0).isJsonArray()) {
-                            for (JsonElement e : arr) {
-                                JsonObject io = parseFluidEntry(e);
-                                if (io != null) r.outputFluids.add(io);
-                            }
-                        } else if (arr.size() > 0) {
-                            JsonObject io = parseFluidEntry(el);
-                            if (io != null) r.outputFluids.add(io);
-                        }
-                    } else if (el.isJsonPrimitive()) {
-                        String fluidName = el.getAsString();
-                        JsonObject fj = parseFluidEntryJson(fluidName, 0);
-                        if (fj != null) r.outputFluids.add(fj);
-                    }
-                } else if (el.isJsonArray()) {
-                    JsonArray arr = el.getAsJsonArray();
-                    boolean fluidLike = arr.size() >= 2 && arr.get(0).isJsonPrimitive() && arr.get(1).isJsonPrimitive() && arr.get(1).getAsJsonPrimitive().isNumber()
-                            && !arr.get(0).getAsString().contains(":") && !arr.get(0).getAsString().startsWith("hbm:") && !arr.get(0).getAsString().startsWith("minecraft:");
-                    // Fluid outputs occur under output/output1..output4 (electrolyser,
-                    // fractions, crucible molten, hydrotreating): the bare name plus
-                    // mB amount is a FluidStack, not an ItemStack. Item outputs always
-                    // carry a modid colon, so the heuristic is safe on all output keys.
-                    if (fluidLike && arr.size() <= 3 && isFluidNameHeuristic(arr.get(0).getAsString())) {
-                        JsonObject fj = parseFluidEntryJson(arr.get(0).getAsString(), arr.get(1).getAsInt());
-                        if (fj != null) r.outputFluids.add(fj);
-                    } else if (arr.size() > 0 && arr.get(0).isJsonArray()) {
-                        for (JsonElement e : arr) {
-                            // Crucible molten outputs pair each inner array with a
-                            // fluid amount (["Steel", 16]); detect before item parse.
-                            JsonObject fj = tryParseFluidShapedInput(e);
-                            if (fj != null) {
-                                r.outputFluids.add(fj);
-                                continue;
-                            }
-                            JsonObject io = parseOutputEntry(e);
-                            if (io != null) r.outputs.add(io);
-                        }
-                    } else if (arr.size() > 0 && arr.get(0).isJsonPrimitive() && arr.get(0).getAsString().equals("single")) {
-                        JsonObject io = parseOutputEntry(el);
-                        if (io != null) r.outputs.add(io);
-                    } else if (arr.size() > 0 && arr.get(0).isJsonArray()) {
-                        JsonObject io = parseOutputEntry(el);
-                        if (io != null) r.outputs.add(io);
-                    } else if (arr.size() > 0 && arr.get(0).isJsonPrimitive() && !arr.get(0).getAsString().contains(":")) {
-                        // Bare-material output [name, quanta] is molten-fluid
-                        // transfer (e.g. Rotary ["Steel",72], Crucible molten).
-                        // Item outputs always carry a modid colon, so route bare
-                        // tokens to outputFluids instead of dropping them.
-                        if (isFluidNameHeuristic(arr.get(0).getAsString()) && arr.size() >= 2 && arr.get(1).isJsonPrimitive() && arr.get(1).getAsJsonPrimitive().isNumber()) {
-                            JsonObject fj = parseFluidEntryJson(arr.get(0).getAsString(), arr.get(1).getAsInt());
-                            if (fj != null) r.outputFluids.add(fj);
-                        } else {
-                            JsonObject io = parseOutputEntry(el);
-                            if (io != null) r.outputs.add(io);
-                        }
-                    } else {
-                        JsonObject io = parseOutputEntry(el);
-                        if (io != null) r.outputs.add(io);
-                        else {
-                            for (JsonElement e : arr) {
-                                JsonObject io2 = parseOutputEntry(e);
-                                if (io2 != null) r.outputs.add(io2);
-                            }
-                        }
-                    }
-                } else if (el.isJsonPrimitive()) {
-                    String fluidName = el.getAsString();
-                    JsonObject fj = parseFluidEntryJson(fluidName, 0);
-                    if (fj != null) r.outputFluids.add(fj);
-                }
-            }
-            if (o.has("fluid") && o.get("fluid").isJsonArray()) {
-                JsonElement fe = o.get("fluid");
-                JsonArray fa = fe.getAsJsonArray();
-                if (fa.size() > 0 && fa.get(0).isJsonArray()) {
-                    for (JsonElement e : fa) {
-                        JsonObject io = parseFluidEntry(e);
-                        if (io != null) r.inputFluids.add(io);
-                    }
-                } else {
-                    JsonObject io = parseFluidEntry(fe);
-                    if (io != null) r.inputFluids.add(io);
-                }
-            }
-            if (o.has("fluidOutput") && o.get("fluidOutput").isJsonArray()) {
-                JsonElement fe = o.get("fluidOutput");
-                JsonArray fa = fe.getAsJsonArray();
-                if (fa.size() > 0 && fa.get(0).isJsonArray()) {
-                    for (JsonElement e : fa) {
-                        JsonObject io = parseFluidEntry(e);
-                        if (io != null) r.outputFluids.add(io);
-                    }
-                } else {
-                    JsonObject io = parseFluidEntry(fe);
-                    if (io != null) r.outputFluids.add(io);
-                }
-            }
-            if (o.has("fluidIn") && o.get("fluidIn").isJsonArray()) {
-                JsonElement fe = o.get("fluidIn");
-                JsonArray fa = fe.getAsJsonArray();
-                if (fa.size() > 0 && fa.get(0).isJsonArray()) {
-                    for (JsonElement e : fa) {
-                        JsonObject io = parseFluidEntry(e);
-                        if (io != null) r.inputFluids.add(io);
-                    }
-                } else {
-                    JsonObject io = parseFluidEntry(fe);
-                    if (io != null) r.inputFluids.add(io);
-                }
-            }
-            if (o.has("outputFluid") && o.get("outputFluid").isJsonArray()) {
-                for (JsonElement e : o.getAsJsonArray("outputFluid")) {
-                    JsonObject io = parseFluidEntry(e);
-                    if (io != null) r.outputFluids.add(io);
-                }
-            }
-            if (o.has("inputFluid") && o.get("inputFluid").isJsonArray()) {
-                for (JsonElement e : o.getAsJsonArray("inputFluid")) {
-                    JsonObject io = parseFluidEntry(e);
-                    if (io != null) r.inputFluids.add(io);
-                }
-            }
-            if (o.has("input") && o.get("input").isJsonArray()) {
-                JsonArray arr = o.getAsJsonArray("input");
-                for (int idx = 0; idx < arr.size(); idx++) {
-                    JsonElement e = arr.get(idx);
-                    if (e == null || e.isJsonNull()) continue;
-                    if (e.isJsonArray() && e.getAsJsonArray().size() > 0) {
-                        JsonArray cell = e.getAsJsonArray();
-                        if (cell.size() > 0 && cell.get(0).isJsonPrimitive()) {
-                            String kind = cell.get(0).getAsString();
-                            if (kind.equals("dict") || kind.equals("item") || kind.equals("dictframe")) {
-                                JsonObject io = parseInputEntry(e);
-                                if (io != null && !(io.has("dict") && io.get("dict").getAsString().equals(kind))) {
-                                    boolean dup = false;
-                                    for (JsonObject ex : r.inputs) {
-                                        if (ex.has("dict") && io.has("dict") && ex.get("dict").getAsString().equals(io.get("dict").getAsString())
-                                                && ex.has("amount") && io.has("amount") && ex.get("amount").getAsInt() == io.get("amount").getAsInt()) {
-                                            dup = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!dup) r.inputs.add(io);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if (r.inputs.isEmpty() && r.outputs.isEmpty() && r.inputFluids.isEmpty() && r.outputFluids.isEmpty())
-                return null;
-            if (r.displayName == null || r.displayName.isEmpty()) {
-                r.displayName = r.name;
-            }
+            RecipeScalarReader.read(o, r, fileName);
+            readOutputType(o, r);
+
+            MachineRecipeService.NormalizedRecipe expanded = RecipeNestedExpander.expand(
+                    o, machine, fileName, MachineRecipeParser::normalizeSingleRecipe);
+            if (expanded != null) return expanded;
+
+            RecipeInputReader.read(o, r);
+            RecipeOutputReader.read(o, r);
+            if (RecipeKeys.isEmptyRecipe(r)) return null;
+            if (r.displayName == null || r.displayName.isEmpty()) r.displayName = r.name;
             return r;
-        } catch (Throwable ignored) {
+        } catch (RuntimeException malformed) {
+            // A hand-edited or truncated recipe file must not abort the whole
+            // config scan, but it must be visible: the caller reports the file.
+            java.util.logging.Logger.getLogger("CortexDrone").fine(
+                    "Skipping malformed machine recipe in " + fileName + ": " + malformed);
             return null;
         }
+    }
+
+    /** The shared fluid {@code outputType} some mixer-style files declare. */
+    private static void readOutputType(JsonObject recipe, MachineRecipeService.NormalizedRecipe out) {
+        if (!recipe.has("outputType")) return;
+        JsonObject fluid = parseFluidEntryJson(recipe.get("outputType").getAsString(), 0);
+        if (fluid == null) return;
+        // The amount comes from each nested recipe, not the outer object.
+        fluid.remove("amount");
+        out.outputFluids.add(fluid);
     }
 
     static MachineRecipeService.NormalizedRecipe normalizeSingleRecipe(JsonObject o, String machine, String fileName) {
@@ -394,7 +89,8 @@ final class MachineRecipeParser {
             if (!a.get(1).isJsonPrimitive() || !a.get(1).getAsJsonPrimitive().isNumber()) return null;
             String name = a.get(0).getAsString();
             if (name == null || name.isEmpty()) return null;
-            if (name.contains(":") || name.startsWith("hbm:") || name.startsWith("minecraft:")) return null;
+            if (name.contains(":") || name.startsWith(HbmDescriptor.MOD_ID + ":")
+                    || name.startsWith("minecraft:")) return null;
             if ("dict".equals(name) || "item".equals(name) || "nbt".equals(name) || "dictframe".equals(name))
                 return null;
             if (!isFluidNameHeuristic(name)) return null;

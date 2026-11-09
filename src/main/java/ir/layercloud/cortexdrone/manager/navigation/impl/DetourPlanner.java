@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
@@ -35,8 +37,8 @@ final class DetourPlanner {
                 {state.goalX - 6.0D, state.goalY + 3.0D, state.goalZ - 6.0D},
                 {state.goalX + 6.0D, state.goalY + 6.0D, state.goalZ - 6.0D},
                 {state.goalX - 6.0D, state.goalY + 6.0D, state.goalZ + 6.0D},
-                {drone.posX, Math.min(253.0D, drone.posY + 8.0D), drone.posZ},
-                {drone.posX, Math.max(3.0D, drone.posY - 6.0D), drone.posZ},
+                {drone.posX, WorldBounds.clampFlightY(drone.posY + 8.0D), drone.posZ},
+                {drone.posX, WorldBounds.clampFlightY(drone.posY - 6.0D), drone.posZ},
                 {drone.posX + 6.0D, drone.posY, drone.posZ},
                 {drone.posX - 6.0D, drone.posY, drone.posZ},
                 {drone.posX, drone.posY, drone.posZ + 6.0D},
@@ -51,21 +53,20 @@ final class DetourPlanner {
             int bx = (int) Math.floor(candidate[0]);
             int by = (int) Math.floor(candidate[1]);
             int bz = (int) Math.floor(candidate[2]);
-            if (by <= 2 || by >= 254) continue;
+            if (!WorldBounds.diggable(by)) continue;
             if (!world.blockExists(bx, by, bz)) continue;
             if (!ItemClassifier.isPassableVoxel(world, bx, by, bz)) continue;
             if (!ItemClassifier.isPassableVoxel(world, bx, by + 1, bz)) continue;
             long key = pack(bx, by, bz);
             if (rejected.contains(key)) continue;
             rejected.add(key);
-            return new double[]{bx + 0.5D, by + 0.35D, bz + 0.5D};
+            return new double[]{bx + DroneGeometry.CELL_CENTER,
+                by + DroneGeometry.AIM_OFFSET, bz + DroneGeometry.CELL_CENTER};
         }
         return null;
     }
 
     private static long pack(int x, int y, int z) {
-        return (((long) x & 0x3FFFFFFL) << 38)
-                | (((long) z & 0x3FFFFFFL) << 12)
-                | ((long) y & 0xFFFL);
+        return ir.layercloud.cortexdrone.service.world.BlockPosKey.pack(x, y, z);
     }
 }

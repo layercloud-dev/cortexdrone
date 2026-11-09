@@ -5,9 +5,9 @@ if (!filter) {
   return { ok: false, error: 'craft_items needs filter (the result item to craft)',
     hint: 'e.g. filter:"torch"' };
 }
-var wanted = clamp(cfg.count || 1, 1, 2304);
+var wanted = clamp(cfg.count || 1, 1, MAX_TRANSFER_COUNT);
 var withdraw = cfg.withdraw !== false;
-var radius = clamp(cfg.radius || 32, 4, 64);
+var radius = clamp(cfg.radius || LIMITS.inventoryRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.scanRadiusMax);
 
 var recipes = drone.getRecipes({ filter: filter });
 var list = (recipes && recipes.recipes) || [];
@@ -111,12 +111,12 @@ var crafted = 0;
 var failures = 0;
 // One craft call is capped at 256 result items by the action; loop for more.
 var passes = 0;
-var maxPasses = Math.ceil(wanted / 256) + 1;
+var maxPasses = Math.ceil(wanted / SKILL_LIMITS.craftBatch) + 1;
 while (crafted < wanted && passes < maxPasses) {
   passes++;
   var remaining = wanted - crafted;
   try {
-    var result = drone.craft({ filter: filter, count: Math.min(256, remaining) });
+    var result = drone.craft({ filter: filter, count: Math.min(SKILL_LIMITS.craftBatch, remaining) });
     var produced = (result && Number(result.crafted)) || 0;
     crafted += produced;
     if (produced <= 0) break;

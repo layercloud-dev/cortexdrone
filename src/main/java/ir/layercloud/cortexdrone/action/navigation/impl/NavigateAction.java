@@ -1,5 +1,8 @@
 package ir.layercloud.cortexdrone.action.navigation.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.NavigationTuning;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.action.Action;
@@ -58,7 +61,7 @@ public final class NavigateAction implements Action<NavigationContext> {
         int goalBz = MathHelper.floor_double(context.targetZ());
         int topGoal = ChunkAccess.ensureBlockLoaded(world, goalBx, goalBz)
                 ? world.getHeightValue(goalBx, goalBz) : (int) Math.floor(drone.posY);
-        boolean goalOnSurface = context.targetY() >= topGoal - 3;
+        boolean goalOnSurface = context.targetY() >= topGoal - NavigationTuning.SURFACE_TOLERANCE;
 
         double gx = context.targetX();
         double gy = context.targetY();
@@ -68,39 +71,43 @@ public final class NavigateAction implements Action<NavigationContext> {
         double effGz = gz;
         double horizDist = Math.hypot(gx - drone.posX, gz - drone.posZ);
 
-        if (!inOpenSky && goalOnSurface && (gy - drone.posY > 6.0 || horizDist > 20.0)) {
+        if (!inOpenSky && goalOnSurface && (gy - drone.posY > NavigationTuning.SURFACE_DETOUR_HEIGHT
+                || horizDist > NavigationTuning.SURFACE_DETOUR_DISTANCE)) {
             Breadcrumb anchor = this.breadcrumbService.surfaceAnchor(ctrl);
             boolean anchorUsable = false;
             if (anchor != null
-                    && Math.hypot(anchor.getX() - drone.posX, anchor.getZ() - drone.posZ) <= 24.0
+                    && Math.hypot(anchor.getX() - drone.posX, anchor.getZ() - drone.posZ)
+                    <= NavigationTuning.SURFACE_ANCHOR_RADIUS
                     && ItemClassifier.isPassableVoxel(world, anchor.getX(), anchor.getY(), anchor.getZ())
                     && ItemClassifier.isPassableVoxel(world, anchor.getX(), anchor.getY() + 1, anchor.getZ())) {
-                effGx = anchor.getX() + 0.5;
-                effGy = anchor.getY() + 1.0;
-                effGz = anchor.getZ() + 0.5;
+                effGx = anchor.getX() + DroneGeometry.CELL_CENTER;
+                effGy = anchor.getY() + NavigationTuning.ANCHOR_HEIGHT_OFFSET;
+                effGz = anchor.getZ() + DroneGeometry.CELL_CENTER;
                 anchorUsable = true;
             }
             if (!anchorUsable) {
                 int[] openAbove = FlightPathfinder.findNearestPassableVoxel(
-                        world, curBx, Math.min(250, topCur + 2), curBz, 4);
+                        world, curBx, Math.min(WorldBounds.MAX_LANDING_Y, topCur + 2), curBz, 4);
                 if (openAbove != null) {
-                    effGx = openAbove[0] + 0.5;
-                    effGy = openAbove[1] + 0.35;
-                    effGz = openAbove[2] + 0.5;
+                    effGx = openAbove[0] + DroneGeometry.CELL_CENTER;
+                    effGy = openAbove[1] + DroneGeometry.AIM_OFFSET;
+                    effGz = openAbove[2] + DroneGeometry.CELL_CENTER;
                 } else {
-                    effGx = curBx + 0.5;
-                    effGy = Math.min(250, topCur + 2.5);
-                    effGz = curBz + 0.5;
+                    effGx = curBx + DroneGeometry.CELL_CENTER;
+                    effGy = Math.min(WorldBounds.MAX_LANDING_Y, topCur + NavigationTuning.ESCAPE_HEIGHT_OFFSET);
+                    effGz = curBz + DroneGeometry.CELL_CENTER;
                 }
             }
-        } else if (horizDist > DroneSpeed.strideTrigger(inOpenSky ? 18.0 : 32.0,
+        } else if (horizDist > DroneSpeed.strideTrigger(inOpenSky ? NavigationTuning.STRIDE_TRIGGER_OPEN_SKY
+                : NavigationTuning.STRIDE_TRIGGER_SHELTERED,
                 this.state.speedMultiplier)) {
             // The stride must cover the braking distance at the current speed,
             // otherwise the drone enters ease-in, decelerates, and starts a new
             // sub-leg before it ever reaches cruise. That is what capped a 5x
             // drone at ~20 b/s even though its cap was 75 b/s.
             double step = DroneSpeed.stride(this.state.speedMultiplier,
-                    inOpenSky ? 16.0 : 24.0);
+                    inOpenSky ? NavigationTuning.STRIDE_STEP_OPEN_SKY
+                    : NavigationTuning.STRIDE_STEP_SHELTERED);
             effGx = drone.posX + (gx - drone.posX) / horizDist * step;
             effGz = drone.posZ + (gz - drone.posZ) / horizDist * step;
             if (inOpenSky) {
@@ -109,21 +116,21 @@ public final class NavigateAction implements Action<NavigationContext> {
                 // by an endpoint-only height check.
                 int topSub = highestOnStride(world, drone.posX, drone.posZ,
                         effGx, effGz, curBy);
-                effGy = Math.max(gy, Math.max(topSub, topCur) + 4.5);
+                effGy = Math.max(gy, Math.max(topSub, topCur) + NavigationTuning.STRIDE_CLEARANCE);
             } else {
                 effGy = drone.posY + (gy - drone.posY) * (step / horizDist);
             }
         }
 
-        double distGoalMove = Double.isNaN(this.state.pathGoalX) ? 999.0 : Math.sqrt(
+        double distGoalMove = Double.isNaN(this.state.pathGoalX) ? NavigationTuning.NO_GOAL_SENTINEL : Math.sqrt(
                 (effGx - this.state.pathGoalX) * (effGx - this.state.pathGoalX)
                         + (effGy - this.state.pathGoalY) * (effGy - this.state.pathGoalY)
                         + (effGz - this.state.pathGoalZ) * (effGz - this.state.pathGoalZ));
 
         boolean needsRepath = this.state.pathWaypoints.isEmpty()
                 || (this.state.pathIndex >= this.state.pathWaypoints.size() && this.state.repathCooldown <= 0)
-                || (distGoalMove > 0.85 && this.state.repathCooldown <= 0)
-                || (this.state.stuckTicks >= 12 && this.state.repathCooldown <= 0);
+                || (distGoalMove > NavigationTuning.REPATH_DISTANCE && this.state.repathCooldown <= 0)
+                || (this.state.stuckTicks >= NavigationTuning.STUCK_REPATH_TICKS && this.state.repathCooldown <= 0);
         if (needsRepath) {
             List<double[]> waypoints = this.pathfinder.findFlightPath(
                     world, ctrl, this.state,
@@ -134,7 +141,9 @@ public final class NavigateAction implements Action<NavigationContext> {
             this.state.pathGoalX = effGx;
             this.state.pathGoalY = effGy;
             this.state.pathGoalZ = effGz;
-            this.state.repathCooldown = DroneSpeed.repathTicks(horizDist > 18.0 ? 8 : 12,
+            this.state.repathCooldown = DroneSpeed.repathTicks(horizDist > NavigationTuning.REPATH_NEAR_DISTANCE
+                    ? NavigationTuning.REPATH_COOLDOWN_NEAR
+                    : NavigationTuning.REPATH_COOLDOWN_FAR,
                     this.state.speedMultiplier);
         }
 
@@ -149,7 +158,7 @@ public final class NavigateAction implements Action<NavigationContext> {
             if (distWp <= DroneSpeed.waypointRadius(this.state.speedMultiplier) && !last) {
                 this.state.pathIndex++;
             } else if (distWp <= DroneSpeed.waypointRadius(this.state.speedMultiplier)
-                    && (this.state.lastPathPartial || distWpToGoal > 0.90)
+                    && (this.state.lastPathPartial || distWpToGoal > NavigationTuning.WAYPOINT_RETARGET_DISTANCE)
                     && this.state.repathCooldown <= 0) {
                 this.state.pathIndex++;
                 break;
@@ -166,12 +175,12 @@ public final class NavigateAction implements Action<NavigationContext> {
         int away = MathHelper.floor_double(activeWp[1]);
         int awz = MathHelper.floor_double(activeWp[2]);
         if (!ItemClassifier.isPassableVoxel(world, awx, away, awz)
-                || !ItemClassifier.isPassableVoxel(world, awx, away + 1, awz)) {
-            FlightPathfinder.setDroneFlightTarget(drone, drone.posX, drone.posY, drone.posZ, 0.05f);
-            drone.motionX *= 0.3;
-            drone.motionY *= 0.3;
-            drone.motionZ *= 0.3;
-            this.state.stuckTicks = Math.max(this.state.stuckTicks, 6);
+                || !ItemClassifier.isPassableVoxel(world, awx, away + NavigationTuning.BODY_HEIGHT, awz)) {
+            FlightPathfinder.setDroneFlightTarget(drone, drone.posX, drone.posY, drone.posZ, NavigationTuning.STOP_DELTA);
+            drone.motionX *= NavigationTuning.BRAKE_DAMPING;
+            drone.motionY *= NavigationTuning.BRAKE_DAMPING;
+            drone.motionZ *= NavigationTuning.BRAKE_DAMPING;
+            this.state.stuckTicks = Math.max(this.state.stuckTicks, NavigationTuning.BLOCKED_STUCK_TICKS);
             this.state.clearPath();
             context.result(NavigateResult.blocked(this.state.lastPathPartial));
             context.complete();
@@ -179,7 +188,7 @@ public final class NavigateAction implements Action<NavigationContext> {
         }
 
         this.state.solidWaypointHits.remove(FlightPathfinder.packBlockPos(awx, away, awz));
-        FlightPathfinder.setDroneFlightTarget(drone, activeWp[0], activeWp[1], activeWp[2], 0.1f);
+        FlightPathfinder.setDroneFlightTarget(drone, activeWp[0], activeWp[1], activeWp[2], NavigationTuning.WAYPOINT_DELTA);
         context.countTick();
 
         if (drone.getDistance(context.targetX(), context.targetY(), context.targetZ())
@@ -208,7 +217,7 @@ public final class NavigateAction implements Action<NavigationContext> {
         double dx = toX - fromX;
         double dz = toZ - fromZ;
         double length = Math.hypot(dx, dz);
-        int samples = Math.max(1, (int) Math.ceil(length / 8.0));
+        int samples = Math.max(1, (int) Math.ceil(length / NavigationTuning.STRIDE_SAMPLE_STEP));
         int top = fallback;
         for (int i = 1; i <= samples; i++) {
             double t = (double) i / samples;

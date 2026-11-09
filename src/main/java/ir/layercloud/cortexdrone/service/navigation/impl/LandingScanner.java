@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
 import ir.layercloud.cortexdrone.service.navigation.LandingSpot;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import lombok.experimental.UtilityClass;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.util.MathHelper;
@@ -36,8 +37,8 @@ public final class LandingScanner {
     public static final int MAX_SCAN_DOWN = 48;
     /** How far above the requested Y a landing may be found (hill, canopy gap). */
     public static final int MAX_SCAN_UP = 8;
-    private static final int MIN_Y = 3;
-    private static final int MAX_Y = 250;
+    private static final int MIN_Y = WorldBounds.MIN_SCAN_Y + 1;
+    private static final int MAX_Y = WorldBounds.MAX_LANDING_Y;
     /**
      * Columns a single search may inspect. A landing search runs on the server
      * thread; 625 columns x 57 rows of block reads would stall a tick. The ring
@@ -45,6 +46,11 @@ public final class LandingScanner {
      * only bounds the pathological "no landing anywhere" case.
      */
     private static final int MAX_COLUMNS = 384;
+    /** Horizontal search-radius bounds; the tool schema aliases these. */
+    public static final int MIN_RADIUS = 1;
+    public static final int MAX_RADIUS = 24;
+    /** Default horizontal search radius. */
+    public static final int DEFAULT_RADIUS = 12;
 
     /** World-backed probe used by every public entry point. */
     public static LandingProbe probe(World world) {
@@ -74,7 +80,7 @@ public final class LandingScanner {
     public static LandingSpot findSafeSpot(LandingProbe probe, int cx, int cz, int refY,
                                            int radius, boolean requireOpenSky) {
         if (probe == null) return null;
-        int r = Math.max(1, Math.min(24, radius));
+        int r = Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, radius));
         LandingSpot best = null;
         double bestScore = Double.MAX_VALUE;
         // Ring order returns the nearest column first, which is what a landing

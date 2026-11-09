@@ -44,7 +44,7 @@ var clearFailed = 0;
 if (cfg.clear !== false && plan.clear) {
   var clearList = plan.clear.slice(0);
   clearList.sort(function (a, b) { return b.y - a.y; });
-  var clearCap = clamp(cfg.max_clear || clearList.length, 0, 900);
+  var clearCap = clamp(cfg.max_clear || clearList.length, 0, SKILL_LIMITS.clearCapMax);
   for (var c = 0; c < clearList.length && c < clearCap; c++) {
     var obstacle = clearList[c];
     try {
@@ -62,8 +62,8 @@ var alreadyThere = 0;
 var failed = 0;
 var substituted = 0;
 var consecutive = 0;
-var maxFailures = clamp(cfg.max_failures || 12, 1, 60);
-var limit = clamp(cfg.max_place || tasks.length, 1, 800);
+var maxFailures = clamp(cfg.max_failures || 12, 1, SKILL_LIMITS.buildFailuresMax);
+var limit = clamp(cfg.max_place || tasks.length, 1, SKILL_LIMITS.budget800);
 var attemptedWithdraw = {};
 var used = {};
 

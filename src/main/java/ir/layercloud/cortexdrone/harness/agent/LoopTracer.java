@@ -15,8 +15,11 @@ import net.minecraft.entity.player.EntityPlayerMP;
 public final class LoopTracer {
     public static String maskKey(String key) {
         if (key == null || key.isEmpty()) return "<empty>";
-        String tail = key.substring(key.length() - 2);
-        if (key.length() <= 12) return key.substring(0, Math.min(3, key.length())) + "..." + tail;
+        // A short key still needs a tail and a prefix; substring(length - 2)
+        // crashed the LLM-failure log path for one-character keys.
+        String tail = key.length() >= 2 ? key.substring(key.length() - 2) : key;
+        if (key.length() <= 6) return key;
+        if (key.length() <= 12) return key.substring(0, 3) + "..." + tail;
         return key.substring(0, 8) + "..." + tail + " (len=" + key.length() + ")";
     }
 

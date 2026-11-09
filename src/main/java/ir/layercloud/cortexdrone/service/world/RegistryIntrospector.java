@@ -5,13 +5,8 @@ import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.init.Blocks;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.ISidedInventory;
 import net.minecraft.item.*;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityChest;
-import net.minecraft.tileentity.TileEntityEnderChest;
-import net.minecraft.tileentity.TileEntityFurnace;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
@@ -34,10 +29,15 @@ public final class RegistryIntrospector {
     private static final Map<Integer, Boolean> ORE_BLOCK_CACHE = new ConcurrentHashMap<>();
     private static final Map<Integer, Boolean> LOG_BLOCK_CACHE = new ConcurrentHashMap<>();
     private static final Map<Integer, Boolean> LEAF_BLOCK_CACHE = new ConcurrentHashMap<>();
-    private static final Map<Class<?>, Boolean> STORAGE_TILE_CLASS_CACHE = new ConcurrentHashMap<>();
 
     private static volatile Set<String> cachedUndergroundTokens = Collections.emptySet();
-    private static volatile int lastOreDictCount = -1;
+    /**
+     * Cache key for the derived token set: the tag count it was built from.
+     *
+     * <p>Not a second registry watcher — {@link OreDictIndex#tagCount()} is the
+     * authority. This merely records when the derived set is stale.</p>
+     */
+    private static volatile int undergroundTokensBuiltFrom = -1;
 
     private static Method blockIsWoodMethod = null;
     private static Method blockIsLeavesMethod = null;
@@ -280,9 +280,11 @@ public final class RegistryIntrospector {
      */
     public static Set<String> getUndergroundResourceTokens() {
         try {
-            String[] oreNames = OreDictionary.getOreNames();
-            int len = oreNames.length;
-            if (len != lastOreDictCount || cachedUndergroundTokens.isEmpty()) {
+            // The tag-count watcher lives in OreDictIndex; there is one counter.
+            OreDictIndex.refresh();
+            int len = OreDictIndex.tagCount();
+            if (len < 0) len = 0;
+            if (len != undergroundTokensBuiltFrom || cachedUndergroundTokens.isEmpty()) {
                 Set<String> tokens = new HashSet<>();
                 tokens.add("ore");
                 tokens.add("ores");
@@ -296,7 +298,7 @@ public final class RegistryIntrospector {
                 tokens.add("lava");
                 tokens.add("oil");
                 String[] prefixes = new String[]{"ore", "denseore", "poorore", "cluster", "gem", "crystal", "ingot", "dust", "nugget", "billet", "raw"};
-                for (String name : oreNames) {
+                for (String name : OreDictIndex.tagNames()) {
                     if (name == null) continue;
                     for (String p : prefixes) {
                         if (name.startsWith(p) && name.length() > p.length() && Character.isUpperCase(name.charAt(p.length()))) {
@@ -311,8 +313,8 @@ public final class RegistryIntrospector {
                         }
                     }
                 }
-                cachedUndergroundTokens = tokens;
-                lastOreDictCount = len;
+                cachedUndergroundTokens = Collections.unmodifiableSet(tokens);
+                undergroundTokensBuiltFrom = len;
             }
         } catch (Throwable ignored) {
         }
@@ -334,77 +336,14 @@ public final class RegistryIntrospector {
 
     // ==================== Dynamic Storage Container vs. Processing Machine Detection ====================
 
+    /** @see ContainerTiles#isFurnace(World, TileEntity) */
     public static boolean isFurnaceTile(World world, TileEntity te) {
-        if (te == null) return false;
-        if (te instanceof TileEntityFurnace) return true;
-        if (te instanceof IInventory && world != null) {
-            Block b = world.getBlock(te.xCoord, te.yCoord, te.zCoord);
-            if (b == Blocks.furnace || b == Blocks.lit_furnace) return true;
-            String reg = b != null ? Block.blockRegistry.getNameForObject(b) : "";
-            List<String> tokens = LexicalItemMatcher.tokenize(reg);
-            return tokens.contains("furnace");
-        }
-        return false;
+        return ContainerTiles.isFurnace(world, te);
     }
 
+    /** @see ContainerTiles#isStorage(World, TileEntity) */
     public static boolean isStorageContainerTile(World world, TileEntity te) {
-        if (!(te instanceof IInventory) || te instanceof TileEntityEnderChest) return false;
-        if (te instanceof TileEntityChest) return true;
-        if (isFurnaceTile(world, te)) return false;
-
-        IInventory inv = (IInventory) te;
-        int totalSlots = inv.getSizeInventory();
-        if (totalSlots < 5) return false;
-
-        if (world != null) {
-            Block b = world.getBlock(te.xCoord, te.yCoord, te.zCoord);
-            if (b instanceof BlockChest) return true;
-        }
-
-        Class<?> cls = te.getClass();
-        Boolean cached = STORAGE_TILE_CLASS_CACHE.get(cls);
-        if (cached != null) return cached;
-
-        String clsName = cls.getName().toLowerCase();
-        // OpenComputers internal components/cases/racks/assemblers are not general storage chests
-        if (clsName.contains("li.cil.oc") || clsName.contains("opencomputers")) {
-            STORAGE_TILE_CLASS_CACHE.put(cls, Boolean.FALSE);
-            return false;
-        }
-
-        // True storage containers (IronChests, Crates, Barrels, Lockers, Drawers) have "chest", "crate", "barrel", "locker", "cabinet", "storage", "safe" in class or inventory name
-        String invName = "";
-        try {
-            invName = inv.getInventoryName() != null ? inv.getInventoryName().toLowerCase() : "";
-        } catch (Throwable ignored) {
-        }
-        String combined = clsName + " " + invName;
-        boolean explicitContainer = combined.contains("chest") || combined.contains("crate") || combined.contains("barrel")
-                || combined.contains("locker") || combined.contains("cabinet") || combined.contains("safe") || combined.contains("backpack");
-
-        if (!explicitContainer) {
-            // Processing machines implement ISidedInventory (for separate input/fuel/output sides) or IFluidHandler
-            if (te instanceof ISidedInventory || te instanceof IFluidHandler) {
-                STORAGE_TILE_CLASS_CACHE.put(cls, Boolean.FALSE);
-                return false;
-            }
-            // Behavioral check: in a general storage container, all slots uniformly accept a standard building block
-            try {
-                ItemStack probe = new ItemStack(Blocks.cobblestone, 1, 0);
-                int checkSlots = Math.min(totalSlots, 6);
-                for (int i = 0; i < checkSlots; i++) {
-                    if (!inv.isItemValidForSlot(i, probe)) {
-                        STORAGE_TILE_CLASS_CACHE.put(cls, Boolean.FALSE);
-                        return false;
-                    }
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-
-        boolean result = explicitContainer || totalSlots >= 9;
-        STORAGE_TILE_CLASS_CACHE.put(cls, result);
-        return result;
+        return ContainerTiles.isStorage(world, te);
     }
 
     // ==================== Delegated Entity & Biome Classification ====================

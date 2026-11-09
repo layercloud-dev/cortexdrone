@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.visuals.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
@@ -21,7 +22,7 @@ public final class SpawnParticlesAction implements Action<VisualsContext> {
         Drone drone = context.controller().drone;
         World world = drone.worldObj;
         double x = request.isCoordinates() ? request.getX() : drone.posX;
-        double y = request.isCoordinates() ? request.getY() : drone.posY + 0.35;
+        double y = request.isCoordinates() ? request.getY() : drone.posY + DroneGeometry.AIM_OFFSET;
         double z = request.isCoordinates() ? request.getZ() : drone.posZ;
         if (world instanceof WorldServer) {
             ((WorldServer) world).func_147487_a(

@@ -24,7 +24,7 @@ finds the deficit first, pulls it, then crafts.
 ## Parameters
 
 - `filter` - result item to craft, e.g. `torch`, `stick`, `wooden_pickaxe`.
-- `count` - number of result items wanted, 1..2304. Default 1.
+- `count` - number of result items wanted, 1..MAX_TRANSFER_COUNT. Default 1.
 - `withdraw` - default `true`: pull missing ingredients from the player and
   nearby chests.
 - `radius` - ingredient search radius 4..64. Default 32.

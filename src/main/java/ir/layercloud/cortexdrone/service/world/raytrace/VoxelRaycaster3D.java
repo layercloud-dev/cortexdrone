@@ -168,9 +168,19 @@ public final class VoxelRaycaster3D {
     /**
      * Exact 3D DDA voxel raycast returning the first solid non-liquid block hit and the adjacent air face.
      */
+    /** Shortest ray this raycaster will trace; matches the tool schema. */
+    public static final int MIN_DISTANCE = 1;
+    /** Longest ray this raycaster will trace; matches the tool schema. */
+    public static final int MAX_DISTANCE = 128;
+
+    /** Clamps a requested ray length to the range the schema advertises. */
+    public static double clampDistance(double requested) {
+        return Math.min(MAX_DISTANCE, Math.max(MIN_DISTANCE, requested));
+    }
+
     public static JsonObject raycastSolidBlock(World world, double eyeX, double eyeY, double eyeZ, double dirX, double dirY, double dirZ, double maxDist) {
         if (world == null) return null;
-        double limit = Math.min(128.0, Math.max(4.0, maxDist));
+        double limit = clampDistance(maxDist);
         int x = MathHelper.floor_double(eyeX);
         int y = MathHelper.floor_double(eyeY);
         int z = MathHelper.floor_double(eyeZ);

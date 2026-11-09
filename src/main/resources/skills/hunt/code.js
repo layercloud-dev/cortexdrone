@@ -3,10 +3,10 @@
 // health-based (attack_plan) instead of a blind swing budget.
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var target = cfg.target || 'hostile';
-var radius = clamp(cfg.radius || 24, 4, 64);
-var maxKills = clamp(cfg.max_kills || 4, 1, 32);
-var seconds = clamp(cfg.duration_s || 120, 15, 240);
-var maxAttacksPerMob = clamp(cfg.max_attacks || 60, 1, 200);
+var radius = clamp(cfg.radius || LIMITS.scanRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.scanRadiusMax);
+var maxKills = clamp(cfg.max_kills || 4, 1, SKILL_LIMITS.killCap32);
+var seconds = clamp(cfg.duration_s || SKILL_LIMITS.guardDurationDefault, SKILL_LIMITS.huntDurationMin, SKILL_LIMITS.durationMax);
+var maxAttacksPerMob = clamp(cfg.max_attacks || 60, 1, SKILL_LIMITS.attackCap200);
 
 var deadline = Date.now() + seconds * 1000;
 var kills = 0;

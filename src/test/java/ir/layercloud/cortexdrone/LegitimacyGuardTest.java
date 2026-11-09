@@ -2,10 +2,6 @@ package ir.layercloud.cortexdrone;
 
 import org.junit.Test;
 
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-
 import static org.junit.Assert.*;
 
 /**
@@ -16,7 +12,8 @@ import static org.junit.Assert.*;
  * journalling and the detour-before-dig order.</p>
  */
 public class LegitimacyGuardTest {
-    private static final String MAIN = "src/main/java/ir/layercloud/cortexdrone/";
+    private static final String MAIN = SourceTree.MAIN;
+    private static final String NAV_MANAGER = SourceTree.MAIN + "manager/navigation/impl";
 
     @Test
     public void containerTransfersAnimateThroughTheRealInventoryHook() throws Exception {
@@ -38,10 +35,11 @@ public class LegitimacyGuardTest {
 
     @Test
     public void navigationPrefersDetoursOverDigging() throws Exception {
-        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
-        int methodStart = manager.indexOf("private void recover(");
-        assertTrue("recover() not found", methodStart > 0);
-        int methodEnd = manager.indexOf("\n    }", methodStart);
+        String manager = read(NAV_MANAGER + "/NavigationRecovery.java");
+        int methodStart = manager.indexOf("void recover(");
+        assertTrue("the recovery escalation not found", methodStart > 0);
+        int methodEnd = manager.indexOf("\n    private boolean resumeOpenTunnel(", methodStart);
+        assertTrue("recover() must end before resumeOpenTunnel()", methodEnd > methodStart);
         String recover = manager.substring(methodStart, methodEnd);
 
         int detour = recover.indexOf("nextDetour(");
@@ -61,7 +59,7 @@ public class LegitimacyGuardTest {
         // The journal call may live in NavigationManager or in the TunnelDigger
         // choke point every dig passes through; it must exist in exactly the
         // path that actually breaks a block.
-        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        String manager = SourceTree.readPackage(NAV_MANAGER);
         String digger = read(MAIN + "manager/navigation/impl/TunnelDigger.java");
         assertTrue("auto-dig must be journalled for repair_trail",
                 manager.contains("getDamageJournal().record(")
@@ -83,7 +81,7 @@ public class LegitimacyGuardTest {
         assertTrue("the approach trail must be stored", memory.contains("snapshot(controller"));
     }
 
-    private static String read(String path) throws Exception {
-        return new String(Files.readAllBytes(new File(path).toPath()), StandardCharsets.UTF_8);
+    private static String read(String path) {
+        return SourceTree.read(path);
     }
 }

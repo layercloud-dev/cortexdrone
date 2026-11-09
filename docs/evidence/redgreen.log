@@ -1,0 +1,798 @@
+==============================================================
+BUG: DespawnTargets: any player could despawn another player's drone
+file: src/main/java/ir/layercloud/cortexdrone/command/impl/DespawnTargets.java
+test: *DespawnTargetsTest
+==============================================================
+--- RED (buggy variant in place) ---
+> Task :test FAILED
+DespawnTargetsTest > aPlayerCannotDespawnAnotherPlayersDroneByName FAILED
+DespawnTargetsTest > aPlayerCannotDespawnAnotherPlayersDroneById FAILED
+8 tests completed, 2 failed
+BUILD FAILED in 9s
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL in 6s
+
+==============================================================
+BUG: MainThreadCall: a timed-out task still ran later
+file: src/main/java/ir/layercloud/cortexdrone/harness/tool/MainThreadCall.java
+test: *MainThreadCallTest
+==============================================================
+--- RED (buggy variant in place) ---
+> Task :test FAILED
+MainThreadCallTest > aTimedOutTaskIsAbandonedBeforeItRuns FAILED
+4 tests completed, 1 failed
+BUILD FAILED in 9s
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL in 6s
+
+==============================================================
+BUG: WebLookupService: gzip responses were never decoded
+file: src/main/java/ir/layercloud/cortexdrone/service/world/WebLookupService.java
+test: *WebLookupDecodingTest
+==============================================================
+--- RED (buggy variant in place) ---
+> Task :test FAILED
+WebLookupDecodingTest > gzipBodiesAreDecoded FAILED
+WebLookupDecodingTest > gzipEncodingIsMatchedCaseInsensitivelyAndWithParameters FAILED
+4 tests completed, 2 failed
+BUILD FAILED in 9s
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL in 5s
+
+==============================================================
+BUG: LargeScan routing: non-block tools were rerouted into the ore scanner
+file: src/main/java/ir/layercloud/cortexdrone/harness/tool/ToolInvoker.java
+test: *LargeScanRoutingTest
+==============================================================
+--- RED (buggy variant in place) ---
+> Task :test FAILED
+LargeScanRoutingTest > nullInputsAreSafe FAILED
+LargeScanRoutingTest > otherToolsAreNeverTimeSlicedIntoABlockScan FAILED
+4 tests completed, 2 failed
+BUILD FAILED in 11s
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL in 8s
+
+==============================================================
+BUG: Threads: server-thread detection had no testable seam
+file: src/main/java/ir/layercloud/cortexdrone/harness/tool/Threads.java
+test: *ThreadsTest
+==============================================================
+--- RED (buggy variant in place) ---
+> Task :test FAILED
+ThreadsTest > overridePropertyWins FAILED
+5 tests completed, 1 failed
+BUILD FAILED in 10s
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL in 5s
+
+==============================================================
+BUG: PrivateHosts: only loopback recognised, RFC1918 mishandled
+file: src/main/java/ir/layercloud/cortexdrone/config/PrivateHosts.java
+test: *PrivateHostsTest
+==============================================================
+--- RED (buggy variant in place) ---
+> Task :test FAILED
+PrivateHostsTest > loopbackIsPrivate FAILED
+PrivateHostsTest > rfc1918RangesArePrivate FAILED
+5 tests completed, 2 failed
+BUILD FAILED in 9s
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL in 7s
+
+==============================================================
+BUG: ToolCapability: mutation was a hardcoded name list
+file: src/main/java/ir/layercloud/cortexdrone/harness/tool/ToolSpec.java
+test: *ToolCapabilityTest
+==============================================================
+--- RED (buggy variant in place) ---
+> Task :test FAILED
+ToolCapabilityTest > worldMutationIsNotAlsoReadOnly FAILED
+ToolCapabilityTest > inventoryMutationCountsAsMutation FAILED
+ToolCapabilityTest > capabilitiesAreImmutable FAILED
+ToolCapabilityTest > capabilityPredicateMatchesTheDeclaration FAILED
+6 tests completed, 4 failed
+BUILD FAILED in 13s
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL in 9s
+
+==============================================================
+BUG: BuildSiteFinder: schema advertised 4..64, search silently clamped 8..40
+file: src/main/java/ir/layercloud/cortexdrone/service/world/BuildSiteFinder.java
+test: *BuildSiteRadiusAgreementTest
+==============================================================
+--- RED (buggy variant in place) ---
+BuildSiteRadiusAgreementTest > anOutOfRangeRequestIsClampedToTheSchemaRange FAILED
+BuildSiteRadiusAgreementTest > theClampIsNeverNarrowerThanTheSchema FAILED
+5 tests completed, 2 failed
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: LlmClient: a dropped connection was returned as a truncated "valid" body
+file: src/main/java/ir/layercloud/cortexdrone/harness/agent/LlmClient.java
+test: *LlmClientBodyTest
+==============================================================
+--- RED (buggy variant in place) ---
+LlmClientBodyTest > aDroppedConnectionIsReportedNotTruncated FAILED
+3 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: VoxelRaycaster3D: schema advertised max_dist 1..128, raycaster floored at 4
+file: src/main/java/ir/layercloud/cortexdrone/service/world/raytrace/VoxelRaycaster3D.java
+test: *RaycastLimitAgreementTest
+==============================================================
+--- RED (buggy variant in place) ---
+RaycastLimitAgreementTest > theRayLengthBoundsAreTheAdvertisedBounds FAILED
+3 tests completed, 1 failed
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (fix restored) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: ScanLimitAgreementTest compared the limits table to aliases of itself
+file: src/test/java/ir/layercloud/cortexdrone/harness/tool/ScanLimitAgreementTest.java
+test: *ScanLimitAgreementTest
+==============================================================
+--- RED (self-referential version) ---
+the scan agreement test asserted ScanLimits == its own aliases, so a schema
+change could never fail it
+> Task :test FAILED (behaviour not observable -> test rewritten)
+--- GREEN (schema-driven version) ---
+all 6 schema/table assertions pass
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: MAX_TRANSFER_COUNT mirrored across Java and JavaScript with no guard
+file: src/main/resources/js/bootstrap.js
+test: *TransferCountAgreementTest
+==============================================================
+--- RED (JS value drifted to 2048) ---
+TransferCountAgreementTest > javaAndJavaScriptAgreeOnTheTransferCeiling FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (restored to 2304) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: BuildSiteFinder accepted footprints up to 21 while the
+     schema and WorldBounds caps the plan side at 19
+file: src/main/java/ir/layercloud/cortexdrone/service/world/BuildSiteFinder.java
+test: *BuildSiteRadiusAgreementTest
+==============================================================
+--- RED (before the fix) ---
+BuildSiteRadiusAgreementTest > theFootprintBoundsAreTheAdvertisedOnes FAILED
+expected:<19> but was:<21>
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (MIN_SIDE/MAX_SIDE now read WorldBounds) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: Script-side bounds restated as literals in 9 skill files with
+     no link to the Java owners (WorldBounds / ScanLimits / InventoryLimits)
+file: src/main/resources/js/bootstrap.js
+test: *TransferCountAgreementTest
+==============================================================
+--- RED (WorldBounds.MAX_PLAN_SIDE drifted to 21) ---
+TransferCountAgreementTest > theFootprintAndHeightLimitsMatchWorldBounds FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (restored; every skill now uses LIMITS.*) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: BuildSiteFinder restated the scan radius policy (4..64) as
+     its own literals instead of aliasing ScanLimits
+file: src/main/java/ir/layercloud/cortexdrone/service/world/BuildSiteFinder.java
+test: *BuildSiteRadiusAgreementTest
+==============================================================
+--- RED (simulated drift: SCHEMA_MAX_RADIUS 64 -> 63) ---
+BuildSiteRadiusAgreementTest > theRadiusPolicyHasOneOwner FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (SCHEMA_* and DEFAULT_RADIUS now read ScanLimits) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: skill-side migration narrowed plant_farm width from 1..33 to 3..33
+     and widened sort_chests from 8..64 to 4..64
+file: src/main/resources/js/bootstrap.js
+test: *SkillBehaviorTest (bounds semantics preserved)
+==============================================================
+--- regression found during review of the LIMITS migration ---
+plant_farm now clamps to 3..33 (was 1..33); added LIMITS.dimensionMin=1
+sort_chests now clamps to 4..64 (was 8..64); added LIMITS.chestRadiusMin=8
+gather_distant 64..1500 now reads ScanLimits distant bounds
+--- GREEN ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: skills restated Java policy bounds (14x scan floor 4,
+     mine_box/quarry site ceiling 33, transport_entity landing 250)
+file: src/main/resources/js/bootstrap.js
+test: *SkillBoundsAgreementTest
+==============================================================
+--- RED (one literal restored: mine_blocks radius floor 4) ---
+SkillBoundsAgreementTest > radiusClampsUseTheSharedScanBounds FAILED
+use the shared scan bounds:
+src/main/resources/skills/collect_drops/code.js: scan ceiling -> LIMITS.scanRadiusMax
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (all scans/dimensions/landing read LIMITS.*) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: WorldBuildPlanTools advertised literal schema minimums 3/2/1
+     instead of WorldBounds, so prose and bounds could drift
+file: src/main/java/ir/layercloud/cortexdrone/harness/tools/WorldBuildPlanTools.java
+test: *BuildSiteRadiusAgreementTest (+ schema inspection)
+==============================================================
+--- RED (before the fix) ---
+schema declared minimum 3 / 2 / 1 as inline literals; WorldBounds owned
+the same values, so changing WorldBounds.MIN_PLAN_SIDE left the schema stale
+--- GREEN (MIN_PLAN_SIDE / MIN_PLAN_HEIGHT / MIN_SURVEY_HEIGHT aliases,
+           descriptions built from the same constants) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: ToolInvoker special-cased the strings "goto" and "scan_blocks"
+     instead of reading the declared capabilities
+file: src/main/java/ir/layercloud/cortexdrone/harness/tool/ToolInvoker.java
+test: *LargeScanRoutingTest, *TimeSliceRoutingTest
+==============================================================
+--- RED (name checks removed; specs lacked AWAITS_NAVIGATION/INLINE_WHEN_SMALL) ---
+LargeScanRoutingTest > otherToolsAreNeverTimeSlicedIntoABlockScan FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (goto declares AWAITS_NAVIGATION; scan_blocks declares
+           INLINE_WHEN_SMALL; routing is metadata-driven) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: ScanLimits.MIN_RADIUS was 4 while clampRadius floored at 1,
+     so the named constant was misleading and unused by clamping
+file: src/main/java/ir/layercloud/cortexdrone/service/world/ScanLimits.java
+test: *ScanLimitAgreementTest, *BuildSiteRadiusAgreementTest
+==============================================================
+--- RED (test expected the generic floor to be 1, constant said 4) ---
+ScanLimitAgreementTest > clampingHonoursTheTable FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (MIN_RADIUS=1 for generic scans; MIN_BUILD_SITE_RADIUS=4
+           owns the build-site floor) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: 14 skills restated the 32/48 radius caps and the scan floor
+     was pinned to the 4-valued inventory bound, not the schema floor
+file: src/main/resources/js/bootstrap.js
+test: *SkillBoundsAgreementTest
+==============================================================
+--- RED (bamboo_farm cap reverted to literal 32) ---
+SkillBoundsAgreementTest > radiusClampsUseTheSharedScanBounds FAILED
+small scan cap -> LIMITS.smallScanRadiusMax
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (all radius floors/caps read LIMITS.*) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: WorldScanTools prose restated 1..64 / 1..254 / 1..2000 and
+     WorldBuildPlanTools carried a local MIN_SURVEY_HEIGHT literal
+file: src/main/java/ir/layercloud/cortexdrone/harness/tools/WorldScanTools.java
+test: *ScanLimitAgreementTest, *BuildSiteRadiusAgreementTest
+==============================================================
+--- fix ---
+descriptions now concatenate ScanLimits/WorldBounds constants;
+WorldBounds.MIN_SURVEY_HEIGHT is the single owner; ScanLimits.clampRadius
+and clampResults use MIN_RADIUS/MIN_RESULTS instead of bare 1.
+--- GREEN ---
+ALL VALIDATED!
+
+==============================================================
+BUG: SkillBehaviorTest was an 876-line test monolith
+file: src/test/java/ir/layercloud/cortexdrone/harness/skill/SkillBehaviorTest.java
+test: *SkillBehaviorTest + split suites
+==============================================================
+--- split ---
+SkillTestSupport (389) + Mining/Crafting/Farming/Combat/Companion suites;
+every file is now under 400 lines.
+--- GREEN ---
+100 classes | 560 tests | 0 failures
+
+==============================================================
+BUG: the skill-bound guard did not catch a 4-valued floor or a
+     48-valued radius cap, and five LIMITS entries were unpinned
+file: src/test/java/ir/layercloud/cortexdrone/harness/skill/SkillBoundsAgreementTest.java
+test: *SkillBoundsAgreementTest, *TransferCountAgreementTest
+==============================================================
+--- RED (guard code.js reverted to a literal 4..48 clamp) ---
+SkillBoundsAgreementTest > radiusClampsUseTheSharedScanBounds FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (4 and 48 now guarded; table pins 9 more keys) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: tool prose restated bounds (4..24 / 4..48 / 64..1500 / 4..64)
+     and skills repeated radius||24 despite ScanLimits.DEFAULT_RADIUS
+file: src/main/java/ir/layercloud/cortexdrone/harness/tools/WorldScanTools.java
+test: *ScanLimitAgreementTest, *SkillBoundsAgreementTest
+==============================================================
+--- fix ---
+descriptions concatenate the owning constants; LIMITS.scanRadiusDefault
+(ScanLimits.DEFAULT_RADIUS) replaces the raw 24 defaults.
+--- GREEN ---
+ALL VALIDATED!
+
+==============================================================
+BUG: InventoryQueryTools gated machine memory on the tool-name strings
+     "scan_machines"/"scan_furnaces"
+file: src/main/java/ir/layercloud/cortexdrone/harness/tools/InventoryQueryTools.java
+test: *InventoryQueryTools* / full suite
+==============================================================
+--- fix ---
+gate on the result shape (machines/furnaces arrays); no tool-name match.
+--- GREEN ---
+100 classes | 560 tests | 0 failures
+
+==============================================================
+BUG: six schema descriptions still restated radius ranges as prose
+     (WorldEntityTools 4..180/2..128, MachineQueryTools 4..36/4..64,
+     PlayerContainerQueryTools 4..64, RecipeQueryTools 4..64)
+file: src/main/java/ir/layercloud/cortexdrone/harness/tools/*.java
+test: *ScanLimitAgreementTest, *TransferCountAgreementTest
+==============================================================
+--- fix ---
+every range string now concatenates ScanLimits/InventoryLimits constants;
+the weak "users > 0" skill check became a named policy-skill requirement.
+--- GREEN ---
+ALL VALIDATED! | 100 classes | 560 tests | 0 failures
+
+==============================================================
+BUG: DroneLogger.flushPendingLog swallowed InterruptedException
+     without restoring the thread's interrupt flag
+file: src/main/java/ir/layercloud/cortexdrone/config/DroneLogger.java
+test: *DroneLoggerInterruptTest
+==============================================================
+--- RED (buggy helper, interrupt flag cleared) ---
+DroneLoggerInterruptTest > anInterruptedFlushDelayRestoresTheInterruptFlag FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (pauseForFlush restores Thread.currentThread().interrupt()) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: RecipeQueryTools kept a literal "4..64" in prose while its
+     schema bounds used InventoryLimits
+file: src/main/java/ir/layercloud/cortexdrone/harness/tools/RecipeQueryTools.java
+test: full suite / prose grep
+==============================================================
+--- fix ---
+the description now concatenates InventoryLimits.MIN_RADIUS/MAX_RADIUS.
+--- GREEN ---
+ALL VALIDATED! | 101 classes | 561 tests | 0 failures
+
+==============================================================
+BUG: navigation dig defaults (128/512) and the transfer default
+     (512) were repeated in schema, view and inventory actions
+file: src/main/java/ir/layercloud/cortexdrone/service/navigation/NavigationLimits.java
+test: *PolicyDefaultGuardTest
+==============================================================
+--- RED (call sites still used the literals) ---
+PolicyDefaultGuardTest > navigationDigDefaultsComeFromNavigationLimits FAILED
+PolicyDefaultGuardTest > transferDefaultsComeFromInventoryLimits FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (NavigationLimits / InventoryLimits.DEFAULT_TRANSFER_COUNT) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: NavigationRegressionTest asserted the old literal source text,
+     so centralizing the default broke a brittle test
+file: src/test/java/ir/layercloud/cortexdrone/NavigationRegressionTest.java
+test: *NavigationRegressionTest
+==============================================================
+--- RED ---
+NavigationRegressionTest > longTunnelsGetAUsableDefaultBudget FAILED
+the default dig budget must cover a long route
+--- GREEN (asserts the policy owner and the semantic minimum) ---
+BUILD SUCCESSFUL | 102 classes | 563 tests | 0 failures
+
+==============================================================
+BUG: the goto wait window (5000..180000, default 120000) and the
+     "up to 512" dig hint were duplicated in the schema, ToolInvoker
+     and the tool description
+file: src/main/java/ir/layercloud/cortexdrone/service/navigation/NavigationLimits.java
+test: *PolicyDefaultGuardTest
+==============================================================
+--- RED (wait/dig call sites still used literals) ---
+PolicyDefaultGuardTest > navigationWaitDefaultsComeFromNavigationLimits FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (NavigationLimits.MIN/MAX/DEFAULT_WAIT_MS and MAX_DIG_BLOCKS) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: the furnace radius had two service owners (ScanLimits and
+     InventoryLimits), and the tool-surface test only asserted >= 45
+file: src/main/java/ir/layercloud/cortexdrone/service/inventory/InventoryLimits.java
+test: *PolicyDefaultGuardTest, *ToolRegistryTest
+==============================================================
+--- fix ---
+InventoryLimits.MAX_FURNACE_RADIUS aliases ScanLimits; ToolRegistryTest now
+asserts exactly 73 tools; ScanLimitAgreementTest reads MIN_RADIUS/MIN_RESULTS
+instead of literal 1.
+--- GREEN ---
+ALL VALIDATED! | 102 classes | 565 tests | 0 failures
+
+==============================================================
+BUG: set_light advertised radius 1..32 / level 0..15 while
+     LightingAura silently clamped to 2..12 / 4..15
+file: src/main/java/ir/layercloud/cortexdrone/service/visuals/VisualLimits.java
+test: *VisualsLimitAgreementTest
+==============================================================
+--- RED (schema values vs applied values) ---
+VisualsLimitAgreementTest > theAuraSchemaAdvertisesTheAppliedRadius FAILED
+VisualsLimitAgreementTest > theAuraSchemaAdvertisesTheAppliedLevel FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (VisualLimits owns both; schema, state and applier read it) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: literal wait windows in BlockTools, "1..24" prose in
+     NavigationTools, literal 1s in ScanLimitAgreementTest, and the
+     unused InventoryQueryTools field/parameter
+file: src/main/java/ir/layercloud/cortexdrone/harness/tools/BlockTools.java
+test: *PolicyDefaultGuardTest, *ScanLimitAgreementTest, full suite
+==============================================================
+--- fix ---
+BlockTools reads NavigationLimits.MIN/MAX/DEFAULT_WAIT_MS; the landing
+radius prose reads LandingScanner constants; the clamp test reads
+ScanLimits.MIN_RADIUS/MIN_RESULTS; InventoryQueryTools drops the
+write-only field and the unused name parameter.
+--- GREEN ---
+ALL VALIDATED! | 103 classes | 567 tests | 0 failures
+
+==============================================================
+BUG: skills hard-coded navigation bounds (max_wait_ms 180000,
+     max_dig_blocks 0/512) outside the shared LIMITS table
+file: src/main/resources/js/bootstrap.js
+test: *SkillBoundsAgreementTest, *TransferCountAgreementTest
+==============================================================
+--- RED (return_to_player reverted to max_wait_ms: 180000) ---
+SkillBoundsAgreementTest > navigationBoundsInSkillsUseTheSharedTable FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (minDigBlocks/maxDigBlocks/maxWaitMs pinned to NavigationLimits) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: TypeScriptEraser stripped { max_wait_ms: LIMITS.maxWaitMs }
+     as a type annotation, leaving a shorthand key and a Rhino
+     "max_wait_ms is not defined" failure
+file: src/main/java/ir/layercloud/cortexdrone/harness/js/TypeScriptEraser.java
+test: *TypeScriptEraserObjectValueTest
+==============================================================
+--- RED ---
+TypeScriptEraserObjectValueTest > aDottedConstantObjectValueSurvivesErasure FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (annotation pattern rejects dotted / all-caps values) ---
+BUILD SUCCESSFUL | 104 classes | 570 tests | 0 failures
+
+==============================================================
+BUG: NavigationSession restated maxDigBlocks=128 and transport_entity
+     hard-coded the landing radius cap 24; NavigationTools prose
+     restated the 2-block landing policy; three dead private methods
+file: src/main/java/ir/layercloud/cortexdrone/service/navigation/NavigationLimits.java
+test: *PolicyDefaultGuardTest, *TransferCountAgreementTest
+==============================================================
+--- RED (session default and landingRadiusMax still literals) ---
+PolicyDefaultGuardTest > theSessionDigDefaultComesFromNavigationLimits FAILED
+TransferCountAgreementTest > theScanRadiusLimitsMatchTheirJavaOwners FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (NavigationLimits + LIMITS.landingRadiusMax; prose reads
+           MAX_SAFE_DROP; dead clamp/type/lessonDir helpers removed) ---
+BUILD SUCCESSFUL | 104 classes | 571 tests | 0 failures
+
+==============================================================
+BUG: DroneToolFunction.autoPollScan string-matched "scan_blocks"
+     instead of reading the declared TIME_SLICED capability; and the
+     recovery_attempts default 12 was repeated in three places
+file: src/main/java/ir/layercloud/cortexdrone/harness/js/DroneToolFunction.java
+test: *ToolFunctionRoutingTest, *PolicyDefaultGuardTest
+==============================================================
+--- RED (name-based auto-poll; session/view/tools still literal 12) ---
+ToolFunctionRoutingTest > aTimeSlicedToolIsPolledByCapability FAILED
+PolicyDefaultGuardTest > navigationRecoveryDefaultsComeFromNavigationLimits FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (auto-poll reads TIME_SLICED; NavigationLimits owns
+           MIN/MAX/DEFAULT_RECOVERY_ATTEMPTS; PendingScanTest injects
+           a pending ScanJobs double) ---
+ALL VALIDATED! | 105 classes | 575 tests | 0 failures
+
+==============================================================
+BUG: skills restated Java-owned defaults: recovery_attempts 12,
+     inventory radius 32, chest radius 28, room radius 18 and landing
+     radius 12, none of them in the shared LIMITS table
+file: src/main/resources/js/bootstrap.js
+test: *SkillBoundsAgreementTest, *TransferCountAgreementTest
+==============================================================
+--- RED (literals still in the shipped skills) ---
+SkillBoundsAgreementTest > javaOwnedDefaultsInSkillsUseTheSharedTable FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (LIMITS.recoveryAttempts / inventoryRadiusDefault /
+           chestRadiusDefault / roomRadiusDefault / landingRadiusDefault) ---
+ALL VALIDATED! | 105 classes | 576 tests | 0 failures
+
+==============================================================
+BUG: suck_items advertised radius 1..16 default 4 while
+     SuckItemsAction fell back to 6.5 and clamped to its own 1..16
+file: src/main/java/ir/layercloud/cortexdrone/service/inventory/InventoryLimits.java
+test: *SuckItemsLimitAgreementTest
+==============================================================
+--- RED (schema default 4, action default 6.5) ---
+SuckItemsLimitAgreementTest > thePickupSchemaAdvertisesTheAppliedRadius FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (InventoryLimits owns MIN/MAX/DEFAULT_SUCK_RADIUS;
+           schema and action both read it) ---
+ALL VALIDATED! | 106 classes | 577 tests | 0 failures
+
+==============================================================
+BUG: eight farming skills repeated Math.min(16, radius) for the
+     drop-collection cap instead of a shared limit
+file: src/main/resources/js/bootstrap.js
+test: *SkillBoundsAgreementTest
+==============================================================
+--- RED (literal Math.min(16, ...) still in the skills) ---
+SkillBoundsAgreementTest > dropCollectionCapUsesTheSharedLimit FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (LIMITS.collectRadiusMax) ---
+ALL VALIDATED! | 106 classes | 578 tests | 0 failures
+
+==============================================================
+BUG: NavigateAction.tick carried bare tuning values (6.0/20.0/
+     24.0/18.0/32.0/16.0/4.5/0.85/0.90/12/999.0) with no owner
+file: src/main/java/ir/layercloud/cortexdrone/service/navigation/NavigationTuning.java
+test: *NavigationTuningTest
+==============================================================
+--- RED (NavigateAction still used the literals) ---
+NavigationTuningTest > navigateActionReadsTheTuningOwner FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (NavigationTuning owns the surface/stride/repath values) ---
+ALL VALIDATED! | 107 classes | 580 tests | 0 failures
+
+==============================================================
+BUG: NavigateAction still carried bare 1.0/2.5/0.05f/0.3/6/0.1f/
+     8.0 tuning and RoomScanner carried a bare 4500-voxel cap / 3 probe
+file: src/main/java/ir/layercloud/cortexdrone/service/navigation/NavigationTuning.java
+test: *NavigationTuningTest, *RoomScannerLimitTest
+==============================================================
+--- RED (source still used the literals) ---
+NavigationTuningTest > navigateActionReadsTheTuningOwner FAILED
+RoomScannerLimitTest > roomScannerReadsTheScanPolicy FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (NavigationTuning + ScanLimits.MAX_ROOM_VOXELS/ROOM_PROBE_RADIUS) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: farming/utility skills repeated 96/128 caps, 400/800 request
+     limits and the 2..16 light radius in their own bodies
+file: src/main/resources/js/bootstrap.js
+test: *SkillTuningAgreementTest
+==============================================================
+--- RED (literals still in the skills) ---
+SkillTuningAgreementTest > repeatedSkillCapsUseTheSharedTable FAILED
+SkillTuningAgreementTest > theSkillsUseTheTable FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (SKILL_LIMITS table) ---
+ALL VALIDATED! | 109 classes | 584 tests | 0 failures
+
+==============================================================
+BUG: skills restated Java defaults (cfg.count||512, cfg.max_blocks||128)
+     and repeated 64/200/256/800/1200/1024/16 caps outside SKILL_LIMITS
+file: src/main/resources/js/bootstrap.js
+test: *SkillBoundsAgreementTest, *TransferCountAgreementTest, *SkillTuningAgreementTest
+==============================================================
+--- RED (the defaults/caps were still literals) ---
+SkillBoundsAgreementTest > javaOwnedSkillDefaultsUseTheSharedTable FAILED
+TransferCountAgreementTest > theScanRadiusLimitsMatchTheirJavaOwners FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (LIMITS.defaultTransferCount/defaultDigBlocks + SKILL_LIMITS) ---
+BUILD SUCCESSFUL
+
+==============================================================
+BUG: SkillTools repeated 180_000/280_000 in the schema, the wrapper
+     timeout and the runtime fallback
+file: src/main/java/ir/layercloud/cortexdrone/service/skill/SkillLimits.java
+test: *SkillToolsLimitTest
+==============================================================
+--- RED (schema/source still literals) ---
+SkillToolsLimitTest > theSchemaAdvertisesTheOwnerBounds FAILED
+SkillToolsLimitTest > theSourceReadsTheOwner FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (SkillLimits.MIN/MAX/DEFAULT/EXECUTE_TIMEOUT_MS) ---
+ALL VALIDATED! | 110 classes | 587 tests | 0 failures
+
+==============================================================
+BUG: tool wrapper timeouts (120_000/180_000/300_000) were repeated
+     across block, inventory, navigation and code tools; three skill
+     caps (8..128 build, 1..192 bamboo, guard radius 12) were literal
+file: src/main/java/ir/layercloud/cortexdrone/harness/tool/ToolTimeouts.java
+test: *ToolTimeoutAgreementTest, *SkillTuningAgreementTest
+==============================================================
+--- RED (literals still present) ---
+ToolTimeoutAgreementTest > blockAndInventoryActionsShareTheTimeout FAILED
+ToolTimeoutAgreementTest > navigationAndCodeTimeoutsHaveOwners FAILED
+SkillTuningAgreementTest > repeatedSkillCapsUseTheSharedTable FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (ToolTimeouts + SKILL_LIMITS.smallBudgetMin/scanLimit192) ---
+ALL VALIDATED! | 111 classes | 589 tests | 0 failures
+
+==============================================================
+BUG: ~35 inline .timeoutMs(N) literals remained across the tool
+     providers; dig_staircase/mine_box/craft_items kept 256/512/1600
+     caps outside the shared tables
+file: src/main/java/ir/layercloud/cortexdrone/harness/tool/ToolTimeouts.java
+test: *ToolTimeoutAgreementTest, *SkillTuningAgreementTest
+==============================================================
+--- RED (inline timeouts and skill caps still present) ---
+ToolTimeoutAgreementTest > noInlineTimeoutLiteralsRemain FAILED
+SkillTuningAgreementTest > repeatedSkillCapsUseTheSharedTable FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (ToolTimeouts tiers; SKILL_LIMITS.budget1600/craftBatch;
+           LIMITS.maxDigBlocks) ---
+ALL VALIDATED! | 111 classes | 590 tests | 0 failures
+
+==============================================================
+BUG: remaining localized literals: CodeTools 1_000/300_000/120_000
+     and "1000..300000"; ScanJobs Math.max(1,...); schema prose
+     ranges in Skill/Visuals/Web/Memory/Oc/Lesson tools; LlmClient
+     setReadTimeout(180_000); SessionJournal "config/cortexdrone";
+     guard/hunt/follow durations; build_structure ±30000000
+file: src/main/java/ir/layercloud/cortexdrone/service/code/CodeLimits.java
+test: *RemainingHardcodeGuardTest, *SkillTuningAgreementTest, *TransferCountAgreementTest
+==============================================================
+--- RED (guards found the literals) ---
+RemainingHardcodeGuardTest > codeAndScanOwnersAreRead FAILED
+RemainingHardcodeGuardTest > schemaProseIsBuiltFromConstants FAILED
+RemainingHardcodeGuardTest > configAndLlmOwnersAreRead FAILED
+SkillTuningAgreementTest > repeatedSkillCapsUseTheSharedTable FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (CodeLimits, ScanLimits floors, provider constants,
+           VisualLimits, READ_TIMEOUT_MS, ConfigDirectory,
+           SKILL_LIMITS durations, LIMITS.maxCoordinate) ---
+ALL VALIDATED! | 112 classes | 593 tests | 0 failures
+
+==============================================================
+BUG: last named literals: MoveSlot/WithdrawChest used a 64 transfer
+     default; NavigationTools "1..256", OreDict "1..64",
+     WorldBlockRead "1..128" and Visuals "[r,g,b] 0..255" prose
+file: src/main/java/ir/layercloud/cortexdrone/service/inventory/InventoryLimits.java
+test: *RemainingHardcodeGuardTest
+==============================================================
+--- RED (guards found the literals) ---
+RemainingHardcodeGuardTest > transferDefaultsAndLastProseRangesUseOwners FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (InventoryLimits.DEFAULT_TRANSFER_COUNT; breadcrumb/ore/ray/colour
+           constants; VisualLimits.MAX_COLOR) ---
+ALL VALIDATED! | 112 classes | 594 tests | 0 failures
+
+==============================================================
+BUG: remaining localized literals/duplication: WebTools/CombatTools/
+     InteractionTools bounds, MemoryStore/LessonStore 50/20 search,
+     SiteSurvey 1200, JsEngine 30_000L, ToolSpec 8_000L, SessionIndex
+     200, WebLookupService timeouts, VisualsView/SetLedAction 255,
+     dead LIMITS.transferCount, stale ARCHITECTURE owner note
+file: src/main/java/ir/layercloud/cortexdrone/service/search/RankedSearch.java
+test: *RemainingHardcodeGuardTest
+==============================================================
+--- RED (guard found the literals/duplication) ---
+RemainingHardcodeGuardTest > sharedSearchAndQueryBoundsUseOwners FAILED
+RemainingHardcodeGuardTest > deadMirrorAndDocAreFixed FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (RankedSearch; Web/Combat/Interaction/Session/SiteSurvey/
+           JsEngine/ToolSpec/Visual owners; dead mirror removed;
+           ARCHITECTURE owner fixed) ---
+ALL VALIDATED! | 112 classes | 596 tests | 0 failures
+
+==============================================================
+BUG: max_clusters:10 repeated in six farming skills; ToolInvoker
+     duplicated 8_000L/60_000L; build.gradle comment said 389 while
+     the largest file is 390
+file: src/main/resources/js/bootstrap.js
+test: *SkillTuningAgreementTest, *ToolTimeoutAgreementTest
+==============================================================
+--- RED (guards found the repeats/stale comment) ---
+SkillTuningAgreementTest > repeatedSkillCapsUseTheSharedTable FAILED
+ToolTimeoutAgreementTest > invokerDefaultsUseTheOwner FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (SKILL_LIMITS.maxClusters; ToolTimeouts.DEFAULT_TOOL_MS/LONG_MS;
+           build.gradle comment 390) ---
+ALL VALIDATED! | 112 classes | 597 tests | 0 failures
+
+==============================================================
+BUG: max_clusters variants 12/8/4, duplicated MAX_FETCH_CHARS in
+     WebTools/WebLookupService, ~22 remaining numeric clamp bounds,
+     inline network deadlines (DocLookup/WebLookup/LlmClient/AgentService)
+file: src/main/java/ir/layercloud/cortexdrone/service/web/WebLimits.java
+test: *SkillTuningAgreementTest, *RemainingHardcodeGuardTest
+==============================================================
+--- RED (guards found the repeats/literals) ---
+SkillTuningAgreementTest > everyNumericClampBoundUsesTheTables FAILED
+RemainingHardcodeGuardTest > webAndAgentDeadlinesUseOwners FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (SKILL_LIMITS variants/bounds; WebLimits shared by WebTools/
+           WebLookupService/DocLookupService; CONNECT_TIMEOUT_MS;
+           MIN_TASK_DEADLINE_SECONDS; debt doc corrected) ---
+ALL VALIDATED! | 112 classes | 599 tests | 0 failures
+
+==============================================================
+BUG: WebLookupService.fetch still restated the 20_000 fetched-text
+     cap instead of reading WebLimits.MAX_FETCH_CHARS
+file: src/main/java/ir/layercloud/cortexdrone/service/world/WebLookupService.java
+test: *RemainingHardcodeGuardTest
+==============================================================
+--- RED (the raw 20_000 cap remained) ---
+RemainingHardcodeGuardTest > webAndAgentDeadlinesUseOwners FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (WebLimits.MAX_FETCH_CHARS) ---
+ALL VALIDATED! | 112 classes | 599 tests | 0 failures
+
+==============================================================
+BUG: WebTools re-declared MIN/MAX/DEFAULT results, WebLookupService
+     repeated the search floor/byte/cache caps, and JsEngine kept a
+     raw 20_000 instruction budget
+file: src/main/java/ir/layercloud/cortexdrone/service/web/WebLimits.java
+test: *RemainingHardcodeGuardTest
+==============================================================
+--- RED (the local copies still existed) ---
+RemainingHardcodeGuardTest > webAndAgentDeadlinesUseOwners FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (WebLimits owns results/bytes/cache; CodeLimits.MAX_INSTRUCTIONS) ---
+ALL VALIDATED! | 112 classes | 599 tests | 0 failures
+
+==============================================================
+BUG: DocLookupService hard-coded 10 results/3 snippets; MemoryTools
+     and LessonTools restated RankedSearch.MAX_RESULTS=50; debt doc
+     and build.gradle said 390 while the max file is 391
+file: src/main/java/ir/layercloud/cortexdrone/service/web/WebLimits.java
+test: *RemainingHardcodeGuardTest
+==============================================================
+--- RED (local caps/doc drift still present) ---
+RemainingHardcodeGuardTest > webAndAgentDeadlinesUseOwners FAILED
+> Task :test FAILED
+BUILD FAILED
+--- GREEN (WebLimits.MAX_RESULTS/MAX_MATCHES_PER_FILE; RankedSearch
+           MIN/MAX_RESULTS; honest debt counts; 391 comment) ---
+ALL VALIDATED! | 112 classes | 599 tests | 0 failures
+

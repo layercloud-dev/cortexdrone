@@ -8,8 +8,8 @@ if (id === null || id === undefined || id < 0) {
 }
 var item = pick(cfg.item, null);
 var slot = pick(cfg.slot, null);
-var maxAttacks = clamp(cfg.max_attacks || 60, 1, 200);
-var maxSeconds = clamp(cfg.max_seconds || 60, 1, 180);
+var maxAttacks = clamp(cfg.max_attacks || 60, 1, SKILL_LIMITS.attackCap200);
+var maxSeconds = clamp(cfg.max_seconds || 60, 1, SKILL_LIMITS.attackSecondsMax);
 var started = Date.now();
 var deadline = started + maxSeconds * 1000;
 

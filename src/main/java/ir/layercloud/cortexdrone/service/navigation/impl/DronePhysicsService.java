@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.experimental.UtilityClass;
@@ -17,7 +18,8 @@ public final class DronePhysicsService {
      * Longest single collision sweep. The drone body is 0.75 wide, so a step
      * under half of that keeps wall and corner resolution accurate.
      */
-    private static final double MAX_SUBSTEP = 0.35;
+    /** Per-tick motion sub-step ceiling, shared with the braking model. */
+    static final double MAX_SUBSTEP = 0.35;
     /** Per-tick step ceiling; 3.75 / 0.35 rounds to 11. */
     private static final int MAX_SUBSTEPS = 16;
 
@@ -125,9 +127,9 @@ public final class DronePhysicsService {
 
     public static double[] findBlockStandoff(World world, Drone d, int bx, int by, int bz) {
         if (world == null || d == null) return null;
-        double tx = bx + 0.5;
-        double ty = by + 0.5;
-        double tz = bz + 0.5;
+        double tx = bx + DroneGeometry.CELL_CENTER;
+        double ty = by + DroneGeometry.CELL_CENTER;
+        double tz = bz + DroneGeometry.CELL_CENTER;
         double bestScore = Double.MAX_VALUE;
         double[] best = null;
 
@@ -139,9 +141,9 @@ public final class DronePhysicsService {
             int ay = by + c[1];
             int az = bz + c[2];
             if (hasHeadroom(world, ax, ay, az)) {
-                double cx = ax + 0.5;
-                double cy = ay + 0.35;
-                double cz = az + 0.5;
+                double cx = ax + DroneGeometry.CELL_CENTER;
+                double cy = ay + DroneGeometry.AIM_OFFSET;
+                double cz = az + DroneGeometry.CELL_CENTER;
                 double distFromDrone = d.getDistance(cx, cy, cz);
                 if (distFromDrone < bestScore) {
                     bestScore = distFromDrone;
@@ -165,9 +167,9 @@ public final class DronePhysicsService {
                         int stepZ = bz + Integer.compare(dz, 0);
                         if (!ItemClassifier.isPassableVoxel(world, stepX, stepY, stepZ)) continue;
 
-                        double cx = ax + 0.5;
-                        double cy = ay + 0.35;
-                        double cz = az + 0.5;
+                        double cx = ax + DroneGeometry.CELL_CENTER;
+                        double cy = ay + DroneGeometry.AIM_OFFSET;
+                        double cz = az + DroneGeometry.CELL_CENTER;
                         double distToBlock = Math.sqrt((cx - tx) * (cx - tx) + (cy - ty) * (cy - ty) + (cz - tz) * (cz - tz));
                         double distFromDrone = d.getDistance(cx, cy, cz);
                         double score = distFromDrone + distToBlock * 0.5;

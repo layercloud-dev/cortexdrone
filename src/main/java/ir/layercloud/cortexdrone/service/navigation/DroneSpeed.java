@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.service.navigation;
 
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightSpeedModel;
+
 import ir.layercloud.cortexdrone.config.ModConfig;
 
 /**
@@ -155,7 +157,7 @@ public final class DroneSpeed {
      */
     public static double brakingRadius(double multiplier) {
         double cap = clampCap(FAR * clampMultiplier(multiplier));
-        return 6.0 * Math.max(1.0, cap / 0.75);
+        return FlightSpeedModel.brakingRadius(cap);
     }
 
     /**

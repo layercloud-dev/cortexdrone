@@ -26,14 +26,21 @@ public final class RoomScanner {
             {0, -1}, {0, 1}, {-1, 0}, {1, 0}
     };
 
+    /** Largest room scan radius; the tool schema aliases this value. */
+    public static final int MAX_RADIUS =
+            ScanLimits.MAX_ROOM_RADIUS;
+    /** Smallest room scan radius. */
+    public static final int MIN_RADIUS =
+            ScanLimits.MIN_ROOM_RADIUS;
+
     public static JsonObject scanRoom3D(World world, int startX, int startY, int startZ, int maxRadius) {
-        int r = Math.min(24, Math.max(4, maxRadius));
+        int r = Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, maxRadius));
         int sx = startX;
         int sy = startY;
         int sz = startZ;
 
         if (!ItemClassifier.isPassableVoxel(world, sx, sy, sz)) {
-            int[] open = FlightPathfinder.findNearestPassableVoxel(world, sx, sy, sz, 3);
+            int[] open = FlightPathfinder.findNearestPassableVoxel(world, sx, sy, sz, ScanLimits.ROOM_PROBE_RADIUS);
             if (open != null) {
                 sx = open[0];
                 sy = open[1];
@@ -50,7 +57,7 @@ public final class RoomScanner {
         int minY = sy, maxY = sy;
         int minZ = sz, maxZ = sz;
 
-        while (!queue.isEmpty() && airSet.size() < 4500) {
+        while (!queue.isEmpty() && airSet.size() < ScanLimits.MAX_ROOM_VOXELS) {
             int[] cur = queue.pollFirst();
             int cx = cur[0], cy = cur[1], cz = cur[2];
             if (cx < minX) minX = cx;
@@ -65,7 +72,7 @@ public final class RoomScanner {
                 int ny = cy + d[1];
                 int nz = cz + d[2];
                 if (Math.abs(nx - sx) > r || Math.abs(ny - sy) > r || Math.abs(nz - sz) > r) continue;
-                if (ny <= 1 || ny >= 254) continue;
+                if (!WorldBounds.inWorld(ny)) continue;
                 long key = FlightPathfinder.packBlockPos(nx, ny, nz);
                 if (airSet.contains(key)) continue;
                 if (ItemClassifier.isPassableVoxel(world, nx, ny, nz)) {
@@ -92,11 +99,10 @@ public final class RoomScanner {
         Map<String, Integer> ceilMats = new LinkedHashMap<>();
 
         for (Long airKey : airSet) {
-            int ax = (int) (airKey >> 38);
-            if ((ax & 0x2000000) != 0) ax |= 0xFC000000;
-            int az = (int) ((airKey >> 12) & 0x3FFFFFFL);
-            if ((az & 0x2000000) != 0) az |= 0xFC000000;
-            int ay = (int) (airKey & 0xFFFL);
+            // One packing layout for every block-keyed map; see BlockPosKey.
+            int ax = BlockPosKey.unpackX(airKey);
+            int ay = BlockPosKey.unpackY(airKey);
+            int az = BlockPosKey.unpackZ(airKey);
 
             int fy = ay - 1;
             if (fy >= 1 && !ItemClassifier.isPassableVoxel(world, ax, fy, az) && !ItemClassifier.isProtectedFixture(world, ax, fy, az)) {
@@ -110,7 +116,8 @@ public final class RoomScanner {
             }
 
             int cy = ay + 1;
-            if (cy <= 254 && !ItemClassifier.isPassableVoxel(world, ax, cy, az) && !ItemClassifier.isProtectedFixture(world, ax, cy, az)) {
+            if (WorldBounds.inWorld(cy) && !ItemClassifier.isPassableVoxel(world, ax, cy, az)
+                    && !ItemClassifier.isProtectedFixture(world, ax, cy, az)) {
                 long ck = FlightPathfinder.packBlockPos(ax, cy, az);
                 if (seenCeil.add(ck)) {
                     ceilingList.add(new int[]{ax, cy, az});

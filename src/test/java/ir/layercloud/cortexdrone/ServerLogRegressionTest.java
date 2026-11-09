@@ -52,7 +52,7 @@ public class ServerLogRegressionTest {
         assertTrue("a vertical step planner must exist", planner.contains("nextVertical("));
         String recovery = read(MAIN + "manager/navigation/impl/TunnelRecovery.java");
         assertTrue("recovery must use the vertical step", recovery.contains("TunnelPlanner.nextVertical("));
-        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        String manager = read(MAIN + "manager/navigation/impl/NavigationRecovery.java");
         assertTrue("recovery must delegate to the escalation",
                 manager.contains("TunnelRecovery.nextTarget("));
     }

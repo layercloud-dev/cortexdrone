@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.inventory.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.action.Action;
@@ -75,9 +76,9 @@ public final class DepositChestAction implements Action<InventoryContext> {
         }
         double[] standoff = FlightPathfinder.findBlockStandoff(
                 world, drone, chest.xCoord, chest.yCoord, chest.zCoord);
-        double cx = standoff != null ? standoff[0] : chest.xCoord + 0.5;
+        double cx = standoff != null ? standoff[0] : chest.xCoord + DroneGeometry.CELL_CENTER;
         double cy = standoff != null ? standoff[1] : chest.yCoord + 1.2;
-        double cz = standoff != null ? standoff[2] : chest.zCoord + 0.5;
+        double cz = standoff != null ? standoff[2] : chest.zCoord + DroneGeometry.CELL_CENTER;
         this.flight.flyToward(controller, cx, cy, cz, "Deposit flight");
         drone.statusText_$eq("Depositing\nChest");
     }

@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tools.view;
 
+import ir.layercloud.cortexdrone.service.visuals.VisualLimits;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import ir.layercloud.cortexdrone.DroneController;
@@ -55,7 +56,7 @@ public final class VisualsView {
     }
 
     private static int clamp(int value) {
-        return Math.max(0, Math.min(255, value));
+        return Math.max(0, Math.min(VisualLimits.MAX_COLOR, value));
     }
 
     private static String namedColor(String raw) {

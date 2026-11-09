@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.interact.impl;
 
+import ir.layercloud.cortexdrone.service.world.BlockSight;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.action.Action;
@@ -58,7 +59,7 @@ public final class AttackEntityAction implements Action<InteractionContext> {
         }
 
         double distance = drone.getDistance(target.posX, target.posY, target.posZ);
-        if (distance > 4.5) {
+        if (distance > BlockSight.REACH) {
             context.result(InteractionResult.movement(
                     new double[]{target.posX, target.posY + 0.5, target.posZ},
                     "needsMovement", true,

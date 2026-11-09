@@ -1,7 +1,7 @@
 // Chest sorting. params: { radius, max_moves, dry_run }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var radius = clamp(cfg.radius || 24, 8, 64);
-var maxMoves = clamp(cfg.max_moves || 48, 1, 128);
+var radius = clamp(cfg.radius || LIMITS.scanRadiusDefault, LIMITS.chestRadiusMin, LIMITS.scanRadiusMax);
+var maxMoves = clamp(cfg.max_moves || 48, 1, SKILL_LIMITS.largeScanLimit);
 
 function categoryOf(name) {
   var n = String(name || '').toLowerCase();

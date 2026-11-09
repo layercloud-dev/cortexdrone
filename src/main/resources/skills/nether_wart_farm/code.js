@@ -1,11 +1,11 @@
 // Nether wart harvest + replant. params: { radius, limit, replant, point }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var radius = clamp(cfg.radius || 24, 4, 32);
-var limit = clamp(cfg.limit || 24, 1, 64);
+var radius = clamp(cfg.radius || LIMITS.scanRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.smallScanRadiusMax);
+var limit = clamp(cfg.limit || 24, 1, SKILL_LIMITS.smallCountCap);
 var replant = cfg.replant !== false;
 var matureMeta = 3;
 
-var request = { filter: 'nether_wart', radius: radius, limit: 400 };
+var request = { filter: 'nether_wart', radius: radius, limit: SKILL_LIMITS.farmScanLimit };
 if (cfg.point) {
   request.x = Math.round(cfg.point.x);
   request.y = Math.round(cfg.point.y);
@@ -62,8 +62,8 @@ for (var h = 0; h < mature.length; h++) {
 
 var collected = null;
 try {
-  collected = skills.call('collect_drops', { radius: Math.min(16, radius),
-    filter: 'nether_wart', max_clusters: 10 });
+  collected = skills.call('collect_drops', { radius: Math.min(LIMITS.collectRadiusMax, radius),
+    filter: 'nether_wart', max_clusters: SKILL_LIMITS.maxClusters });
 } catch (collectError) {
   log('drop collection skipped: ' + collectError.message);
 }

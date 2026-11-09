@@ -15,6 +15,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolCatalog;
 import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
 import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
+import ir.layercloud.cortexdrone.harness.tool.Tool;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import ir.layercloud.cortexdrone.harness.tools.BlockTools;
 import ir.layercloud.cortexdrone.harness.tools.CodeTools;
@@ -73,6 +74,11 @@ public final class Harness {
         this.journal = new SessionJournal(manager.getConfigRoot(), manager.getLogger());
         this.registry = new ToolRegistry();
         this.registry.declareAll(ToolCatalog.standard());
+        // Session metrics ask the declarations, not a second hard-coded list.
+        this.journal.setWorldActionPredicate(name -> {
+            Tool tool = this.registry.find(name);
+            return tool != null && tool.getSpec().mutatesAnything();
+        });
         this.scans = new ScanJobs(manager);
         this.invoker = new ToolInvoker(manager, registry, scans);
         this.js = new JsEngine(invoker, registry, config, skills);

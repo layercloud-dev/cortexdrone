@@ -16,7 +16,10 @@ base {
     archivesName = 'CortexDrone'
 }
 
-def modsDir = project.findProperty('modsDir') ?: '/root/forge-smp/mods'
+// No deployment-specific default: a plain `./gradlew build` must not write
+// into someone else's server directory. Pass -PmodsDir=/path/to/mods (the
+// `build.sh` wrapper and gradle.properties set it for this server).
+def modsDir = project.findProperty('modsDir') ?: "${buildDir}/mods"
 def ocVersion = project.findProperty('ocVersion') ?: '1.12.70-GTNH'
 
 // ---------------------------------------------------------------------------
@@ -118,8 +121,13 @@ tasks.register('validate') {
         fileTree(dir: 'src/main/java', include: '**/*.java').each { f ->
             def rel = file('src/main/java').toPath().relativize(f.toPath())
             def lines = f.readLines().size()
-            if (lines > 696) {
-                failures << "FAIL: ${rel} exceeds modular line limit (${lines} > 696)"
+            // 400 is a real ceiling, not a target: the largest file is 391 and
+            // the p90 is ~253. The gate is deliberately tight so a class cannot
+            // silently grow back into a monolith (the old 696 cap was calibrated
+            // to exactly fit the largest class, which is why it never forced a
+            // split).
+            if (lines > 400) {
+                failures << "FAIL: ${rel} exceeds modular line limit (${lines} > 400)"
             }
 
             def declared = f.readLines().find { it.startsWith('package ') }?.replace('package ', '')?.replace(';', '')?.trim()

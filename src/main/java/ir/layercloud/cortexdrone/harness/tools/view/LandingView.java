@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tools.view;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
@@ -25,8 +26,10 @@ public final class LandingView {
                 : MathHelper.floor_double(controller.drone.posZ);
         int refY = args != null && args.has("y") ? args.get("y").getAsInt()
                 : MathHelper.floor_double(controller.drone.posY);
-        int radius = args != null && args.has("radius") ? args.get("radius").getAsInt() : 12;
-        radius = Math.max(1, Math.min(24, radius));
+        int radius = args != null && args.has("radius")
+                ? args.get("radius").getAsInt() : LandingScanner.DEFAULT_RADIUS;
+        radius = Math.max(LandingScanner.MIN_RADIUS,
+                Math.min(LandingScanner.MAX_RADIUS, radius));
         // A passenger is only flown into open sky: entering a cave or a
         // two-high corridor crushes them. `covered_ok:true` is for a mob or a
         // drone-only landing where a cave floor is acceptable.
@@ -73,9 +76,9 @@ public final class LandingView {
         json.addProperty("z", spot.getZ());
         // Dismount exactly in the feet cell, never above it: a rider dropped
         // one block up still takes a fall, and two blocks up hurts.
-        json.addProperty("hoverX", spot.getX() + 0.5);
-        json.addProperty("hoverY", spot.getY() + 0.35);
-        json.addProperty("hoverZ", spot.getZ() + 0.5);
+        json.addProperty("hoverX", spot.getX() + DroneGeometry.CELL_CENTER);
+        json.addProperty("hoverY", spot.getY() + DroneGeometry.AIM_OFFSET);
+        json.addProperty("hoverZ", spot.getZ() + DroneGeometry.CELL_CENTER);
         json.addProperty("safe", spot.isSafe());
         json.addProperty("openSky", spot.isOpenSky());
         json.addProperty("surfaceLevel", spot.isSurfaceLevel());

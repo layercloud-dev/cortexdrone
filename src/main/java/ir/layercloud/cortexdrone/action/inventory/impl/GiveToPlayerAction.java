@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.inventory.impl;
 
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.CortexDroneMod;
@@ -91,6 +92,6 @@ public final class GiveToPlayerAction implements Action<InventoryContext> {
     }
 
     private int count() {
-        return this.request.getCount() > 0 ? this.request.getCount() : 512;
+        return this.request.getCount() > 0 ? this.request.getCount() : InventoryLimits.DEFAULT_TRANSFER_COUNT;
     }
 }

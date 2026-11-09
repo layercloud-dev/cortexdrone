@@ -8,9 +8,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -29,6 +29,9 @@ import java.util.List;
  * in prose and does not fall back to the retired {@code functions} protocol.</p>
  */
 public final class LlmClient {
+    /** HTTP read timeout for a model response. */
+    private static final int CONNECT_TIMEOUT_MS = 10_000;
+    private static final int READ_TIMEOUT_MS = 180_000;
     private final ModConfig config;
     private final DroneLogger logger;
 
@@ -85,17 +88,25 @@ public final class LlmClient {
                 || message.contains("timeout");
     }
 
+    /**
+     * True when the gateway is on this machine or a private network, in which
+     * case a system proxy must be bypassed. A public gateway keeps the default
+     * proxy path so corporate proxies still work.
+     */
+    static boolean isLocalGateway(String apiUrl) {
+        return ir.layercloud.cortexdrone.config.PrivateHosts.isPrivateUrl(apiUrl);
+    }
+
     private JsonObject request(DroneController ctrl, List<JsonObject> messages, JsonArray tools,
                                boolean jsonMode) throws Exception {
         URL url = new URL(this.config.getApiUrl());
-        boolean local = this.config.getApiUrl().contains("127.0.0.1")
-                || this.config.getApiUrl().contains("localhost");
+        boolean local = isLocalGateway(this.config.getApiUrl());
         HttpURLConnection connection = (HttpURLConnection) (local
                 ? url.openConnection(Proxy.NO_PROXY) : url.openConnection());
         connection.setUseCaches(false);
         connection.setRequestMethod("POST");
-        connection.setConnectTimeout(10_000);
-        connection.setReadTimeout(180_000);
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setRequestProperty("Connection", "close");
         if (this.config.getApiKey() != null && !this.config.getApiKey().isEmpty()) {
@@ -214,12 +225,28 @@ public final class LlmClient {
     }
 
     private static String read(InputStream stream) {
+        try {
+            return readBody(stream);
+        } catch (IOException failure) {
+            // The caller turns this into a GatewayException with the real reason.
+            throw new IllegalStateException("Could not read the gateway response", failure);
+        }
+    }
+
+    /**
+     * Reads a response body to completion.
+     *
+     * <p>A dropped connection must surface as an error, not as a short "valid"
+     * string: a truncated body used to fail later with a misleading
+     * "invalid JSON" message.</p>
+     */
+    static String readBody(InputStream stream) throws IOException {
         if (stream == null) return "";
         StringBuilder builder = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) builder.append(line).append('\n');
-        } catch (Exception ignored) {
         }
         return builder.toString().trim();
     }

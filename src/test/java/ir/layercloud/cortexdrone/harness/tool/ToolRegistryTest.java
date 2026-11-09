@@ -38,7 +38,7 @@ public class ToolRegistryTest {
                     spec.getParameters().has("properties")
                             && spec.getParameters().get("properties").isJsonObject());
         }
-        assertTrue("Expected a broad tool surface", names.size() >= 45);
+        assertEquals("the published tool surface must not shrink", 73, names.size());
     }
 
     @Test

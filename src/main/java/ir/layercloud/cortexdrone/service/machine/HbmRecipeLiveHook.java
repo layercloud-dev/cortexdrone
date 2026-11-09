@@ -11,16 +11,18 @@ import java.util.List;
  * server without HBM never pays for reflection.</p>
  */
 public final class HbmRecipeLiveHook implements MachineRecipeHook {
-    private static final String PROBE_CLASS = "com.hbm.inventory.recipes.anvil.AnvilRecipes";
-
     @Override
     public boolean isAvailable() {
-        try {
-            Class.forName(PROBE_CLASS);
-            return true;
-        } catch (Throwable missing) {
-            return false;
+        // Any recipe class is enough: a partial install still contributes.
+        for (String className : HbmDescriptor.recipeClasses()) {
+            try {
+                Class.forName(className);
+                return true;
+            } catch (Throwable missing) {
+                // Try the next probe.
+            }
         }
+        return false;
     }
 
     @Override

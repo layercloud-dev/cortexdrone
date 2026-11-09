@@ -1,7 +1,7 @@
 // Bone-meal application. params: { radius, limit, target, point, craft_meal }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var radius = clamp(cfg.radius || 16, 4, 32);
-var limit = clamp(cfg.limit || 32, 1, 128);
+var radius = clamp(cfg.radius || SKILL_LIMITS.mediumRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.smallScanRadiusMax);
+var limit = clamp(cfg.limit || SKILL_LIMITS.smallLimitDefault, 1, SKILL_LIMITS.largeScanLimit);
 var target = String(cfg.target || 'crops').toLowerCase();
 
 var filters = [];
@@ -41,7 +41,7 @@ var applied = 0;
 var attempted = 0;
 var seen = {};
 for (var f = 0; f < filters.length && applied < limit; f++) {
-  var request = { filter: filters[f], radius: radius, limit: 400 };
+  var request = { filter: filters[f], radius: radius, limit: SKILL_LIMITS.farmScanLimit };
   if (cfg.point) {
     request.x = Math.round(cfg.point.x);
     request.y = Math.round(cfg.point.y);

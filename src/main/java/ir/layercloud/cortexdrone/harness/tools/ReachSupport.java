@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
@@ -133,7 +134,7 @@ final class ReachSupport {
     }
 
     private static double[] standoffPoint(int x, int y, int z) {
-        return new double[]{x + 0.5D, y + 0.35D, z + 0.5D};
+        return BlockSight.standoffPoint(x, y, z);
     }
 
     static JsonObject point(double x, double y, double z) {

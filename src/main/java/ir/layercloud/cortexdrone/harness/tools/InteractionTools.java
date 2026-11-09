@@ -1,11 +1,11 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
+import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
 import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
@@ -21,6 +21,10 @@ import java.util.List;
  * dismount. These are deliberately not merged into a generic "interact" tool.
  */
 public final class InteractionTools implements ToolProvider {
+    private static final int MIN_SLOT = 0;
+    private static final int MAX_SLOT = 7;
+    private static final int MIN_SIDE = 0;
+    private static final int MAX_SIDE = 5;
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("interact_block")
                     .description("Right-click exactly one block: door, lever, button, furnace, machine, "
@@ -30,9 +34,10 @@ public final class InteractionTools implements ToolProvider {
                             .requiredInt("x", "Block X.")
                             .requiredInt("y", "Block Y.")
                             .requiredInt("z", "Block Z.")
-                            .optionalInt("side", "Clicked face: 0 down, 1 up, 2 north, 3 south, 4 west, 5 east.", 0, 5, 1))
+                            .optionalInt("side", "Clicked face: 0 down, 1 up, 2 north, 3 south, 4 west, 5 east.", MIN_SIDE, MAX_SIDE, 1))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(30_000L)
+                    .timeoutMs(ToolTimeouts.ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build(),
             ToolSpec.builder("use_item")
                     .description("Use exactly one held item, optionally aimed at a block. Select the item by "
@@ -40,13 +45,14 @@ public final class InteractionTools implements ToolProvider {
                             + "activate the target block first.")
                     .parameters(ToolSchema.object()
                             .optionalString("item", "Item name/registry name/ore dictionary tag to hold.")
-                            .optionalInt("slot", "Drone inventory slot to use instead of a name.", 0, 7, null)
+                            .optionalInt("slot", "Drone inventory slot to use instead of a name.", MIN_SLOT, MAX_SLOT, null)
                             .optionalInt("x", "Optional target block X.")
                             .optionalInt("y", "Optional target block Y.")
                             .optionalInt("z", "Optional target block Z.")
-                            .optionalInt("side", "Target face when coordinates are given.", 0, 5, 1))
+                            .optionalInt("side", "Target face when coordinates are given.", MIN_SIDE, MAX_SIDE, 1))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(30_000L)
+                    .timeoutMs(ToolTimeouts.ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build(),
             ToolSpec.builder("attack_entity")
                     .description("Perform exactly one melee attack with the selected/held item. Get the "
@@ -58,9 +64,10 @@ public final class InteractionTools implements ToolProvider {
                             .requiredInt("entity_id", "Entity id returned by get_entities.")
                             .optionalString("item", "Weapon name/registry/ore tag to swing instead of "
                                     + "the auto-selected best weapon.")
-                            .optionalInt("slot", "Drone inventory slot to swing instead of a name.", 0, 7, null))
+                            .optionalInt("slot", "Drone inventory slot to swing instead of a name.", MIN_SLOT, MAX_SLOT, null))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(30_000L)
+                    .timeoutMs(ToolTimeouts.ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build(),
             ToolSpec.builder("pick_entity")
                     .description("Mount exactly one entity (including a player) on the drone. Get the id "
@@ -68,7 +75,8 @@ public final class InteractionTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .requiredInt("entity_id", "Entity id to mount."))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(30_000L)
+                    .timeoutMs(ToolTimeouts.ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build(),
             ToolSpec.builder("unpick_entity")
                     .description("Dismount the current rider, or a specific entity when entity_id is given. "
@@ -81,7 +89,8 @@ public final class InteractionTools implements ToolProvider {
                             .optionalBoolean("force", "Release even when the landing check fails. Only when the "
                                     + "player explicitly asked to be dropped here.", false))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(20_000L)
+                    .timeoutMs(ToolTimeouts.WEB_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build()
     );
 

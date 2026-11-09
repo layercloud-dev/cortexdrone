@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tools.view;
 
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import ir.layercloud.cortexdrone.DroneController;
@@ -41,12 +42,13 @@ public final class NavigationView {
         boolean hasStandoff = standoff != null
                 && standoff.has("x") && standoff.has("y") && standoff.has("z");
         boolean allowDig = ToolArgs.bool(args, "allowDig", true);
-        int maxDigBlocks = ToolArgs.clampedInt(args, "maxDigBlocks", 128, 0, 512);
+        int maxDigBlocks = ToolArgs.clampedInt(args, "maxDigBlocks", NavigationLimits.DEFAULT_DIG_BLOCKS,
+                NavigationLimits.MIN_DIG_BLOCKS, NavigationLimits.MAX_DIG_BLOCKS);
         if (allowDig && maxDigBlocks <= 0) {
             // "allow digging with a zero budget" is contradictory and used to
             // fail every blocked goto with "dig budget 0 exhausted". A caller
             // that passes 0 meant "no digging", so it must also clear allowDig.
-            maxDigBlocks = 128;
+            maxDigBlocks = NavigationLimits.DEFAULT_DIG_BLOCKS;
         }
         return NavigationRequest.builder()
                 .controller(controller)
@@ -61,7 +63,10 @@ public final class NavigationView {
                 .standoffZ(hasStandoff ? standoff.get("z").getAsInt() : 0)
                 .allowDig(allowDig)
                 .maxDigBlocks(maxDigBlocks)
-                .recoveryAttempts(ToolArgs.clampedInt(args, "recoveryAttempts", 12, 0, 32))
+                .recoveryAttempts(ToolArgs.clampedInt(args, "recoveryAttempts",
+                NavigationLimits.DEFAULT_RECOVERY_ATTEMPTS,
+                NavigationLimits.MIN_RECOVERY_ATTEMPTS,
+                NavigationLimits.MAX_RECOVERY_ATTEMPTS))
                 // 0 means "use the configured multiplier". DroneSpeed clamps
                 // whatever arrives into its supported range.
                 .speedMultiplier(ToolArgs.decimal(args, "speed", 0.0D))

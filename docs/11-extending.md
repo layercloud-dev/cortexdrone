@@ -132,7 +132,7 @@ what no tool exposes, not to replace mutations that already have an action.
 
 ## Guidelines
 
-- Keep Java files under 696 lines (validated).
+- Keep Java files under 400 lines (enforced by `validate`; aim for well under 250).
 - Keep package names equal to directories.
 - Describe *when not to use* a tool and what its errors mean.
 - Never add a hidden composite task; loops belong in `execute`.

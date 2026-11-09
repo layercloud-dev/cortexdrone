@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 
@@ -47,8 +48,8 @@ final class NavigationSession {
     double bestDistance = Double.MAX_VALUE;
     boolean lastLegMoved;
     boolean allowDig = true;
-    int maxDigBlocks = 128;
-    int recoveryAttempts = 12;
+    int maxDigBlocks = NavigationLimits.DEFAULT_DIG_BLOCKS;
+    int recoveryAttempts = NavigationLimits.DEFAULT_RECOVERY_ATTEMPTS;
     /** Per-call speed multiplier; 0 = fall back to the configured value. */
     double speedMultiplier;
     int[] digTarget;

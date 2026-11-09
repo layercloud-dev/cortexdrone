@@ -44,7 +44,7 @@ public final class DroneMapSync {
 
     private static List<DroneMarker> collect(AIDroneManager manager) {
         List<DroneMarker> markers = new ArrayList<DroneMarker>();
-        for (DroneController controller : manager.getControllersById().values()) {
+        for (DroneController controller : manager.controllers()) {
             if (controller == null) continue;
             Drone drone = controller.drone;
             if (drone == null || drone.isDead) continue;

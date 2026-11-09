@@ -2,7 +2,7 @@
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var target = cfg.chest;
 if (!target) {
-  var scan = drone.scanChests({ filter: 'all', radius: clamp(cfg.radius || 28, 4, 64) });
+  var scan = drone.scanChests({ filter: 'all', radius: clamp(cfg.radius || LIMITS.chestRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.scanRadiusMax) });
   var chests = (scan && scan.chests) || [];
   var best = null;
   for (var i = 0; i < chests.length; i++) {

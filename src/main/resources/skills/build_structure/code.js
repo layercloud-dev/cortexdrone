@@ -3,9 +3,9 @@
 // door_side, allow_liquid, allow_substitute, dry_run, max_place }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var style = String(cfg.style || 'house').toLowerCase();
-var width = clamp(cfg.width || 7, 3, 19);
-var depth = clamp(cfg.depth || cfg.width || 7, 3, 19);
-var height = clamp(cfg.height || 3, 2, 12);
+var width = clamp(cfg.width || 7, LIMITS.footprintMin, LIMITS.footprintMax);
+var depth = clamp(cfg.depth || cfg.width || 7, LIMITS.footprintMin, LIMITS.footprintMax);
+var height = clamp(cfg.height || 3, LIMITS.planHeightMin, LIMITS.planHeightMax);
 var walls = cfg.walls || cfg.block || 'cobblestone';
 var roofStyle = cfg.roof_style || cfg.roofStyle || 'flat';
 
@@ -13,8 +13,8 @@ var roofStyle = cfg.roof_style || cfg.roofStyle || 'flat';
 var site = null;
 var siteSource = '';
 if (cfg.x1 !== undefined && cfg.z1 !== undefined && cfg.x2 !== undefined && cfg.z2 !== undefined) {
-  site = { x1: clamp(cfg.x1, -30000000, 30000000), z1: clamp(cfg.z1, -30000000, 30000000),
-    x2: clamp(cfg.x2, -30000000, 30000000), z2: clamp(cfg.z2, -30000000, 30000000),
+  site = { x1: clamp(cfg.x1, -LIMITS.maxCoordinate, LIMITS.maxCoordinate), z1: clamp(cfg.z1, -LIMITS.maxCoordinate, LIMITS.maxCoordinate),
+    x2: clamp(cfg.x2, -LIMITS.maxCoordinate, LIMITS.maxCoordinate), z2: clamp(cfg.z2, -LIMITS.maxCoordinate, LIMITS.maxCoordinate),
     doorSide: cfg.door_side };
   site.x1 = Math.min(cfg.x1, cfg.x2); site.x2 = Math.max(cfg.x1, cfg.x2);
   site.z1 = Math.min(cfg.z1, cfg.z2); site.z2 = Math.max(cfg.z1, cfg.z2);
@@ -30,7 +30,7 @@ if (cfg.x1 !== undefined && cfg.z1 !== undefined && cfg.x2 !== undefined && cfg.
   siteSource = 'explicit_center';
 } else {
   var found = drone.findBuildSite({ width: width, depth: depth,
-    max_radius: clamp(cfg.radius || 24, 4, 64) });
+    max_radius: clamp(cfg.radius || LIMITS.scanRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.scanRadiusMax) });
   if (!found || found.ok === false) {
     return { ok: false, error: 'could not find a build pad near the player',
       hint: 'move to flatter ground or pass x/z explicitly' };
@@ -109,7 +109,7 @@ for (var m = 0; m < missing.length; m++) {
   var material = missing[m];
   try {
     var pulled = skills.call('withdraw_items', { filter: material,
-      count: clamp(plan.materialsRequired[material] || 32, 1, 256) });
+      count: clamp(plan.materialsRequired[material] || 32, 1, SKILL_LIMITS.budget256) });
     if (pulled && pulled.withdrawn > 0) gathered[material] = pulled.withdrawn;
   } catch (withdrawError) {
     log('withdraw failed for ' + material + ': ' + withdrawError.message);
@@ -130,7 +130,7 @@ for (var mi = 0; mi < stillMissing.length; mi++) {
 if (mineStone && cfg.mine_missing !== false) {
   try {
     skills.call('mine_blocks', { filter: 'stone', radius: 16,
-      count: clamp(plan.buildCount, 8, 128), veins: false });
+      count: clamp(plan.buildCount, SKILL_LIMITS.smallBudgetMin, SKILL_LIMITS.largeScanLimit), veins: false });
   } catch (mineError) {
     log('stone gathering failed: ' + mineError.message);
   }
@@ -141,7 +141,7 @@ var build = skills.call('place_build_plan', {
   plan: plan,
   allow_substitute: cfg.allow_substitute !== false,
   verify: true,
-  max_place: clamp(cfg.max_place || plan.buildCount, 1, 800),
+  max_place: clamp(cfg.max_place || plan.buildCount, 1, SKILL_LIMITS.budget800),
   max_failures: cfg.max_failures || 12
 });
 

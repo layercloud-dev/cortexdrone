@@ -1,7 +1,7 @@
 // Ore -> ingots -> delivery. params: { ore, count, ingot, furnace, radius, fuel, deliver, player }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var ore = cfg.ore || cfg.filter || 'iron_ore';
-var count = clamp(cfg.count || 8, 1, 64);
+var count = clamp(cfg.count || 8, 1, SKILL_LIMITS.smallCountCap);
 var ingot = cfg.ingot || cfg.output || null;
 
 if (!ingot) {
@@ -12,7 +12,7 @@ if (!ingot) {
 }
 
 var withdrawn = skills.call('withdraw_items', { filter: ore, count: count,
-  radius: cfg.radius || 32 });
+  radius: cfg.radius || LIMITS.inventoryRadiusDefault });
 var held = countInInventory(drone.state().inventory, ore);
 if (held <= 0) {
   return { ok: false, error: 'no ' + ore + ' available in the drone, the player or nearby chests',
@@ -22,7 +22,7 @@ if (held <= 0) {
 if (held < count) count = held;
 
 var smelt = skills.call('smelt_items', { filter: ore, count: count,
-  furnace: cfg.furnace, radius: cfg.radius || 24, fuel: cfg.fuel,
+  furnace: cfg.furnace, radius: cfg.radius || LIMITS.scanRadiusDefault, fuel: cfg.fuel,
   max_wait_s: cfg.max_wait_s || (count * 10 + 25) });
 if (!smelt || smelt.ok === false) {
   return { ok: false, error: 'smelting failed: ' + (smelt && smelt.error ? smelt.error : 'unknown'),
@@ -31,7 +31,7 @@ if (!smelt || smelt.ok === false) {
 
 var delivery = null;
 if (cfg.deliver !== false && smelt.smelted > 0) {
-  delivery = skills.call('deliver_items', { filter: ingot, count: 2304,
+  delivery = skills.call('deliver_items', { filter: ingot, count: MAX_TRANSFER_COUNT,
     player: cfg.player });
 }
 

@@ -24,7 +24,8 @@ import java.util.Map;
  * returned numbers before placing a single block.</p>
  */
 public final class SiteSurvey {
-    private static final int MAX_SIDE = 33;
+    private static final int MAX_SURVEY_COLUMNS = 1200;
+    private static final int MAX_SIDE = WorldBounds.MAX_SITE_SIDE;
 
     private SiteSurvey() {
     }
@@ -44,7 +45,7 @@ public final class SiteSurvey {
         int maxX = Math.min(minX + MAX_SIDE - 1, Math.max(x1, x2));
         int minZ = Math.min(z1, z2);
         int maxZ = Math.min(minZ + MAX_SIDE - 1, Math.max(z1, z2));
-        int wallHeight = Math.max(1, Math.min(24, height));
+        int wallHeight = Math.max(1, Math.min(WorldBounds.MAX_SURVEY_HEIGHT, height));
 
         int refY = explicitY != null ? explicitY
                 : (droneY != null ? droneY
@@ -81,7 +82,7 @@ public final class SiteSurvey {
                     continue;
                 }
                 int ground = groundY(world, x, z, refY);
-                int top = Math.min(254, ground + wallHeight + 1);
+                int top = Math.min(WorldBounds.MAX_Y, ground + wallHeight + 1);
                 int centralObstacles = 0;
                 int headroom = 0;
                 boolean liquid = false;
@@ -89,7 +90,7 @@ public final class SiteSurvey {
                 boolean tree = false;
 
                 for (int y = ground + 1; y <= top; y++) {
-                    if (y <= 0 || y >= 255) continue;
+                    if (!WorldBounds.inWorld(y)) continue;
                     Block block = world.getBlock(x, y, z);
                     if (block == null || block == Blocks.air) {
                         if (centralObstacles == 0) headroom++;
@@ -126,7 +127,7 @@ public final class SiteSurvey {
                 if (tree) treeColumns++;
                 if (headroom <= 0) airGapColumns++;
 
-                if (columns.size() < 1200) {
+                if (columns.size() < MAX_SURVEY_COLUMNS) {
                     JsonObject column = new JsonObject();
                     column.addProperty("x", x);
                     column.addProperty("z", z);
@@ -194,7 +195,8 @@ public final class SiteSurvey {
      */
     static int groundY(World world, int x, int z, int refY) {
         if (!ChunkAccess.isBlockLoaded(world, x, z)) return refY;
-        int top = Math.min(250, Math.max(refY + 20, world.getHeightValue(x, z) + 2));
+        int top = Math.min(WorldBounds.MAX_LANDING_Y,
+                Math.max(refY + 20, world.getHeightValue(x, z) + 2));
         int minY = Math.max(3, refY - 20);
         for (int y = top; y >= minY; y--) {
             if (world.isAirBlock(x, y, z)) continue;

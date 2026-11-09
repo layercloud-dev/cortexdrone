@@ -169,7 +169,7 @@ for (var t = 0; t <= 1.0001; t += 0.125) {
     if (top.topY + 8 > peak) peak = top.topY + 8;
   }
 }
-cruiseY = Math.min(250, Math.max(cruiseY, peak));
+cruiseY = Math.min(LIMITS.landingY, Math.max(cruiseY, peak));
 
 // The cave escape can take minutes; re-resolve the rider and their distance
 // immediately before boarding instead of trusting the recon snapshot.
@@ -223,7 +223,7 @@ if (!climb || climb.arrived === false) {
 var cruise = null;
 try {
   cruise = drone.goto({ x: destX + 0.5, y: cruiseY, z: destZ + 0.5,
-    allow_dig: false, max_wait_ms: 180000, recovery_attempts: 12 });
+    allow_dig: false, max_wait_ms: LIMITS.maxWaitMs, recovery_attempts: LIMITS.recoveryAttempts });
 } catch (cruiseError) {
   cruise = { arrived: false, error: cruiseError.message };
 }
@@ -238,7 +238,7 @@ if (!cruise || cruise.arrived === false) {
 // 3) find a safe landing cell for the rider, then descend to it slowly
 var landing = null;
 try {
-  landing = drone.findSafeLanding({ x: destX, y: destY, z: destZ, radius: 12 });
+  landing = drone.findSafeLanding({ x: destX, y: destY, z: destZ, radius: LIMITS.landingRadiusDefault });
 } catch (landError) {
   landing = null;
 }

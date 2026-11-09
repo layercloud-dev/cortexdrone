@@ -17,8 +17,6 @@ import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.ForgeChunkManager.Ticket;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,8 +45,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * </ul>
  */
 public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallback, ChunkAccess.Loader {
-    /** Keep a chunk this long after it stops being needed (5s at 20 TPS). */
-    private static final int RELEASE_GRACE_TICKS = 60;
     /** New chunk loads per 5-tick drone plan update. Prevents flight stutter. */
     private static final int DRONE_LOAD_BUDGET = 3;
     /** Hard cap for synchronous ray/path reads in one server tick. */
@@ -58,9 +54,14 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
     private final CortexDroneMod mod;
     private final DroneLogger logger;
     private final ChunkLoadPolicy policy = new ChunkLoadPolicy();
+    private final ForgeTicketOps ticketOps;
+    private final TicketPlanApplier planApplier;
+    private final AiChunkRelease release;
+    private final ChunkPlanLog planLog;
+    private final Set<String> reportedTicketFailures = new HashSet<>();
 
     private final Map<Integer, Ticket> droneTickets = new ConcurrentHashMap<>();
-    private final Map<Integer, Cursor> cursors = new ConcurrentHashMap<>();
+    private final Map<Integer, DroneChunkCursor> cursors = new ConcurrentHashMap<>();
     private final Map<Ticket, Map<ChunkCoordIntPair, Long>> releaseAt = new ConcurrentHashMap<>();
     /** Chunks this manager explicitly generated/loaded. Safe to queue for unload. */
     private final Map<World, Set<ChunkCoordIntPair>> aiLoaded = new ConcurrentHashMap<>();
@@ -72,6 +73,45 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
         this.manager = manager;
         this.mod = mod;
         this.logger = logger;
+        this.ticketOps = new ForgeTicketOps(this::reportTicketFailure);
+        this.planLog = new ChunkPlanLog(logger);
+        this.release = new AiChunkRelease(new AiChunkRelease.Host() {
+            @Override
+            public Map<World, Set<ChunkCoordIntPair>> aiLoaded() {
+                return ChunkLoadingManager.this.aiLoaded;
+            }
+
+            @Override
+            public boolean isAnyDroneNear(World world, ChunkCoordIntPair pair) {
+                return ChunkLoadingManager.this.isAnyDroneNear(world, pair);
+            }
+
+            @Override
+            public void dropChunk(WorldServer world, ChunkCoordIntPair pair) {
+                ChunkLoadingManager.dropChunk(world, pair);
+            }
+        });
+        this.planApplier = new TicketPlanApplier(new TicketPlanApplier.Host() {
+            @Override
+            public ForgeTicketOps ticketOps() {
+                return ChunkLoadingManager.this.ticketOps;
+            }
+
+            @Override
+            public boolean isAnyDroneNear(net.minecraft.world.World world, ChunkCoordIntPair pair) {
+                return ChunkLoadingManager.this.isAnyDroneNear(world, pair);
+            }
+
+            @Override
+            public void loadChunk(WorldServer world, ChunkCoordIntPair pair) {
+                ChunkLoadingManager.this.loadChunk(world, pair);
+            }
+
+            @Override
+            public Map<ForgeChunkManager.Ticket, Map<ChunkCoordIntPair, Long>> releaseAt() {
+                return ChunkLoadingManager.this.releaseAt;
+            }
+        });
         attach();
     }
 
@@ -145,60 +185,33 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
         ChunkAccess.setLoader(null);
     }
 
-    /** @return true when every AI-loaded chunk could be dropped safely. */
+    /** Drops every AI chunk that is genuinely unowned. */
     private boolean releaseAllAiChunks() {
-        for (Ticket ticket : new ArrayList<>(this.droneTickets.values())) {
-            release(ticket);
-        }
-        boolean fullyReleased = true;
-        for (Map.Entry<World, Set<ChunkCoordIntPair>> entry : this.aiLoaded.entrySet()) {
-            World world = entry.getKey();
-            if (!(world instanceof WorldServer)) continue;
-            WorldServer server = (WorldServer) world;
-            for (ChunkCoordIntPair pair : new ArrayList<>(entry.getValue())) {
-                if (PlayerChunkOwnership.isWithinAnyPlayerView(world, pair.chunkXPos, pair.chunkZPos)) {
-                    fullyReleased = false;
-                    continue;
-                }
-                if (isAnyDroneNear(world, pair)) {
-                    fullyReleased = false;
-                    continue;
-                }
-                dropChunk(server, pair);
-                entry.getValue().remove(pair);
-            }
-        }
+        boolean fullyReleased = releaseAiChunks(true);
         this.releaseAt.clear();
-        if (fullyReleased) {
-            this.aiLoaded.clear();
-            this.cursors.clear();
-        }
         return fullyReleased;
     }
 
-    private void unloadAiOutsideView() {
-        for (Map.Entry<World, Set<ChunkCoordIntPair>> entry : this.aiLoaded.entrySet()) {
-            World world = entry.getKey();
-            if (!(world instanceof WorldServer)) continue;
-            WorldServer server = (WorldServer) world;
-            for (ChunkCoordIntPair pair : new ArrayList<>(entry.getValue())) {
-                if (PlayerChunkOwnership.isWithinAnyPlayerView(world, pair.chunkXPos, pair.chunkZPos)) {
-                    continue;
-                }
-                if (isAnyDroneNear(world, pair)) continue;
-                dropChunk(server, pair);
-                entry.getValue().remove(pair);
+    /** @see AiChunkRelease#releaseAll() */
+    private boolean releaseAiChunks(boolean dropTickets) {
+        if (dropTickets) {
+            for (Ticket ticket : new ArrayList<>(this.droneTickets.values())) {
+                release(ticket);
             }
         }
+        boolean fullyReleased = this.release.releaseAll();
+        if (fullyReleased) this.cursors.clear();
+        return fullyReleased;
+    }
+
+    /** @see AiChunkRelease#releaseOutsideView() */
+    private void unloadAiOutsideView() {
+        this.release.releaseOutsideView();
         for (Ticket ticket : new ArrayList<>(this.droneTickets.values())) {
             if (ticket == null || !(ticket.world instanceof WorldServer)) continue;
             for (ChunkCoordIntPair pair : new ArrayList<>(ticket.getChunkList())) {
-                if (PlayerChunkOwnership.isWithinAnyPlayerView(ticket.world,
-                        pair.chunkXPos, pair.chunkZPos)) {
-                    continue;
-                }
-                if (isAnyDroneNear(ticket.world, pair)) continue;
-                unforce(ticket, pair);
+                if (this.release.isOwned(ticket.world, pair)) continue;
+                this.ticketOps.unforce(ticket, pair);
             }
         }
     }
@@ -212,25 +225,16 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
         World world = ctrl.drone.worldObj;
         if (!(world instanceof WorldServer)) return;
         if (!this.policy.isLoadAllowed()) return;
-        if (!forgeLoadingAvailable()) return;
+        if (!ForgeTicketOps.isAvailable()) return;
 
         int dim = world.provider != null ? world.provider.dimensionId : 0;
         int cx = MathHelper.floor_double(ctrl.drone.posX) >> 4;
         int cz = MathHelper.floor_double(ctrl.drone.posZ) >> 4;
         long now = world.getTotalWorldTime();
 
-        Cursor cursor = this.cursors.get(ctrl.id);
-        if (cursor == null) {
-            cursor = new Cursor();
-            this.cursors.put(ctrl.id, cursor);
-        }
-        boolean moved = cursor.chunkX != cx || cursor.chunkZ != cz || cursor.dim != dim;
-        boolean periodic = now - cursor.lastPlanTick >= 5;
-        if (!moved && !periodic && this.droneTickets.containsKey(ctrl.id)) return;
-        cursor.chunkX = cx;
-        cursor.chunkZ = cz;
-        cursor.dim = dim;
-        cursor.lastPlanTick = now;
+        DroneChunkCursor cursor = this.cursors.computeIfAbsent(ctrl.id, id -> new DroneChunkCursor());
+        if (!cursor.shouldReplan(cx, cz, dim, now, this.droneTickets.containsKey(ctrl.id))) return;
+        cursor.recordPlan(cx, cz, dim, now);
 
         Ticket ticket = adoptOrCreateTicket(ctrl, (WorldServer) world);
         List<ChunkCoordIntPair> plan = NavigationChunkPlanner.buildDronePlan(ctrl, nav, cx, cz);
@@ -253,18 +257,16 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
         if (ticket != null && ticket.world == world) return ticket;
         if (ticket != null) release(ticket);
 
-        Ticket created = null;
+        Ticket created = this.ticketOps.requestEntityTicket(this.mod, world);
+        if (created == null) return null;
         try {
-            created = ForgeChunkManager.requestTicket(this.mod, world, ForgeChunkManager.Type.ENTITY);
-            if (created != null) {
-                created.bindEntity(ctrl.drone);
-                configureTicket(created);
-                this.droneTickets.put(ctrl.id, created);
-            }
+            created.bindEntity(ctrl.drone);
         } catch (Throwable failure) {
-            if (created != null) release(created);
-            this.logger.log("CHUNK", ctrl, "Could not request Forge chunk ticket", String.valueOf(failure));
+            this.ticketOps.report("bind", failure);
+            this.ticketOps.release(created);
+            return null;
         }
+        this.droneTickets.put(ctrl.id, created);
         return created;
     }
 
@@ -274,125 +276,16 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
 
     private int applyTicketChunks(WorldServer world, DroneController ctrl, Ticket ticket,
                                   List<ChunkCoordIntPair> plan) {
-        if (world == null || ticket == null || plan == null || plan.isEmpty()) return 0;
-        configureTicket(ticket);
-
-        int depth = ticket.getChunkListDepth();
-        if (depth <= 0) return 0;
-        if (depth > NavigationChunkPlanner.MAX_TICKET_CHUNKS) {
-            depth = NavigationChunkPlanner.MAX_TICKET_CHUNKS;
-        }
-        List<ChunkCoordIntPair> desired = plan.size() > depth ? plan.subList(0, depth) : plan;
-        Set<ChunkCoordIntPair> desiredSet = new HashSet<>(desired);
-
-        Map<ChunkCoordIntPair, Long> pending = this.releaseAt.get(ticket);
-        if (pending == null) {
-            pending = new HashMap<>();
-            this.releaseAt.put(ticket, pending);
-        }
-        long now = world.getTotalWorldTime();
-        Set<ChunkCoordIntPair> current = new HashSet<>(ticket.getChunkList());
-
-        // 1. Drop claims we no longer need, but only after the drone is away and
-        // no player can see the chunk. Player-view chunks keep their claim until
-        // the player leaves; vanilla owns them anyway.
-        for (ChunkCoordIntPair old : current) {
-            if (desiredSet.contains(old)) {
-                pending.remove(old);
-                continue;
-            }
-            if (PlayerChunkOwnership.isWithinAnyPlayerView(world, old.chunkXPos, old.chunkZPos)
-                    || isAnyDroneNear(world, old)) {
-                pending.remove(old);
-                continue;
-            }
-            Long due = pending.get(old);
-            if (due == null) {
-                pending.put(old, now + RELEASE_GRACE_TICKS);
-            } else if (now >= due) {
-                pending.remove(old);
-                unforce(ticket, old);
-            }
-        }
-
-        // 2. Claim the desired set, highest priority first. Player-view chunks
-        // are left entirely to vanilla's PlayerManager.
-        Set<ChunkCoordIntPair> held = new HashSet<>(ticket.getChunkList());
-        for (ChunkCoordIntPair pair : desired) {
-            if (PlayerChunkOwnership.isWithinAnyPlayerView(world, pair.chunkXPos, pair.chunkZPos)) {
-                continue;
-            }
-            if (held.contains(pair)) continue;
-            while (held.size() >= depth) {
-                ChunkCoordIntPair evict = firstNotIn(ticket.getChunkList(), desiredSet);
-                if (evict == null) break;
-                pending.remove(evict);
-                unforce(ticket, evict);
-                held.remove(evict);
-            }
-            if (held.size() >= depth) break;
-            if (force(ticket, pair)) held.add(pair);
-        }
-        pending.keySet().retainAll(held);
-
-        // 3. Highest-priority chunk at the tail, lowest at the head.
-        for (int i = desired.size() - 1; i >= 0; i--) {
-            ChunkCoordIntPair pair = desired.get(i);
-            if (held.contains(pair)) reorder(ticket, pair);
-        }
-
-        // 4. Forge claims do not load anything. Load missing chunks nearest-first
-        // with a per-update budget so flight never stalls on generation.
-        int loads = 0;
-        for (ChunkCoordIntPair pair : desired) {
-            if (loads >= DRONE_LOAD_BUDGET) break;
-            if (!held.contains(pair)) continue;
-            if (PlayerChunkOwnership.isWithinAnyPlayerView(world, pair.chunkXPos, pair.chunkZPos)) {
-                continue;
-            }
-            if (ChunkAccess.isLoaded(world, pair.chunkXPos, pair.chunkZPos)) continue;
-            loadChunk(world, pair);
-            loads++;
-        }
-        return loads;
+        return this.planApplier.apply(world, ctrl, ticket, plan);
     }
 
     private int loadHotChunks(WorldServer world, List<ChunkCoordIntPair> plan, int budget) {
-        int loaded = 0;
-        for (ChunkCoordIntPair pair : plan) {
-            if (loaded >= budget) break;
-            if (PlayerChunkOwnership.isWithinAnyPlayerView(world, pair.chunkXPos, pair.chunkZPos)) {
-                continue;
-            }
-            if (ChunkAccess.isLoaded(world, pair.chunkXPos, pair.chunkZPos)) continue;
-            loadChunk(world, pair);
-            loaded++;
-        }
-        return loaded;
+        return this.planApplier.loadHotChunks(world, plan, budget);
     }
 
-    private void logPlan(DroneController ctrl, Cursor cursor, Ticket ticket,
+    private void logPlan(DroneController ctrl, DroneChunkCursor cursor, Ticket ticket,
                          List<ChunkCoordIntPair> plan, int loadedNow, long now) {
-        int managed = 0;
-        int playerOwned = 0;
-        for (ChunkCoordIntPair pair : plan) {
-            if (PlayerChunkOwnership.isWithinAnyPlayerView(ticket.world,
-                    pair.chunkXPos, pair.chunkZPos)) {
-                playerOwned++;
-            } else {
-                managed++;
-            }
-        }
-        boolean changed = managed != cursor.lastManaged || playerOwned != cursor.lastPlayerOwned;
-        if (loadedNow == 0 && !changed && now - cursor.lastLogTick < 600) return;
-        cursor.lastLogTick = now;
-        cursor.lastManaged = managed;
-        cursor.lastPlayerOwned = playerOwned;
-        this.logger.log("CHUNK", ctrl, "Navigation chunk ownership updated",
-                "managed=" + managed + " playerOwned=" + playerOwned
-                        + " plan=" + plan.size() + " held=" + ticket.getChunkList().size()
-                        + " loadedNow=" + loadedNow
-                        + " policy=" + (this.policy.isLoadAllowed() ? "open" : "closed"));
+        this.planLog.log(ctrl, cursor, ticket, plan, loadedNow, now, this.policy.isLoadAllowed());
     }
 
     // ------------------------------------------------------------------
@@ -402,7 +295,7 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
     @Override
     public synchronized boolean ensureLoaded(World world, int chunkX, int chunkZ) {
         if (!(world instanceof WorldServer)) return false;
-        if (!this.policy.isLoadAllowed() || !forgeLoadingAvailable()) return false;
+        if (!this.policy.isLoadAllowed() || !ForgeTicketOps.isAvailable()) return false;
         // Vanilla's PlayerManager owns the player view square. If one of those
         // chunks is not loaded yet, wait for vanilla instead of racing it.
         if (PlayerChunkOwnership.isWithinAnyPlayerView(world, chunkX, chunkZ)) return false;
@@ -444,7 +337,7 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
     }
 
     private boolean isAnyDroneNear(World world, ChunkCoordIntPair pair) {
-        for (DroneController ctrl : this.manager.getControllersById().values()) {
+        for (DroneController ctrl : this.manager.controllers()) {
             if (ctrl == null || ctrl.drone == null || ctrl.drone.isDead) continue;
             if (ctrl.drone.worldObj != world) continue;
             if (PlayerChunkOwnership.isDroneNear(ctrl.drone, pair.chunkXPos, pair.chunkZPos,
@@ -455,80 +348,28 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
         return false;
     }
 
+    /**
+     * Reports a swallowed Forge ticket failure once per operation.
+     *
+     * <p>A chunk-ticket regression used to be invisible: every call site caught
+     * {@code Throwable} and continued. One line per distinct operation keeps the
+     * log useful without repeating every tick.</p>
+     */
+    private void reportTicketFailure(String operation, Throwable cause) {
+        if (!this.reportedTicketFailures.add(operation)) return;
+        this.logger.log("CHUNK", null, "Forge chunk ticket " + operation + " failed: " + cause,
+                "further '" + operation + "' failures are suppressed");
+    }
+
     // ------------------------------------------------------------------
     // Ticket primitives
     // ------------------------------------------------------------------
-
-    /** Respect Forge's per-mod chunkloading config (a zero disables it). */
-    private static boolean forgeLoadingAvailable() {
-        try {
-            return ForgeChunkManager.getMaxChunkDepthFor(CortexDroneMod.MODID) > 0
-                    && ForgeChunkManager.getMaxTicketLengthFor(CortexDroneMod.MODID) > 0;
-        } catch (Throwable ignored) {
-            return true;
-        }
-    }
-
-    private static ChunkCoordIntPair firstNotIn(Collection<ChunkCoordIntPair> chunks,
-                                                Set<ChunkCoordIntPair> keep) {
-        for (ChunkCoordIntPair pair : chunks) {
-            if (!keep.contains(pair)) return pair;
-        }
-        return null;
-    }
-
-    private static void configureTicket(Ticket ticket) {
-        if (ticket == null) return;
-        try {
-            int max = ticket.getMaxChunkListDepth();
-            if (max <= 0) return;
-            int depth = Math.min(NavigationChunkPlanner.MAX_TICKET_CHUNKS, max);
-            if (ticket.getChunkListDepth() != depth) ticket.setChunkListDepth(depth);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private static boolean force(Ticket ticket, ChunkCoordIntPair pair) {
-        try {
-            ForgeChunkManager.forceChunk(ticket, pair);
-            return ticket.getChunkList().contains(pair);
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static void unforce(Ticket ticket, ChunkCoordIntPair pair) {
-        if (ticket == null || pair == null) return;
-        try {
-            ForgeChunkManager.unforceChunk(ticket, pair);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private static void reorder(Ticket ticket, ChunkCoordIntPair pair) {
-        try {
-            ForgeChunkManager.reorderChunk(ticket, pair);
-        } catch (Throwable ignored) {
-        }
-    }
 
     private void release(Ticket ticket) {
         if (ticket == null) return;
         this.releaseAt.remove(ticket);
         this.droneTickets.values().remove(ticket);
-        try {
-            ForgeChunkManager.releaseTicket(ticket);
-        } catch (Throwable ignored) {
-        }
+        this.ticketOps.release(ticket);
     }
 
-    private static final class Cursor {
-        private int chunkX = Integer.MIN_VALUE;
-        private int chunkZ = Integer.MIN_VALUE;
-        private int dim = Integer.MIN_VALUE;
-        private long lastPlanTick = Long.MIN_VALUE;
-        private long lastLogTick = Long.MIN_VALUE;
-        private int lastManaged = -1;
-        private int lastPlayerOwned = -1;
-    }
 }

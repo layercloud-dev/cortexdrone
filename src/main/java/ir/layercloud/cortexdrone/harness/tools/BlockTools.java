@@ -1,10 +1,12 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
+import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
@@ -34,9 +36,13 @@ public final class BlockTools implements ToolProvider {
                             .requiredInt("x", "Block X coordinate.")
                             .requiredInt("y", "Block Y coordinate.")
                             .requiredInt("z", "Block Z coordinate.")
-                            .optionalInt("max_wait_ms", "Upper bound for the movement retry, 5000..180000.", 5000, 180_000, 120_000))
+                            .optionalInt("max_wait_ms", "Upper bound for the movement retry, "
+                                    + NavigationLimits.MIN_WAIT_MS + ".." + NavigationLimits.MAX_WAIT_MS + ".",
+                                    NavigationLimits.MIN_WAIT_MS, NavigationLimits.MAX_WAIT_MS,
+                                    NavigationLimits.DEFAULT_WAIT_MS))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(120_000L)
+                    .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build(),
             ToolSpec.builder("place_block")
                     .description("Place exactly one block from the DRONE inventory at x/y/z. The target "
@@ -50,9 +56,12 @@ public final class BlockTools implements ToolProvider {
                             .optionalString("block", "Block/item name or ore dictionary tag; 'any' picks any "
                                     + "placeable block in the drone inventory.", "any")
                             .optionalInt("meta", "Block metadata, -1 = any/auto.", -1, 15, -1)
-                            .optionalInt("max_wait_ms", "Upper bound for the movement retry.", 5000, 180_000, 120_000))
+                            .optionalInt("max_wait_ms", "Upper bound for the movement retry.",
+                                    NavigationLimits.MIN_WAIT_MS, NavigationLimits.MAX_WAIT_MS,
+                                    NavigationLimits.DEFAULT_WAIT_MS))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(120_000L)
+                    .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build(),
             ToolSpec.builder("replace_block")
                     .description("Atomically replace one block at x/y/z with a block from the DRONE "
@@ -70,9 +79,12 @@ public final class BlockTools implements ToolProvider {
                                     + "dictionary tag; 'any' picks any placeable block in the drone "
                                     + "inventory.", "any")
                             .optionalInt("meta", "Block metadata, -1 = auto.", -1, 15, -1)
-                            .optionalInt("max_wait_ms", "Upper bound for the movement retry.", 5000, 180_000, 120_000))
+                            .optionalInt("max_wait_ms", "Upper bound for the movement retry.",
+                                    NavigationLimits.MIN_WAIT_MS, NavigationLimits.MAX_WAIT_MS,
+                                    NavigationLimits.DEFAULT_WAIT_MS))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(120_000L)
+                    .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build(),
             ToolSpec.builder("repair_trail")
                     .description("Put back the blocks the drone had to break to reach earlier targets. "
@@ -81,7 +93,8 @@ public final class BlockTools implements ToolProvider {
                             + "and tile entities. Slots that are no longer air are left untouched.")
                     .parameters(ToolSchema.object())
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(30_000L)
+                    .timeoutMs(ToolTimeouts.ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build()
     );
 

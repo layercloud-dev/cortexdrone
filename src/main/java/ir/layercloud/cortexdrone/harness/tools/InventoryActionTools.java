@@ -1,8 +1,11 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
+import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
 import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
@@ -30,7 +33,7 @@ public final class InventoryActionTools implements ToolProvider {
                             .requiredString("from", "Source: drone, player or chest.")
                             .requiredString("to", "Destination: drone, player or chest.")
                             .optionalString("filter", "Item name, registry name, ore dictionary tag (bare or #tag) or 'all'.")
-                            .optionalInt("count", "Maximum items to move; 0 = as many as possible.", 0, 2304, 0)
+                            .optionalInt("count", "Maximum items to move; 0 = as many as possible.", 0, InventoryLimits.MAX_TRANSFER_COUNT, 0)
                             .optionalInt("from_slot", "Exact source slot, or -1 for any.", -1, 255, -1)
                             .optionalInt("to_slot", "Exact destination slot, or -1 for any.", -1, 255, -1)
                             .optionalInt("from_x", "Source chest X (when from=chest).")
@@ -40,27 +43,30 @@ public final class InventoryActionTools implements ToolProvider {
                             .optionalInt("to_y", "Destination chest Y.")
                             .optionalInt("to_z", "Destination chest Z."))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(90_000L)
+                    .timeoutMs(ToolTimeouts.EXTENDED_MS)
+                    .capabilities(ToolCapability.MUTATES_INVENTORY, ToolCapability.AWAITS_COMPLETION)
                     .build(),
             ToolSpec.builder("give_to_player")
                     .description("Give filtered drone items to a player. The drone flies into reach first. "
                             + "Use filter='all' to hand over the entire cargo; count caps the number of items.")
                     .parameters(ToolSchema.object()
                             .optionalString("filter", "Item name/registry/ore tag or 'all'.", "all")
-                            .optionalInt("count", "Maximum items to give; 0 = as many as fit.", 0, 2304, 0)
+                            .optionalInt("count", "Maximum items to give; 0 = as many as fit.", 0, InventoryLimits.MAX_TRANSFER_COUNT, 0)
                             .optionalString("player", "Player name; defaults to the owner/task player."))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(120_000L)
+                    .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_INVENTORY, ToolCapability.AWAITS_COMPLETION)
                     .build(),
             ToolSpec.builder("take_from_player")
                     .description("Take filtered items from a player's inventory into the drone. The drone "
                             + "flies into reach first. Use this to obtain materials the player is holding.")
                     .parameters(ToolSchema.object()
                             .optionalString("filter", "Item name/registry/ore tag or 'all'.", "all")
-                            .optionalInt("count", "Maximum items to take; 0 = as many as fit.", 0, 2304, 0)
+                            .optionalInt("count", "Maximum items to take; 0 = as many as fit.", 0, InventoryLimits.MAX_TRANSFER_COUNT, 0)
                             .optionalString("player", "Player name; defaults to the owner/task player."))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(120_000L)
+                    .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_INVENTORY, ToolCapability.AWAITS_COMPLETION)
                     .build(),
             ToolSpec.builder("withdraw_chest")
                     .description("Withdraw filtered items from one chest/container. Pass x/y/z to target a "
@@ -70,12 +76,13 @@ public final class InventoryActionTools implements ToolProvider {
                             + "needs_movement + standoff.")
                     .parameters(ToolSchema.object()
                             .optionalString("filter", "Item name/registry/ore tag or 'all'.", "all")
-                            .optionalInt("count", "Maximum items to withdraw; 0 = as many as fit.", 0, 2304, 0)
+                            .optionalInt("count", "Maximum items to withdraw; 0 = as many as fit.", 0, InventoryLimits.MAX_TRANSFER_COUNT, 0)
                             .optionalInt("x", "Chest X (optional).")
                             .optionalInt("y", "Chest Y (optional).")
                             .optionalInt("z", "Chest Z (optional)"))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(120_000L)
+                    .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_INVENTORY, ToolCapability.AWAITS_COMPLETION)
                     .build(),
             ToolSpec.builder("deposit_chest")
                     .description("Fly to a chest/container and deposit the drone inventory. Pass x/y/z for a "
@@ -87,7 +94,8 @@ public final class InventoryActionTools implements ToolProvider {
                             .optionalInt("y", "Chest Y (optional).")
                             .optionalInt("z", "Chest Z (optional)"))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(120_000L)
+                    .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_INVENTORY, ToolCapability.AWAITS_COMPLETION)
                     .build(),
             ToolSpec.builder("drop_items")
                     .description("Deliver the drone's inventory to the owner, or drop it in place when the "
@@ -95,15 +103,22 @@ public final class InventoryActionTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .optionalString("filter", "Item name/registry/ore tag or 'all'.", "all"))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(120_000L)
+                    .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_INVENTORY, ToolCapability.AWAITS_COMPLETION)
                     .build(),
             ToolSpec.builder("suck_items")
                     .description("Vacuum nearby dropped item entities into the drone inventory. radius is in "
                             + "blocks; items that do not fit remain on the ground.")
                     .parameters(ToolSchema.object()
-                            .optionalNumber("radius", "Pickup radius in blocks, 1..16.", 1, 16, 4))
+                            .optionalNumber("radius", "Pickup radius in blocks, "
+                                    + InventoryLimits.MIN_SUCK_RADIUS + ".."
+                                    + InventoryLimits.MAX_SUCK_RADIUS + ".",
+                                    InventoryLimits.MIN_SUCK_RADIUS,
+                                    InventoryLimits.MAX_SUCK_RADIUS,
+                                    InventoryLimits.DEFAULT_SUCK_RADIUS))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(30_000L)
+                    .timeoutMs(ToolTimeouts.ACTION_MS)
+                    .capabilities(ToolCapability.MUTATES_INVENTORY, ToolCapability.AWAITS_COMPLETION)
                     .build(),
             ToolSpec.builder("craft")
                     .description("Craft a vanilla crafting-table recipe from the DRONE inventory only. "
@@ -111,9 +126,10 @@ public final class InventoryActionTools implements ToolProvider {
                             + "result items requested (the action crafts as many complete recipes as possible).")
                     .parameters(ToolSchema.object()
                             .optionalString("filter", "Result item name/registry/ore tag.", "planks")
-                            .optionalInt("count", "Number of result items wanted.", 1, 2304, 1))
+                            .optionalInt("count", "Number of result items wanted.", 1, InventoryLimits.MAX_TRANSFER_COUNT, 1))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(60_000L)
+                    .timeoutMs(ToolTimeouts.LONG_MS)
+                    .capabilities(ToolCapability.MUTATES_INVENTORY, ToolCapability.AWAITS_COMPLETION)
                     .build()
     );
 

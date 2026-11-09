@@ -1,7 +1,7 @@
 // Platform / bridge. params: { width, depth, block, style, y, x/z }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var width = clamp(cfg.width || 7, 3, 19);
-var depth = clamp(cfg.depth || width, 3, 19);
+var width = clamp(cfg.width || 7, LIMITS.footprintMin, LIMITS.footprintMax);
+var depth = clamp(cfg.depth || width, LIMITS.footprintMin, LIMITS.footprintMax);
 var material = cfg.block || 'cobblestone';
 var style = cfg.bridge === true ? 'bridge' : 'platform';
 

@@ -2,9 +2,9 @@
 // Combat runs through guard_scan -> attack_to_death, so a threat is finished
 // based on its health and the drone's damage per hit, not a blind swing cap.
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var seconds = clamp(cfg.duration_s || 120, 10, 240);
-var radius = clamp(cfg.radius || 16, 4, 48);
-var maxAttacks = clamp(cfg.max_attacks || 40, 1, 200);
+var seconds = clamp(cfg.duration_s || SKILL_LIMITS.guardDurationDefault, SKILL_LIMITS.guardDurationMin, SKILL_LIMITS.durationMax);
+var radius = clamp(cfg.radius || SKILL_LIMITS.mediumRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.mediumRadiusMax);
+var maxAttacks = clamp(cfg.max_attacks || 40, 1, SKILL_LIMITS.attackCap200);
 var hold = cfg.hold !== false;
 
 var anchor = cfg.point || null;

@@ -14,8 +14,8 @@ if (!profile) {
     hint: 'use wheat, carrots or potatoes' };
 }
 
-var radius = clamp(cfg.radius || 24, 4, 32);
-var limit = clamp(cfg.limit || 16, 1, 64);
+var radius = clamp(cfg.radius || LIMITS.scanRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.smallScanRadiusMax);
+var limit = clamp(cfg.limit || 16, 1, SKILL_LIMITS.smallCountCap);
 var replant = cfg.replant !== false;
 
 var found = drone.scanBlocks({ filter: profile.block, radius: radius });
@@ -67,8 +67,8 @@ for (var h = 0; h < mature.length; h++) {
 
 var collected = null;
 try {
-  collected = skills.call('collect_drops', { radius: Math.min(16, radius), filter: 'all',
-    max_clusters: 10 });
+  collected = skills.call('collect_drops', { radius: Math.min(LIMITS.collectRadiusMax, radius), filter: 'all',
+    max_clusters: SKILL_LIMITS.maxClusters });
 } catch (collectError) {
   log('drop collection skipped: ' + collectError.message);
 }

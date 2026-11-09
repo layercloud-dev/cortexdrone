@@ -1,8 +1,8 @@
 // Batched material restock. params: { materials:[{filter,count}] | {name:count} | [names], count, radius }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var raw = cfg.materials || cfg.items || cfg.list;
-var defaultCount = clamp(cfg.count || 64, 1, 2304);
-var radius = clamp(cfg.radius || 32, 4, 64);
+var defaultCount = clamp(cfg.count || 64, 1, MAX_TRANSFER_COUNT);
+var radius = clamp(cfg.radius || LIMITS.inventoryRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.scanRadiusMax);
 
 var entries = [];
 if (!raw) {
@@ -18,13 +18,13 @@ if (isList) {
       entries.push({ filter: item, count: defaultCount });
     } else if (item && (item.filter || item.item)) {
       entries.push({ filter: item.filter || item.item,
-        count: clamp(item.count || defaultCount, 1, 2304) });
+        count: clamp(item.count || defaultCount, 1, MAX_TRANSFER_COUNT) });
     }
   }
 } else if (typeof raw === 'object') {
   for (var key in raw) {
     if (!Object.prototype.hasOwnProperty.call(raw, key)) continue;
-    entries.push({ filter: key, count: clamp(raw[key] || defaultCount, 1, 2304) });
+    entries.push({ filter: key, count: clamp(raw[key] || defaultCount, 1, MAX_TRANSFER_COUNT) });
   }
 }
 

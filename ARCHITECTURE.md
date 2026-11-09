@@ -82,18 +82,28 @@ src/main/java/ir/layercloud/cortexdrone/
   harness/                  agent + tool + code runtime
     Harness.java            composition root (registry, invoker, js, llm, agent)
     agent/                  AgentService, LlmClient, Conversation, ContextRenderer
-    js/                     JsEngine (Rhino), JsSource, TypeScriptEraser
+    js/                     JsEngine (Rhino), JsSource, TypeScriptEraser,
+                            DroneToolFunction, SkillNamespaceBinder
     lesson/                 Lesson, LessonMarkdown, LessonStore
     memory/                 MemoryEntry, MemoryCapture, MemoryStore
-    tool/                   ToolSpec, ToolRegistry, ToolInvoker, ScanJobs, schemas
-    tools/                  one provider per domain + view/ JSON boundaries
-    markdown/               Frontmatter (shared by skills and lessons)
+    tool/                   ToolSpec, ToolCapability, ToolRegistry, ToolInvoker,
+                            ScanJobs, ScanShape, MainThreadCall, Threads, schemas
+    tools/                  domain providers + view/ JSON boundaries
+                            world: WorldBlockRead / WorldScan / WorldEntity /
+                            WorldBuildPlan, InventoryToolSupport, InventoryLimits
+                            inventory: PlayerContainer / Machine / Recipe
+    markdown/               Frontmatter, AtomicFiles (shared file IO)
     skill/                  Skill, SkillMarkdown, SkillLibrary, SkillSearch, SkillRefiner
-    session/                DroneSession, SessionManager, SessionJournal
+    session/                DroneSession, SessionManager, SessionJournal,
+                            SessionIndex, SessionMarkdown, SessionTopics
     task/                   TaskCoordinator, TaskIntentClassifier
 
   command/                  /drone command
-  config/                   ModConfig, ModPaths, DroneLogger
+    impl/                   AdminCommands, SessionCommands, SkillCommands,
+                            MemoryCommands, LessonCommands, DespawnTargets,
+                            CommandPermissions
+  config/                   ModConfig, ModPaths, ConfigDirectory, PrivateHosts,
+                            DroneLogger
   oc/                       OpenComputers reflection bridge
 ```
 
@@ -103,6 +113,30 @@ resolve through Forge's OreDictionary as well as display and registry names.
 `oreTin`/`ingotTin`; `#oreTag`/`oredict:`/`dict:` for an exact tag), so modded
 items whose display name differs from the material still match. Item/block
 JSON carries an `oreDict` array, and `find_oredict` exposes the mapping.
+
+### Shared sources of truth
+
+Values that several layers must agree on live in exactly one place:
+
+| Concern | Class |
+| --- | --- |
+| World height envelope, plan/survey size limits | `service/world/WorldBounds` |
+| Filter-scan budgets for distant search | `service/world/WorldScanBudget` |
+| Block-position map key (one bit layout) | `service/world/BlockPosKey` |
+| Drone hover geometry (cell centre + 0.65 offset) | `service/navigation/DroneGeometry` |
+| Scan volume shape | `harness/tool/ScanShape` |
+| Tool behavioural capabilities | `harness/tool/ToolCapability` on `ToolSpec` |
+| Server-thread detection | `harness/tool/Threads` |
+| Bounded main-thread dispatch (cancels on timeout) | `harness/tool/MainThreadCall` |
+| Item-transfer arithmetic (conservation) | `service/inventory/InventoryTransfers` |
+| Read-only inventory tool bounds | `service/inventory/InventoryLimits` |
+| Machine alias / kind vocabulary | `service/machine/MachineAliases` |
+| Recipe key vocabulary | `service/machine/RecipeKeys` |
+| Atomic text file writes | `harness/markdown/AtomicFiles` |
+| Config directory resolution | `config/ConfigDirectory` |
+| Private-network (RFC1918) predicate | `config/PrivateHosts` |
+| Outbound user agent | `service/world/WebIdentity` |
+| Operator permission level | `command/impl/CommandPermissions` |
 
 JSON is confined to the tool boundary (`harness/tools/view`) and the LLM
 protocol. Actions, managers and services work with typed request/result classes.
@@ -345,7 +379,7 @@ Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
   the 1.7.10 class loader.
 - OpenComputers `1.12.70-GTNH` is the compile-only host API.
 - `./gradlew build` runs compile, tests, `validate`, reobfuscation and `deploy`.
-- `validate` enforces a 696-line Java file limit and package/directory
+- `validate` enforces a 400-line Java file limit (current maximum 389, p90 ~253) and package/directory
   consistency. JavaScript syntax is covered by Rhino-backed unit tests.
 - `deploy` copies the reobfuscated jar to `/root/forge-smp/mods` and removes old
   CortexDrone jars.

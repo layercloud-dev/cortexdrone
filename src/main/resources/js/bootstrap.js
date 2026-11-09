@@ -34,6 +34,117 @@ function pick() {
   return null;
 }
 
+/*
+ * Largest item count one transfer call may move (36 stacks).
+ * Mirrors InventoryLimits.MAX_TRANSFER_COUNT in Java; do not restate the number
+ * in a skill.
+ */
+var MAX_TRANSFER_COUNT = 2304;
+
+/*
+ * Bounds mirrored from the Java policy classes. Keep these the only copies on
+ * the script side: an agreement test pins them to WorldBounds / ScanLimits /
+ * InventoryLimits, so a Java change fails the build instead of silently
+ * diverging from a shipped skill.
+ */
+var LIMITS = {
+  footprintMin: 3,      /* WorldBounds.MIN_PLAN_SIDE */
+  footprintMax: 19,     /* WorldBounds.MAX_PLAN_SIDE */
+  planHeightMin: 2,     /* WorldBounds.MIN_PLAN_HEIGHT */
+  planHeightMax: 12,    /* WorldBounds.MAX_PLAN_HEIGHT */
+  siteSideMin: 3,       /* WorldBounds.MIN_PLAN_SIDE */
+  siteSideMax: 33,      /* WorldBounds.MAX_SITE_SIDE */
+  dimensionMin: 1,      /* generic minimum for a width/length argument */
+  chestRadiusMin: 8,    /* skill-level floor for container searches */
+  collectRadiusMax: 16, /* skill cap for drop collection */
+  blockScanRadiusMin: 1, /* ScanLimits.MIN_RADIUS (schema floor) */
+  scanRadiusDefault: 24, /* ScanLimits.DEFAULT_RADIUS */
+  smallScanRadiusMax: 32, /* skill cap, well under ScanLimits.MAX_RADIUS */
+  mediumRadiusMax: 48,    /* skill cap, under ScanLimits.MAX_ENTITY_RADIUS */
+  scanRadiusMax: 64,    /* ScanLimits.MAX_RADIUS */
+  furnaceRadiusMax: 36, /* InventoryLimits.MAX_FURNACE_RADIUS */
+  dropRadiusMin: 2,     /* ScanLimits.MIN_DROP_RADIUS */
+  distantRadiusMin: 64,     /* ScanLimits.MIN_DISTANT_RADIUS */
+  distantRadiusMax: 1500,   /* ScanLimits.MAX_DISTANT_RADIUS */
+  distantRadiusDefault: 1200, /* ScanLimits.DEFAULT_DISTANT_RADIUS */
+  minDigBlocks: 0,      /* NavigationLimits.MIN_DIG_BLOCKS */
+  maxDigBlocks: 512,    /* NavigationLimits.MAX_DIG_BLOCKS */
+  maxWaitMs: 180000,    /* NavigationLimits.MAX_WAIT_MS */
+  recoveryAttempts: 12, /* NavigationLimits.DEFAULT_RECOVERY_ATTEMPTS */
+  inventoryRadiusDefault: 32, /* InventoryLimits.DEFAULT_RADIUS */
+  chestRadiusDefault: 28,     /* InventoryLimits.DEFAULT_CHEST_RADIUS */
+  roomRadiusDefault: 18,      /* ScanLimits.DEFAULT_ROOM_RADIUS */
+  landingRadiusDefault: 12,   /* LandingScanner.DEFAULT_RADIUS */
+  landingRadiusMax: 24, /* LandingScanner.MAX_RADIUS */
+  landingY: 250,        /* WorldBounds.MAX_LANDING_Y */
+  defaultTransferCount: 512, /* InventoryLimits.DEFAULT_TRANSFER_COUNT */
+  defaultDigBlocks: 128,     /* NavigationLimits.DEFAULT_DIG_BLOCKS */
+  maxCoordinate: 30000000    /* WorldBounds.MAX_COORDINATE */
+};
+
+/*
+ * Task-local tuning for shipped skills. These are not Java policy mirrors;
+ * they live here so a repeated cap has one owner on the script side.
+ */
+var SKILL_LIMITS = {
+  smallScanLimit: 96,
+  largeScanLimit: 128,
+  farmScanLimit: 400,
+  cactusScanLimit: 800,
+  lightRadiusMin: 2,
+  lightRadiusMax: 16,
+  lightRadiusDefault: 8,
+  mediumRadiusDefault: 16,
+  chopRadiusDefault: 20,
+  shortRadiusDefault: 12,
+  smallLimitDefault: 32,
+  largeLimitDefault: 48,
+  smallCountCap: 64,
+  attackCap200: 200,
+  budget256: 256,
+  budget800: 800,
+  budget1200: 1200,
+  budget1024: 1024,
+  smallMax16: 16,
+  smallBudgetMin: 8,
+  scanLimit192: 192,
+  budget1600: 1600,
+  craftBatch: 256,
+  guardDurationDefault: 120,
+  guardDurationMin: 10,
+  huntDurationMin: 15,
+  followDurationMin: 5,
+  durationMax: 240,
+  killCap32: 32,
+  maxClusters: 10,
+  maxClustersLarge: 12,
+  maxClustersSmall: 8,
+  maxClustersTiny: 4,
+  attackSecondsMax: 180,
+  wallHeightMin: 2,
+  wallHeightMax: 8,
+  cactusKeepMax: 3,
+  clusterCap32: 32,
+  shaftMax: 3,
+  guardTargetsMax: 16,
+  guardSecondsMin: 3,
+  guardSecondsMax: 120,
+  lightSpacingMin: 2,
+  lightSpacingMax: 8,
+  patrolLoopsMax: 6,
+  clearCapMax: 900,
+  buildFailuresMax: 60,
+  rainbowStepsMin: 6,
+  rainbowStepsMax: 120,
+  rainbowDelayMax: 1000,
+  smeltWaitMin: 5,
+  smeltWaitMax: 300,
+  branchSpacingMin: 2,
+  branchSpacingMax: 24,
+  branchLengthMax: 32,
+  surveyHeightMax: 24
+};
+
 /* Clamps a number into [min, max]. */
 function clamp(value, min, max) {
   var n = Number(value);

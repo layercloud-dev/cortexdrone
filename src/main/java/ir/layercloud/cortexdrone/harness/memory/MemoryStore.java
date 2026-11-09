@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.memory;
 
+import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.CortexDroneMod;
@@ -8,9 +9,7 @@ import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.Reader;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -107,32 +106,8 @@ public final class MemoryStore {
     }
 
     public synchronized List<MemoryEntry> search(String query, String kind, int limit) {
-        List<MemoryEntry> all = filtered(kind);
-        String clean = query != null ? query.trim().toLowerCase(Locale.ROOT) : "";
-        int max = Math.max(1, Math.min(50, limit));
-        if (clean.isEmpty()) {
-            all.sort((a, b) -> {
-                int pinned = Boolean.compare(b.isPinned(), a.isPinned());
-                if (pinned != 0) return pinned;
-                return Long.compare(b.getUpdatedAt(), a.getUpdatedAt());
-            });
-            return new ArrayList<>(all.subList(0, Math.min(max, all.size())));
-        }
-        final String queryText = clean;
-        final List<String> queryTokens = LexicalItemMatcher.tokenize(clean);
-        List<Scored> scored = new ArrayList<>();
-        for (MemoryEntry entry : all) {
-            double score = score(entry, queryText, queryTokens);
-            if (score > 0) scored.add(new Scored(entry, score));
-        }
-        scored.sort((a, b) -> {
-            int byScore = Double.compare(b.score, a.score);
-            if (byScore != 0) return byScore;
-            return Long.compare(b.entry.getUpdatedAt(), a.entry.getUpdatedAt());
-        });
-        List<MemoryEntry> out = new ArrayList<>();
-        for (int i = 0; i < scored.size() && i < max; i++) out.add(scored.get(i).entry);
-        return out;
+        return RankedSearch.search(filtered(kind), query, limit, MemoryEntry::isPinned,
+                MemoryEntry::getUpdatedAt, this::score);
     }
 
     public synchronized List<MemoryEntry> list(String kind, int limit) {
@@ -144,7 +119,7 @@ public final class MemoryStore {
      * pinned entries (usually bases/locations), capped.
      */
     public synchronized List<MemoryEntry> forContext(String query, int limit) {
-        int max = Math.max(1, Math.min(20, limit));
+        int max = RankedSearch.clampContext(limit);
         List<MemoryEntry> out = new ArrayList<>(search(query, null, max));
         for (MemoryEntry entry : this.entries.values()) {
             if (!entry.isPinned() || out.contains(entry)) continue;
@@ -187,10 +162,6 @@ public final class MemoryStore {
             out.append(" — ").append(oneLine(entry.getText(), 240)).append('\n');
         }
         return out.toString();
-    }
-
-    public File storageFile() {
-        return this.storageFile;
     }
 
     private List<MemoryEntry> filtered(String kind) {
@@ -282,18 +253,9 @@ public final class MemoryStore {
             LOG.warning("Could not create memory directory " + parent.getAbsolutePath());
             return;
         }
-        File temp = new File(this.storageFile.getAbsolutePath() + ".tmp");
-        try (Writer writer = new FileWriter(temp)) {
-            CortexDroneMod.GSON.toJson(new ArrayList<>(this.entries.values()), writer);
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not write memories", e);
-            return;
-        }
-        if (this.storageFile.exists() && !this.storageFile.delete()) {
-            LOG.warning("Could not replace " + this.storageFile.getAbsolutePath());
-        }
-        if (!temp.renameTo(this.storageFile)) {
-            LOG.warning("Could not move " + temp.getAbsolutePath() + " into place");
+        String json = CortexDroneMod.GSON.toJson(new ArrayList<>(this.entries.values()));
+        if (!ir.layercloud.cortexdrone.harness.markdown.AtomicFiles.writeText(this.storageFile, json)) {
+            LOG.warning("Could not write memories to " + this.storageFile.getAbsolutePath());
         }
     }
 
@@ -334,13 +296,5 @@ public final class MemoryStore {
         return clean.length() <= max ? clean : clean.substring(0, max - 3) + "...";
     }
 
-    private static final class Scored {
-        final MemoryEntry entry;
-        final double score;
 
-        Scored(MemoryEntry entry, double score) {
-            this.entry = entry;
-            this.score = score;
-        }
-    }
 }

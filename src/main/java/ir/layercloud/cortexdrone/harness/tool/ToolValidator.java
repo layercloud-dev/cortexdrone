@@ -1,7 +1,5 @@
 package ir.layercloud.cortexdrone.harness.tool;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -126,19 +124,30 @@ public final class ToolValidator {
         try {
             if (value.isJsonPrimitive()) {
                 JsonPrimitive primitive = value.getAsJsonPrimitive();
-                if (primitive.isNumber()) return primitive.getAsDouble() == Math.rint(primitive.getAsDouble())
-                        ? (long) primitive.getAsDouble() : null;
+                if (primitive.isNumber()) {
+                    double number = primitive.getAsDouble();
+                    return inIntRange(number) ? (long) number : null;
+                }
                 if (primitive.isString()) {
                     String text = primitive.getAsString().trim();
                     if (text.isEmpty()) return null;
                     double parsed = Double.parseDouble(text);
-                    if (parsed != Math.rint(parsed)) return null;
-                    return (long) parsed;
+                    return inIntRange(parsed) ? (long) parsed : null;
                 }
             }
         } catch (Exception ignored) {
         }
         return null;
+    }
+
+    /**
+     * Integer schemas are backed by Java {@code int} coordinates and counts.
+     * A wider JSON number would pass validation and then truncate at the
+     * handler, silently targeting a different block, so reject it here.
+     */
+    private static boolean inIntRange(double number) {
+        return number == Math.rint(number)
+                && number >= Integer.MIN_VALUE && number <= Integer.MAX_VALUE;
     }
 
     private static Double asDouble(JsonElement value) {

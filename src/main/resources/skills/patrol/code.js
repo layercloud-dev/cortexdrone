@@ -5,7 +5,7 @@ var waypoints = cfg.waypoints ? cfg.waypoints.slice(0) : [];
 
 if (!waypoints.length && cfg.center) {
   var center = cfg.center;
-  var span = clamp(cfg.radius || 12, 4, 48);
+  var span = clamp(cfg.radius || SKILL_LIMITS.shortRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.mediumRadiusMax);
   waypoints = [
     { x: center.x + span, y: center.y, z: center.z + span },
     { x: center.x - span, y: center.y, z: center.z + span },
@@ -18,9 +18,9 @@ if (!waypoints.length) {
     hint: 'pass waypoints:[{x,y,z}] or center:{x,y,z} and radius' };
 }
 
-var loops = clamp(cfg.loops || 1, 1, 6);
-var guardRadius = clamp(cfg.guard_radius || 12, 4, 32);
-var guardAttacks = clamp(cfg.guard_attacks || 40, 1, 200);
+var loops = clamp(cfg.loops || 1, 1, SKILL_LIMITS.patrolLoopsMax);
+var guardRadius = clamp(cfg.guard_radius || SKILL_LIMITS.shortRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.smallScanRadiusMax);
+var guardAttacks = clamp(cfg.guard_attacks || 40, 1, SKILL_LIMITS.attackCap200);
 var allowDig = cfg.allow_dig === true;
 var reached = 0;
 var failed = 0;

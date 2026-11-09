@@ -7,7 +7,6 @@ import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
@@ -17,8 +16,6 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * High-level block, item, container, and entity classifier facade backed by
@@ -27,8 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @UtilityClass
 public final class ItemClassifier {
-    private static final Map<Integer, String> BLOCK_DISP_CACHE = new ConcurrentHashMap<>();
-    private static final Map<Integer, String> BLOCK_ID_CACHE = new ConcurrentHashMap<>();
 
     public static List<String> getOreDictNames(ItemStack stack) {
         return RegistryIntrospector.getOreDictNames(stack);
@@ -52,7 +47,7 @@ public final class ItemClassifier {
     }
 
     public static boolean isReplaceableBlock(World world, int x, int y, int z) {
-        if (y <= 1 || y >= 255) return false;
+        if (!WorldBounds.inWorld(y)) return false;
         if (world.isAirBlock(x, y, z)) return true;
         Block b = world.getBlock(x, y, z);
         if (b == null || isLiquidBlock(b)) return true;
@@ -61,7 +56,7 @@ public final class ItemClassifier {
     }
 
     public static boolean isPassableVoxel(World world, int bx, int by, int bz) {
-        if (by <= 1 || by >= 255) return false;
+        if (!WorldBounds.inWorld(by)) return false;
         // Navigation must not silently generate chunks while the player-online
         // policy is closed. ChunkAccess lets the installed chunk manager load
         // on demand when the policy is open; otherwise the voxel is unavailable.
@@ -101,7 +96,7 @@ public final class ItemClassifier {
     }
 
     public static boolean isMineableBlock(World world, int x, int y, int z) {
-        if (y <= 1 || y >= 255) return false;
+        if (!WorldBounds.inWorld(y)) return false;
         if (world.isAirBlock(x, y, z)) return false;
         Block b = world.getBlock(x, y, z);
         if (b == null || b == Blocks.air || b == Blocks.bedrock) return false;
@@ -114,7 +109,7 @@ public final class ItemClassifier {
     }
 
     public static boolean isProtectedFixture(World world, int x, int y, int z) {
-        if (y <= 1 || y >= 255) return true;
+        if (!WorldBounds.inWorld(y)) return true;
         Block b = world.getBlock(x, y, z);
         if (b == Blocks.bedrock) return true;
         if (isProtectedTileEntity(world, x, y, z)) return true;
@@ -162,76 +157,23 @@ public final class ItemClassifier {
         return sb.toString();
     }
 
+    /** @see RegistryNames#blockDisplayName(Block, int) */
     public static String getBlockDisplayName(Block b, int meta) {
-        if (b == null || b == Blocks.air) return "Air";
-        int key = RegistryIntrospector.blockCacheKey(b, meta);
-        String cached = BLOCK_DISP_CACHE.get(key);
-        if (cached != null) return cached;
-
-        String result = null;
-        try {
-            Item item = Item.getItemFromBlock(b);
-            if (item != null) {
-                int dmg = RegistryIntrospector.normalizeBlockMeta(b, meta);
-                ItemStack st = new ItemStack(item, 1, dmg);
-                String dn = st.getDisplayName();
-                if (dn != null && !dn.isEmpty() && !dn.endsWith(".name") && !dn.startsWith("tile.") && !dn.startsWith("item.")) {
-                    result = dn;
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        if (result == null) {
-            String loc = b.getLocalizedName();
-            if (loc != null && !loc.isEmpty() && !loc.endsWith(".name") && !loc.startsWith("tile.") && !loc.startsWith("item.")) {
-                result = loc;
-            } else {
-                String reg = Block.blockRegistry.getNameForObject(b);
-                result = humanizeUnlocalizedName(loc, reg);
-            }
-        }
-        BLOCK_DISP_CACHE.put(key, result);
-        return result;
+        return RegistryNames.blockDisplayName(b, meta);
     }
 
+    /** @see RegistryNames#blockIdentifier(Block, int) */
     public static String getBlockIdentifier(Block b, int meta) {
-        if (b == null) return "";
-        int key = RegistryIntrospector.blockCacheKey(b, meta);
-        String cached = BLOCK_ID_CACHE.get(key);
-        if (cached != null) return cached;
-
-        String reg = Block.blockRegistry.getNameForObject(b);
-        String unloc = b.getUnlocalizedName();
-        String loc = b.getLocalizedName();
-        String disp = getBlockDisplayName(b, meta);
-        StringBuilder oreTags = new StringBuilder();
-        for (String tag : getOreDictNames(b, meta)) {
-            oreTags.append(' ').append(tag);
-        }
-        String result = ((reg != null ? reg : "") + " " + (reg != null ? reg + ":" + meta : "") + " "
-                + (unloc != null ? unloc : "") + " " + (loc != null ? loc : "") + " "
-                + disp + oreTags).toLowerCase();
-        BLOCK_ID_CACHE.put(key, result);
-        return result;
+        return RegistryNames.blockIdentifier(b, meta);
     }
 
     public static String getBlockIdentifier(Block b) {
-        return getBlockIdentifier(b, 0);
+        return RegistryNames.blockIdentifier(b, 0);
     }
 
+    /** @see RegistryNames#itemIdentifier(ItemStack) */
     public static String getItemIdentifier(ItemStack st) {
-        if (st == null || st.getItem() == null) return "";
-        Item item = st.getItem();
-        int meta = st.getItemDamage();
-        String reg = Item.itemRegistry.getNameForObject(item);
-        String unloc = st.getUnlocalizedName();
-        String disp = st.getDisplayName();
-        StringBuilder oreTags = new StringBuilder();
-        for (String tag : getOreDictNames(st)) {
-            oreTags.append(' ').append(tag);
-        }
-        return ((reg != null ? reg : "") + " " + (reg != null ? reg + ":" + meta : "") + " "
-                + (unloc != null ? unloc : "") + " " + (disp != null ? disp : "") + oreTags).toLowerCase();
+        return RegistryNames.itemIdentifier(st);
     }
 
     public static String resolveHeldFilter(EntityPlayerMP player, String rawFilter) {
@@ -336,7 +278,7 @@ public final class ItemClassifier {
                 if (neg != null) {
                     if (neg.endsWith(" blocks")) neg = neg.substring(0, neg.length() - 7).trim();
                     if (!neg.isEmpty()) {
-                        if (matchesSingleMineFilter(b, meta, neg)
+                        if (MineFilter.matches(b, meta, neg)
                                 || (!neg.contains(":") && (disp.contains(neg) || id.contains(neg)))) {
                             return false;
                         }
@@ -345,61 +287,14 @@ public final class ItemClassifier {
                     hasPositive = true;
                     if (clause.equals("all") || clause.equals("any") || clause.equals("*") || clause.equals("solid")) {
                         anyPositiveMatched = true;
-                    } else if (matchesSingleMineFilter(b, meta, clause)) {
+                    } else if (MineFilter.matches(b, meta, clause)) {
                         anyPositiveMatched = true;
                     }
                 }
             }
             return !hasPositive || anyPositiveMatched;
         }
-        return matchesSingleMineFilter(b, meta, raw);
-    }
-
-    private static boolean matchesSingleMineFilter(Block b, int meta, String filter) {
-        if (b == null || filter == null) return false;
-        String f = filter.trim().toLowerCase().replace('_', ' ');
-        int normMeta = RegistryIntrospector.normalizeBlockMeta(b, meta);
-        String disp = getBlockDisplayName(b, normMeta);
-        String id = getBlockIdentifier(b, normMeta);
-
-        switch (f) {
-            case "all non air":
-            case "*":
-                return b != Blocks.air;
-            case "ore":
-            case "ores":
-            case "vein":
-            case "all":
-                return isOreBlock(b, normMeta);
-            case "tree":
-            case "trees":
-            case "wood":
-            case "log":
-            case "logs":
-                return isLogBlock(b);
-            case "crop":
-            case "crops":
-            case "plant":
-            case "plants":
-                return isCropOrReedBlock(b);
-        }
-        // An explicit tag filter decides on the dictionary alone: "#oreTin"
-        // must not accidentally match a block just because its name says "tin".
-        if (OreDictResolver.hasExplicitPrefix(filter.trim())) {
-            return OreDictResolver.scoreIdentifierTagMatch(id, filter.trim()) > 0;
-        }
-        // OreDictionary fallback for a player word: "tin" reaches a mod block
-        // named "Cassiterite" because the cached identifier carries oreTin.
-        if (!f.isEmpty() && OreDictResolver.scoreIdentifierTagMatch(id, f) > 0) {
-            return true;
-        }
-        if (id.contains("ore" + f.replace(" ", ""))) {
-            return true;
-        }
-        if (!f.contains("block") && !f.contains("ingot") && isOreBlock(b, normMeta) && id.contains(f)) {
-            return true;
-        }
-        return LexicalItemMatcher.scoreSingleMatch(disp, id, normMeta, f) > 0;
+        return MineFilter.matches(b, meta, raw);
     }
 
     public static boolean isFurnaceTile(World world, TileEntity te) {
@@ -411,50 +306,12 @@ public final class ItemClassifier {
     }
 
     public static boolean isHostileOrMutantEntity(EntityLivingBase el) {
-        return RegistryIntrospector.isHostileEntity(el);
+        return EntityClassifier.isHostile(el);
     }
 
+    /** @see EntityClassifier#matches(EntityLivingBase, String) */
     public static boolean matchesEntityFilter(EntityLivingBase el, String filter) {
-        if (el == null || el.isDead || el.getHealth() <= 0.0f) return false;
-        String f = (filter == null || filter.trim().isEmpty()) ? "animal" : filter.trim().toLowerCase();
-        String combined = RegistryIntrospector.getEntityIdentifier(el);
-        List<String> entityTokens = LexicalItemMatcher.tokenize(combined);
-
-        String[] clauses = f.split("[,|/]+|\\s+or\\s+");
-        for (String rawTok : clauses) {
-            String tok = rawTok.trim().replace('_', ' ');
-            switch (tok) {
-                case "":
-                    continue;
-                case "all":
-                case "mob":
-                case "mobs":
-                case "any":
-                case "these":
-                case "nearby":
-                    return true;
-                case "animal":
-                case "animals":
-                case "passive":
-                case "food":
-                    if (RegistryIntrospector.isPassiveEntity(el)) return true;
-                    break;
-                case "player":
-                case "players":
-                    if (el instanceof EntityPlayer) return true;
-                    continue;
-            }
-            if (el instanceof EntityPlayer) continue;
-            if (tok.equals("hostile") || tok.equals("hostiles") || tok.equals("monster") || tok.equals("monsters")
-                    || LexicalItemMatcher.fuzzyTokenMatches("mutant", tok) || tok.equals("enemy") || tok.equals("enemies")) {
-                if (RegistryIntrospector.isHostileEntity(el)) return true;
-            }
-            String sing = LexicalItemMatcher.singularize(tok);
-            if (combined.contains(tok) || combined.contains(sing) || LexicalItemMatcher.tokenListContains(entityTokens, sing)) {
-                return true;
-            }
-        }
-        return false;
+        return EntityClassifier.matches(el, filter);
     }
 
     /** Compact OreDictionary tag array for a block, or null when unregistered. */

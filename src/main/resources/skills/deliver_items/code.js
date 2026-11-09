@@ -1,7 +1,7 @@
 // Delivery primitive. params: { filter, count, player, only_if_holding }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var filter = cfg.filter || 'all';
-var count = clamp(cfg.count || 512, 1, 2304);
+var count = clamp(cfg.count || LIMITS.defaultTransferCount, 1, MAX_TRANSFER_COUNT);
 var playerName = cfg.player;
 var state = drone.state();
 var holding = countInInventory(state.inventory, filter);

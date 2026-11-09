@@ -13,6 +13,11 @@ import java.util.UUID;
  * queue.</p>
  */
 public class DroneController {
+    /** Slots every AI drone is normalised to. */
+    public static final int INVENTORY_SLOTS = 8;
+    /** Owner value for drones that belong to the server, not a player. */
+    public static final String SERVER_OWNER = "Server";
+
     public final int id;
     public Drone drone;
     public final UUID entityUuid;
@@ -23,6 +28,24 @@ public class DroneController {
         this.id = id;
         this.drone = drone;
         this.entityUuid = drone.getUniqueID();
+        this.name = name;
+        this.ownerName = ownerName;
+    }
+
+    /**
+     * Identity-only controller for unit tests and command-argument resolution.
+     *
+     * <p>It has no entity link, so anything that needs the world must check
+     * {@link #drone} first. Production code always uses the entity constructor.</p>
+     */
+    public static DroneController forTest(int id, String name, String ownerName) {
+        return new DroneController(id, name, ownerName);
+    }
+
+    private DroneController(int id, String name, String ownerName) {
+        this.id = id;
+        this.drone = null;
+        this.entityUuid = new UUID(0L, id);
         this.name = name;
         this.ownerName = ownerName;
     }

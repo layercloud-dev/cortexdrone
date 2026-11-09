@@ -16,6 +16,8 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public final class SkillSearch {
+    /** BM25 smoothing term; keeps the idf finite for unseen terms. */
+    private static final double BM25_SMOOTHING = 0.5D;
     private static final double K1 = 1.5D;
     private static final double B = 0.75D;
 
@@ -48,7 +50,9 @@ public final class SkillSearch {
                 }
             }
             if (documentFrequency == 0) continue;
-            double idf = Math.log(1.0D + (docCount - documentFrequency + 0.5D) / (documentFrequency + 0.5D));
+            // BM25 smoothing constant, unrelated to block geometry.
+            double idf = Math.log(1.0D + (docCount - documentFrequency + BM25_SMOOTHING)
+                    / (documentFrequency + BM25_SMOOTHING));
             for (Skill skill : all) {
                 List<String> tokens = docTokens.get(skill.getName());
                 int termFrequency = 0;

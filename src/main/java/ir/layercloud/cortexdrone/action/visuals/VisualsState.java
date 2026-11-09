@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.visuals;
 
+import ir.layercloud.cortexdrone.service.visuals.VisualLimits;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -10,8 +11,8 @@ import java.util.Map;
  */
 public final class VisualsState {
     public boolean lightAura = false;
-    public int lightRadius = 6;
-    public int lightIntensity = 14;
+    public int lightRadius = VisualLimits.DEFAULT_RADIUS;
+    public int lightIntensity = VisualLimits.DEFAULT_LEVEL;
     public int lightColor = 0xFFFFFF;
     public int lightCooldown = 0;
     public long lightAnchor = Long.MIN_VALUE;

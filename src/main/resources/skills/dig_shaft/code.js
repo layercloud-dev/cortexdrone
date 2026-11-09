@@ -11,14 +11,14 @@ var start = cfg.start
   : { x: Math.round(state.x), y: Math.round(state.y) - 1, z: Math.round(state.z) };
 var fromY = start.y;
 
-var depth = clamp(cfg.depth || 20, 1, 128);
+var depth = clamp(cfg.depth || 20, 1, SKILL_LIMITS.largeScanLimit);
 var bottomTarget = cfg.target_y !== undefined ? Math.round(cfg.target_y) : fromY - depth + 1;
 if (bottomTarget > fromY) bottomTarget = fromY - depth + 1;
 if (bottomTarget < 2) bottomTarget = 2;
 depth = fromY - bottomTarget + 1;
 
-var size = clamp(cfg.size || 1, 1, 3);
-var headroom = clamp(cfg.headroom || 2, 1, 3);
+var size = clamp(cfg.size || 1, 1, SKILL_LIMITS.shaftMax);
+var headroom = clamp(cfg.headroom || 2, 1, SKILL_LIMITS.shaftMax);
 var stopAtBedrock = cfg.stop_at_bedrock !== false;
 
 var mined = 0;
@@ -91,7 +91,7 @@ for (var layer = 0; layer < depth; layer++) {
 var collected = null;
 if (cfg.collect !== false && mined > 0) {
   try {
-    collected = skills.call('collect_drops', { radius: 10, filter: 'all', max_clusters: 8 });
+    collected = skills.call('collect_drops', { radius: 10, filter: 'all', max_clusters: SKILL_LIMITS.maxClustersSmall });
   } catch (collectError) {
     log('shaft drop sweep skipped: ' + collectError.message);
   }

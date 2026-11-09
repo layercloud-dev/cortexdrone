@@ -1,7 +1,7 @@
 // Tree felling. params: { radius, limit, replant }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var radius = clamp(cfg.radius || 20, 4, 32);
-var limit = clamp(cfg.limit || 24, 1, 96);
+var radius = clamp(cfg.radius || SKILL_LIMITS.chopRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.smallScanRadiusMax);
+var limit = clamp(cfg.limit || 24, 1, SKILL_LIMITS.smallScanLimit);
 var replant = cfg.replant !== false;
 
 var found = drone.scanBlocks({ filter: 'logs', radius: radius });
@@ -33,8 +33,8 @@ for (var i = 0; i < logs.length; i++) {
 
 var collected = null;
 try {
-  collected = skills.call('collect_drops', { radius: Math.min(16, radius), filter: 'all',
-    max_clusters: 10 });
+  collected = skills.call('collect_drops', { radius: Math.min(LIMITS.collectRadiusMax, radius), filter: 'all',
+    max_clusters: SKILL_LIMITS.maxClusters });
 } catch (collectError) {
   log('drop collection skipped: ' + collectError.message);
 }

@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
+import ir.layercloud.cortexdrone.service.web.WebLimits;
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.ModConfig;
@@ -30,9 +31,10 @@ public final class WebTools implements ToolProvider {
                             + "(use doc_lookup, get_recipes, scan_blocks).")
                     .parameters(ToolSchema.object()
                             .requiredString("query", "Search query, e.g. 'GTNH industrial blast furnace casing'.")
-                            .optionalInt("max_results", "Hits to return, 1..10.", 1, 10, 5))
+                            .optionalInt("max_results", "Hits to return, " + WebLimits.MIN_RESULTS + ".." + WebLimits.MAX_RESULTS + ".",
+                                    WebLimits.MIN_RESULTS, WebLimits.MAX_RESULTS, WebLimits.DEFAULT_RESULTS))
                     .affinity(ToolAffinity.ASYNC)
-                    .timeoutMs(20_000L)
+                    .timeoutMs(ToolTimeouts.WEB_MS)
                     .build(),
             ToolSpec.builder("web_fetch")
                     .description("Fetch one http(s) page and return readable text (scripts/styles/tags "
@@ -40,9 +42,10 @@ public final class WebTools implements ToolProvider {
                             + "Private/local addresses are blocked.")
                     .parameters(ToolSchema.object()
                             .requiredString("url", "Absolute http:// or https:// URL.")
-                            .optionalInt("max_chars", "Maximum characters of text to return.", 500, 20_000, 6_000))
+                            .optionalInt("max_chars", "Maximum characters of text to return.",
+                                    WebLimits.MIN_CHARS, WebLimits.MAX_FETCH_CHARS, WebLimits.DEFAULT_FETCH_CHARS))
                     .affinity(ToolAffinity.ASYNC)
-                    .timeoutMs(20_000L)
+                    .timeoutMs(ToolTimeouts.WEB_MS)
                     .build(),
             ToolSpec.builder("wiki_lookup")
                     .description("Look up a Minecraft or GTNH/HBM page on the official wiki APIs and return "
@@ -51,9 +54,10 @@ public final class WebTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .requiredString("query", "Page title or search phrase.")
                             .optionalEnum("wiki", "Wiki to query.", "auto", "auto", "minecraft", "ntm")
-                            .optionalInt("max_chars", "Maximum characters per page extract.", 500, 12_000, 4_000))
+                            .optionalInt("max_chars", "Maximum characters per page extract.",
+                                    WebLimits.MIN_CHARS, WebLimits.MAX_WIKI_CHARS, WebLimits.DEFAULT_WIKI_CHARS))
                     .affinity(ToolAffinity.ASYNC)
-                    .timeoutMs(20_000L)
+                    .timeoutMs(ToolTimeouts.WEB_MS)
                     .build()
     );
 

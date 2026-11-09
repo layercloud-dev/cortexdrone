@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.inventory.impl;
 
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.CortexDroneMod;
@@ -37,7 +38,7 @@ public final class MoveSlotAction implements Action<InventoryContext> {
                 ? request.getFromType() : "drone";
         String toType = request.getToType() != null
                 ? request.getToType() : "player";
-        int count = request.getCount() > 0 ? request.getCount() : 64;
+        int count = request.getCount() > 0 ? request.getCount() : InventoryLimits.DEFAULT_TRANSFER_COUNT;
         String itemFilter = request.getItem() != null ? request.getItem() : request.getFilter();
 
         boolean fromContainer = isContainer(fromType);

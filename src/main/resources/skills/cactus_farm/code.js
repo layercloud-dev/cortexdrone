@@ -1,10 +1,10 @@
 // Cactus column harvest. params: { radius, limit, keep, point }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var radius = clamp(cfg.radius || 24, 4, 32);
-var limit = clamp(cfg.limit || 24, 1, 64);
-var keep = clamp(cfg.keep || 1, 1, 3);
+var radius = clamp(cfg.radius || LIMITS.scanRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.smallScanRadiusMax);
+var limit = clamp(cfg.limit || 24, 1, SKILL_LIMITS.smallCountCap);
+var keep = clamp(cfg.keep || 1, 1, SKILL_LIMITS.cactusKeepMax);
 
-var request = { filter: 'cactus', radius: radius, limit: 800 };
+var request = { filter: 'cactus', radius: radius, limit: SKILL_LIMITS.cactusScanLimit };
 if (cfg.point) {
   request.x = Math.round(cfg.point.x);
   request.y = Math.round(cfg.point.y);
@@ -75,8 +75,8 @@ for (var k = 0; k < keys.length && columnsCut < limit; k++) {
 
 var collected = null;
 try {
-  collected = skills.call('collect_drops', { radius: Math.min(16, radius),
-    filter: 'cactus', max_clusters: 12 });
+  collected = skills.call('collect_drops', { radius: Math.min(LIMITS.collectRadiusMax, radius),
+    filter: 'cactus', max_clusters: SKILL_LIMITS.maxClustersLarge });
 } catch (collectError) {
   log('drop collection skipped: ' + collectError.message);
 }

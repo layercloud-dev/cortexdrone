@@ -1,8 +1,8 @@
 // Material retrieval. params: { filter, count, radius }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var filter = cfg.filter || 'all';
-var count = clamp(cfg.count || 64, 1, 2304);
-var radius = clamp(cfg.radius || 32, 4, 64);
+var count = clamp(cfg.count || 64, 1, MAX_TRANSFER_COUNT);
+var radius = clamp(cfg.radius || LIMITS.inventoryRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.scanRadiusMax);
 
 var found = drone.findItem({ filter: filter, radius: radius });
 if (!found || found.found === false) {

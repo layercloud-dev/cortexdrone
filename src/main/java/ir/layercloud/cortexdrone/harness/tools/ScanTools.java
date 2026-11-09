@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import ir.layercloud.cortexdrone.harness.tool.ScanJobs;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
 import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
@@ -24,7 +25,7 @@ public final class ScanTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .optionalString("job_id", "Job id returned by scan_blocks; omit for the active job."))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(3_000L)
+                    .timeoutMs(ToolTimeouts.FASTEST_MS)
                     .build()
     );
 

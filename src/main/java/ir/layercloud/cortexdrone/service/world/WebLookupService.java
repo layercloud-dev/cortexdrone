@@ -1,13 +1,12 @@
 package ir.layercloud.cortexdrone.service.world;
 
+import ir.layercloud.cortexdrone.service.web.WebLimits;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -26,25 +25,28 @@ import java.util.regex.Pattern;
  * output. Requests run on the agent thread, never on the server tick thread.</p>
  */
 public final class WebLookupService {
-    private static final String USER_AGENT = "CortexDrone/2.0 (Minecraft 1.7.10 AI drone)";
-    private static final int MAX_BYTES = 2_000_000;
-    private static final long CACHE_TTL_MS = 10L * 60L * 1000L;
+    private static final String USER_AGENT = WebIdentity.userAgent();
+    /** Wiki hosts, kept next to the mod descriptor that supplies them. */
+    private static final String HBM_HOST =
+            ir.layercloud.cortexdrone.service.machine.HbmDescriptor.HBM_WIKI_HOST;
+    private static final String VANILLA_HOST =
+            ir.layercloud.cortexdrone.service.machine.HbmDescriptor.VANILLA_WIKI_HOST;
     private static final Pattern DDG_RESULT = Pattern.compile(
             "(?is)<a[^>]+class=\"result__a\"[^>]+href=\"([^\"]+)\"[^>]*>(.*?)</a>.*?"
                     + "(?:<a[^>]+class=\"result__snippet\"[^>]*>(.*?)</a>)?");
     private static final Pattern TAG = Pattern.compile("(?is)<[^>]+>");
     private static final Pattern SCRIPT_STYLE = Pattern.compile("(?is)<(script|style|noscript)[^>]*>.*?</\\1>");
-    private static final Map<String, CacheEntry> CACHE = new LinkedHashMap<String, CacheEntry>(32, 0.75F, true) {
+    private static final Map<String, CacheEntry> CACHE = new LinkedHashMap<String, CacheEntry>(WebLimits.CACHE_SIZE, 0.75F, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, CacheEntry> eldest) {
-            return size() > 48;
+            return size() > WebLimits.CACHE_MAX_ENTRIES;
         }
     };
 
     public JsonObject search(String query, int maxResults) {
         String clean = query != null ? query.trim() : "";
         if (clean.isEmpty()) return error("empty_query", "Search query is empty.");
-        int limit = Math.max(1, Math.min(10, maxResults));
+        int limit = Math.max(WebLimits.MIN_RESULTS, Math.min(WebLimits.MAX_RESULTS, maxResults));
         String key = "s:" + clean;
         JsonObject cached = cached(key);
         if (cached != null) return cached;
@@ -57,9 +59,9 @@ public final class WebLookupService {
         } catch (Throwable ignored) {
         }
         try {
-            JsonObject wiki = searchMediaWiki("minecraft.wiki", clean, limit);
+            JsonObject wiki = searchMediaWiki(VANILLA_HOST, clean, limit);
             if (wiki.has("results") && wiki.getAsJsonArray("results").size() > 0) {
-                wiki.addProperty("fallback", "minecraft.wiki");
+                wiki.addProperty("fallback", VANILLA_HOST);
                 cache(key, wiki);
                 return wiki;
             }
@@ -88,7 +90,7 @@ public final class WebLookupService {
         if (cached != null && cached.has("text")) {
             JsonObject copy = copy(cached);
             String text = copy.get("text").getAsString();
-            int cap = Math.max(500, Math.min(20_000, maxChars));
+            int cap = Math.max(WebLimits.MIN_CHARS, Math.min(WebLimits.MAX_FETCH_CHARS, maxChars));
             if (text.length() > cap) {
                 copy.addProperty("text", text.substring(0, cap) + "\n...[truncated]");
                 copy.addProperty("truncated", true);
@@ -99,7 +101,9 @@ public final class WebLookupService {
             String body = get(clean, "text/html,application/json,text/plain");
             String title = extractTitle(body);
             String text = htmlToText(body);
-            if (text.length() > 20_000) text = text.substring(0, 20_000) + "\n...[truncated]";
+            if (text.length() > WebLimits.MAX_FETCH_CHARS) {
+                text = text.substring(0, WebLimits.MAX_FETCH_CHARS) + "\n...[truncated]";
+            }
             JsonObject result = new JsonObject();
             result.addProperty("ok", true);
             result.addProperty("url", clean);
@@ -116,7 +120,7 @@ public final class WebLookupService {
     public JsonObject wiki(String query, String wiki, int maxChars) {
         String clean = query != null ? query.trim() : "";
         if (clean.isEmpty()) return error("empty_query", "Wiki query is empty.");
-        String host = "ntm".equalsIgnoreCase(wiki) ? "ntm.fandom.com" : "minecraft.wiki";
+        String host = "ntm".equalsIgnoreCase(wiki) ? HBM_HOST : VANILLA_HOST;
         String key = "w:" + host + ":" + clean;
         JsonObject cached = cached(key);
         if (cached != null) return cached;
@@ -133,7 +137,7 @@ public final class WebLookupService {
                 return empty;
             }
             JsonArray pages = new JsonArray();
-            int budget = Math.max(500, Math.min(12_000, maxChars));
+            int budget = Math.max(WebLimits.MIN_CHARS, Math.min(WebLimits.MAX_WIKI_CHARS, maxChars));
             for (JsonElement element : results) {
                 JsonObject item = element.getAsJsonObject();
                 String title = item.has("title") ? item.get("title").getAsString() : clean;
@@ -229,8 +233,8 @@ public final class WebLookupService {
     private static String get(String url, String accept) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestMethod("GET");
-        connection.setConnectTimeout(6_000);
-        connection.setReadTimeout(10_000);
+        connection.setConnectTimeout(WebLimits.WEB_CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(WebLimits.WEB_READ_TIMEOUT_MS);
         connection.setRequestProperty("User-Agent", USER_AGENT);
         connection.setRequestProperty("Accept", accept);
         connection.setInstanceFollowRedirects(true);
@@ -245,17 +249,38 @@ public final class WebLookupService {
             int total = 0;
             while ((read = stream.read(buffer)) >= 0) {
                 total += read;
-                if (total > MAX_BYTES) break;
+                if (total > WebLimits.MAX_BYTES) break;
                 out.write(buffer, 0, read);
             }
-            String encoding = connection.getContentEncoding();
-            if ("gzip".equalsIgnoreCase(encoding)) {
-                return new String(out.toByteArray(), StandardCharsets.UTF_8);
-            }
-            return new String(out.toByteArray(), StandardCharsets.UTF_8);
+            return decodeBody(out.toByteArray(), connection.getContentEncoding());
         } finally {
             connection.disconnect();
         }
+    }
+
+    /**
+     * Decodes a response body according to its {@code Content-Encoding}.
+     *
+     * <p>Servers that honour {@code Accept-Encoding: gzip} send compressed
+     * bytes; returning them as UTF-8 produced binary garbage. A corrupt gzip
+     * stream falls back to the raw text rather than failing the whole fetch.</p>
+     */
+    static String decodeBody(byte[] body, String contentEncoding) {
+        if (body == null) return "";
+        if (contentEncoding != null
+                && contentEncoding.toLowerCase(java.util.Locale.ROOT).contains("gzip")) {
+            try (java.util.zip.GZIPInputStream gzip =
+                         new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(body))) {
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = gzip.read(buffer)) >= 0) out.write(buffer, 0, read);
+                return new String(out.toByteArray(), StandardCharsets.UTF_8);
+            } catch (Exception ignored) {
+                // Not actually gzip: fall through to the raw bytes.
+            }
+        }
+        return new String(body, StandardCharsets.UTF_8);
     }
 
     static String htmlToText(String html) {
@@ -306,15 +331,7 @@ public final class WebLookupService {
     }
 
     private static boolean isPrivateHost(String url) {
-        try {
-            String host = new URL(url).getHost().toLowerCase();
-            return host.equals("localhost") || host.equals("::1") || host.startsWith("127.")
-                    || host.startsWith("10.") || host.startsWith("192.168.")
-                    || host.startsWith("169.254.") || host.startsWith("0.")
-                    || host.matches("172\\.(1[6-9]|2[0-9]|3[0-1])\\..*");
-        } catch (Exception e) {
-            return true;
-        }
+        return ir.layercloud.cortexdrone.config.PrivateHosts.isPrivateUrl(url);
     }
 
     private static JsonObject error(String code, String message) {
@@ -334,7 +351,7 @@ public final class WebLookupService {
         synchronized (CACHE) {
             CacheEntry entry = CACHE.get(key);
             if (entry == null) return null;
-            if (System.currentTimeMillis() - entry.createdAt > CACHE_TTL_MS) {
+            if (System.currentTimeMillis() - entry.createdAt > WebLimits.CACHE_TTL_MS) {
                 CACHE.remove(key);
                 return null;
             }

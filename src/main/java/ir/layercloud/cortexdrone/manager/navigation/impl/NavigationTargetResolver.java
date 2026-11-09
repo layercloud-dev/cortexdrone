@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
 import ir.layercloud.cortexdrone.DroneController;
@@ -42,14 +44,15 @@ final class NavigationTargetResolver {
             if (request.isAllowDig()) {
                 // No open face yet. Aim at the block itself and let recovery
                 // tunnel toward it, then stop as soon as it is within reach.
-                return new NavigationTarget(request.getStandoffX() + 0.5,
-                        request.getStandoffY() + 0.5, request.getStandoffZ() + 0.5, true);
+                return new NavigationTarget(request.getStandoffX() + DroneGeometry.CELL_CENTER,
+                        request.getStandoffY() + DroneGeometry.CELL_CENTER, request.getStandoffZ() + DroneGeometry.CELL_CENTER, true);
             }
             int[] open = FlightPathfinder.findNearestPassableVoxel(world,
                     request.getStandoffX(), request.getStandoffY() + 1,
                     request.getStandoffZ(), 3);
             if (open == null) return null;
-            return new NavigationTarget(open[0] + 0.5, open[1] + 0.35, open[2] + 0.5, false);
+            return new NavigationTarget(open[0] + DroneGeometry.CELL_CENTER, open[1] + DroneGeometry.AIM_OFFSET,
+                    open[2] + DroneGeometry.CELL_CENTER, false);
         }
         if (request.isCoordinates()) {
             int bx = MathHelper.floor_double(request.getX());
@@ -59,14 +62,14 @@ final class NavigationTargetResolver {
             // unresolved memory or a missing field looks like. Treating it as a
             // goal produced a wall of "no tunnel direction found" failures at
             // bedrock depth. The same applies to any y outside the world.
-            if (by <= 2 || by >= 254) {
+            if (!WorldBounds.diggable(by)) {
                 return null;
             }
             if (!ItemClassifier.isPassableVoxel(world, bx, by, bz)) {
                 int[] open = FlightPathfinder.findNearestPassableVoxel(world, bx, by, bz, 3);
                 if (open != null) {
-                    return new NavigationTarget(open[0] + 0.5, open[1] + 0.65,
-                            open[2] + 0.5, false);
+                    return new NavigationTarget(open[0] + DroneGeometry.CELL_CENTER, open[1] + ir.layercloud.cortexdrone.service.navigation.DroneGeometry.HOVER_OFFSET,
+                            open[2] + DroneGeometry.CELL_CENTER, false);
                 }
             }
             return new NavigationTarget(request.getX(), request.getY(), request.getZ(), false);
@@ -78,7 +81,7 @@ final class NavigationTargetResolver {
     static String describeFailure(NavigationRequest request) {
         if (request == null) return "goto needs a destination.";
         if (request.isCoordinates()
-                && (request.getY() <= 2.0 || request.getY() >= 254.0)) {
+                && !WorldBounds.diggable((int) Math.floor(request.getY()))) {
             return "goto y=" + request.getY()
                     + " is outside the world; resolve the real coordinates first "
                     + "(memory search or scan_blocks) instead of passing y=0.";

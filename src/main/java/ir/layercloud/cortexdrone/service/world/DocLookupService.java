@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.service.world;
 
+import ir.layercloud.cortexdrone.service.web.WebLimits;
 import com.google.gson.*;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import lombok.RequiredArgsConstructor;
@@ -141,17 +142,18 @@ public class DocLookupService {
     }
 
     private static File resolveConfigDirectory() {
-        try {
-            net.minecraft.server.MinecraftServer srv = net.minecraft.server.MinecraftServer.getServer();
-            if (srv != null) {
-                File f = srv.getFile("config");
-                if (f != null && f.isDirectory()) return f;
-            }
-        } catch (Throwable ignored) {
+        return ir.layercloud.cortexdrone.config.ConfigDirectory.resolve();
+    }
+
+    /** The documentation endpoints in reverse preference order. */
+    private static String[] reversedDocEndpoints() {
+        java.util.List<String> endpoints =
+                ir.layercloud.cortexdrone.service.machine.HbmDescriptor.docEndpoints();
+        String[] reversed = new String[endpoints.size()];
+        for (int i = 0; i < endpoints.size(); i++) {
+            reversed[i] = endpoints.get(endpoints.size() - 1 - i);
         }
-        File rel = new File("config");
-        if (rel.isDirectory()) return rel;
-        return new File("/root/forge-smp/config");
+        return reversed;
     }
 
     private JsonArray searchLocalModRecipeConfigs(String query) {
@@ -161,12 +163,13 @@ public class DocLookupService {
         String qSpaced = query.trim().toLowerCase();
 
         File configDir = resolveConfigDirectory();
-        File hbmDir = new File(configDir, "hbmRecipes");
+        File hbmDir = new File(configDir,
+                ir.layercloud.cortexdrone.service.machine.HbmDescriptor.RECIPE_DIRECTORY);
         if (hbmDir.isDirectory()) {
             File[] files = hbmDir.listFiles();
             if (files != null) {
                 for (File f : files) {
-                    if (out.size() >= 10) break;
+                    if (out.size() >= WebLimits.MAX_RESULTS) break;
                     if (!f.getName().endsWith(".json")) continue;
                     String machineName = f.getName().replace("_hbm", "").replace(".json", "");
                     try (BufferedReader br = new BufferedReader(new FileReader(f))) {
@@ -181,7 +184,8 @@ public class DocLookupService {
                         if (idx < 0) idx = lower.indexOf(qSpaced);
                         if (idx < 0 && machineName.toLowerCase().contains(qToken)) idx = 0;
                         int matchesInFile = 0;
-                        while (idx >= 0 && matchesInFile < 3 && out.size() < 10) {
+                        while (idx >= 0 && matchesInFile < WebLimits.MAX_MATCHES_PER_FILE
+                        && out.size() < WebLimits.MAX_RESULTS) {
                             int start = Math.max(0, idx - 120);
                             int end = Math.min(full.length(), idx + 280);
                             JsonObject mo = new JsonObject();
@@ -204,9 +208,11 @@ public class DocLookupService {
         if (this.webDocCache.containsKey(cacheKey)) {
             return this.webDocCache.get(cacheKey);
         }
-        String[] endpoints = (modId != null && modId.contains("hbm"))
-                ? new String[]{"https://ntm.fandom.com/api.php", "https://minecraft.wiki/api.php"}
-                : new String[]{"https://minecraft.wiki/api.php", "https://ntm.fandom.com/api.php"};
+        String[] endpoints = (modId != null
+                && modId.toLowerCase(java.util.Locale.ROOT).contains(
+                        ir.layercloud.cortexdrone.service.machine.HbmDescriptor.MOD_ID))
+                ? ir.layercloud.cortexdrone.service.machine.HbmDescriptor.docEndpoints().toArray(new String[0])
+                : reversedDocEndpoints();
 
         for (String baseApi : endpoints) {
             try {
@@ -214,9 +220,9 @@ public class DocLookupService {
                         + URLEncoder.encode(query, "UTF-8") + "&utf8=1&format=json&srlimit=2";
                 HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
                 conn.setRequestMethod("GET");
-                conn.setRequestProperty("User-Agent", "CortexDrone/1.4 (Minecraft 1.7.10 AI Engine)");
-                conn.setConnectTimeout(2500);
-                conn.setReadTimeout(3000);
+                conn.setRequestProperty("User-Agent", ir.layercloud.cortexdrone.service.world.WebIdentity.userAgent());
+                conn.setConnectTimeout(WebLimits.DOC_CONNECT_TIMEOUT_MS);
+                conn.setReadTimeout(WebLimits.DOC_READ_TIMEOUT_MS);
                 if (conn.getResponseCode() == 200) {
                     StringBuilder sb = new StringBuilder();
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {

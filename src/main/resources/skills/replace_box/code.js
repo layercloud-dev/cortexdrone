@@ -16,7 +16,7 @@ var z1 = Math.min(cfg.z1, cfg.z2), z2 = Math.max(cfg.z1, cfg.z2);
 var onlyReplace = cfg.only_replace || 'all';
 var skipLiquids = cfg.include_liquids !== true;
 var meta = cfg.meta === undefined ? -1 : cfg.meta;
-var maxBlocks = clamp(cfg.max_blocks || 256, 1, 1200);
+var maxBlocks = clamp(cfg.max_blocks || 256, 1, SKILL_LIMITS.budget1200);
 
 var box = drone.getBlocksInBox({ x1: x1, y1: y1, z1: z1, x2: x2, y2: y2, z2: z2, includeAir: false });
 if (!box || box.ok === false) {

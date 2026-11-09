@@ -2,7 +2,7 @@
 // params: { player, duration_s, distance, height, auto_pickup, allow_dig }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var playerName = cfg.player || null;
-var seconds = clamp(cfg.duration_s || 120, 5, 240);
+var seconds = clamp(cfg.duration_s || SKILL_LIMITS.guardDurationDefault, SKILL_LIMITS.followDurationMin, SKILL_LIMITS.durationMax);
 var wantedDistance = clamp(cfg.distance || 2.2, 1.6, 4.0);
 var hoverHeight = clamp(cfg.height || 1.1, 0.5, 2.0);
 var autoPickup = cfg.auto_pickup !== false;
@@ -104,7 +104,7 @@ while (Date.now() < deadline) {
             allow_dig: allowDig,
             max_wait_ms: 6000,
             recovery_attempts: 2,
-            max_dig_blocks: allowDig ? 8 : 0
+            max_dig_blocks: allowDig ? 8 : LIMITS.minDigBlocks
           });
           moves++;
         } catch (moveError) {

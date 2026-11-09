@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.inventory.impl;
 
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.action.Action;
@@ -33,7 +34,7 @@ public final class WithdrawChestAction implements Action<InventoryContext> {
         World world = drone.worldObj;
         EntityPlayerMP player = context.player();
         String filter = request.getFilter() != null ? request.getFilter() : "any";
-        int count = request.getCount() > 0 ? request.getCount() : 64;
+        int count = request.getCount() > 0 ? request.getCount() : InventoryLimits.DEFAULT_TRANSFER_COUNT;
         int moved;
 
         if (request.isHasSource()) {

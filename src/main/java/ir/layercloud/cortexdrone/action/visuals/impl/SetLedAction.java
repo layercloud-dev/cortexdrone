@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.visuals.impl;
 
+import ir.layercloud.cortexdrone.service.visuals.VisualLimits;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
@@ -41,6 +42,6 @@ public final class SetLedAction implements Action<VisualsContext> {
     }
 
     private static int clamp(int value) {
-        return Math.max(0, Math.min(255, value));
+        return Math.max(0, Math.min(VisualLimits.MAX_COLOR, value));
     }
 }

@@ -17,8 +17,10 @@ import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.session.SessionJournal;
 import ir.layercloud.cortexdrone.harness.session.SessionOutcome;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
+import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
+import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -37,6 +39,8 @@ import java.util.List;
  * instruction queue: the model either calls a tool or talks to the player.</p>
  */
 public final class AgentService {
+    private static final int MIN_TASK_DEADLINE_SECONDS = 30;
+    private static final long MILLIS_PER_SECOND = 1000L;
     private static final String SYSTEM_PROMPT = AgentResources.load("/prompts/system.md");
     private static final int MAX_EMPTY_RESPONSES = 2;
 
@@ -87,7 +91,8 @@ public final class AgentService {
         Conversation conversation = new Conversation(SYSTEM_PROMPT, contextMessage, userPrompt,
                 this.config.getMaxContextChars(), this.config.getMaxToolResultChars());
         SessionJournal.SessionRun run = beginSession(controller, player, userPrompt, intent, loopId);
-        long deadline = System.currentTimeMillis() + Math.max(30, this.config.getTaskDeadlineSeconds()) * 1000L;
+        long deadline = System.currentTimeMillis() + Math.max(MIN_TASK_DEADLINE_SECONDS, this.config.getTaskDeadlineSeconds())
+                * MILLIS_PER_SECOND;
         int emptyResponses = 0;
         String lastWorkflowScript = null;
         boolean refinedSkill = false;
@@ -307,42 +312,29 @@ public final class AgentService {
                 "model did not call skill_refine; script kept verbatim");
     }
 
-    private static boolean performsWorldAction(String code) {
-        String[] actions = new String[]{
-                "breakBlock", "placeBlock", "goto(", "craft(", "depositChest",
-                "giveToPlayer", "takeFromPlayer", "attackEntity", "interactBlock",
-                "useItem", "moveItem", "withdrawChest", "dropItems", "pickEntity",
-                "setLight", "setLed"
-        };
-        for (String action : actions) {
-            if (code.contains(action)) return true;
+    /**
+     * True when the script calls a tool that changes the world or an inventory.
+     *
+     * <p>Derived from the tool registry's declared capabilities, so a newly
+     * registered mutating tool is recognised without editing a name list here.
+     * The JS method name is the camelCase form of the tool name.</p>
+     */
+    private boolean performsWorldAction(String code) {
+        if (code == null) return false;
+        for (ToolSpec spec : this.registry.specs()) {
+            if (!spec.mutatesAnything()) continue;
+            String jsName = JsEngine.camelCase(spec.getName());
+            if (jsName != null && !jsName.isEmpty() && code.contains(jsName)) return true;
         }
         return false;
     }
 
     private static String autoSkillName(String prompt) {
-        if (prompt == null) return "task_workflow";
-        String[] words = prompt.toLowerCase().replaceAll("[^a-z0-9 ]+", " ").trim().split("\\s+");
-        StringBuilder name = new StringBuilder();
-        for (int i = 0; i < words.length && i < 5; i++) {
-            if (words[i].isEmpty()) continue;
-            if (name.length() > 0) name.append('_');
-            name.append(words[i]);
-        }
-        String result = name.toString();
-        // Non-Latin prompts normalize to nothing; keep skills distinct instead
-        // of letting every such task overwrite one "task_workflow" entry.
-        if (result.length() < 4) {
-            result = (result.isEmpty() ? "workflow" : result) + "_"
-                    + Integer.toHexString(prompt.hashCode());
-        }
-        return result.length() > 48 ? result.substring(0, 48) : result;
+        return ChatLines.skillName(prompt);
     }
 
     private static String limit(String text, int max) {
-        if (text == null) return "";
-        String clean = text.trim();
-        return clean.length() <= max ? clean : clean.substring(0, Math.max(0, max - 3)) + "...";
+        return ChatLines.limit(text, max);
     }
 
     private static boolean isOk(JsonObject result) {
@@ -384,16 +376,6 @@ public final class AgentService {
 
     /** Minecraft chat is short; split long replies at sentence/word boundaries. */
     static java.util.List<String> splitChat(String message) {
-        java.util.List<String> lines = new java.util.ArrayList<>();
-        String remaining = message;
-        while (remaining.length() > 240) {
-            int cut = remaining.lastIndexOf(' ', 240);
-            if (cut < 120) cut = remaining.lastIndexOf('\n', 240);
-            if (cut < 120) cut = 240;
-            lines.add(remaining.substring(0, cut).trim());
-            remaining = remaining.substring(cut).trim();
-        }
-        if (!remaining.isEmpty()) lines.add(remaining);
-        return lines;
+        return ChatLines.split(message);
     }
 }

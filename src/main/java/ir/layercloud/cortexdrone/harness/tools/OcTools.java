@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -33,6 +34,9 @@ import java.util.List;
  * and friends with no extra wiring.</p>
  */
 public final class OcTools implements ToolProvider {
+    private static final int MIN_LIMIT = 1;
+    private static final int MAX_LIMIT = 256;
+    private static final int DEFAULT_LIMIT = 64;
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("oc_state")
                     .description("Read the drone's OpenComputers machine and component network: address, "
@@ -41,7 +45,7 @@ public final class OcTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .optionalBoolean("include_methods", "Include the full callback list.", true))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(10_000L)
+                    .timeoutMs(ToolTimeouts.MAIN_MS)
                     .build(),
             ToolSpec.builder("oc_methods")
                     .description("List or search the OpenComputers component callbacks this drone exposes. "
@@ -49,10 +53,11 @@ public final class OcTools implements ToolProvider {
                             + "components without a fixed table. Read-only.")
                     .parameters(ToolSchema.object()
                             .optionalString("query", "Filter by callback name or documentation text.")
-                            .optionalInt("limit", "Maximum callbacks to return, 1..256.", 1, 256, 64)
+                            .optionalInt("limit", "Maximum callbacks to return, " + MIN_LIMIT + ".." + MAX_LIMIT + ".",
+                                    MIN_LIMIT, MAX_LIMIT, DEFAULT_LIMIT)
                             .optionalBoolean("docs", "Include the OC documentation string.", false))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(10_000L)
+                    .timeoutMs(ToolTimeouts.MAIN_MS)
                     .build(),
             ToolSpec.builder("oc_call")
                     .description("Invoke any OpenComputers callback on the drone component, e.g. move, "
@@ -65,7 +70,7 @@ public final class OcTools implements ToolProvider {
                             .optionalObject("args", "Positional arguments as {\"1\":..,\"2\":..} or a list.")
                             .optionalString("arguments", "JSON array of positional arguments, if args is not used."))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(30_000L)
+                    .timeoutMs(ToolTimeouts.ACTION_MS)
                     .build(),
             ToolSpec.builder("oc_machine")
                     .description("Drive the OpenComputers machine lifecycle: start, stop, pause or send a "
@@ -77,7 +82,7 @@ public final class OcTools implements ToolProvider {
                             .optionalString("value", "Seconds for pause, signal name for signal.")
                             .optionalObject("payload", "Signal payload values, if control is signal."))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(30_000L)
+                    .timeoutMs(ToolTimeouts.ACTION_MS)
                     .build()
     );
 

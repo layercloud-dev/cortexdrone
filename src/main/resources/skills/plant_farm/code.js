@@ -41,8 +41,8 @@ if (cfg.x1 !== undefined && cfg.z1 !== undefined && cfg.x2 !== undefined && cfg.
   x1 = Math.min(cfg.x1, cfg.x2); x2 = Math.max(cfg.x1, cfg.x2);
   z1 = Math.min(cfg.z1, cfg.z2); z2 = Math.max(cfg.z1, cfg.z2);
 } else {
-  var width = clamp(cfg.width || 5, 1, 33);
-  var length = clamp(cfg.length || cfg.depth || width, 1, 33);
+  var width = clamp(cfg.width || 5, LIMITS.dimensionMin, LIMITS.siteSideMax);
+  var length = clamp(cfg.length || cfg.depth || width, LIMITS.dimensionMin, LIMITS.siteSideMax);
   var cx, cz;
   if (cfg.x !== undefined && cfg.z !== undefined) {
     cx = Math.round(cfg.x); cz = Math.round(cfg.z);
@@ -97,7 +97,7 @@ if (seeds <= 0) {
 }
 
 // 3) Till and sow column by column.
-var maxColumns = clamp(cfg.max_columns || 64, 1, 256);
+var maxColumns = clamp(cfg.max_columns || 64, 1, SKILL_LIMITS.budget256);
 var tilled = 0;
 var planted = 0;
 var skipped = 0;

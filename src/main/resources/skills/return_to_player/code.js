@@ -10,7 +10,7 @@ try {
     y: player.blockY + 2,
     z: player.blockZ,
     allow_dig: cfg.allow_dig === true,
-    max_wait_ms: 180000
+    max_wait_ms: LIMITS.maxWaitMs
   });
   return { ok: !!(moved && moved.arrived), arrived: !!(moved && moved.arrived),
     player: player.name || '', position: drone.state() };

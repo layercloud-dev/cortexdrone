@@ -9,7 +9,6 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
-import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
@@ -33,7 +32,8 @@ public final class StateView {
         Drone drone = controller.drone;
         DroneSession session = this.manager.getSessionManager().session(controller);
         NavigationState nav = this.manager.getNavigationManager().state(controller);
-        NavigationManager.Status navigation = this.manager.getNavigationManager().status(controller);
+        ir.layercloud.cortexdrone.manager.navigation.impl.NavigationStatus navigation =
+                this.manager.getNavigationManager().status(controller);
         VisualsState visuals = this.manager.getVisualsManager().state(controller);
 
         JsonObject response = ToolJson.ok();

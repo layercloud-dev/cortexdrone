@@ -4,8 +4,8 @@ var kind = String(cfg.kind || 'melon').toLowerCase();
 if (kind !== 'melon' && kind !== 'pumpkin') {
   return { ok: false, error: 'kind must be melon or pumpkin' };
 }
-var radius = clamp(cfg.radius || 24, 4, 32);
-var limit = clamp(cfg.limit || 32, 1, 96);
+var radius = clamp(cfg.radius || LIMITS.scanRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.smallScanRadiusMax);
+var limit = clamp(cfg.limit || SKILL_LIMITS.smallLimitDefault, 1, SKILL_LIMITS.smallScanLimit);
 
 var found = drone.scanBlocks({ filter: kind, radius: radius });
 if (!found || !found.count) {
@@ -45,8 +45,8 @@ for (var f = 0; f < fruits.length; f++) {
 
 var collected = null;
 try {
-  collected = skills.call('collect_drops', { radius: Math.min(16, radius), filter: 'all',
-    max_clusters: 10 });
+  collected = skills.call('collect_drops', { radius: Math.min(LIMITS.collectRadiusMax, radius), filter: 'all',
+    max_clusters: SKILL_LIMITS.maxClusters });
 } catch (collectError) {
   log('drop collection skipped: ' + collectError.message);
 }

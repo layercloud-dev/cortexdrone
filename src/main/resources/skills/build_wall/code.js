@@ -1,7 +1,7 @@
 // Wall. params: { length, height, block, x1,z1,x2,z2 }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var length = clamp(cfg.length || 6, 3, 19);
-var height = clamp(cfg.height || 3, 2, 8);
+var length = clamp(cfg.length || 6, LIMITS.footprintMin, LIMITS.footprintMax);
+var height = clamp(cfg.height || 3, SKILL_LIMITS.wallHeightMin, SKILL_LIMITS.wallHeightMax);
 var material = cfg.block || 'cobblestone';
 var site = null;
 

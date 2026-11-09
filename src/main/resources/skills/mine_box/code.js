@@ -8,11 +8,11 @@ if (!player || player.ok === false) {
 }
 
 var anchor = cfg.anchor || (cfg.x1 === undefined ? 'under_player' : 'box');
-var width = clamp(cfg.width || 3, 1, 33);
-var length = clamp(cfg.length || cfg.depth || 3, 1, 33);
-var height = clamp(cfg.height || cfg.depth || 3, 1, 33);
+var width = clamp(cfg.width || 3, LIMITS.dimensionMin, LIMITS.siteSideMax);
+var length = clamp(cfg.length || cfg.depth || 3, LIMITS.dimensionMin, LIMITS.siteSideMax);
+var height = clamp(cfg.height || cfg.depth || 3, LIMITS.dimensionMin, LIMITS.siteSideMax);
 var filter = cfg.filter || 'all';
-var maxBlocks = clamp(cfg.max_blocks || 256, 1, 1600);
+var maxBlocks = clamp(cfg.max_blocks || SKILL_LIMITS.budget256, 1, SKILL_LIMITS.budget1600);
 var includeLiquids = cfg.include_liquids === true;
 
 var x1, y1, z1, x2, y2, z2;

@@ -19,7 +19,7 @@ final class MachineRecipeReflection {
     static List<MachineRecipeService.NormalizedRecipe> readLive() {
         List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<>();
         try {
-            Class<?> anvil = Class.forName("com.hbm.inventory.recipes.anvil.AnvilRecipes");
+            Class<?> anvil = Class.forName(HbmDescriptor.recipeClasses().get(0));
             java.lang.reflect.Method getCons = anvil.getMethod("getConstruction");
             List<?> cons = (List<?>) getCons.invoke(null);
             if (cons != null) {
@@ -49,7 +49,7 @@ final class MachineRecipeReflection {
             // contributes its live recipeOrderedList. Handler class name -> machine
             // kind via the same alias map as JSON files, no static recipe list.
             try {
-                Class<?> serCls = Class.forName("com.hbm.inventory.recipes.loader.SerializableRecipe");
+                Class<?> serCls = Class.forName(HbmDescriptor.recipeClasses().get(1));
                 java.lang.reflect.Field handlersF = serCls.getField("recipeHandlers");
                 List<?> handlers = (List<?>) handlersF.get(null);
                 if (handlers != null) {
@@ -81,9 +81,9 @@ final class MachineRecipeReflection {
             // Backstop for the three primary GenericRecipes handlers in case
             // recipeHandlers was empty before recipe registration completed.
             if (out.isEmpty()) {
-                addGeneric(out, "com.hbm.inventory.recipes.AssemblyMachineRecipes", "assembly_machine");
-                addGeneric(out, "com.hbm.inventory.recipes.ChemicalPlantRecipes", "chemical_plant");
-                addGeneric(out, "com.hbm.inventory.recipes.BlastFurnaceRecipesNT", "blast_furnace");
+                for (String[] handler : HbmDescriptor.fallbackHandlers()) {
+                    addGeneric(out, handler[0], handler[1]);
+                }
             }
         } catch (Throwable ignored) {
         }

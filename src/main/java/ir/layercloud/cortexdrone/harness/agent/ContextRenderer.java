@@ -54,7 +54,6 @@ public final class ContextRenderer {
             out.append("- held: ").append(held != null && held.stackSize > 0
                     ? held.getDisplayName() + " x" + held.stackSize : "empty").append('\n');
             try {
-                net.minecraft.util.MovingObjectPosition ignored = null;
                 com.google.gson.JsonObject look = WorldScanner.raycastPlayerLook(player.worldObj, player, 40.0D);
                 if (look != null && look.has("x") && look.has("y") && look.has("z")) {
                     out.append("- crosshair block: ").append(look.get("x").getAsInt()).append(", ")
@@ -74,7 +73,7 @@ public final class ContextRenderer {
         out.append("- dimension: ").append(controller.drone.dimension).append('\n');
         out.append("- energy: ").append(controller.drone.globalBuffer())
                 .append('/').append(controller.drone.globalBufferSize()).append('\n');
-        out.append("- inventory (8 slots): ").append(InventoryService.formatInventorySummary(controller.drone.mainInventory())).append('\n');
+        out.append("- inventory (" + DroneController.INVENTORY_SLOTS + " slots): ").append(InventoryService.formatInventorySummary(controller.drone.mainInventory())).append('\n');
         boolean navigation = manager.getNavigationManager().isActive(controller);
         NavigationState navigationState = manager.getNavigationManager().state(controller);
         out.append("- navigation: ").append(navigation ? "active" : "idle").append('\n');
@@ -117,9 +116,10 @@ public final class ContextRenderer {
         }
         out.append('\n');
 
-        out.append("## Nearby blocks (24m)\n");
+        out.append("## Nearby blocks (" + WorldScanner.NEARBY_RESOURCES_RADIUS + "m)\n");
         try {
-            Map<String, int[]> resources = worldScanner.scanNearbyResources(world, refX, refY, refZ, 24);
+            Map<String, int[]> resources = worldScanner.scanNearbyResources(world, refX, refY, refZ,
+                    WorldScanner.NEARBY_RESOURCES_RADIUS);
             if (resources.isEmpty()) {
                 out.append("- none recorded\n");
             } else {

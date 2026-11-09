@@ -34,7 +34,9 @@ public class WorldScanner {
     // for a hint-only field.
     private static final long NEARBY_RESOURCES_TTL_MS = 5000L;
     private static final int NEARBY_RESOURCES_CACHE_CELLS = 4;
-    private static final int NEARBY_RESOURCES_MAX_RADIUS = 24;
+    /** Radius of the nearby-resource summary used by the context renderer. */
+    public static final int NEARBY_RESOURCES_RADIUS = 24;
+    private static final int NEARBY_RESOURCES_MAX_RADIUS = NEARBY_RESOURCES_RADIUS;
 
     private final DroneLogger logger;
     private final ModConfig config;
@@ -69,12 +71,13 @@ public class WorldScanner {
         boolean checkUnderground = ItemClassifier.isLikelyUndergroundQuery(f);
         boolean checkBiome = RegistryIntrospector.hasBiomeAffinity(f);
 
-        long deadline = System.currentTimeMillis() + 12L;
+        long deadline = System.currentTimeMillis() + WorldScanBudget.SEARCH_BUDGET_MS;
         int chunksLoadedCount = 0;
 
         for (int pass = 0; pass < 2; pass++) {
             boolean loadedOnly = (pass == 0);
-            for (int r = 16; r <= maxRadius; r += 24) {
+            for (int r = WorldScanBudget.SEARCH_MIN_RADIUS; r <= maxRadius;
+                 r += WorldScanBudget.SEARCH_RADIUS_STEP) {
                 if (System.currentTimeMillis() >= deadline) break;
                 int steps = Math.max(8, (int) Math.ceil((2.0 * Math.PI * r) / 28.0));
                 for (int s = 0; s < steps; s++) {
@@ -99,17 +102,18 @@ public class WorldScanner {
                     }
 
                     if (!isLoaded) {
-                        if (chunksLoadedCount >= 16) continue;
+                        if (chunksLoadedCount >= WorldScanBudget.SEARCH_MAX_CHUNK_LOADS) continue;
                         if (!ChunkAccess.isBlockLoaded(world, sx, sz)) continue;
                         chunksLoadedCount++;
                     }
                     int topY = world.getHeightValue(sx, sz);
-                    for (int dx = -5; dx <= 5; dx++) {
-                        for (int dz = -5; dz <= 5; dz++) {
+                    int sample = WorldScanBudget.SEARCH_SAMPLE_RADIUS;
+                    for (int dx = -sample; dx <= sample; dx++) {
+                        for (int dz = -sample; dz <= sample; dz++) {
                             int bx = sx + dx;
                             int bz = sz + dz;
                             int minY = checkUnderground && (dx % 2 == 0 && dz % 2 == 0) ? 2 : Math.max(40, topY - 10);
-                            int maxY = Math.min(250, topY + 18);
+                            int maxY = Math.min(WorldBounds.MAX_LANDING_Y, topY + 18);
                             for (int by = maxY; by >= minY; by--) {
                                 if (!ItemClassifier.isMineableBlock(world, bx, by, bz)) continue;
                                 Block b = world.getBlock(bx, by, bz);
@@ -230,7 +234,8 @@ public class WorldScanner {
                 if (world instanceof WorldServer && !((WorldServer) world).theChunkProviderServer.chunkExists(x >> 4, z >> 4)) {
                     continue;
                 }
-                for (int y = Math.max(2, iy - radius); y <= Math.min(254, iy + radius); y++) {
+                for (int y = Math.max(WorldBounds.MIN_SCAN_Y, iy - radius);
+             y <= Math.min(WorldBounds.MAX_Y, iy + radius); y++) {
                     try {
                         if (world.isAirBlock(x, y, z)) continue;
                         Block b = world.getBlock(x, y, z);

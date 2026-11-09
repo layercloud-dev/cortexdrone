@@ -1,7 +1,5 @@
 package ir.layercloud.cortexdrone.harness.tool;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 
@@ -9,6 +7,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
@@ -31,13 +30,18 @@ import java.util.concurrent.ConcurrentHashMap;
  * are distance-sorted, capped, and explicitly marked {@code pending} /
  * {@code truncated} so callers can poll instead of re-scanning.</p>
  */
-public final class ScanJobs {
+public class ScanJobs {
     private static final long MAX_JOB_AGE_MS = 30_000L;
     private static final long MAX_SLICE_MS = 8L;
     private static final int MAX_SLICE_VOXELS = 30_000;
-    private static final int DEFAULT_RADIUS_CAP = 32;
-    private static final int ABSOLUTE_RADIUS_CAP = 64;
-    private static final int MAX_RESULTS = 400;
+    /** @see ScanLimits#MAX_RADIUS */
+    public static final int MAX_ADVERTISED_RADIUS = ScanLimits.MAX_RADIUS;
+    /** @see ScanLimits#MAX_RESULTS */
+    public static final int MAX_ADVERTISED_RESULTS = ScanLimits.MAX_RESULTS;
+    /** Hard ceiling on a single slice radius. */
+    public static final int ABSOLUTE_RADIUS_CAP = ScanLimits.MAX_RADIUS;
+    /** Hard ceiling on returned results. */
+    public static final int MAX_RESULTS = ScanLimits.MAX_RESULTS;
     private static final long RETENTION_MS = 120_000L;
 
     private final AIDroneManager manager;
@@ -81,7 +85,11 @@ public final class ScanJobs {
         accepted.addProperty("done", false);
         accepted.addProperty("job_id", job.id);
         accepted.addProperty("radius", job.radius);
+        accepted.addProperty("requested_radius", job.requestedRadius);
         accepted.addProperty("capped_radius", job.radius);
+        accepted.addProperty("radius_was_capped", job.requestedRadius > job.radius);
+        accepted.addProperty("requested_limit", job.requestedLimit);
+        accepted.addProperty("limit_was_capped", job.requestedLimit > job.limit);
         accepted.addProperty("scan_mode", "time_sliced");
         accepted.addProperty("hint", "Poll poll_scan({job_id}) until done=true.");
         return accepted;
@@ -158,7 +166,11 @@ public final class ScanJobs {
             result.addProperty("scanned_voxels", job.scannedVoxels);
             result.addProperty("truncated", job.truncated);
             result.addProperty("radius", job.radius);
+            result.addProperty("requested_radius", job.requestedRadius);
             result.addProperty("capped_radius", job.radius);
+            result.addProperty("radius_was_capped", job.requestedRadius > job.radius);
+            result.addProperty("requested_limit", job.requestedLimit);
+            result.addProperty("limit_was_capped", job.requestedLimit > job.limit);
             job.result = result;
         }
         this.gate.release();
@@ -172,19 +184,10 @@ public final class ScanJobs {
         }
     }
 
-    /** Same shape gate as {@code scan_blocks}; see WorldTools. */
+    /** Same shape gate as {@code scan_blocks}; see {@link ScanShape}. */
     private static boolean withinShape(String shape, int dx, int dy, int dz, int radius) {
-        if (shape == null) return true;
-        String kind = shape.trim().toLowerCase();
-        if (kind.isEmpty() || "cube".equals(kind) || "box".equals(kind)) return true;
-        double horizontal = Math.sqrt(dx * dx + dz * dz);
-        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if ("sphere".equals(kind) || "ball".equals(kind)) return distance <= radius;
-        if ("cylinder".equals(kind) || "column".equals(kind)) return horizontal <= radius;
-        if ("shell".equals(kind) || "surface".equals(kind)) return distance > radius - 2.5 && distance <= radius;
-        return true;
+        return ScanShape.parse(shape).contains(dx, dy, dz, radius);
     }
-
 
     private static int intArg(JsonObject args, String key, int fallback) {
         if (args == null || !args.has(key) || args.get(key).isJsonNull()) return fallback;
@@ -220,9 +223,11 @@ public final class ScanJobs {
         final int minY;
         final int maxY;
         final int radius;
+        final int requestedRadius;
         final boolean liquidOnly;
         final String shape;
         final int limit;
+        final int requestedLimit;
         final boolean includeAir;
         final long totalVoxels;
         int cursorX;
@@ -252,17 +257,21 @@ public final class ScanJobs {
             this.centerX = explicitCenter ? intArg(args, "x", 0) : (int) Math.floor(ax);
             this.centerY = explicitCenter ? intArg(args, "y", 0) : (int) Math.floor(ay + 0.5);
             this.centerZ = explicitCenter ? intArg(args, "z", 0) : (int) Math.floor(az);
-            int requested = Math.min(ABSOLUTE_RADIUS_CAP, Math.max(1, intArg(args, "radius", 24)));
-            this.radius = Math.min(DEFAULT_RADIUS_CAP, requested);
+            this.requestedRadius = Math.max(ScanLimits.MIN_RADIUS,
+                    intArg(args, "radius", ScanLimits.DEFAULT_RADIUS));
+            this.radius = Math.min(ABSOLUTE_RADIUS_CAP, this.requestedRadius);
             this.shape = args.has("shape") && !args.get("shape").isJsonNull()
                     ? args.get("shape").getAsString().trim().toLowerCase() : "cube";
-            this.limit = Math.min(2000, Math.max(1, intArg(args, "limit", 400)));
+            this.requestedLimit = Math.max(ScanLimits.MIN_RESULTS,
+                    intArg(args, "limit", ScanLimits.DEFAULT_RESULTS));
+            this.limit = Math.min(MAX_RESULTS, this.requestedLimit);
             this.includeAir = args.has("include_air") && args.get("include_air").getAsBoolean();
             boolean underground = !explicitCenter && ItemClassifier.isLikelyUndergroundQuery(this.filter);
-            this.minY = args.has("min_y") ? Math.max(1, intArg(args, "min_y", 1))
-                    : (underground ? 1 : Math.max(1, this.centerY - this.radius));
-            this.maxY = args.has("max_y") ? Math.min(254, intArg(args, "max_y", 254))
-                    : Math.min(254, this.centerY + this.radius);
+            this.minY = args.has("min_y") ? Math.max(WorldBounds.MIN_Y, intArg(args, "min_y", WorldBounds.MIN_Y))
+                    : (underground ? WorldBounds.MIN_Y
+                    : Math.max(WorldBounds.MIN_Y, this.centerY - this.radius));
+            this.maxY = args.has("max_y") ? Math.min(WorldBounds.MAX_Y, intArg(args, "max_y", WorldBounds.MAX_Y))
+                    : Math.min(WorldBounds.MAX_Y, this.centerY + this.radius);
             this.liquidOnly = this.filter.equalsIgnoreCase("liquid");
             this.cursorX = this.centerX - this.radius;
             this.cursorY = this.minY;
@@ -290,7 +299,7 @@ public final class ScanJobs {
                 }
             }
             this.scannedVoxels++;
-            if (y < 1 || y > 254) return 1L;
+            if (!WorldBounds.inWorld(y)) return 1L;
             if (this.controller == null || this.controller.drone == null
                     || this.controller.drone.worldObj == null || this.controller.drone.isDead) {
                 this.truncated = true;

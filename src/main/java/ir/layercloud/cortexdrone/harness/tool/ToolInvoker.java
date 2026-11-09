@@ -1,7 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tool;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
@@ -18,8 +17,10 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * returned to the model as data.</p>
  */
 public final class ToolInvoker {
-    private static final long DEFAULT_MAIN_TIMEOUT_MS = 8_000L;
-    private static final int LARGE_SCAN_RADIUS = 32;
+    private static final long DEFAULT_MAIN_TIMEOUT_MS = ToolTimeouts.DEFAULT_TOOL_MS;
+    /** How long a transfer may keep the agent thread waiting. */
+    private static final long TRANSFER_WAIT_MS = ToolTimeouts.LONG_MS;
+    private static final int LARGE_SCAN_RADIUS = ScanLimits.TIME_SLICE_RADIUS;
 
     private final AIDroneManager manager;
     private final ToolRegistry registry;
@@ -66,7 +67,7 @@ public final class ToolInvoker {
         // Large world scans must stay on the server thread but cannot monopolize
         // a tick, so they become a pollable job. The JS helper auto-polls; the
         // model can call poll_scan if it invoked scan_blocks directly.
-        if (isLargeScan(method, work) && !isServerThread()) {
+        if (isTimeSliced(tool.getSpec(), work) && !isServerThread()) {
             return this.scans.submit(context != null ? context.controller() : null,
                     context != null ? context.player() : null, work);
         }
@@ -101,10 +102,15 @@ public final class ToolInvoker {
                                        JsonObject result, JsonObject args) {
         if (context == null || context.controller() == null || result == null) return result;
         if (isServerThread()) return result;
-        if ("goto".equals(method)) return awaitNavigation(context, result, args);
-        if (isTransfer(method) && (result.has("flyingToPlayer") || result.has("flyingToChest")
+        Tool tool = this.registry.find(method);
+        ToolSpec spec = tool == null ? null : tool.getSpec();
+        if (spec != null && spec.has(ToolCapability.AWAITS_NAVIGATION)) {
+            return awaitNavigation(context, result, args);
+        }
+        boolean awaits = spec != null && spec.has(ToolCapability.AWAITS_COMPLETION);
+        if (awaits && (result.has("flyingToPlayer") || result.has("flyingToChest")
                 || result.has("flying") || result.has("queued"))) {
-            return awaitIdle(context, result, 60_000L);
+            return awaitIdle(context, result, TRANSFER_WAIT_MS);
         }
         return result;
     }
@@ -118,8 +124,9 @@ public final class ToolInvoker {
             return result;
         }
         long requestId = result.has("request_id") ? result.get("request_id").getAsLong() : 0L;
-        long waitMs = args != null && args.has("max_wait_ms") ? args.get("max_wait_ms").getAsLong() : 120_000L;
-        long waitBudget = Math.max(5_000L, Math.min(180_000L, waitMs));
+        long waitMs = args != null && args.has("max_wait_ms") ? args.get("max_wait_ms").getAsLong() : NavigationLimits.DEFAULT_WAIT_MS;
+        long waitBudget = Math.max(NavigationLimits.MIN_WAIT_MS,
+                Math.min(NavigationLimits.MAX_WAIT_MS, waitMs));
         long deadline = System.currentTimeMillis() + waitBudget;
         NavigationState state = this.manager.getNavigationManager().state(controller);
         while (System.currentTimeMillis() < deadline) {
@@ -170,7 +177,8 @@ public final class ToolInvoker {
         if (error != null && error.contains("dig budget")) {
             hint = "The goal is reachable only through terrain, but this call's "
                     + "max_dig_blocks budget is spent. Retry once with a larger "
-                    + "max_dig_blocks (up to 512) or pick a nearer destination; do not "
+                    + "max_dig_blocks (up to " + NavigationLimits.MAX_DIG_BLOCKS
+                    + ") or pick a nearer destination; do not "
                     + "repeat the same goto with the same budget.";
         } else if (error != null && error.contains("disabled digging")) {
             hint = "This call set allow_dig:false and the goal has no no-dig route. "
@@ -188,23 +196,28 @@ public final class ToolInvoker {
     private JsonObject awaitIdle(ToolContext context, JsonObject result, long timeoutMs) {
         DroneController controller = context.controller();
         long deadline = System.currentTimeMillis() + timeoutMs;
+        boolean busy = true;
         while (System.currentTimeMillis() < deadline) {
             if (context.cancelled()) break;
-            boolean busy = this.manager.getNavigationManager().isActive(controller)
+            busy = this.manager.getNavigationManager().isActive(controller)
                     || this.manager.getActionRegistry().activeContextCount(controller) > 0;
             if (!busy) break;
             sleep(100L);
         }
-        result.addProperty("completed", true);
-        result.addProperty("still_busy", this.manager.getNavigationManager().isActive(controller)
-                || this.manager.getActionRegistry().activeContextCount(controller) > 0);
+        // `completed` must mean "the transfer finished", not "the wait ended".
+        // Reporting true while still busy made the model believe the items had
+        // moved and skip the retry.
+        result.addProperty("completed", !busy);
+        result.addProperty("still_busy", busy);
+        if (busy) {
+            result.addProperty("ok", false);
+            result.addProperty("code", "transfer_timeout");
+            result.addProperty("error", "The transfer did not finish within " + timeoutMs + "ms.");
+            result.addProperty("hint", "The drone is still working. Check status or wait before retrying; "
+                    + "do not repeat the same transfer.");
+            result.addProperty("retryable", false);
+        }
         return result;
-    }
-
-    private static boolean isTransfer(String method) {
-        return "give_to_player".equals(method) || "take_from_player".equals(method)
-                || "withdraw_chest".equals(method) || "deposit_chest".equals(method)
-                || "drop_items".equals(method) || "move_item".equals(method);
     }
 
     private static void sleep(long ms) {
@@ -242,8 +255,32 @@ public final class ToolInvoker {
                         + "Do not repeat the identical call without changing something.", true);
     }
 
-    private static boolean isLargeScan(String method, JsonObject args) {
-        if (!"scan_blocks".equals(method)) return false;
+    /**
+     * True when this call must run as a pollable job.
+     *
+     * <p>A tool that declares {@link ToolCapability#TIME_SLICED} is time-sliced.
+     * One that also declares {@link ToolCapability#INLINE_WHEN_SMALL} stays
+     * inline while its radius is small, so a cheap scan is not turned into a
+     * poll round-trip. The decision is metadata-driven; no tool name appears
+     * here.</p>
+     */
+    static boolean isTimeSliced(ToolSpec spec, JsonObject args) {
+        if (spec == null || !spec.has(ToolCapability.TIME_SLICED)) return false;
+        if (spec.has(ToolCapability.INLINE_WHEN_SMALL)) return shouldTimeSlice(spec, args);
+        return true;
+    }
+
+    /**
+     * True only for a tool that opted into inline-small scans and whose radius
+     * exceeds the time-slice threshold.
+     *
+     * <p>Routing on radius alone sent {@code get_entities}/{@code scan_chests}/
+     * {@code scan_furnaces} into {@code ScanJobs}, which is a block scanner with
+     * an ore default filter and would have returned the wrong data. Only a spec
+     * declaring {@link ToolCapability#INLINE_WHEN_SMALL} can match.</p>
+     */
+    static boolean shouldTimeSlice(ToolSpec spec, JsonObject args) {
+        if (spec == null || !spec.has(ToolCapability.INLINE_WHEN_SMALL)) return false;
         if (args == null || !args.has("radius") || args.get("radius").isJsonNull()) return false;
         try {
             return args.get("radius").getAsInt() > LARGE_SCAN_RADIUS;
@@ -253,8 +290,7 @@ public final class ToolInvoker {
     }
 
     private static boolean isServerThread() {
-        return Thread.currentThread().getName() != null
-                && Thread.currentThread().getName().contains("Server thread");
+        return Threads.isServerThread();
     }
 
     /** Convenience for tools that need a default player when none was supplied. */

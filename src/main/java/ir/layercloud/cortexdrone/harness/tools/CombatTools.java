@@ -1,9 +1,11 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
+import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
 import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
@@ -27,6 +29,8 @@ import java.util.List;
  * call, because Minecraft damage must run on the server tick.</p>
  */
 public final class CombatTools implements ToolProvider {
+    private static final int MIN_SLOT = 0;
+    private static final int MAX_SLOT = 7;
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("get_entity_health")
                     .description("Read one living entity's health pool: current health, max health, "
@@ -40,9 +44,10 @@ public final class CombatTools implements ToolProvider {
                             .requiredInt("entity_id", "Entity id returned by get_entities.")
                             .optionalString("item", "Optional weapon filter; the read uses that item "
                                     + "instead of the auto-selected best weapon.")
-                            .optionalInt("slot", "Optional drone inventory slot to evaluate as the weapon.", 0, 7, null))
+                            .optionalInt("slot", "Optional drone inventory slot to evaluate as the weapon.",
+                                    MIN_SLOT, MAX_SLOT, null))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(4_000L)
+                    .timeoutMs(ToolTimeouts.FAST_MS)
                     .build(),
             ToolSpec.builder("attack_plan")
                     .description("Calculate how to finish one entity: damage per hit with the selected "
@@ -57,9 +62,11 @@ public final class CombatTools implements ToolProvider {
                             .requiredInt("entity_id", "Entity id returned by get_entities.")
                             .optionalString("item", "Optional weapon filter; the plan uses that item "
                                     + "instead of the auto-selected best weapon.")
-                            .optionalInt("slot", "Optional drone inventory slot to evaluate as the weapon.", 0, 7, null))
+                            .optionalInt("slot", "Optional drone inventory slot to evaluate as the weapon.",
+                                    MIN_SLOT, MAX_SLOT, null))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(4_000L)
+                    .timeoutMs(ToolTimeouts.FAST_MS)
+                    .capabilities(ToolCapability.READ_ONLY)
                     .build()
     );
 

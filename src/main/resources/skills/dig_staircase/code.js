@@ -2,10 +2,10 @@
 // { direction, length, start:{x,y,z}, headroom, width, max_blocks, allow_dig }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var direction = String(cfg.direction || 'north').toLowerCase();
-var length = clamp(cfg.length || 16, 1, 64);
-var headroom = clamp(cfg.headroom || 2, 1, 3);
-var width = clamp(cfg.width || 1, 1, 3);
-var maxBlocks = clamp(cfg.max_blocks || 256, 1, 512);
+var length = clamp(cfg.length || 16, 1, SKILL_LIMITS.smallCountCap);
+var headroom = clamp(cfg.headroom || 2, 1, SKILL_LIMITS.shaftMax);
+var width = clamp(cfg.width || 1, 1, SKILL_LIMITS.shaftMax);
+var maxBlocks = clamp(cfg.max_blocks || SKILL_LIMITS.budget256, 1, LIMITS.maxDigBlocks);
 var allowDig = cfg.allow_dig === true;
 
 var axes = {

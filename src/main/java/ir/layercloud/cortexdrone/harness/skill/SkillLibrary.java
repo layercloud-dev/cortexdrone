@@ -8,12 +8,9 @@ import ir.layercloud.cortexdrone.config.ModPaths;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -284,29 +281,15 @@ public final class SkillLibrary {
     }
 
     private static void writeFile(File target, String content) {
-        File temp = new File(target.getAbsolutePath() + ".tmp");
-        try (Writer writer = new FileWriter(temp)) {
-            writer.write(content != null ? content : "");
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not write " + target.getAbsolutePath(), e);
-            return;
-        }
-        if (target.exists() && !target.delete()) {
-            LOG.warning("Could not replace " + target.getAbsolutePath());
-            return;
-        }
-        if (!temp.renameTo(target)) {
-            LOG.warning("Could not move " + temp.getAbsolutePath() + " into place");
+        if (!ir.layercloud.cortexdrone.harness.markdown.AtomicFiles.writeText(target, content)) {
+            LOG.warning("Could not write " + target.getAbsolutePath());
         }
     }
 
     private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) return;
-        File[] children = file.listFiles();
-        if (children != null) {
-            for (File child : children) deleteRecursively(child);
+        if (!ir.layercloud.cortexdrone.harness.markdown.AtomicFiles.deleteRecursively(file)) {
+            LOG.warning("Could not delete " + file.getAbsolutePath());
         }
-        if (!file.delete()) LOG.warning("Could not delete " + file.getAbsolutePath());
     }
 
     // ------------------------------------------------------------------
@@ -328,16 +311,7 @@ public final class SkillLibrary {
     }
 
     private static String readFile(File file) {
-        try (Reader reader = new FileReader(file)) {
-            StringBuilder out = new StringBuilder((int) Math.min(64_000L, file.length() + 32L));
-            char[] buffer = new char[4096];
-            int read;
-            while ((read = reader.read(buffer)) >= 0) out.append(buffer, 0, read);
-            return out.toString();
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not read " + file.getAbsolutePath(), e);
-            return null;
-        }
+        return ir.layercloud.cortexdrone.harness.markdown.AtomicFiles.readText(file);
     }
 
     private static boolean safeFileName(String name) {

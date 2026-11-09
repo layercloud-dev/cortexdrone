@@ -10,7 +10,6 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
 import ir.layercloud.cortexdrone.service.inventory.CraftingService;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
-import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;

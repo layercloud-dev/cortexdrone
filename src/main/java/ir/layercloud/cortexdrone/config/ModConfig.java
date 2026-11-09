@@ -33,19 +33,35 @@ import java.util.logging.Logger;
 public class ModConfig {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
 
+    /** Default OpenAI-compatible gateway used when nothing else is configured. */
+    public static final String DEFAULT_API_URL = "http://127.0.0.1:7002/v1/chat/completions";
+    /** Default model id used when nothing else is configured. */
+    public static final String DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash";
+
+    // Defaults are declared once here and referenced by both the field
+    // initialisers and sanitized(), so a hand-edited config cannot drift
+    // against the compiled defaults.
+    public static final int DEFAULT_MAX_TURNS = 60;
+    public static final int DEFAULT_TASK_DEADLINE_SECONDS = 480;
+    public static final int DEFAULT_MAX_TOKENS = 2048;
+    public static final double DEFAULT_TEMPERATURE = 0.2D;
+    public static final int DEFAULT_EXECUTE_TIMEOUT_MS = 120_000;
+    public static final int DEFAULT_MAX_TOOL_RESULT_CHARS = 8_000;
+    public static final int DEFAULT_MAX_CONTEXT_CHARS = 96_000;
+
     // --- LLM gateway -------------------------------------------------------
-    private String apiUrl = env("CORTEXDRONE_API_URL", "http://127.0.0.1:7002/v1/chat/completions");
-    private String model = env("CORTEXDRONE_MODEL", "deepseek/deepseek-v4.1-flash");
+    private String apiUrl = env("CORTEXDRONE_API_URL", DEFAULT_API_URL);
+    private String model = env("CORTEXDRONE_MODEL", DEFAULT_MODEL);
     private String apiKey = env("CORTEXDRONE_API_KEY", "");
 
     // --- harness -----------------------------------------------------------
-    private int maxTurns = 60;
-    private int taskDeadlineSeconds = 480;
-    private int maxTokens = 2048;
-    private double temperature = 0.2D;
-    private int executeTimeoutMs = 120_000;
-    private int maxToolResultChars = 8_000;
-    private int maxContextChars = 96_000;
+    private int maxTurns = DEFAULT_MAX_TURNS;
+    private int taskDeadlineSeconds = DEFAULT_TASK_DEADLINE_SECONDS;
+    private int maxTokens = DEFAULT_MAX_TOKENS;
+    private double temperature = DEFAULT_TEMPERATURE;
+    private int executeTimeoutMs = DEFAULT_EXECUTE_TIMEOUT_MS;
+    private int maxToolResultChars = DEFAULT_MAX_TOOL_RESULT_CHARS;
+    private int maxContextChars = DEFAULT_MAX_CONTEXT_CHARS;
     private boolean allowJavaReflection = true;
     private boolean webSearchEnabled = true;
 
@@ -97,19 +113,19 @@ public class ModConfig {
     /** Repairs missing/blank values after a migration or a hand edit. */
     public ModConfig sanitized() {
         if (this.apiUrl == null || this.apiUrl.trim().isEmpty()) {
-            this.apiUrl = env("CORTEXDRONE_API_URL", "http://127.0.0.1:7002/v1/chat/completions");
+            this.apiUrl = env("CORTEXDRONE_API_URL", DEFAULT_API_URL);
         }
         if (this.model == null || this.model.trim().isEmpty()) {
-            this.model = env("CORTEXDRONE_MODEL", "deepseek/deepseek-v4.1-flash");
+            this.model = env("CORTEXDRONE_MODEL", DEFAULT_MODEL);
         }
         if (this.apiKey == null) this.apiKey = "";
-        if (this.maxTurns <= 0) this.maxTurns = 60;
-        if (this.taskDeadlineSeconds <= 0) this.taskDeadlineSeconds = 480;
-        if (this.maxTokens <= 0) this.maxTokens = 2048;
-        if (this.temperature < 0.0D || this.temperature > 2.0D) this.temperature = 0.2D;
-        if (this.executeTimeoutMs <= 0) this.executeTimeoutMs = 120_000;
-        if (this.maxToolResultChars <= 0) this.maxToolResultChars = 8_000;
-        if (this.maxContextChars <= 0) this.maxContextChars = 96_000;
+        if (this.maxTurns <= 0) this.maxTurns = DEFAULT_MAX_TURNS;
+        if (this.taskDeadlineSeconds <= 0) this.taskDeadlineSeconds = DEFAULT_TASK_DEADLINE_SECONDS;
+        if (this.maxTokens <= 0) this.maxTokens = DEFAULT_MAX_TOKENS;
+        if (this.temperature < 0.0D || this.temperature > 2.0D) this.temperature = DEFAULT_TEMPERATURE;
+        if (this.executeTimeoutMs <= 0) this.executeTimeoutMs = DEFAULT_EXECUTE_TIMEOUT_MS;
+        if (this.maxToolResultChars <= 0) this.maxToolResultChars = DEFAULT_MAX_TOOL_RESULT_CHARS;
+        if (this.maxContextChars <= 0) this.maxContextChars = DEFAULT_MAX_CONTEXT_CHARS;
         if (this.droneSpeedMultiplier <= 0.0D || Double.isNaN(this.droneSpeedMultiplier)) {
             this.droneSpeedMultiplier = 1.0D;
         }
@@ -127,7 +143,7 @@ public class ModConfig {
             Map<String, SavedDroneInfo> byUuid = new LinkedHashMap<>();
             if (this.savedDrones != null) {
                 for (SavedDroneInfo info : this.savedDrones) {
-                    if (info != null && info.getUuid() != null && !"Server".equalsIgnoreCase(info.getOwner())) {
+                    if (info != null && info.getUuid() != null && !DroneController.SERVER_OWNER.equalsIgnoreCase(info.getOwner())) {
                         byUuid.put(info.getUuid(), info);
                     }
                 }
@@ -136,7 +152,7 @@ public class ModConfig {
                 for (DroneController controller : controllers) {
                     if (controller.drone == null || controller.drone.isDead
                             || controller.entityUuid == null
-                            || "Server".equalsIgnoreCase(controller.ownerName)) continue;
+                            || DroneController.SERVER_OWNER.equalsIgnoreCase(controller.ownerName)) continue;
                     SavedDroneInfo info = new SavedDroneInfo();
                     info.setUuid(controller.entityUuid.toString());
                     info.setName(controller.name);

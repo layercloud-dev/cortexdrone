@@ -2,11 +2,11 @@
 // Each threat is finished with attack_to_death: the swing count comes from the
 // mob's health and the drone's real damage per hit, not a fixed budget.
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var radius = clamp(cfg.radius || 16, 4, 48);
-var maxAttacks = clamp(cfg.max_attacks || 40, 1, 200);
+var radius = clamp(cfg.radius || SKILL_LIMITS.mediumRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.mediumRadiusMax);
+var maxAttacks = clamp(cfg.max_attacks || 40, 1, SKILL_LIMITS.attackCap200);
 var target = cfg.target || 'hostile';
-var maxTargets = clamp(cfg.max_targets || 4, 1, 16);
-var seconds = clamp(cfg.duration_s || 30, 3, 120);
+var maxTargets = clamp(cfg.max_targets || 4, 1, SKILL_LIMITS.guardTargetsMax);
+var seconds = clamp(cfg.duration_s || 30, SKILL_LIMITS.guardSecondsMin, SKILL_LIMITS.guardSecondsMax);
 
 var found = drone.getEntities({ radius: radius, filter: target });
 if (!found || !found.count) {

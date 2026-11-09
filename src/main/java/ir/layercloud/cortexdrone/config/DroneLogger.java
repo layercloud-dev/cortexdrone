@@ -91,11 +91,17 @@ public class DroneLogger {
         }
     }
 
-    private void flushPendingLog() {
+    /** Delay before the batched log flush; preserves the interrupt flag. */
+    static void pauseForFlush(long millis) {
         try {
-            Thread.sleep(600L);
-        } catch (InterruptedException ignored) {
+            Thread.sleep(millis);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
         }
+    }
+
+    private void flushPendingLog() {
+        pauseForFlush(600L);
         String snapshot;
         synchronized (this.pendingLogText) {
             this.logFlushScheduled = false;

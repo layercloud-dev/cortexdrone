@@ -1,9 +1,11 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
+import ir.layercloud.cortexdrone.service.code.CodeLimits;
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
+import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
@@ -32,9 +34,13 @@ public final class CodeTools implements ToolProvider {
                             + "drone.scanBlocks. Keep the script under ~80 lines and return only what you need.")
                     .parameters(ToolSchema.object()
                             .requiredString("code", "JavaScript function body. Use `return` to return a value.")
-                            .optionalInt("timeout_ms", "Wall-clock budget for this script, 1000..300000.", 1_000, 300_000, 120_000))
+                            .optionalInt("timeout_ms", "Wall-clock budget for this script, "
+                                    + CodeLimits.MIN_TIMEOUT_MS + ".." + CodeLimits.MAX_TIMEOUT_MS + ".",
+                                    CodeLimits.MIN_TIMEOUT_MS, CodeLimits.MAX_TIMEOUT_MS,
+                                    CodeLimits.DEFAULT_TIMEOUT_MS))
                     .affinity(ToolAffinity.ASYNC)
-                    .timeoutMs(300_000L)
+                    .timeoutMs(ToolTimeouts.CODE_EXECUTE_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build()
     );
 

@@ -1,7 +1,5 @@
 package ir.layercloud.cortexdrone.harness.tool;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.experimental.UtilityClass;

@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.interact.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.action.Action;
@@ -111,9 +112,9 @@ public final class UnpickEntityAction implements Action<InteractionContext> {
                     "hint", "Fly to open ground first, or call find_safe_landing and goto its "
                             + "spot, then unpick. Do not drop a rider mid-air.");
         }
-        double hx = spot.getX() + 0.5;
-        double hy = spot.getY() + 0.35;
-        double hz = spot.getZ() + 0.5;
+        double hx = spot.getX() + DroneGeometry.CELL_CENTER;
+        double hy = spot.getY() + DroneGeometry.AIM_OFFSET;
+        double hz = spot.getZ() + DroneGeometry.CELL_CENTER;
         return InteractionResult.movement(
                 new double[]{hx, hy, hz},
                 "needsMovement", true,

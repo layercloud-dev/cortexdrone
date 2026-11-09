@@ -1,11 +1,12 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
+import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
@@ -31,7 +32,7 @@ public final class SessionTools implements ToolProvider {
                             + "values instead of assuming the task-start context is still true.")
                     .parameters(ToolSchema.object())
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(3_000L)
+                    .timeoutMs(ToolTimeouts.FASTEST_MS)
                     .build(),
             ToolSpec.builder("cancel")
                     .description("Cancel the current task generation, navigation and every retained action, "
@@ -40,7 +41,8 @@ public final class SessionTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .optionalString("reason", "Short human-readable reason recorded in the log.", "model"))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(5_000L)
+                    .timeoutMs(ToolTimeouts.READ_MS)
+                    .capabilities(ToolCapability.MUTATES_WORLD)
                     .build()
     );
 

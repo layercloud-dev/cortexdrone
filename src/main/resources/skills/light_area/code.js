@@ -1,7 +1,7 @@
 // Torch grid. params: { radius, spacing, point }
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
-var radius = clamp(cfg.radius || 8, 2, 16);
-var spacing = clamp(cfg.spacing || 4, 2, 8);
+var radius = clamp(cfg.radius || SKILL_LIMITS.lightRadiusDefault, SKILL_LIMITS.lightRadiusMin, SKILL_LIMITS.lightRadiusMax);
+var spacing = clamp(cfg.spacing || 4, SKILL_LIMITS.lightSpacingMin, SKILL_LIMITS.lightSpacingMax);
 var state = drone.state();
 var torches = countInInventory(state.inventory, 'torch');
 if (torches <= 0) {

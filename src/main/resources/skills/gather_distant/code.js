@@ -5,8 +5,8 @@ var target = cfg.target || cfg.filter || null;
 if (!target) {
   return { ok: false, error: 'gather_distant needs a target block, ore or biome name' };
 }
-var maxRadius = clamp(cfg.max_radius || 1200, 64, 1500);
-var count = clamp(cfg.count || 32, 1, 256);
+var maxRadius = clamp(cfg.max_radius || LIMITS.distantRadiusDefault, LIMITS.distantRadiusMin, LIMITS.distantRadiusMax);
+var count = clamp(cfg.count || 32, 1, SKILL_LIMITS.budget256);
 var deliver = cfg.deliver !== false;
 
 var located = drone.findDistant({ target: target, maxRadius: maxRadius });
@@ -26,9 +26,9 @@ try {
     y: hit.y + 2,
     z: hit.z,
     allow_dig: cfg.allow_dig === true,
-    max_wait_ms: 180000,
-    recovery_attempts: 12,
-    max_dig_blocks: cfg.allow_dig === true ? 64 : 0
+    max_wait_ms: LIMITS.maxWaitMs,
+    recovery_attempts: LIMITS.recoveryAttempts,
+    max_dig_blocks: cfg.allow_dig === true ? 64 : LIMITS.minDigBlocks
   });
 } catch (travelError) {
   return { ok: false, error: 'could not reach distant ' + target + ': ' + travelError.message,
@@ -38,7 +38,7 @@ try {
 
 var mined = skills.call('mine_blocks', {
   filter: target,
-  radius: clamp(cfg.mine_radius || 24, 4, 32),
+  radius: clamp(cfg.mine_radius || LIMITS.scanRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.smallScanRadiusMax),
   count: count,
   veins: cfg.veins !== false
 });
@@ -47,7 +47,7 @@ var delivered = null;
 if (deliver && mined && mined.mined) {
   delivered = skills.call('deliver_items', {
     filter: cfg.deliver_filter || 'all',
-    count: 2304,
+    count: MAX_TRANSFER_COUNT,
     player: cfg.player
   });
 }

@@ -44,7 +44,7 @@ function releaseSafely(entity, body) {
   return body;
 }
 
-var radius = clamp(cfg.radius || 10, 4, 24);
+var radius = clamp(cfg.radius || 10, LIMITS.blockScanRadiusMin, LIMITS.landingRadiusMax);
 var found = drone.getEntities({ radius: radius, filter: filter });
 if (!found || !found.count) {
   return { ok: false, error: 'no matching entity nearby', filter: filter };
@@ -100,7 +100,7 @@ for (var t = 0; t <= 1.0001; t += 0.2) {
     peak = column.topY + 6;
   }
 }
-cruiseY = Math.min(250, peak);
+cruiseY = Math.min(LIMITS.landingY, peak);
 
 var picked = null;
 try { picked = drone.pickEntity({ entity_id: target.id }); }
@@ -118,7 +118,7 @@ try {
 var cruise = null;
 try {
   cruise = drone.goto({ x: destX + 0.5, y: cruiseY, z: destZ + 0.5,
-    allow_dig: false, max_wait_ms: 180000, recovery_attempts: 12 });
+    allow_dig: false, max_wait_ms: LIMITS.maxWaitMs, recovery_attempts: LIMITS.recoveryAttempts });
 } catch (cruiseError) {
   cruise = { arrived: false, error: cruiseError.message };
 }

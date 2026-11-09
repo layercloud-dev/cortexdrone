@@ -54,7 +54,7 @@ releases use Java 11+ class files and would break mod discovery.
 
 `validate` fails the build when:
 
-- a Java file exceeds 696 lines;
+- a Java file exceeds 400 lines;
 - a package declaration does not match its directory;
 - a declared tool is not bound (the harness also checks this at startup).
 

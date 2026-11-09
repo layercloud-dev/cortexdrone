@@ -12,20 +12,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Optional hook: flat HBM recipe JSON files under {@code config/hbmRecipes}.
+ * Optional hook: flat HBM recipe JSON files under
+ * {@code config/hbmRecipes} (see {@link HbmDescriptor}).
  * Reads files only; it does not touch the world or the drone.
  */
 public final class HbmRecipeFileHook implements MachineRecipeHook {
     @Override
     public boolean isAvailable() {
-        File dir = new File(resolveConfigDirectory(), "hbmRecipes");
+        File dir = new File(resolveConfigDirectory(), HbmDescriptor.RECIPE_DIRECTORY);
         return dir.isDirectory();
     }
 
     @Override
     public List<MachineRecipeService.NormalizedRecipe> load() {
         List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<>();
-        File dir = new File(resolveConfigDirectory(), "hbmRecipes");
+        File dir = new File(resolveConfigDirectory(), HbmDescriptor.RECIPE_DIRECTORY);
         if (!dir.isDirectory()) return out;
         File[] files = dir.listFiles();
         if (files == null) return out;
@@ -61,15 +62,6 @@ public final class HbmRecipeFileHook implements MachineRecipeHook {
     }
 
     private static File resolveConfigDirectory() {
-        try {
-            net.minecraft.server.MinecraftServer server = net.minecraft.server.MinecraftServer.getServer();
-            if (server != null) {
-                File config = server.getFile("config");
-                if (config != null && config.isDirectory()) return config;
-            }
-        } catch (Throwable ignored) {
-        }
-        File relative = new File("config");
-        return relative.isDirectory() ? relative : new File("/root/forge-smp/config");
+        return ir.layercloud.cortexdrone.config.ConfigDirectory.resolve();
     }
 }

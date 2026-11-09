@@ -1,11 +1,13 @@
 package ir.layercloud.cortexdrone.action.visuals.impl;
 
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.action.visuals.LightConfig;
 import ir.layercloud.cortexdrone.action.visuals.LightResult;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.action.visuals.VisualsState;
+import ir.layercloud.cortexdrone.service.visuals.VisualLimits;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -33,10 +35,6 @@ import java.util.Map;
  */
 @RequiredArgsConstructor
 public class LightingAura {
-    private static final int MIN_RADIUS = 2;
-    private static final int MAX_RADIUS = 12;
-    private static final int MIN_LEVEL = 4;
-    private static final int MAX_LEVEL = 15;
     private static final int APPLY_INTERVAL_TICKS = 10;
     private static final double CLIENT_SYNC_RANGE = 96.0;
 
@@ -56,10 +54,10 @@ public class LightingAura {
             state.lightAura = !state.lightAura;
         }
         if (config.getRadius() != null) {
-            state.lightRadius = clamp(config.getRadius(), MIN_RADIUS, MAX_RADIUS);
+            state.lightRadius = VisualLimits.clampRadius(config.getRadius());
         }
         if (config.getLevel() != null) {
-            state.lightIntensity = clamp(config.getLevel(), MIN_LEVEL, MAX_LEVEL);
+            state.lightIntensity = VisualLimits.clampLevel(config.getLevel());
         }
         if (config.getColor() != null) {
             state.lightColor = config.getColor();
@@ -144,8 +142,8 @@ public class LightingAura {
         int cx = MathHelper.floor_double(d.posX);
         int cy = MathHelper.floor_double(d.posY);
         int cz = MathHelper.floor_double(d.posZ);
-        int radius = clamp(state.lightRadius, MIN_RADIUS, MAX_RADIUS);
-        int level = clamp(state.lightIntensity, MIN_LEVEL, MAX_LEVEL);
+        int radius = VisualLimits.clampRadius(state.lightRadius);
+        int level = VisualLimits.clampLevel(state.lightIntensity);
 
         Map<Long, Integer> previous = new HashMap<>(state.lightCells);
         state.lightCells.clear();
@@ -160,7 +158,7 @@ public class LightingAura {
                     int x = cx + dx;
                     int y = cy + dy;
                     int z = cz + dz;
-                    if (y < 2 || y > 254) continue;
+                    if (!WorldBounds.inWorld(y) || y <= WorldBounds.MIN_SCAN_Y) continue;
                     // Only illuminate open space; never rewrite light inside solids.
                     if (!world.isAirBlock(x, y, z)) continue;
                     long key = pack(x, y, z);
@@ -233,9 +231,6 @@ public class LightingAura {
     }
 
 
-    private static int clamp(int v, int lo, int hi) {
-        return Math.max(lo, Math.min(hi, v));
-    }
 
     private static long pack(int x, int y, int z) {
         return ((long) (x & 0x3FFFFFF) << 38) | ((long) (y & 0xFFF) << 26) | (z & 0x3FFFFFF);

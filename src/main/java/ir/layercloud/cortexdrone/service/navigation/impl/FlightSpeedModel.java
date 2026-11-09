@@ -17,6 +17,14 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public final class FlightSpeedModel {
+    /**
+     * Hard velocity cap while the drone is in a liquid.
+     *
+     * <p>Water must slow the drone, never boost it: an earlier buoyancy term
+     * pushed it upward and made water faster than air.</p>
+     */
+    public static final double WATER_SPEED_CAP = 0.34;
+
     /** Mutable per-tick kinematic state; mirrors the entity motion fields. */
     public static final class State {
         public double x;
@@ -62,8 +70,8 @@ public final class FlightSpeedModel {
 
         if (distance > 0.0 && (distance > 0.005 || speedSq > 0.000025)) {
             double effectiveCap = cap > 0.0 ? cap : 1.15;
-            if (inLiquid) effectiveCap = Math.min(effectiveCap, 0.34);
-            double brakeRadius = 6.0 * Math.max(1.0, effectiveCap / 0.75);
+            if (inLiquid) effectiveCap = Math.min(effectiveCap, WATER_SPEED_CAP);
+            double brakeRadius = brakingRadius(effectiveCap);
             double cruiseFrac = Math.min(1.0, distance / brakeRadius);
             // The ease-in floor must never exceed the requested cap, otherwise a
             // deliberately slow multiplier still flies at 0.28 blocks/tick.
@@ -71,7 +79,7 @@ public final class FlightSpeedModel {
             double vMax = Math.max(floor, effectiveCap * cruiseFrac);
 
             double closing = distance > 0.001 ? ((vx * dx + vy * dy + vz * dz) / distance) : 0.0;
-            double stopDist = (closing * closing) / (2.0 * 0.35) + 0.4;
+            double stopDist = (closing * closing) / (2.0 * DronePhysicsService.MAX_SUBSTEP) + 0.4;
             if (stopDist > distance && closing > 0.0) {
                 double brake = Math.min(closing, (distance + 0.4) * 0.45 + 0.05);
                 double scale = closing > 0.001 ? (brake / closing) : 1.0;
@@ -113,8 +121,13 @@ public final class FlightSpeedModel {
         return Math.sqrt(rx * rx + ry * ry + rz * rz);
     }
 
-    /** Braking radius for a cap, shared with the speed policy. */
+    /** Ease-in radius multiplier: the drone starts braking this many caps out. */
+    public static final double BRAKING_FACTOR = 6.0D;
+    /** Caps below one are treated as one when computing the braking radius. */
+    public static final double BRAKING_MIN_CAP = 0.75D;
+
+    /** Braking radius for a cap; the single definition both policies use. */
     public static double brakingRadius(double cap) {
-        return 6.0 * Math.max(1.0, cap / 0.75);
+        return BRAKING_FACTOR * Math.max(1.0D, cap / BRAKING_MIN_CAP);
     }
 }

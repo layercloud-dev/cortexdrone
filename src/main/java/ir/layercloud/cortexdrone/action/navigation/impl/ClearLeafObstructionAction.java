@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.navigation.impl;
 
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.DroneController;
 
 import ir.layercloud.cortexdrone.action.Action;
@@ -43,7 +44,7 @@ public final class ClearLeafObstructionAction implements Action<NavigationContex
                     int x = bx + dx;
                     int y = by + dy;
                     int z = bz + dz;
-                    if (y <= 1 || y >= 254 || world.isAirBlock(x, y, z)) continue;
+                    if (!WorldBounds.inWorld(y) || world.isAirBlock(x, y, z)) continue;
                     Block block = world.getBlock(x, y, z);
                     if (ItemClassifier.isLeafBlock(block)) {
                         world.setBlockToAir(x, y, z);

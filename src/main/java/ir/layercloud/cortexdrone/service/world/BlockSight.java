@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.service.world;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import li.cil.oc.common.entity.Drone;
 import lombok.experimental.UtilityClass;
@@ -134,8 +135,9 @@ public final class BlockSight {
         return best;
     }
 
-    private static double[] standoffPoint(int x, int y, int z) {
-        return new double[]{x + 0.5D, y + 0.35D, z + 0.5D};
+    public static double[] standoffPoint(int x, int y, int z) {
+        return new double[]{x + DroneGeometry.CELL_CENTER,
+                y + DroneGeometry.AIM_OFFSET, z + DroneGeometry.CELL_CENTER};
     }
 
     private static boolean isClearFrom(World world, double[] point, int x, int y, int z) {
@@ -151,30 +153,6 @@ public final class BlockSight {
     }
 
     /** True when at least one face of the block is reachable from open air. */
-    public static boolean hasExposedFace(World world, int x, int y, int z) {
-        if (world == null || !world.blockExists(x, y, z)) return false;
-        VoxelPassability passable = passable(world);
-        for (int[] direction : NEIGHBOURS) {
-            int ax = x + direction[0];
-            int ay = y + direction[1];
-            int az = z + direction[2];
-            if (!passable.isPassable(ax, ay, az)) continue;
-            if (firstBlockingVoxel(passable, ax + 0.5D, ay + 0.5D, az + 0.5D,
-                    x + 0.5D, y + 0.5D, z + 0.5D, x, y, z) == null) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Single ray between two points with the target voxel treated as transparent. */
-    public static boolean lineClear(World world, double x0, double y0, double z0,
-                                    double x1, double y1, double z1,
-                                    int targetX, int targetY, int targetZ) {
-        if (world == null) return false;
-        return firstBlockingVoxel(passable(world), x0, y0, z0, x1, y1, z1,
-                targetX, targetY, targetZ) == null;
-    }
 
     /**
      * Walks the exact voxel line and returns the first non-passable voxel that

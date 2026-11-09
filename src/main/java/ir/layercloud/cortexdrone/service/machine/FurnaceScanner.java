@@ -1,12 +1,13 @@
 package ir.layercloud.cortexdrone.service.machine;
 
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.LoadedTiles;
 import lombok.experimental.UtilityClass;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -16,22 +17,10 @@ import java.util.List;
 @UtilityClass
 public final class FurnaceScanner {
 
-    public static List<TileEntity> findAllFurnaceTiles(final World world, final double x, final double y, final double z, int radius) {
-        List<TileEntity> tiles = new ArrayList<>();
-        double r2 = (double) radius * radius;
-        if (world.loadedTileEntityList != null) {
-            for (Object o : world.loadedTileEntityList) {
-                if (!(o instanceof TileEntity)) continue;
-                TileEntity te = (TileEntity) o;
-                double dx = te.xCoord + 0.5 - x;
-                double dy = te.yCoord + 0.5 - y;
-                double dz = te.zCoord + 0.5 - z;
-                if (dx * dx + dy * dy + dz * dz > r2) continue;
-                if (ItemClassifier.isFurnaceTile(world, te)) {
-                    tiles.add(te);
-                }
-            }
-        }
+    public static List<TileEntity> findAllFurnaceTiles(final World world, final double x,
+                                                       final double y, final double z, int radius) {
+        List<TileEntity> tiles = LoadedTiles.near(
+                world, x, y, z, radius, tile -> ItemClassifier.isFurnaceTile(world, tile), false);
         // Fallback only when the loaded-tile list is unavailable, so callers
         // never lose furnaces and the dense cube scan never runs twice.
         if (tiles.isEmpty() && world.loadedTileEntityList == null) {
@@ -42,7 +31,7 @@ public final class FurnaceScanner {
                 for (int dy = -radius; dy <= radius; dy++) {
                     for (int dz = -radius; dz <= radius; dz++) {
                         int bx = cx + dx, by = cy + dy, bz = cz + dz;
-                        if (by < 1 || by > 254) continue;
+                        if (!WorldBounds.inWorld(by)) continue;
                         TileEntity te = world.getTileEntity(bx, by, bz);
                         if (ItemClassifier.isFurnaceTile(world, te)) {
                             tiles.add(te);
@@ -51,15 +40,8 @@ public final class FurnaceScanner {
                 }
             }
         }
-        tiles.sort((a, b) -> {
-            double da = (a.xCoord + 0.5 - x) * (a.xCoord + 0.5 - x)
-                    + (a.yCoord + 0.5 - y) * (a.yCoord + 0.5 - y)
-                    + (a.zCoord + 0.5 - z) * (a.zCoord + 0.5 - z);
-            double db = (b.xCoord + 0.5 - x) * (b.xCoord + 0.5 - x)
-                    + (b.yCoord + 0.5 - y) * (b.yCoord + 0.5 - y)
-                    + (b.zCoord + 0.5 - z) * (b.zCoord + 0.5 - z);
-            return Double.compare(da, db);
-        });
+        tiles.sort(java.util.Comparator.comparingDouble(
+                tile -> LoadedTiles.distanceSq(tile, x, y, z)));
         return tiles;
     }
 }

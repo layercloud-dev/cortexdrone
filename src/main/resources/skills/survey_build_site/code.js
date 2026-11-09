@@ -6,14 +6,14 @@ if (cfg.x1 !== undefined && cfg.z1 !== undefined && cfg.x2 !== undefined && cfg.
   request.x2 = Math.round(cfg.x2); request.z2 = Math.round(cfg.z2);
 } else if (cfg.x !== undefined && cfg.z !== undefined) {
   request.x = Math.round(cfg.x); request.z = Math.round(cfg.z);
-  request.width = clamp(cfg.width || 7, 3, 33);
-  request.depth = clamp(cfg.depth || cfg.width || 7, 3, 33);
+  request.width = clamp(cfg.width || 7, LIMITS.siteSideMin, LIMITS.siteSideMax);
+  request.depth = clamp(cfg.depth || cfg.width || 7, LIMITS.siteSideMin, LIMITS.siteSideMax);
 } else {
-  request.width = clamp(cfg.width || 7, 3, 33);
-  request.depth = clamp(cfg.depth || cfg.width || 7, 3, 33);
+  request.width = clamp(cfg.width || 7, LIMITS.siteSideMin, LIMITS.siteSideMax);
+  request.depth = clamp(cfg.depth || cfg.width || 7, LIMITS.siteSideMin, LIMITS.siteSideMax);
 }
 if (cfg.y !== undefined) request.y = Math.round(cfg.y);
-request.height = clamp(cfg.height || 4, 1, 24);
+request.height = clamp(cfg.height || 4, 1, SKILL_LIMITS.surveyHeightMax);
 
 var survey = drone.surveyBuildSite(request);
 if (!survey || survey.ok === false) {

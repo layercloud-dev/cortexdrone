@@ -39,8 +39,6 @@ import java.lang.reflect.Array;
  * {@code main(fn)} bridge the engine binds next to this one.</p>
  */
 final class JavaInterop {
-    private static final String CLASS_SUFFIX = ".class";
-    private static final String ARRAY_SUFFIX = "[]";
 
     private JavaInterop() {
     }
@@ -98,7 +96,7 @@ final class JavaInterop {
             @Override
             public Object call(Context inner, Scriptable innerScope, Scriptable thisObj, Object[] args) {
                 String name = args.length > 0 ? Context.toString(args[0]) : "";
-                boolean wantsClassLiteral = name.trim().endsWith(CLASS_SUFFIX);
+                boolean wantsClassLiteral = name.trim().endsWith(JavaTypes.CLASS_SUFFIX);
                 Class<?> resolved;
                 try {
                     resolved = resolve(name, loader);
@@ -224,55 +222,9 @@ final class JavaInterop {
      * Resolves a class name, accepting a trailing {@code .class} and array
      * suffixes such as {@code java.lang.String[]}.
      */
+    /** @see JavaTypes#resolve(String, ClassLoader) */
     static Class<?> resolve(String raw, ClassLoader loader) {
-        String name = raw == null ? "" : raw.trim();
-        if (name.endsWith(CLASS_SUFFIX)) {
-            name = name.substring(0, name.length() - CLASS_SUFFIX.length()).trim();
-        }
-        int dimensions = 0;
-        while (name.endsWith(ARRAY_SUFFIX)) {
-            dimensions++;
-            name = name.substring(0, name.length() - ARRAY_SUFFIX.length()).trim();
-        }
-        if (name.isEmpty()) throw new IllegalArgumentException("empty class name");
-        Class<?> type = load(name, loader);
-        if (dimensions == 0) return type;
-        return Array.newInstance(type, new int[dimensions]).getClass();
-    }
-
-    private static Class<?> load(String name, ClassLoader loader) {
-        Class<?> primitive = primitiveType(name);
-        if (primitive != null) return primitive;
-        try {
-            return Class.forName(name, false, loader);
-        } catch (ClassNotFoundException first) {
-            ClassLoader context = Thread.currentThread().getContextClassLoader();
-            if (context != null && context != loader) {
-                try {
-                    return Class.forName(name, false, context);
-                } catch (ClassNotFoundException ignored) {
-                }
-            }
-            try {
-                return Class.forName(name);
-            } catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException("unknown class '" + name + "'", e);
-            }
-        }
-    }
-
-    /** {@code int[]} and friends use JVM primitive names, not class names. */
-    private static Class<?> primitiveType(String name) {
-        if ("boolean".equals(name)) return boolean.class;
-        if ("byte".equals(name)) return byte.class;
-        if ("char".equals(name)) return char.class;
-        if ("short".equals(name)) return short.class;
-        if ("int".equals(name)) return int.class;
-        if ("long".equals(name)) return long.class;
-        if ("float".equals(name)) return float.class;
-        if ("double".equals(name)) return double.class;
-        if ("void".equals(name)) return void.class;
-        return null;
+        return JavaTypes.resolve(raw, loader);
     }
 
     private static Object unwrap(Object value) {

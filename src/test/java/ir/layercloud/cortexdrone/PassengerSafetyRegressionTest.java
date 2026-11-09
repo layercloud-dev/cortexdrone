@@ -109,13 +109,15 @@ public class PassengerSafetyRegressionTest {
         String guard = read(MAIN + "manager/navigation/impl/RiderGuard.java");
         assertTrue("a living rider is detected",
                 guard.contains("riddenByEntity instanceof EntityLivingBase"));
-        String manager = read(MAIN + "manager/navigation/impl/NavigationManager.java");
+        // Recovery lives in NavigationRecovery; the manager records the flag.
+        String module = read(MAIN + "manager/navigation/impl/NavigationRecovery.java")
+                + read(MAIN + "manager/navigation/impl/NavigationManager.java");
         assertTrue("recovery must consult the guard",
-                manager.contains("RiderGuard.blocksTunnel(session)"));
+                module.contains("RiderGuard.blocksTunnel(session)"));
         assertTrue("the dig entry point must consult the guard",
-                manager.contains("if (RiderGuard.blocksTunnel(session)) return false;"));
+                module.contains("if (RiderGuard.blocksTunnel(session)) return false;"));
         assertTrue("the session records the rider",
-                manager.contains("RiderGuard.isCarrying(controller.drone)"));
+                module.contains("RiderGuard.isCarrying(controller.drone)"));
         String session = read(MAIN + "manager/navigation/impl/NavigationSession.java");
         assertTrue("the rider flag lives on the session",
                 session.contains("boolean carryingRider;"));
@@ -142,13 +144,15 @@ public class PassengerSafetyRegressionTest {
 
     @Test
     public void playerStateExposesCarryFacts() throws Exception {
-        String query = read(MAIN + "harness/tools/InventoryQueryTools.java");
+        // The handler moved to PlayerContainerQueryTools; the facts are the
+        // contract, not the file that prints them.
+        String query = read(MAIN + "harness/tools/PlayerContainerQueryTools.java");
         assertTrue("get_player must return the entity id",
-                query.contains("res.addProperty(\"entityId\", p.getEntityId())"));
+                query.contains("\"entityId\""));
         assertTrue("get_player must say whether the player sees sky",
                 query.contains("canSeeSky"));
         assertTrue("get_player must flag an underground player",
-                query.contains("res.addProperty(\"underground\""));
+                query.contains("\"underground\""));
         assertTrue("get_player must report an existing mount",
                 query.contains("ridingEntityId"));
     }

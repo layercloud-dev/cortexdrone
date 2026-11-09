@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import ir.layercloud.cortexdrone.service.search.RankedSearch;
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
@@ -27,6 +29,7 @@ import java.util.List;
  * searchable before planning a similar job.</p>
  */
 public final class LessonTools implements ToolProvider {
+    private static final int DEFAULT_RESULTS = 6;
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("lesson")
                     .description("Persistent lessons: durable procedural knowledge learned from real "
@@ -50,9 +53,10 @@ public final class LessonTools implements ToolProvider {
                             .optionalString("id", "Lesson id or title for action=forget/use.")
                             .optionalBoolean("pinned", "Always show this lesson in context and never evict it.",
                                     false)
-                            .optionalInt("limit", "Maximum results for search/list, 1..50.", 1, 50, 6))
+                            .optionalInt("limit", "Maximum results for search/list, " + RankedSearch.MIN_RESULTS + ".."
+                                    + RankedSearch.MAX_RESULTS + ".", RankedSearch.MIN_RESULTS, RankedSearch.MAX_RESULTS, DEFAULT_RESULTS))
                     .affinity(ToolAffinity.ASYNC)
-                    .timeoutMs(10_000L)
+                    .timeoutMs(ToolTimeouts.MAIN_MS)
                     .build()
     );
 

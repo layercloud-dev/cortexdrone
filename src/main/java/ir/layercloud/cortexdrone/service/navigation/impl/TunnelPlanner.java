@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.service.world.BlockSight;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
@@ -91,7 +93,7 @@ public final class TunnelPlanner {
     public static boolean safeToDig(World world, EntityPlayerMP player,
                                     int x, int y, int z) {
         if (world == null || !world.blockExists(x, y, z)) return false;
-        if (y <= 2 || y >= 254) return false;
+        if (!WorldBounds.diggable(y)) return false;
         if (!ItemClassifier.isMineableBlock(world, x, y, z)) return false;
         Block block = world.getBlock(x, y, z);
         if (block == null) return false;
@@ -105,8 +107,8 @@ public final class TunnelPlanner {
         // 2.5-block rule made every tunnel fail with "no tunnel direction
         // found". Only falling blocks positioned above the player are unsafe.
         if (player != null && block instanceof net.minecraft.block.BlockFalling) {
-            double hx = player.posX - (x + 0.5D);
-            double hz = player.posZ - (z + 0.5D);
+            double hx = player.posX - (x + DroneGeometry.CELL_CENTER);
+            double hz = player.posZ - (z + DroneGeometry.CELL_CENTER);
             if (hx * hx + hz * hz < FALLING_CLEARANCE * FALLING_CLEARANCE
                     && player.posY >= y) {
                 return false;

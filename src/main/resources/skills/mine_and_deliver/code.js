@@ -2,7 +2,7 @@
 var cfg = (typeof params === 'object' && params !== null) ? params : {};
 var mined = skills.call('mine_blocks', {
   filter: cfg.filter || 'iron_ore',
-  radius: cfg.radius || 24,
+  radius: cfg.radius || LIMITS.scanRadiusDefault,
   count: cfg.count || 8
 });
 if (!mined || mined.ok === false || !mined.mined) {
@@ -10,7 +10,7 @@ if (!mined || mined.ok === false || !mined.mined) {
 }
 var delivered = skills.call('deliver_items', {
   filter: cfg.deliver_filter || 'all',
-  count: 2304,
+  count: MAX_TRANSFER_COUNT,
   player: cfg.player
 });
 return {

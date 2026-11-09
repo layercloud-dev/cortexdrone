@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import ir.layercloud.cortexdrone.service.search.RankedSearch;
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
@@ -30,6 +32,7 @@ import java.util.List;
  * entry instead of creating duplicates.</p>
  */
 public final class MemoryTools implements ToolProvider {
+    private static final int DEFAULT_RESULTS = 8;
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("memory")
                     .description("Persistent memory for player facts and named locations. Use action=remember "
@@ -58,9 +61,10 @@ public final class MemoryTools implements ToolProvider {
                                     + "and dimension for this memory.", false)
                             .optionalBoolean("pinned", "Pin the entry so it is always shown in context and "
                                     + "never evicted.", false)
-                            .optionalInt("limit", "Maximum results for search/list, 1..50.", 1, 50, 8))
+                            .optionalInt("limit", "Maximum results for search/list, " + RankedSearch.MIN_RESULTS + ".."
+                                    + RankedSearch.MAX_RESULTS + ".", RankedSearch.MIN_RESULTS, RankedSearch.MAX_RESULTS, DEFAULT_RESULTS))
                     .affinity(ToolAffinity.ASYNC)
-                    .timeoutMs(15_000L)
+                    .timeoutMs(ToolTimeouts.MEDIUM_MS)
                     .build()
     );
 

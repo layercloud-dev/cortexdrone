@@ -1,0 +1,125 @@
+package ir.layercloud.cortexdrone.harness.session;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * The append-only {@code index.jsonl} beside the session transcripts.
+ *
+ * <p>Extracted from {@link SessionJournal}. The index is a cache of what is on
+ * disk: a torn or missing line is skipped, never repaired destructively, because
+ * the per-session JSON files are the source of truth.</p>
+ */
+final class SessionIndex {
+    private static final int MAX_HISTORY = 200;
+    private static final Gson COMPACT = new Gson();
+
+    private final File indexFile;
+
+    SessionIndex(File indexFile) {
+        this.indexFile = indexFile;
+    }
+
+    /** Appends one entry as a single line. Failures are silent by design. */
+    synchronized void append(JsonObject entry) {
+        if (entry == null) return;
+        File parent = this.indexFile.getParentFile();
+        if (parent != null && !parent.isDirectory() && !parent.mkdirs()) return;
+        try (FileWriter writer = new FileWriter(this.indexFile, true)) {
+            writer.write(COMPACT.toJson(entry));
+            writer.write('\n');
+        } catch (Exception ignored) {
+            // A failed index append must not lose the session files themselves.
+        }
+    }
+
+    /** Every readable entry, oldest first. */
+    synchronized List<JsonObject> read() {
+        List<JsonObject> entries = new ArrayList<>();
+        if (!this.indexFile.isFile()) return entries;
+        try (BufferedReader reader = new BufferedReader(new FileReader(this.indexFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String clean = line.trim();
+                if (clean.isEmpty()) continue;
+                try {
+                    JsonElement parsed = new JsonParser().parse(clean);
+                    if (parsed != null && parsed.isJsonObject()) {
+                        entries.add(parsed.getAsJsonObject());
+                    }
+                } catch (Exception ignored) {
+                    // Skip a torn line rather than hiding the rest of the history.
+                }
+            }
+        } catch (Exception ignored) {
+            // No history is a valid state.
+        }
+        return entries;
+    }
+
+    /** Most recent entries first, optionally filtered, capped at {@code limit}. */
+    List<JsonObject> recent(int limit, SessionOutcome filter) {
+        List<JsonObject> all = read();
+        List<JsonObject> out = new ArrayList<>();
+        int max = Math.max(1, Math.min(MAX_HISTORY, limit));
+        for (int i = all.size() - 1; i >= 0 && out.size() < max; i--) {
+            JsonObject entry = all.get(i);
+            if (filter == null || filter.id().equals(outcomeOf(entry))) out.add(entry);
+        }
+        return out;
+    }
+
+    /** One counter per known outcome, in enum order. */
+    java.util.Map<String, Integer> counts() {
+        java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+        for (SessionOutcome outcome : SessionOutcome.values()) counts.put(outcome.id(), 0);
+        for (JsonObject entry : read()) {
+            String outcome = outcomeOf(entry);
+            Integer current = counts.get(outcome);
+            counts.put(outcome, current != null ? current + 1 : 1);
+        }
+        return counts;
+    }
+
+    /** Finds an entry by full id, id prefix or file path fragment. */
+    JsonObject find(String key) {
+        if (key == null || key.trim().isEmpty()) return null;
+        String needle = key.trim();
+        List<JsonObject> all = read();
+        for (int i = all.size() - 1; i >= 0; i--) {
+            JsonObject entry = all.get(i);
+            String id = string(entry, "id");
+            String file = string(entry, "file");
+            if (id.equals(needle) || id.startsWith(needle) || file.equals(needle)
+                    || file.contains(needle)) {
+                return entry;
+            }
+        }
+        return null;
+    }
+
+    /** Resolves the transcript file of one index entry. */
+    File fileFor(File sessionsRoot, JsonObject entry) {
+        String file = string(entry, "file");
+        return file.isEmpty() ? null : new File(sessionsRoot, file);
+    }
+
+    private static String outcomeOf(JsonObject entry) {
+        String outcome = string(entry, "outcome");
+        return outcome.isEmpty() ? "unknown" : outcome;
+    }
+
+    private static String string(JsonObject object, String key) {
+        return object != null && object.has(key) && !object.get(key).isJsonNull()
+                ? object.get(key).getAsString() : "";
+    }
+}

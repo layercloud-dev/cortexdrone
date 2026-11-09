@@ -1,7 +1,5 @@
 package ir.layercloud.cortexdrone.harness.js;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,7 +19,7 @@ final class TypeScriptEraser {
     // else-branch of a ternary ("cond ? a : null,") and erasing them produced
     // "missing : in conditional expression" on ordinary JavaScript.
     private static final Pattern PARAM_OR_RETURN_ANNOTATION = Pattern.compile(
-            "\\s*:\\s*" + nonNullishType() + "\\s*(?=[,)=]|=>|\\{)");
+            "\\s*:\\s*" + nonNullishAnnotationType() + "\\s*(?=[,)=]|=>|\\{)");
     private static final Pattern AS_CAST = Pattern.compile(
             "\\s+as\\s+" + type() + "(?=\\s|[,);}\\]])");
     private static final Pattern GENERIC_FUNCTION = Pattern.compile(
@@ -49,12 +47,19 @@ final class TypeScriptEraser {
                 + "(?:\\s*\\|\\s*(?:[A-Za-z_$][\\w$.]*(?:\\s*<[^<>{};]*>)?(?:\\s*\\[\\])*))*";
     }
 
-    /** Same as {@link #type()} but never matches a bare null/undefined. */
-    private static String nonNullishType() {
+    /**
+     * A type name that cannot also be an object-literal value: no dotted
+     * namespace access and at least one lowercase letter. This keeps
+     * {@code { max_wait_ms: LIMITS.maxWaitMs }} from being read as a type
+     * annotation and rewritten to a shorthand key.
+     */
+    private static String nonNullishAnnotationType() {
         return "(?:void|string|number|boolean|any|unknown|never|object"
-                + "|[A-Z][\\w$.]*(?:\\s*<[^<>{};]*>)?(?:\\s*\\[\\])*)"
-                + "(?:\\s*\\|\\s*(?:[A-Za-z_$][\\w$.]*(?:\\s*<[^<>{};]*>)?(?:\\s*\\[\\])*))*";
+                + "|[A-Z][\\w$]*[a-z][\\w$]*(?:\\s*<[^<>{};]*>)?(?:\\s*\\[\\])*)"
+                + "(?:\\s*\\|\\s*(?:[A-Za-z_$][\\w$]*(?:\\s*<[^<>{};]*>)?(?:\\s*\\[\\])*))*";
     }
+
+
 
     /** Removes entire {@code interface X {...}}, {@code type X = ...;} and {@code declare ...;} statements. */
     private static String stripBlocks(String source) {

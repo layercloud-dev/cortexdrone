@@ -25,3 +25,8 @@ run/
 # OS
 .DS_Store
 Thumbs.db
+
+# Reviewed evidence is documentation, not a build artifact, so it is tracked
+# even though generated logs are not.
+!docs/evidence/
+!docs/evidence/*.log

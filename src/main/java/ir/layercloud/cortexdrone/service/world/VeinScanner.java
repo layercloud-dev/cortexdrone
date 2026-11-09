@@ -9,22 +9,42 @@ import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * 3D 26-connected ore and resource vein clustering scanner backed by ChunkCacheContext.
+ * 3D 26-connected ore and resource vein clustering scanner backed by
+ * ChunkCacheContext.
+ *
+ * <p>World reads happen here; the connected-component logic lives in
+ * {@link VeinClustering} so it can be tested without a live world.</p>
  */
 @UtilityClass
 public final class VeinScanner {
+    /** Ring-search radius bounds for a vein scan. */
+    /** @see ir.layercloud.cortexdrone.service.world.ScanLimits#MIN_VEIN_RADIUS */
+    public static final int MIN_RADIUS =
+            ScanLimits.MIN_VEIN_RADIUS;
+    /** @see ir.layercloud.cortexdrone.service.world.ScanLimits#MAX_VEIN_RADIUS */
+    public static final int MAX_RADIUS =
+            ScanLimits.MAX_VEIN_RADIUS;
+    /** Largest number of veins returned in one response. */
+    public static final int MAX_VEINS_RETURNED = 80;
 
-    public static JsonObject scanConnectedVeins(World world, final int cx, final int cy, final int cz, int radius, String rawFilter) {
+    private static final VeinClustering.PositionKey BLOCK_KEYS = FlightPathfinder::packBlockPos;
+
+    public static JsonObject scanConnectedVeins(World world, final int cx, final int cy,
+                                                final int cz, int radius, String rawFilter) {
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);
-        int r = Math.min(48, Math.max(4, radius));
+        int r = Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, radius));
         String filter = (rawFilter == null || rawFilter.trim().isEmpty()) ? "ores" : rawFilter.trim();
-        boolean deepScan = ItemClassifier.isLikelyUndergroundQuery(filter) || filter.equalsIgnoreCase("ores") || filter.equalsIgnoreCase("all");
-        int minY = deepScan ? 2 : Math.max(2, cy - r);
-        int maxY = Math.min(254, cy + r);
+        boolean deepScan = ItemClassifier.isLikelyUndergroundQuery(filter)
+                || filter.equalsIgnoreCase("ores") || filter.equalsIgnoreCase("all");
+        int minY = deepScan ? WorldBounds.MIN_SCAN_Y : Math.max(WorldBounds.MIN_SCAN_Y, cy - r);
+        int maxY = Math.min(WorldBounds.MAX_Y, cy + r);
 
         ChunkCacheContext bsi = new ChunkCacheContext(world, cx, cz, (r >> 4) + 2);
         Map<Long, int[]> matched = new LinkedHashMap<>();
@@ -33,109 +53,90 @@ public final class VeinScanner {
         for (int x = cx - r; x <= cx + r; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = cz - r; z <= cz + r; z++) {
-                    Block b = bsi.getBlock(x, y, z);
-                    if (b == null || b == Blocks.air || b == Blocks.bedrock) continue;
+                    Block block = bsi.getBlock(x, y, z);
+                    if (block == null || block == Blocks.air || block == Blocks.bedrock) continue;
                     int meta = world.getBlockMetadata(x, y, z);
-                    if (ItemClassifier.matchesMineFilter(b, meta, filter)) {
-                        int id = Block.getIdFromBlock(b);
-                        matched.put(FlightPathfinder.packBlockPos(x, y, z), new int[]{x, y, z, id, meta});
-                        String disp = ItemClassifier.getBlockDisplayName(b, meta);
-                        histogram.put(disp, (histogram.getOrDefault(disp, 0)) + 1);
-                    }
+                    if (!ItemClassifier.matchesMineFilter(block, meta, filter)) continue;
+                    int id = Block.getIdFromBlock(block);
+                    matched.put(FlightPathfinder.packBlockPos(x, y, z), new int[]{x, y, z, id, meta});
+                    String display = ItemClassifier.getBlockDisplayName(block, meta);
+                    histogram.merge(display, 1, Integer::sum);
                 }
             }
         }
 
-        Set<Long> visited = new HashSet<>();
-        List<JsonObject> veins = new ArrayList<>();
-
-        for (Map.Entry<Long, int[]> entry : matched.entrySet()) {
-            long startKey = entry.getKey();
-            if (!visited.add(startKey)) continue;
-            int[] root = entry.getValue();
-            int targetId = root[3];
-            int targetMeta = root[4];
-            Block rootBlock = Block.getBlockById(targetId);
-            String veinName = ItemClassifier.getBlockDisplayName(rootBlock, targetMeta);
-            String reg = rootBlock != null ? Block.blockRegistry.getNameForObject(rootBlock) : "";
-
-            List<int[]> cluster = new ArrayList<>();
-            Deque<int[]> q = new ArrayDeque<>();
-            q.add(root);
-            boolean exposed = false;
-            double sumX = 0, sumY = 0, sumZ = 0;
-
-            while (!q.isEmpty() && cluster.size() < 256) {
-                int[] cur = q.pollFirst();
-                cluster.add(cur);
-                sumX += cur[0];
-                sumY += cur[1];
-                sumZ += cur[2];
-                if (!exposed) {
-                    if (bsi.isPassable(cur[0] + 1, cur[1], cur[2])
-                            || bsi.isPassable(cur[0] - 1, cur[1], cur[2])
-                            || bsi.isPassable(cur[0], cur[1] + 1, cur[2])
-                            || bsi.isPassable(cur[0], cur[1] - 1, cur[2])
-                            || bsi.isPassable(cur[0], cur[1], cur[2] + 1)
-                            || bsi.isPassable(cur[0], cur[1], cur[2] - 1)) {
-                        exposed = true;
-                    }
-                }
-                for (int dx = -1; dx <= 1; dx++) {
-                    for (int dy = -1; dy <= 1; dy++) {
-                        for (int dz = -1; dz <= 1; dz++) {
-                            if (dx == 0 && dy == 0 && dz == 0) continue;
-                            long nk = FlightPathfinder.packBlockPos(cur[0] + dx, cur[1] + dy, cur[2] + dz);
-                            if (visited.contains(nk)) continue;
-                            int[] nb = matched.get(nk);
-                            if (nb != null && nb[3] == targetId && nb[4] == targetMeta) {
-                                visited.add(nk);
-                                q.addLast(nb);
-                            }
-                        }
-                    }
-                }
-            }
-
-            int n = cluster.size();
-            int vx = (int) Math.round(sumX / n);
-            int vy = (int) Math.round(sumY / n);
-            int vz = (int) Math.round(sumZ / n);
-            double dist = Math.sqrt((vx - cx) * (vx - cx) + (vy - cy) * (vy - cy) + (vz - cz) * (vz - cz));
-
-            JsonObject vo = new JsonObject();
-            vo.addProperty("name", veinName);
-            vo.addProperty("registryName", reg != null ? reg : "");
-            JsonArray veinTags = ItemClassifier.blockOreDictJson(rootBlock, targetMeta);
-            if (veinTags != null) vo.add("oreDict", veinTags);
-            vo.addProperty("id", targetId);
-            vo.addProperty("meta", targetMeta);
-            vo.addProperty("count", n);
-            vo.addProperty("exposed", exposed);
-            vo.addProperty("centerX", vx);
-            vo.addProperty("centerY", vy);
-            vo.addProperty("centerZ", vz);
-            vo.addProperty("dist", Math.round(dist * 10.0) / 10.0);
-            vo.add("blocks", RoomScanner.coordsToJsonArray(cluster));
-            veins.add(vo);
+        List<VeinClustering.Cluster> clusters = VeinClustering.cluster(matched, BLOCK_KEYS);
+        List<JsonObject> veins = new ArrayList<>(clusters.size());
+        for (VeinClustering.Cluster cluster : clusters) {
+            veins.add(describe(cluster, matched, cx, cy, cz, bsi));
         }
 
         veins.sort((a, b) -> {
-            boolean expA = a.get("exposed").getAsBoolean();
-            boolean expB = b.get("exposed").getAsBoolean();
-            if (expA != expB) return expA ? -1 : 1;
+            boolean exposedA = a.get("exposed").getAsBoolean();
+            boolean exposedB = b.get("exposed").getAsBoolean();
+            if (exposedA != exposedB) return exposedA ? -1 : 1;
             return Double.compare(a.get("dist").getAsDouble(), b.get("dist").getAsDouble());
         });
 
-        JsonArray veinsArr = new JsonArray();
-        int limit = Math.min(80, veins.size());
-        for (int i = 0; i < limit; i++) {
-            veinsArr.add(veins.get(i));
-        }
+        JsonArray veinsArray = new JsonArray();
+        int limit = Math.min(MAX_VEINS_RETURNED, veins.size());
+        for (int i = 0; i < limit; i++) veinsArray.add(veins.get(i));
+
         res.addProperty("totalBlocks", matched.size());
         res.addProperty("veinCount", veins.size());
         res.add("histogram", RoomScanner.mapToJson(histogram));
-        res.add("veins", veinsArr);
+        res.add("veins", veinsArray);
         return res;
+    }
+
+    private static JsonObject describe(VeinClustering.Cluster cluster, Map<Long, int[]> matched,
+                                       int cx, int cy, int cz, ChunkCacheContext bsi) {
+        int[] center = cluster.center();
+        JsonObject vein = new JsonObject();
+        String registryName = "";
+        String veinName = "Unknown";
+        int id = 0;
+        int meta = 0;
+        for (int[] block : cluster.blocks()) {
+            id = block[3];
+            meta = block[4];
+            Block rootBlock = Block.getBlockById(id);
+            veinName = ItemClassifier.getBlockDisplayName(rootBlock, meta);
+            registryName = rootBlock != null
+                    ? Block.blockRegistry.getNameForObject(rootBlock) : "";
+            break;
+        }
+        vein.addProperty("name", veinName);
+        vein.addProperty("registryName", registryName != null ? registryName : "");
+        JsonArray tags = ItemClassifier.blockOreDictJson(Block.getBlockById(id), meta);
+        if (tags != null) vein.add("oreDict", tags);
+        vein.addProperty("id", id);
+        vein.addProperty("meta", meta);
+        vein.addProperty("count", cluster.totalCount());
+        vein.addProperty("truncated", cluster.truncated());
+        vein.addProperty("exposed", isExposed(cluster, bsi));
+        vein.addProperty("centerX", center[0]);
+        vein.addProperty("centerY", center[1]);
+        vein.addProperty("centerZ", center[2]);
+        double distance = Math.sqrt((center[0] - cx) * (center[0] - cx)
+                + (center[1] - cy) * (center[1] - cy)
+                + (center[2] - cz) * (center[2] - cz));
+        vein.addProperty("dist", Math.round(distance * 10.0) / 10.0);
+        vein.add("blocks", RoomScanner.coordsToJsonArray(cluster.blocks()));
+        return vein;
+    }
+
+    private static boolean isExposed(VeinClustering.Cluster cluster, ChunkCacheContext bsi) {
+        for (int[] block : cluster.blocks()) {
+            if (bsi.isPassable(block[0] + 1, block[1], block[2])
+                    || bsi.isPassable(block[0] - 1, block[1], block[2])
+                    || bsi.isPassable(block[0], block[1] + 1, block[2])
+                    || bsi.isPassable(block[0], block[1] - 1, block[2])
+                    || bsi.isPassable(block[0], block[1], block[2] + 1)
+                    || bsi.isPassable(block[0], block[1], block[2] - 1)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

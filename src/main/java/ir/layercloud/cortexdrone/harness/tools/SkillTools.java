@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
+import ir.layercloud.cortexdrone.service.skill.SkillLimits;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
@@ -29,6 +31,9 @@ import java.util.List;
  * primitives instead of duplicating them.</p>
  */
 public final class SkillTools implements ToolProvider {
+    private static final int MIN_SEARCH_LIMIT = 1;
+    private static final int MAX_SEARCH_LIMIT = 20;
+    private static final int DEFAULT_SEARCH_LIMIT = 5;
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("skill")
                     .description("Search, list or load reusable skills. action=search matches name, "
@@ -40,9 +45,11 @@ public final class SkillTools implements ToolProvider {
                             .optionalEnum("action", "Operation to perform.", "search", "search", "list", "load")
                             .optionalString("name", "Skill name (required for action=load).")
                             .optionalString("query", "Natural-language query (action=search).")
-                            .optionalInt("limit", "Maximum results, 1..20.", 1, 20, 5))
+                            .optionalInt("limit", "Maximum results, " + MIN_SEARCH_LIMIT + ".."
+                                    + MAX_SEARCH_LIMIT + ".", MIN_SEARCH_LIMIT,
+                                    MAX_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT))
                     .affinity(ToolAffinity.ASYNC)
-                    .timeoutMs(5_000L)
+                    .timeoutMs(ToolTimeouts.READ_MS)
                     .build(),
             ToolSpec.builder("skill_run")
                     .description("Run a stored skill by name with a parameter object. The skill body executes "
@@ -56,9 +63,12 @@ public final class SkillTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .requiredString("name", "Skill name (snake_case, from `skill` search).")
                             .optionalObject("params", "Parameter object passed to the skill as `params`.")
-                            .optionalInt("timeout_ms", "Wall-clock budget, 1000..280000.", 1_000, 280_000, 180_000))
+                            .optionalInt("timeout_ms", "Wall-clock budget, "
+                                    + SkillLimits.MIN_TIMEOUT_MS + ".." + SkillLimits.MAX_TIMEOUT_MS + ".",
+                                    SkillLimits.MIN_TIMEOUT_MS, SkillLimits.MAX_TIMEOUT_MS,
+                                    SkillLimits.DEFAULT_TIMEOUT_MS))
                     .affinity(ToolAffinity.ASYNC)
-                    .timeoutMs(300_000L)
+                    .timeoutMs(SkillLimits.EXECUTE_TIMEOUT_MS)
                     .build(),
             ToolSpec.builder("skill_refine")
                     .description("Compile a successful workflow into a reusable skill using the recursive "
@@ -74,7 +84,7 @@ public final class SkillTools implements ToolProvider {
                             .optionalString("name", "Preferred skill name; the compiler may normalize it.")
                             .optionalString("notes", "Parameters, assumptions, blockers or variations to preserve."))
                     .affinity(ToolAffinity.ASYNC)
-                    .timeoutMs(180_000L)
+                    .timeoutMs(SkillLimits.DEFAULT_TIMEOUT_MS)
                     .build()
     );
 
@@ -164,7 +174,7 @@ public final class SkillTools implements ToolProvider {
         }
         JsonObject params = args.has("params") && args.get("params").isJsonObject()
                 ? args.getAsJsonObject("params") : new JsonObject();
-        long timeout = args.has("timeout_ms") ? args.get("timeout_ms").getAsLong() : 180_000L;
+        long timeout = args.has("timeout_ms") ? args.get("timeout_ms").getAsLong() : SkillLimits.DEFAULT_TIMEOUT_MS;
         String code = "return skills.call(" + quote(skill.getName()) + ", "
                 + params.toString() + ");";
         JsonObject result = js.execute(context, code, timeout);

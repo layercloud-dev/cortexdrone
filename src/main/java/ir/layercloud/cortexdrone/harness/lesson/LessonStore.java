@@ -1,22 +1,16 @@
 package ir.layercloud.cortexdrone.harness.lesson;
 
+import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import ir.layercloud.cortexdrone.config.ModPaths;
 import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.Reader;
-import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -42,11 +36,13 @@ public final class LessonStore {
     private static final int MAX_ENTRIES = 400;
 
     private final File lessonsDir;
+    private final LessonFiles files;
     private final Map<String, Lesson> entries = new LinkedHashMap<>();
     private long sequence;
 
     public LessonStore(File configRoot) {
         this.lessonsDir = ModPaths.lessonsDir(configRoot);
+        this.files = new LessonFiles(this.lessonsDir);
         loadDirectories();
     }
 
@@ -91,32 +87,8 @@ public final class LessonStore {
     }
 
     public synchronized List<Lesson> search(String query, String scope, int limit) {
-        List<Lesson> all = filtered(scope);
-        String clean = query != null ? query.trim().toLowerCase(Locale.ROOT) : "";
-        int max = Math.max(1, Math.min(50, limit));
-        if (clean.isEmpty()) {
-            all.sort((a, b) -> {
-                int pinned = Boolean.compare(b.isPinned(), a.isPinned());
-                if (pinned != 0) return pinned;
-                return Long.compare(b.getUpdatedAt(), a.getUpdatedAt());
-            });
-            return new ArrayList<>(all.subList(0, Math.min(max, all.size())));
-        }
-        final String queryText = clean;
-        final List<String> queryTokens = LexicalItemMatcher.tokenize(clean);
-        List<Scored> scored = new ArrayList<>();
-        for (Lesson lesson : all) {
-            double score = score(lesson, queryText, queryTokens);
-            if (score > 0) scored.add(new Scored(lesson, score));
-        }
-        scored.sort((a, b) -> {
-            int byScore = Double.compare(b.score, a.score);
-            if (byScore != 0) return byScore;
-            return Long.compare(b.entry.getUpdatedAt(), a.entry.getUpdatedAt());
-        });
-        List<Lesson> out = new ArrayList<>();
-        for (int i = 0; i < scored.size() && i < max; i++) out.add(scored.get(i).entry);
-        return out;
+        return RankedSearch.search(filtered(scope), query, limit, Lesson::isPinned,
+                Lesson::getUpdatedAt, this::score);
     }
 
     public synchronized List<Lesson> list(String scope, int limit) {
@@ -128,7 +100,7 @@ public final class LessonStore {
      * entries (usually hard safety rules), capped.
      */
     public synchronized List<Lesson> forContext(String query, int limit) {
-        int max = Math.max(1, Math.min(20, limit));
+        int max = RankedSearch.clampContext(limit);
         List<Lesson> out = new ArrayList<>(search(query, null, max));
         for (Lesson lesson : this.entries.values()) {
             if (!lesson.isPinned() || out.contains(lesson)) continue;
@@ -191,20 +163,18 @@ public final class LessonStore {
     // ------------------------------------------------------------------
 
     private synchronized void loadDirectories() {
-        File[] dirs = this.lessonsDir != null ? this.lessonsDir.listFiles(File::isDirectory) : null;
-        if (dirs == null) return;
-        Arrays.sort(dirs, Comparator.comparing(File::getName));
-        for (File dir : dirs) loadLesson(dir);
+        for (File dir : this.files.directories()) loadLesson(dir);
     }
 
     private void loadLesson(File dir) {
         File markdown = new File(dir, LessonMarkdown.FILE_NAME);
         if (!markdown.isFile()) return;
-        Lesson lesson = LessonMarkdown.read(readFile(markdown));
+        Lesson lesson = LessonMarkdown.read(ir.layercloud.cortexdrone.harness.markdown.AtomicFiles
+                .readText(markdown));
         if (lesson == null) return;
         long stamp = markdown.lastModified();
         if (lesson.getId() == null || lesson.getId().trim().isEmpty()) {
-            lesson.setId("les_" + stamp + "_" + Math.abs(lesson.getTitle().hashCode()));
+            lesson.setId("les_" + stamp + "_" + Integer.toUnsignedString(lesson.getTitle().hashCode()));
         }
         if (lesson.getScope() == null || lesson.getScope().trim().isEmpty()) lesson.setScope("general");
         if (lesson.getTitle() == null) lesson.setTitle("");
@@ -220,74 +190,21 @@ public final class LessonStore {
     }
 
     private void persist(Lesson lesson) {
-        File dir = lesson.getPath() != null && !lesson.getPath().trim().isEmpty()
-                ? new File(lesson.getPath()) : lessonDir(lesson);
-        if (!dir.isDirectory() && !dir.mkdirs()) {
-            LOG.warning("Could not create lesson directory " + dir.getAbsolutePath());
-            return;
+        if (!this.files.persist(lesson)) {
+            LOG.warning("Could not persist lesson " + lesson.getTitle());
         }
-        lesson.setPath(dir.getAbsolutePath());
-        writeFile(new File(dir, LessonMarkdown.FILE_NAME), LessonMarkdown.write(lesson));
     }
 
     private void deleteLesson(Lesson lesson) {
-        if (lesson == null) return;
-        File dir = lesson.getPath() != null && !lesson.getPath().trim().isEmpty()
-                ? new File(lesson.getPath()) : lessonDir(lesson);
-        deleteRecursively(dir);
+        if (!this.files.delete(lesson)) {
+            LOG.warning("Could not delete lesson " + (lesson != null ? lesson.getTitle() : "?"));
+        }
     }
 
-    private File lessonDir(Lesson lesson) {
-        String scope = slug(lesson.getScope(), "general");
-        String title = slug(lesson.getTitle(), "lesson");
-        String id = lesson.getId() != null ? Integer.toHexString(lesson.getId().hashCode()) : "lesson";
-        return new File(this.lessonsDir, scope + "-" + title + "-" + id);
-    }
+
 
     private static String slug(String value, String fallback) {
-        String clean = value != null ? value.trim().toLowerCase(Locale.ROOT) : "";
-        clean = clean.replaceAll("[^a-z0-9]+", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
-        if (clean.isEmpty()) clean = fallback;
-        return clean.length() > 48 ? clean.substring(0, 48) : clean;
-    }
-
-    private static void writeFile(File target, String content) {
-        File temp = new File(target.getAbsolutePath() + ".tmp");
-        try (Writer writer = new FileWriter(temp)) {
-            writer.write(content != null ? content : "");
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not write " + target.getAbsolutePath(), e);
-            return;
-        }
-        if (target.exists() && !target.delete()) {
-            LOG.warning("Could not replace " + target.getAbsolutePath());
-            return;
-        }
-        if (!temp.renameTo(target)) {
-            LOG.warning("Could not move " + temp.getAbsolutePath() + " into place");
-        }
-    }
-
-    private static String readFile(File file) {
-        try (Reader reader = new FileReader(file)) {
-            StringBuilder out = new StringBuilder((int) Math.min(64_000L, file.length() + 32L));
-            char[] buffer = new char[4096];
-            int read;
-            while ((read = reader.read(buffer)) >= 0) out.append(buffer, 0, read);
-            return out.toString();
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not read " + file.getAbsolutePath(), e);
-            return null;
-        }
-    }
-
-    private static void deleteRecursively(File file) {
-        if (file == null || !file.exists()) return;
-        File[] children = file.listFiles();
-        if (children != null) {
-            for (File child : children) deleteRecursively(child);
-        }
-        if (!file.delete()) LOG.warning("Could not delete " + file.getAbsolutePath());
+        return LessonFiles.slug(value, fallback);
     }
 
     // ------------------------------------------------------------------
@@ -402,13 +319,5 @@ public final class LessonStore {
         return out;
     }
 
-    private static final class Scored {
-        final Lesson entry;
-        final double score;
 
-        Scored(Lesson entry, double score) {
-            this.entry = entry;
-            this.score = score;
-        }
-    }
 }

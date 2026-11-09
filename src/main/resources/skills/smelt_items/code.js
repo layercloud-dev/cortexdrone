@@ -6,11 +6,11 @@ if (!filter) {
   return { ok: false, error: 'smelt_items needs filter (the item to smelt)',
     hint: 'e.g. filter:"iron_ore" or filter:"sand"' };
 }
-var wanted = clamp(cfg.count || 6, 1, 64);
-var radius = clamp(cfg.radius || 24, 4, 36);
+var wanted = clamp(cfg.count || 6, 1, SKILL_LIMITS.smallCountCap);
+var radius = clamp(cfg.radius || LIMITS.scanRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.furnaceRadiusMax);
 var clearInput = cfg.clear !== false;
 var wait = cfg.wait !== false;
-var maxWaitS = clamp(cfg.max_wait_s || (wanted * 10 + 20), 5, 300);
+var maxWaitS = clamp(cfg.max_wait_s || (wanted * 10 + 20), SKILL_LIMITS.smeltWaitMin, SKILL_LIMITS.smeltWaitMax);
 
 // Vanilla 1.7.10 furnace slots and burn times (ticks).
 var slotInput = 0;
@@ -108,7 +108,7 @@ if (slotCount(before, slotOutput) > 0) {
   try {
     var takenOut = drone.moveItem({ from: 'chest', to: 'drone',
       from_x: furnace.x, from_y: furnace.y, from_z: furnace.z,
-      from_slot: slotOutput, to_slot: -1, count: 2304 });
+      from_slot: slotOutput, to_slot: -1, count: MAX_TRANSFER_COUNT });
     preCollected = (takenOut && takenOut.moved) || 0;
   } catch (outError) {
     return { ok: false, error: 'output slot is full and could not be emptied: ' + outError.message,
@@ -293,7 +293,7 @@ var collected = 0;
 try {
   var outResult = drone.moveItem({ from: 'chest', to: 'drone',
     from_x: furnace.x, from_y: furnace.y, from_z: furnace.z,
-    from_slot: slotOutput, to_slot: -1, count: 2304 });
+    from_slot: slotOutput, to_slot: -1, count: MAX_TRANSFER_COUNT });
   collected = (outResult && outResult.moved) || 0;
 } catch (collectError) {
   log('output withdraw failed: ' + collectError.message);

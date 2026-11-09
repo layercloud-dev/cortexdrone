@@ -25,7 +25,6 @@ import net.minecraft.nbt.NBTTagCompound;
 public final class InertMachineArchitecture implements Architecture {
     public static final InertMachineArchitecture INSTANCE = new InertMachineArchitecture();
 
-
     @Override
     public boolean isInitialized() {
         return true; // claim initialized so OC's save subtree never tries to re-bootstrap us

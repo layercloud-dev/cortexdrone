@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
@@ -8,7 +9,6 @@ import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.impl.TunnelPlanner;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
-import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
@@ -64,8 +64,8 @@ final class TunnelRecovery {
         candidate = DigPathfinder.firstBreak(world, drone,
                 state.goalX, state.goalY, state.goalZ, session.rejectedDigs).breakBlock;
         if (!usable(candidate, session)) return null;
-        if (drone.getDistance(candidate[0] + 0.5D, candidate[1] + 0.5D,
-                candidate[2] + 0.5D) > MAX_FIRST_BREAK) {
+        if (drone.getDistance(candidate[0] + DroneGeometry.CELL_CENTER, candidate[1] + DroneGeometry.CELL_CENTER,
+                candidate[2] + DroneGeometry.CELL_CENTER) > MAX_FIRST_BREAK) {
             return null;
         }
         return candidate;
@@ -166,11 +166,11 @@ final class TunnelRecovery {
                 int tz = (int) Math.floor(drone.posZ + direction[2] * step);
                 if (!openForDrone(world, tx, ty, tz)) continue;
                 double remaining = Math.sqrt(
-                        (state.goalX - (tx + 0.5D)) * (state.goalX - (tx + 0.5D))
-                                + (state.goalY - (ty + 0.35D)) * (state.goalY - (ty + 0.35D))
-                                + (state.goalZ - (tz + 0.5D)) * (state.goalZ - (tz + 0.5D)));
+                        (state.goalX - (tx + DroneGeometry.CELL_CENTER)) * (state.goalX - (tx + DroneGeometry.CELL_CENTER))
+                                + (state.goalY - (ty + DroneGeometry.AIM_OFFSET)) * (state.goalY - (ty + DroneGeometry.AIM_OFFSET))
+                                + (state.goalZ - (tz + DroneGeometry.CELL_CENTER)) * (state.goalZ - (tz + DroneGeometry.CELL_CENTER)));
                 if (remaining > current - 0.75D) continue;
-                return new double[]{tx + 0.5D, ty + 0.35D, tz + 0.5D};
+                return new double[]{tx + DroneGeometry.CELL_CENTER, ty + DroneGeometry.AIM_OFFSET, tz + DroneGeometry.CELL_CENTER};
             }
         }
         return null;

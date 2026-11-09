@@ -245,6 +245,7 @@ public final class AgentService {
             speak(player, controller, message);
         } finally {
             session.unregisterLoop(loopId);
+            AgentInbox.requeueLate(player, controller, session, this.manager);
         }
     }
 

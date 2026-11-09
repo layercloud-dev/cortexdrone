@@ -10,6 +10,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.service.question.QuestionLimits;
 import ir.layercloud.cortexdrone.service.question.QuestionService;
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 import java.util.ArrayList;
@@ -40,13 +41,11 @@ public final class QuestionView {
                     "The question service is not running.",
                     "This is a mod initialization problem; report it.", false);
         }
-        String question = ToolArgs.string(args, "question", "").trim();
+        String question = TextSanitizer.dialog(ToolArgs.string(args, "question", ""),
+                QuestionLimits.MAX_QUESTION_CHARS);
         if (question.isEmpty()) {
             return ToolJson.error("invalid_arguments", "Argument 'question' must not be empty.",
                     "Call ask_player again with one short sentence.", true);
-        }
-        if (question.length() > QuestionLimits.MAX_QUESTION_CHARS) {
-            question = question.substring(0, QuestionLimits.MAX_QUESTION_CHARS);
         }
         List<String> options = parseOptions(args);
         boolean allowFreeText = ToolArgs.bool(args, "allow_free_text", true);
@@ -97,11 +96,8 @@ public final class QuestionView {
         for (JsonElement item : element.getAsJsonArray()) {
             if (options.size() >= QuestionLimits.MAX_OPTIONS) break;
             if (item == null || item.isJsonNull() || !item.isJsonPrimitive()) continue;
-            String value = item.getAsString().trim();
+            String value = TextSanitizer.chat(item.getAsString(), QuestionLimits.MAX_OPTION_CHARS);
             if (value.isEmpty()) continue;
-            if (value.length() > QuestionLimits.MAX_OPTION_CHARS) {
-                value = value.substring(0, QuestionLimits.MAX_OPTION_CHARS);
-            }
             options.add(value);
         }
         return options;

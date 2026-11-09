@@ -102,8 +102,10 @@ final class DroneLifecycle {
 
         World world = player.worldObj;
         Drone drone = new Drone(world);
-        String name = customName != null && !customName.trim().isEmpty()
-                ? customName.trim()
+        String requested = customName != null
+                ? ir.layercloud.cortexdrone.service.text.TextSanitizer.chat(customName) : "";
+        String name = !requested.isEmpty()
+                ? requested
                 : player.getCommandSenderName() + DEFAULT_NAME_SUFFIX;
 
         drone.setName(name);

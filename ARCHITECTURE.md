@@ -137,6 +137,7 @@ Values that several layers must agree on live in exactly one place:
 | Private-network (RFC1918) predicate | `config/PrivateHosts` |
 | Outbound user agent | `service/world/WebIdentity` |
 | Operator permission level | `command/impl/CommandPermissions` |
+| Untrusted display text | `service/text/TextSanitizer` |
 
 JSON is confined to the tool boundary (`harness/tools/view`) and the LLM
 protocol. Actions, managers and services work with typed request/result classes.
@@ -348,6 +349,13 @@ player is consumed as the answer. The call runs on the agent thread and waits
 (250 ms polls) until answered, dismissed, disconnected, cancelled or timed out,
 so the server keeps ticking; the player is matched from the live connection, not
 from the payload.
+
+Every text that reaches a player or the line-based debug log passes through
+`TextSanitizer`: `§` formatting codes (and their code letter), control
+characters, non-BMP glyphs and bidi overrides are stripped, while legitimate
+Unicode — including Persian ZWNJ/ZWJ — is preserved. The same sanitizer runs on
+the wire messages, so a modified client cannot inject styling into chat or the
+dialog.
 
 ## 8. Runtime lifecycle
 

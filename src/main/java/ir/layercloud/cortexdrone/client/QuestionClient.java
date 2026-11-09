@@ -4,6 +4,8 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import ir.layercloud.cortexdrone.network.DroneMapSync;
 import ir.layercloud.cortexdrone.network.QuestionAnswerMessage;
+import ir.layercloud.cortexdrone.service.question.QuestionLimits;
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 
@@ -31,8 +33,15 @@ public final class QuestionClient {
                             final boolean allowFreeText, final int timeoutMs) {
         final Minecraft minecraft = Minecraft.getMinecraft();
         if (minecraft == null) return;
-        final List<String> safeOptions = options == null ? Collections.<String>emptyList()
-                : Collections.unmodifiableList(new ArrayList<String>(options));
+        final String safeQuestion = TextSanitizer.dialog(question, QuestionLimits.MAX_QUESTION_CHARS);
+        List<String> sanitized = new ArrayList<String>();
+        if (options != null) {
+            for (String option : options) {
+                String value = TextSanitizer.chat(option, QuestionLimits.MAX_OPTION_CHARS);
+                if (!value.isEmpty()) sanitized.add(value);
+            }
+        }
+        final List<String> safeOptions = Collections.unmodifiableList(sanitized);
         minecraft.func_152344_a(new Runnable() {
             @Override
             public void run() {
@@ -40,7 +49,7 @@ public final class QuestionClient {
                 // Lets the server skip the chat fallback for this client.
                 DroneMapSync.channel().sendToServer(new QuestionAnswerMessage(id,
                         QuestionAnswerMessage.STATUS_OPENED, "", -1));
-                minecraft.displayGuiScreen(new QuestionScreen(id, question, safeOptions,
+                minecraft.displayGuiScreen(new QuestionScreen(id, safeQuestion, safeOptions,
                         allowFreeText, timeoutMs));
             }
         });

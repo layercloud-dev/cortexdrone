@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.service.question;
 
 import ir.layercloud.cortexdrone.network.QuestionRequestMessage;
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 import java.util.ArrayList;
@@ -191,10 +192,7 @@ public final class QuestionService {
         Pending entry = this.pending.get(id);
         if (entry == null || !samePlayer(entry, playerName)) return false;
         int index = optionIndex >= 0 && optionIndex < entry.options.size() ? optionIndex : -1;
-        String clean = text != null ? text.trim() : "";
-        if (clean.length() > QuestionLimits.MAX_ANSWER_CHARS) {
-            clean = clean.substring(0, QuestionLimits.MAX_ANSWER_CHARS);
-        }
+        String clean = TextSanitizer.chat(text, QuestionLimits.MAX_ANSWER_CHARS);
         return entry.future.complete(cancelled
                 ? new Reply(Status.CANCELLED, "", -1)
                 : new Reply(Status.ANSWERED, clean, index));
@@ -209,10 +207,7 @@ public final class QuestionService {
         if (playerName == null || text == null) return false;
         for (Pending entry : this.pending.values()) {
             if (entry.playerName.equalsIgnoreCase(playerName)) {
-                String clean = text.trim();
-                if (clean.length() > QuestionLimits.MAX_ANSWER_CHARS) {
-                    clean = clean.substring(0, QuestionLimits.MAX_ANSWER_CHARS);
-                }
+                String clean = TextSanitizer.chat(text, QuestionLimits.MAX_ANSWER_CHARS);
                 if (entry.future.complete(new Reply(Status.ANSWERED, clean, -1))) return true;
             }
         }

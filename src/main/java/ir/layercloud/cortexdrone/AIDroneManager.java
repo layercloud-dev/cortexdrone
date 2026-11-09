@@ -32,6 +32,7 @@ import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.question.QuestionService;
 import ir.layercloud.cortexdrone.service.question.ServerQuestionTransport;
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import ir.layercloud.cortexdrone.service.world.DocLookupService;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import li.cil.oc.common.entity.Drone;
@@ -204,7 +205,9 @@ public class AIDroneManager {
     }
 
     public boolean onPlayerChat(ServerChatEvent event) {
-        String message = event.message != null ? event.message.trim() : "";
+        // Player chat is untrusted: a modified client can send section signs,
+        // control characters or non-BMP glyphs that mis-render chat and logs.
+        String message = TextSanitizer.chat(event.message != null ? event.message : "");
         String playerName = event.player.getCommandSenderName();
         this.logger.recordChat(playerName, message);
         // A player with an open question answers by typing in chat when the
@@ -301,8 +304,10 @@ public class AIDroneManager {
 
     public void droneSay(ICommandSender recipient, DroneController ctrl, String message) {
         String name = ctrl != null && ctrl.name != null ? ctrl.name : "AI";
-        String formatted = DroneStatusRenderer.say(name, message);
-        this.logger.recordChat("Drone:" + name, message);
+        String clean = TextSanitizer.chat(message);
+        if (clean.isEmpty()) return;
+        String formatted = DroneStatusRenderer.say(name, clean);
+        this.logger.recordChat("Drone:" + name, clean);
         if (recipient != null) {
             CortexDroneMod.sendMsg(recipient, formatted);
         } else {

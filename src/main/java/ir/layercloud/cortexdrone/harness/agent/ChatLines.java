@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.harness.agent;
 
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,7 +25,7 @@ final class ChatLines {
     static List<String> split(String message) {
         List<String> lines = new ArrayList<>();
         if (message == null || message.isEmpty()) return lines;
-        String remaining = message;
+        String remaining = TextSanitizer.chat(message);
         while (remaining.length() > MAX_LINE) {
             int cut = remaining.lastIndexOf(' ', MAX_LINE);
             if (cut < MIN_SPLIT) cut = remaining.lastIndexOf('\n', MAX_LINE);
@@ -37,8 +39,7 @@ final class ChatLines {
 
     /** Collapses whitespace and truncates with an ellipsis. */
     static String limit(String text, int max) {
-        if (text == null) return "";
-        String clean = text.trim().replaceAll("\\s+", " ");
+        String clean = TextSanitizer.chat(text);
         return clean.length() <= max ? clean : clean.substring(0, Math.max(0, max - 3)) + "...";
     }
 

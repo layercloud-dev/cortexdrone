@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.network.DroneMapSync;
 import ir.layercloud.cortexdrone.network.QuestionRequestMessage;
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
@@ -66,10 +67,7 @@ public final class ServerQuestionTransport implements QuestionService.Transport 
 
     /** A one-line chat version of the question. */
     static String chatLine(String question) {
-        String text = question == null ? "" : question.trim();
-        if (text.length() > QuestionLimits.CHAT_QUESTION_CHARS) {
-            text = text.substring(0, QuestionLimits.CHAT_QUESTION_CHARS) + "...";
-        }
+        String text = TextSanitizer.chat(question, QuestionLimits.CHAT_QUESTION_CHARS);
         return "[CortexDrone] " + text + "  (type your answer in chat)";
     }
 }

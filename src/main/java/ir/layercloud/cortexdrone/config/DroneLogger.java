@@ -5,6 +5,7 @@ import ir.layercloud.cortexdrone.DroneController;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -166,8 +167,9 @@ public class DroneLogger {
     }
 
     public void recordChat(String sender, String message) {
+        String clean = TextSanitizer.chat(message);
         synchronized (this.recentChat) {
-            this.recentChat.addLast(new ChatRecord(sender, message));
+            this.recentChat.addLast(new ChatRecord(sender, clean));
             while (this.recentChat.size() > MAX_CHAT_RECORDS) {
                 this.recentChat.removeFirst();
             }

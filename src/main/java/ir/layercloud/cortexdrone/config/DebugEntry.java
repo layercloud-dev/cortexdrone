@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.config;
 
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import lombok.Value;
 
 import java.text.SimpleDateFormat;
@@ -20,9 +21,10 @@ public class DebugEntry {
         this.time = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date(this.timestamp));
         this.category = category != null ? category : "INFO";
         this.droneId = droneId;
-        this.droneName = droneName != null ? droneName : "-";
-        this.message = message != null ? message : "";
-        this.details = details != null ? details : "";
+        String safeName = TextSanitizer.chat(droneName);
+        this.droneName = safeName.isEmpty() ? "-" : safeName;
+        this.message = TextSanitizer.log(message);
+        this.details = TextSanitizer.log(details);
     }
 
     public String toLogLine() {

@@ -98,4 +98,28 @@ public class QuestionMessageTest {
             buffer.release();
         }
     }
+
+    /** A model or a modified client must not be able to inject chat styling. */
+    @Test
+    public void wireTextIsSanitized() {
+        ByteBuf buffer = Unpooled.buffer();
+        try {
+            new QuestionRequestMessage(3L, "\u00A7cChoose \u00A7r\u0000now \uD83D\uDE00",
+                    Arrays.asList("\u00A7aYes", "No\u0007"), true, 5_000).toBytes(buffer);
+            QuestionRequestMessage request = new QuestionRequestMessage();
+            request.fromBytes(buffer);
+
+            assertEquals("Choose now", request.getQuestion());
+            assertEquals(Arrays.asList("Yes", "No"), request.getOptions());
+
+            new QuestionAnswerMessage(3L, QuestionAnswerMessage.STATUS_ANSWERED,
+                    "\u00A7bYes\u0000 \uD83D\uDE00", -1).toBytes(buffer);
+            QuestionAnswerMessage answer = new QuestionAnswerMessage();
+            answer.fromBytes(buffer);
+
+            assertEquals("Yes", answer.getAnswer());
+        } finally {
+            buffer.release();
+        }
+    }
 }

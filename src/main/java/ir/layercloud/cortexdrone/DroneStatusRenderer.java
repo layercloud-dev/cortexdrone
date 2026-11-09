@@ -5,6 +5,7 @@ import ir.layercloud.cortexdrone.manager.ActionRegistry;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.EnumChatFormatting;
@@ -25,14 +26,15 @@ public final class DroneStatusRenderer {
 
     /** Trims a status string to what fits on the drone's own display. */
     public static String trimStatus(String value) {
-        if (value == null) return "";
-        return value.length() > STATUS_DISPLAY_CHARS
-                ? value.substring(0, STATUS_DISPLAY_CHARS) : value;
+        String clean = TextSanitizer.chat(value);
+        return clean.length() > STATUS_DISPLAY_CHARS
+                ? clean.substring(0, STATUS_DISPLAY_CHARS) : clean;
     }
 
     /** Formats one spoken line as a chat message. */
     public static String say(String droneName, String message) {
-        String name = droneName != null ? droneName : "AI";
+        String cleanName = TextSanitizer.chat(droneName);
+        String name = cleanName.isEmpty() ? "AI" : cleanName;
         return EnumChatFormatting.AQUA + "[Drone:" + name + "] "
                 + EnumChatFormatting.WHITE + message;
     }

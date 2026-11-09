@@ -42,7 +42,6 @@ public final class AgentService {
     private static final int MIN_TASK_DEADLINE_SECONDS = 30;
     private static final long MILLIS_PER_SECOND = 1000L;
     private static final String SYSTEM_PROMPT = AgentResources.load("/prompts/system.md");
-    private static final int MAX_EMPTY_RESPONSES = 2;
 
     private final AIDroneManager manager;
     private final DroneLogger logger;
@@ -94,6 +93,8 @@ public final class AgentService {
         long deadline = System.currentTimeMillis() + Math.max(MIN_TASK_DEADLINE_SECONDS, this.config.getTaskDeadlineSeconds())
                 * MILLIS_PER_SECOND;
         int emptyResponses = 0;
+        // 0 = the configured max_tokens; raised after a truncated thinking turn.
+        int outputTokens = 0;
         String lastWorkflowScript = null;
         boolean refinedSkill = false;
 
@@ -123,7 +124,7 @@ public final class AgentService {
                 LlmResponse response;
                 try {
                     response = this.llm.chat(controller, conversation.messages(),
-                            this.registry.toOpenAiTools(), false);
+                            this.registry.toOpenAiTools(), false, outputTokens);
                 } catch (Throwable t) {
                     this.logger.log("LLM", controller, "LLM request failed on turn " + turn,
                             t.toString() + " key=" + LoopTracer.maskKey(this.config.getApiKey()));
@@ -144,22 +145,39 @@ public final class AgentService {
                 }
                 LoopTracer.traceTurn(this.logger, controller, loopId, turn,
                         System.currentTimeMillis() - turnStarted, false,
-                        response.content(), response.hasToolCalls() ? "<tool calls>" : "");
+                        response.content(), response.hasToolCalls() ? "<tool calls>" : "",
+                        response.finishReason());
 
                 conversation.assistant(response);
 
                 if (!response.hasToolCalls()) {
-                    if (response.content().trim().isEmpty()) {
+                    AgentTurnRecovery.Decision recovery = AgentTurnRecovery.decide(
+                            response, emptyResponses + 1,
+                            outputTokens > 0 ? outputTokens : this.config.getMaxTokens(), session);
+                    if (recovery.retry) {
                         emptyResponses++;
-                        if (emptyResponses <= MAX_EMPTY_RESPONSES) {
-                            conversation.user("Your last response was empty. Call a tool to make progress, "
-                                    + "or give a short final answer with what is done and what is blocked.");
-                            continue;
-                        }
-                        String message = partialMessage("empty model response", session);
-                        finishRun(run, SessionOutcome.INCOMPLETE, "empty_model_response", message);
-                        speak(player, controller, message);
+                        outputTokens = recovery.nextBudget;
+                        this.logger.log("LLM", controller,
+                                (recovery.empty ? "Empty model reply" : "Truncated model reply")
+                                        + " on turn " + turn
+                                        + "; retrying with a larger output budget",
+                                "finish=" + recovery.finish + " retry=" + emptyResponses
+                                        + "/" + AgentTurnRecovery.MAX_RETRIES
+                                        + " max_tokens=" + outputTokens);
+                        conversation.user(recovery.nudge);
+                        continue;
+                    }
+                    if (recovery.finalMessage != null) {
+                        finishRun(run, SessionOutcome.INCOMPLETE, "empty_model_response",
+                                recovery.finalMessage);
+                        speak(player, controller, recovery.finalMessage);
                         return;
+                    }
+                    if (recovery.deliverTruncated) {
+                        this.logger.log("LLM", controller,
+                                "Final answer still truncated after retries; "
+                                        + "delivering the partial reply",
+                                "finish=" + recovery.finish + " max_tokens=" + outputTokens);
                     }
                     maybeAutoSaveSkill(controller, userPrompt, lastWorkflowScript, refinedSkill);
                     SessionOutcome outcome = SessionOutcome.fromReply(response.content());

@@ -54,6 +54,24 @@ public class NavigationTargetResolverTest {
         assertNotNull(NavigationTargetResolver.describeFailure(null));
     }
 
+    /**
+     * Regression: a standoff request whose block is buried and whose call set
+     * allow_dig:false used to fail with "goto needs a destination". The model
+     * read that as wrong arguments, changed key spelling, and burned turns.
+     */
+    @Test
+    public void anUnresolvableStandoffExplainsTheRealCause() {
+        NavigationRequest request = NavigationRequest.builder()
+                .standoff(true).standoffX(10).standoffY(64).standoffZ(10)
+                .allowDig(false)
+                .build();
+        String reason = NavigationTargetResolver.describeFailure(request);
+        assertTrue(reason.contains("allow_dig"));
+        assertFalse("must not claim the destination is missing",
+                reason.startsWith("goto needs a destination"));
+        assertTrue("must describe the block", reason.contains("10, 64, 10"));
+    }
+
     /** Small mirror of the real bounds so this test needs no Minecraft world. */
     private static final class WorldBoundsStub {
         static boolean diggable(int y) {

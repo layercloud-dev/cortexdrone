@@ -86,6 +86,21 @@ final class NavigationTargetResolver {
                     + " is outside the world; resolve the real coordinates first "
                     + "(memory search or scan_blocks) instead of passing y=0.";
         }
+        if (request.isStandoff()) {
+            // resolve() only reaches here when no open face exists *and* the
+            // call is not allowed to tunnel to one. The old wording said
+            // "goto needs a destination", which made the model believe its
+            // arguments were wrong and retry the same call several times.
+            String block = "(" + request.getStandoffX() + ", " + request.getStandoffY()
+                    + ", " + request.getStandoffZ() + ")";
+            return "No reachable standoff beside block " + block
+                    + ": every adjacent side is solid"
+                    + (request.isAllowDig()
+                    ? " and no passable voxel exists within 3 blocks."
+                    : " and this call set allow_dig:false, so tunnelling to it is disabled.")
+                    + " Retry with allow_dig:true (and a max_dig_blocks budget) to approach "
+                    + "that block, pick a block that already has an open face, or pass plain x/y/z.";
+        }
         return "goto needs a destination: goto({x,y,z}) or "
                 + "goto({standoffOf:{x,y,z}}); positional args are only x, y, z.";
     }

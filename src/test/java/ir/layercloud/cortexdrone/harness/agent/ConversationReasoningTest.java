@@ -50,4 +50,20 @@ public class ConversationReasoningTest {
 
         assertFalse(conversation.messages().get(3).has("reasoning_content"));
     }
+
+    /**
+     * Regression: a thinking model that exhausted max_tokens returned only
+     * reasoning. That empty turn used to be appended and replayed, so the
+     * model resumed the same giant reasoning and the task died. It must not
+     * enter the transcript at all.
+     */
+    @Test
+    public void emptyAssistantTurnIsNotStored() {
+        Conversation conversation = conversation();
+        int before = conversation.messages().size();
+        conversation.assistant(new LlmResponse("", "long truncated reasoning",
+                Collections.emptyList(), "length", null));
+
+        assertEquals(before, conversation.messages().size());
+    }
 }

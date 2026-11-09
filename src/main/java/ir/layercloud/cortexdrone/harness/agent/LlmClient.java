@@ -44,17 +44,45 @@ public final class LlmClient {
 
     public LlmResponse chat(DroneController ctrl, List<JsonObject> messages,
                             JsonArray tools, boolean jsonMode) throws Exception {
+        return chat(ctrl, messages, tools, jsonMode, 0);
+    }
+
+    /**
+     * Same call with a per-turn completion budget.
+     *
+     * <p>{@code maxTokensOverride <= 0} uses the configured value. The agent
+     * loop raises the budget when a thinking model consumed the whole previous
+     * completion on hidden reasoning and returned no tool call.</p>
+     */
+    public LlmResponse chat(DroneController ctrl, List<JsonObject> messages,
+                            JsonArray tools, boolean jsonMode,
+                            int maxTokensOverride) throws Exception {
         int attempt = 0;
         Exception last = null;
+        int budget = maxTokensOverride;
+        boolean budgetFellBack = false;
         while (attempt < MAX_ATTEMPTS) {
             attempt++;
             try {
-                JsonObject response = request(ctrl, messages, tools, jsonMode);
+                JsonObject response = request(ctrl, messages, tools, jsonMode, budget);
                 LlmResponse parsed = parse(response);
                 if (parsed != null) return parsed;
                 last = new IllegalStateException("Gateway returned no usable assistant message.");
             } catch (GatewayException gateway) {
                 last = gateway;
+                if (!budgetFellBack && budget > this.config.getMaxTokens()
+                        && isTokenBudgetRejection(gateway)) {
+                    // Recovery widened the budget past what this model accepts.
+                    // Fall back to the configured value instead of failing the task.
+                    budgetFellBack = true;
+                    budget = this.config.getMaxTokens();
+                    if (this.logger != null) {
+                        this.logger.log("LLM", ctrl,
+                                "Gateway rejected the raised max_tokens; using the configured budget",
+                                gateway.getMessage());
+                    }
+                    continue;
+                }
                 if (!isTransient(gateway) || attempt >= MAX_ATTEMPTS) throw gateway;
                 if (this.logger != null) {
                     this.logger.log("LLM", ctrl, "Transient gateway error, retrying",
@@ -89,6 +117,24 @@ public final class LlmClient {
     }
 
     /**
+     * True when the gateway refused the request because {@code max_tokens} is
+     * above the model's ceiling.
+     *
+     * <p>The agent loop raises the budget when a thinking model returns an
+     * empty completion. A model that caps output below the retry budget would
+     * otherwise turn that recovery into a hard 400 error.</p>
+     */
+    static boolean isTokenBudgetRejection(GatewayException gateway) {
+        if (gateway == null || gateway.httpCode() != 400) return false;
+        String message = gateway.getMessage() != null
+                ? gateway.getMessage().toLowerCase(java.util.Locale.ROOT) : "";
+        return message.contains("max_tokens")
+                || message.contains("max tokens")
+                || message.contains("max_completion_tokens")
+                || message.contains("maximum output tokens");
+    }
+
+    /**
      * True when the gateway is on this machine or a private network, in which
      * case a system proxy must be bypassed. A public gateway keeps the default
      * proxy path so corporate proxies still work.
@@ -98,7 +144,7 @@ public final class LlmClient {
     }
 
     private JsonObject request(DroneController ctrl, List<JsonObject> messages, JsonArray tools,
-                               boolean jsonMode) throws Exception {
+                               boolean jsonMode, int maxTokensOverride) throws Exception {
         URL url = new URL(this.config.getApiUrl());
         boolean local = isLocalGateway(this.config.getApiUrl());
         HttpURLConnection connection = (HttpURLConnection) (local
@@ -117,7 +163,8 @@ public final class LlmClient {
         JsonObject request = new JsonObject();
         request.addProperty("model", this.config.getModel());
         request.addProperty("temperature", this.config.getTemperature());
-        request.addProperty("max_tokens", this.config.getMaxTokens());
+        request.addProperty("max_tokens", maxTokensOverride > 0
+                ? maxTokensOverride : this.config.getMaxTokens());
         request.add("messages", toArray(messages));
         if (tools != null && tools.size() > 0) {
             request.add("tools", tools);

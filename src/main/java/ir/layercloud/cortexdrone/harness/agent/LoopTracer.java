@@ -42,11 +42,27 @@ public final class LoopTracer {
     public static void traceTurn(DroneLogger logger, DroneController controller, int loopId,
                                  int turn, long elapsedMs, boolean failed,
                                  String content, String toolCalls) {
+        traceTurn(logger, controller, loopId, turn, elapsedMs, failed, content, toolCalls, "");
+    }
+
+    /**
+     * Same trace with the provider's {@code finish_reason}. A thinking model
+     * that exhausts max_tokens reports {@code finish_reason=length} with an
+     * empty message; without this field the log looks like the model simply
+     * stopped thinking, which hid the real cause.
+     */
+    public static void traceTurn(DroneLogger logger, DroneController controller, int loopId,
+                                 int turn, long elapsedMs, boolean failed,
+                                 String content, String toolCalls, String finishReason) {
         logger.log("TRACE", controller,
                 "TRACE loopId=" + loopId + " turn=" + turn + " elapsedMs=" + elapsedMs
-                        + " failed=" + failed + " content=\""
-                        + snippet(content, 180) + "\" tools=\"" + snippet(toolCalls, 180) + "\"",
-                "loopId=" + loopId + " turn=" + turn + " elapsedMs=" + elapsedMs);
+                        + " failed=" + failed
+                        + " finish=" + (finishReason == null || finishReason.isEmpty()
+                        ? "unknown" : finishReason)
+                        + " content=\"" + snippet(content, 180) + "\" tools=\""
+                        + snippet(toolCalls, 180) + "\"",
+                "loopId=" + loopId + " turn=" + turn + " elapsedMs=" + elapsedMs
+                        + " finish=" + finishReason);
     }
 
     public static void logSuperseded(DroneLogger logger, DroneController controller, int loopId,

@@ -43,7 +43,15 @@ public class ModConfig {
     // against the compiled defaults.
     public static final int DEFAULT_MAX_TURNS = 60;
     public static final int DEFAULT_TASK_DEADLINE_SECONDS = 480;
-    public static final int DEFAULT_MAX_TOKENS = 2048;
+    /**
+     * Completion budget for one assistant turn.
+     *
+     * <p>Thinking models spend this budget on hidden reasoning before they emit
+     * a tool call. A small value (the old 2048) was consumed entirely by
+     * reasoning, so the turn returned an empty message with no tool call and
+     * the task looked dead. Keep enough room for reasoning plus one call.</p>
+     */
+    public static final int DEFAULT_MAX_TOKENS = 8192;
     public static final double DEFAULT_TEMPERATURE = 0.2D;
     public static final int DEFAULT_EXECUTE_TIMEOUT_MS = 120_000;
     public static final int DEFAULT_MAX_TOOL_RESULT_CHARS = 8_000;

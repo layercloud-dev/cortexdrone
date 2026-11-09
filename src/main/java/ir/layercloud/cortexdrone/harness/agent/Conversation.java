@@ -57,6 +57,11 @@ public final class Conversation {
     }
 
     public void assistant(LlmResponse response) {
+        // A turn that produced neither text nor a tool call is a failed
+        // completion, not conversation history. Appending it made the next
+        // request replay a giant truncated reasoning block, which the model
+        // then continued (and ran out of budget again) instead of acting.
+        if (response.content().trim().isEmpty() && !response.hasToolCalls()) return;
         JsonObject message = new JsonObject();
         message.addProperty("role", "assistant");
         message.addProperty("content", response.content());

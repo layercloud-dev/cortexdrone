@@ -40,4 +40,33 @@ public class DroneSessionTest {
         assertFalse(session.isActive());
         assertEquals(0, session.getNotes().size());
     }
+
+    @Test
+    public void messagesQueueForTheRunningLoopAndDrainInOrder() {
+        DroneSession session = new DroneSession();
+        session.begin(3, "build a wall");
+        session.enqueueMessage("make it two blocks taller");
+        session.enqueueMessage("stop");
+        assertTrue(session.hasQueuedMessages());
+        assertEquals(2, session.drainMessages().size());
+        assertFalse(session.hasQueuedMessages());
+    }
+
+    @Test
+    public void aNewTaskStartsWithAnEmptyInbox() {
+        DroneSession session = new DroneSession();
+        session.begin(4, "mine stone");
+        session.enqueueMessage("old message");
+        session.begin(5, "build a wall");
+        assertFalse(session.hasQueuedMessages());
+    }
+
+    @Test
+    public void cancellationDropsQueuedMessages() {
+        DroneSession session = new DroneSession();
+        session.begin(6, "mine stone");
+        session.enqueueMessage("queued");
+        session.cancel();
+        assertFalse(session.hasQueuedMessages());
+    }
 }

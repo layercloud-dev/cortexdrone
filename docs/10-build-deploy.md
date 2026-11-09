@@ -83,8 +83,8 @@ on the embedded Rhino engine; Node.js is not required.
 - `LessonStoreTest` — lesson add/search/dedupe/context and persistence.
 - `MemoryStoreTest` / `MemoryCaptureTest` — fact/location capture, coordinates,
   dedupe/update, persistence and pinned context selection.
-- `DroneSessionTest`, `TaskIntentClassifierTest`, `ActionRegistryTest` — session,
-  intent and action lifecycle invariants.
+- `DroneSessionTest`, `ActionRegistryTest` — session, inbox and action
+  lifecycle invariants.
 
 ## Deployment and operations
 

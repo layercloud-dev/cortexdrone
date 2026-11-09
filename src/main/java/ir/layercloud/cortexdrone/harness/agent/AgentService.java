@@ -117,6 +117,7 @@ public final class AgentService {
                     speak(player, controller, message);
                     return;
                 }
+                AgentInbox.drain(session, conversation, this.logger, controller, loopId, turn);
                 conversation.compactIfNeeded();
                 setStatus(controller, "Thinking T" + turn);
 
@@ -178,6 +179,12 @@ public final class AgentService {
                                 "Final answer still truncated after retries; "
                                         + "delivering the partial reply",
                                 "finish=" + recovery.finish + " max_tokens=" + outputTokens);
+                    }
+                    if (session.hasQueuedMessages()) {
+                        // A message arrived while this final answer was being
+                        // written; answer it in the same generation instead of
+                        // ending and losing it.
+                        continue;
                     }
                     maybeAutoSaveSkill(controller, userPrompt, lastWorkflowScript, refinedSkill);
                     SessionOutcome outcome = SessionOutcome.fromReply(response.content());
@@ -321,9 +328,9 @@ public final class AgentService {
                     SkillCodeGuard.describe(violations));
             return;
         }
-        String name = autoSkillName(prompt);
-        Skill skill = this.skills.save(name, limit(prompt, 220), "auto",
-                java.util.Collections.singletonList(limit(prompt, 120)), code, "auto");
+        String name = ChatLines.skillName(prompt);
+        Skill skill = this.skills.save(name, ChatLines.limit(prompt, 220), "auto",
+                java.util.Collections.singletonList(ChatLines.limit(prompt, 120)), code, "auto");
         if (skill == null) return;
         this.logger.log("SKILL", controller, "Auto-saved skill '" + skill.getName() + "' v"
                         + skill.getVersion(),
@@ -345,14 +352,6 @@ public final class AgentService {
             if (jsName != null && !jsName.isEmpty() && code.contains(jsName)) return true;
         }
         return false;
-    }
-
-    private static String autoSkillName(String prompt) {
-        return ChatLines.skillName(prompt);
-    }
-
-    private static String limit(String text, int max) {
-        return ChatLines.limit(text, max);
     }
 
     private static boolean isOk(JsonObject result) {

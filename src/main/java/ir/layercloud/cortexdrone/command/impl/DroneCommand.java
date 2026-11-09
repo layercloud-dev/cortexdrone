@@ -45,7 +45,7 @@ public class DroneCommand extends BaseCommand {
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                    "spawn", "link", "despawn", "list", "status",
+                    "spawn", "link", "despawn", "stop", "list", "status",
                     "debug", "config", "memory", "lesson", "sessions", "skills", "js", "help");
         }
         if (args.length == 2) {
@@ -90,13 +90,14 @@ public class DroneCommand extends BaseCommand {
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v"
                     + CortexDroneMod.VERSION + " (Tool Harness) Commands ===");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | list | status");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | stop | list | status");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear] | config");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone lesson [list|search <q>|forget <id|title>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone sessions [list [success|failure|...] [n]|stats|show <id>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone skills [list [n]|search <q>|show <name>]");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY + " - One task/session; questions, notes, modifications and cancellations are handled by intent");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY
+                    + " - the drone's AI decides: task, status, note, change or cancel");
             return;
         }
 
@@ -121,6 +122,18 @@ public class DroneCommand extends BaseCommand {
             case "skills":
                 handleSkills(sender, args);
                 return;
+            case "stop":
+            case "cancel": {
+                DroneController ctrl = player != null
+                        ? this.manager.getPlayerDrone(player.getCommandSenderName()) : null;
+                if (ctrl == null) {
+                    CortexDroneMod.sendMsg(sender, "No active drone task to stop.");
+                    return;
+                }
+                this.manager.getTaskCoordinator().stop(ctrl);
+                CortexDroneMod.sendMsg(sender, "Task stopped. Hovering in place.");
+                return;
+            }
             case "config":
                 AdminCommands.config(sender, player, this.manager, args);
                 return;

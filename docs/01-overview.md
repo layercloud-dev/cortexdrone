@@ -12,7 +12,7 @@ composes many tool calls.
 
 ```text
 player chat / @drone / /drone
-  -> TaskCoordinator          intent: question, note, modify, cancel, new task
+  -> TaskCoordinator          model decides; running generation gets the message
   -> AgentService             system prompt + live context + user request
   -> LlmClient                OpenAI-compatible chat with native tools
   -> tool_calls               each call goes to ToolInvoker

@@ -50,7 +50,7 @@ ir.layercloud.cortexdrone
 
   harness/
     Harness              composition root
-    agent/               AgentService, LlmClient, Conversation, ContextRenderer
+    agent/               AgentService, AgentInbox, LlmClient, Conversation, ContextRenderer
     js/                  JsEngine, JsSource, TypeScriptEraser
     lesson/              Lesson, LessonMarkdown, LessonStore
     memory/              MemoryEntry, MemoryCapture, MemoryStore
@@ -59,7 +59,7 @@ ir.layercloud.cortexdrone
     markdown/            Frontmatter (shared YAML reader/writer)
     skill/               Skill, SkillMarkdown, SkillLibrary, SkillSearch, SkillRefiner
     session/             DroneSession, SessionManager, SessionJournal
-    task/                TaskCoordinator, TaskIntentClassifier
+    task/                TaskCoordinator
 
   command/               /drone
   config/                ModConfig, ModPaths, DroneLogger

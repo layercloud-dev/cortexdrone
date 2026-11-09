@@ -54,8 +54,8 @@
 | `service.world.SiteSurvey` | Read-only build-site columns, slope, headroom, fixtures |
 | `service.world.BuildTask` | One phased blueprint placement |
 | `service.world.StructureArchitect` | Pad search + phased house/wall/tower/platform/bridge plans |
-| `harness.task.TaskCoordinator` | Single-session intent policy |
-| `harness.task.TaskIntentClassifier` / `TaskIntent` | Deterministic intent |
+| `harness.task.TaskCoordinator` | Single-session policy; the running model decides intent |
+| `harness.agent.AgentInbox` | Delivers mid-task player chat into the running generation |
 
 ## Tool providers
 
@@ -157,4 +157,4 @@ physical side is the client.
 `service/world/BlockSightTest`,
 `harness/skill/SkillLibraryTest`, `harness/session/DroneSessionTest`,
 `harness/session/SessionJournalTest`,
-`harness/task/TaskIntentClassifierTest`, `action/ActionRegistryTest`.
+`action/ActionRegistryTest`.

@@ -21,6 +21,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class DroneSession {
     private static final int MAX_NOTES = 8;
     private static final int MAX_THOUGHTS = 12;
+    /** Player messages waiting to be read by the running loop. */
+    private static final int MAX_INBOX = 8;
 
     private boolean active;
     private int loopId;
@@ -38,6 +40,7 @@ public final class DroneSession {
     private final Map<Integer, String> cancelReasons = new ConcurrentHashMap<>();
     private volatile String lastThought = "";
     private final Deque<String> thoughtHistory = new ConcurrentLinkedDeque<>();
+    private final Deque<String> inbox = new ConcurrentLinkedDeque<>();
 
     public synchronized void begin(int loopId, String prompt) {
         this.active = true;
@@ -46,6 +49,7 @@ public final class DroneSession {
         this.summary = this.prompt;
         this.startedAtMs = System.currentTimeMillis();
         this.notes.clear();
+        this.inbox.clear();
     }
 
     public synchronized void addNote(String note) {
@@ -62,6 +66,29 @@ public final class DroneSession {
         }
     }
 
+    /** Queues one player message for the running loop; the model interprets it. */
+    public void enqueueMessage(String message) {
+        if (message == null || message.trim().isEmpty()) return;
+        this.inbox.addLast(message.trim());
+        while (this.inbox.size() > MAX_INBOX) {
+            this.inbox.pollFirst();
+        }
+    }
+
+    /** Removes and returns every queued message, oldest first. */
+    public List<String> drainMessages() {
+        List<String> drained = new ArrayList<>();
+        String next;
+        while ((next = this.inbox.pollFirst()) != null) {
+            drained.add(next);
+        }
+        return drained;
+    }
+
+    public boolean hasQueuedMessages() {
+        return !this.inbox.isEmpty();
+    }
+
     public synchronized void complete() {
         this.active = false;
     }
@@ -69,6 +96,7 @@ public final class DroneSession {
     public synchronized void cancel() {
         this.active = false;
         this.notes.clear();
+        this.inbox.clear();
     }
 
     public synchronized boolean isActive() {

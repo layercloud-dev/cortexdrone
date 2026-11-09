@@ -64,8 +64,8 @@ final class InstructionRouter {
         if (controller == null && player != null) {
             controller = this.host.linkNearest(player);
             if (controller == null) {
+                // Spawn, but let the drone's model produce the first reply.
                 controller = this.host.spawn(player, null);
-                this.host.say(player, controller, "Spawned and linked! Ready for your command.");
             }
         }
         handle(player, controller, prompt);

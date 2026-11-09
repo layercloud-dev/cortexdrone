@@ -3,7 +3,7 @@
 ## Components
 
 ```text
-TaskCoordinator          intent + single-session policy
+TaskCoordinator          single-session policy; the model decides intent
 SessionManager           per-drone session state
 SessionJournal           durable per-task transcript, grouped by outcome
 AgentService             the tool-calling loop
@@ -21,15 +21,16 @@ SkillRuntime             composes skills via skills.call(name, params)
 
 ## Task and session
 
-`TaskCoordinator` classifies an incoming chat message deterministically:
+`TaskCoordinator` does not classify content. `@drone <message>` selects the
+drone, then:
 
-- `QUESTION` — answered from live state; the task continues.
-- `BY_THE_WAY` — attached as a note; the task continues.
-- `MODIFY` / `NEW_TASK` — cancels the running generation and starts a new one.
-- `CANCEL` — stops everything.
+- no generation is running -> the message starts one generation;
+- a generation is running -> the message is queued to that generation and
+  appended to its conversation, so the running model decides whether it is a
+  question, a note, a change or a cancel.
 
-There is no instruction queue. `DroneSession` holds the active flag, loop
-generation, notes and recent thoughts.
+`/drone stop` is the explicit, immediate stop. `DroneSession` holds the active
+flag, loop generation, notes, the pending-message inbox and recent thoughts.
 
 ## Agent loop
 

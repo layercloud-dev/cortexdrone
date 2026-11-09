@@ -33,7 +33,7 @@ Detailed chapters live in `docs/`:
 Minecraft chat / command
         |
         v
-TaskCoordinator          one task, intent classification, no queue
+TaskCoordinator          one task, model-decided intent, live inbox
         |
         v
 AgentService             native tool-calling loop
@@ -96,7 +96,7 @@ src/main/java/ir/layercloud/cortexdrone/
     skill/                  Skill, SkillMarkdown, SkillLibrary, SkillSearch, SkillRefiner
     session/                DroneSession, SessionManager, SessionJournal,
                             SessionIndex, SessionMarkdown, SessionTopics
-    task/                   TaskCoordinator, TaskIntentClassifier
+    task/                   TaskCoordinator
 
   command/                  /drone command
     impl/                   AdminCommands, SessionCommands, SkillCommands,
@@ -252,12 +252,14 @@ chunk to be loaded; use `goto` first, then scan.
 
 `TaskCoordinator` implements one task/session:
 
-- deterministic intent classification (`QUESTION`, `BY_THE_WAY`, `MODIFY`,
-  `CANCEL`, `NEW_TASK`);
-- no instruction queue;
-- a new/modified task cancels the old generation and action state;
-- a side note is attached to the current task;
-- a question is answered from live state.
+- `@drone <message>` still selects the drone (the prefix is kept);
+- there is no keyword/regex intent classifier: the message is handed to the
+  model, which decides whether it is a question, a note, a change or a cancel;
+- while a generation is running, a later message is queued to that same
+  generation and appended to its conversation, so the running model — not a
+  keyword list — decides what it means;
+- a new task starts only when no generation is alive; `/drone stop` remains the
+  explicit, immediate stop command.
 
 `AgentService` sends a real system prompt, a live context message and the user
 request, with the full tool schemas. It loops on native `tool_calls`, executes
@@ -405,6 +407,6 @@ Environment overrides: `CORTEXDRONE_API_URL`, `CORTEXDRONE_MODEL`,
 - `deploy` copies the reobfuscated jar to `/root/forge-smp/mods` and removes old
   CortexDrone jars.
 - Tests cover registry/schema invariants, JS preprocessing/runtime, tool
-  validation, skill storage, action lifecycle, task intent and session state.
+  validation, skill storage, action lifecycle, session and inbox state.
 
 Detailed build/operations instructions: [docs/10-build-deploy.md](docs/10-build-deploy.md).

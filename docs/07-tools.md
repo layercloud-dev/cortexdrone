@@ -34,6 +34,7 @@ The registry generates:
 | `InventoryActionTools` | `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`, `deposit_chest`, `drop_items`, `suck_items`, `craft` |
 | `InventoryQueryTools` | `get_player`, `get_player_inventory`, `get_chest`, `scan_chests`, `find_item_in_chests`, `find_item`, `get_recipes`, `scan_furnaces`, `get_machine_recipes`, `get_machine_recipe`, `scan_machines`, `machine_ingredients` |
 | `VisualsTools` | `set_led`, `set_light`, `spawn_particles`, `play_sound`, `play_note`, `say`, `set_status_text` |
+| `QuestionTools` | `ask_player` |
 | `WorldTools` | `get_block`, `get_blocks_in_box`, `get_top_y`, `scan_room`, `scan_blocks`, `scan_veins`, `find_distant`, `get_entities`, `get_drops`, `raycast_player`, `find_oredict`, `doc_lookup`, `find_build_site`, `survey_build_site`, `plan_structure` |
 | `MemoryTools` | `memory` (remember/search/recall/list/forget) |
 | `LessonTools` | `lesson` (add/search/list/forget/use) |

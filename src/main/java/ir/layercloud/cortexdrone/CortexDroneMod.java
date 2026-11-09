@@ -11,6 +11,7 @@ import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import ir.layercloud.cortexdrone.network.DroneMapSync;
+import ir.layercloud.cortexdrone.network.QuestionNetwork;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -66,6 +67,7 @@ public class CortexDroneMod {
         MinecraftForge.EVENT_BUS.register(this);
         FMLCommonHandler.instance().bus().register(this);
         DroneMapSync.register();
+        QuestionNetwork.register();
         if (FMLCommonHandler.instance().getSide().isClient()) {
             registerClientHooks();
         }
@@ -144,7 +146,11 @@ public class CortexDroneMod {
             if (event.isCanceled()) return;
             if (!isAuthenticated(event.player)) return;
             if (this.aiDroneManager != null) {
-                this.aiDroneManager.onPlayerChat(event);
+                if (this.aiDroneManager.onPlayerChat(event)) {
+                    // The line answered an open drone question; do not also
+                    // broadcast it or route it as a new task.
+                    event.setCanceled(true);
+                }
             }
         } catch (Throwable t) {
             LOG.log(Level.SEVERE, "CortexDrone chat handling failed", t);

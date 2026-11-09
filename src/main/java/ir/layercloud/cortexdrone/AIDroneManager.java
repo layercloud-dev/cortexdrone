@@ -7,6 +7,7 @@ import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.config.ModPaths;
 import ir.layercloud.cortexdrone.harness.Harness;
 import ir.layercloud.cortexdrone.harness.agent.AgentService;
+import ir.layercloud.cortexdrone.harness.agent.LoopTracer;
 import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
@@ -23,11 +24,14 @@ import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.manager.oc.impl.OcManager;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
+import ir.layercloud.cortexdrone.network.QuestionNetwork;
 import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
+import ir.layercloud.cortexdrone.service.question.QuestionService;
+import ir.layercloud.cortexdrone.service.question.ServerQuestionTransport;
 import ir.layercloud.cortexdrone.service.world.DocLookupService;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import li.cil.oc.common.entity.Drone;
@@ -66,6 +70,7 @@ public class AIDroneManager {
     private final TickManager tickManager;
     private final TickProfiler tickProfiler;
     private final TaskCoordinator taskCoordinator;
+    private final QuestionService questionService;
 
     private final DroneRegistry registry = new DroneRegistry();
     private final OcHardwareBridge ocHardwareBridge = new OcHardwareBridge();
@@ -99,6 +104,8 @@ public class AIDroneManager {
         this.reconnector = new DroneReconnector(new ReconnectHost(this));
         this.tickLoop = new DroneTickLoop(new TickLoopHost(this));
         this.instructions = new InstructionRouter(new InstructionHost(this));
+        this.questionService = new QuestionService(new ServerQuestionTransport(this));
+        QuestionNetwork.bind(this.questionService);
     }
 
     /** Releases everything that holds per-drone state. */
@@ -196,10 +203,19 @@ public class AIDroneManager {
         this.navigationManager.clear(ctrl);
     }
 
-    public void onPlayerChat(ServerChatEvent event) {
+    public boolean onPlayerChat(ServerChatEvent event) {
         String message = event.message != null ? event.message.trim() : "";
-        this.logger.recordChat(event.player.getCommandSenderName(), message);
+        String playerName = event.player.getCommandSenderName();
+        this.logger.recordChat(playerName, message);
+        // A player with an open question answers by typing in chat when the
+        // dialog is unavailable. Consume the line so it does not become a task.
+        if (this.questionService.answerFromChat(playerName, message)) {
+            this.logger.log("QUESTION", null, "Chat answer from " + playerName,
+                    "text=\"" + LoopTracer.snippet(message, 200) + "\"");
+            return true;
+        }
         this.instructions.onChat(event.player, message);
+        return false;
     }
 
     public boolean ensureMachineRunningState(Drone drone) {

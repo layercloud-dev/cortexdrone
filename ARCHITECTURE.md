@@ -317,6 +317,7 @@ inventory    move_item give_to_player take_from_player withdraw_chest
              deposit_chest drop_items suck_items craft
 visuals      set_led set_light spawn_particles play_sound play_note say
              set_status_text
+dialogue     ask_player
 code         execute
 memory       memory
 lesson       lesson
@@ -335,6 +336,18 @@ transport    poll_scan
 Removed composite tools (`mine`, `hunt`, `farm`, `buildStructure`, etc.) are not
 coming back as hidden Java paths. Their useful behaviour lives in the composable
 skill suite instead, which the model can inspect, run and refine.
+
+### Player dialogue
+
+`ask_player` is the only tool that can stop and ask. `QuestionService` sends a
+`QuestionRequestMessage` on the shared `cortexdrone` channel; the client opens
+`QuestionScreen` (option buttons plus a free-text field) and sends back one
+`QuestionAnswerMessage`. If the client never acknowledges the dialog within
+4 seconds, the question is also posted to chat and the next chat line from that
+player is consumed as the answer. The call runs on the agent thread and waits
+(250 ms polls) until answered, dismissed, disconnected, cancelled or timed out,
+so the server keeps ticking; the player is matched from the live connection, not
+from the payload.
 
 ## 8. Runtime lifecycle
 

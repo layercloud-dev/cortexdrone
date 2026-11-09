@@ -31,6 +31,18 @@ public final class DroneMapSync {
         network.registerMessage(DroneMapSyncHandler.class, DroneMapSnapshot.class, 0, Side.CLIENT);
     }
 
+    /**
+     * The shared {@code cortexdrone} channel.
+     *
+     * <p>FML keeps one channel per name; creating a second wrapper for the same
+     * name would collide. Every message type on this channel is registered
+     * through this accessor.</p>
+     */
+    public static SimpleNetworkWrapper channel() {
+        register();
+        return network;
+    }
+
     public void tick(AIDroneManager manager) {
         if (network == null || manager == null) return;
         this.tickCounter++;

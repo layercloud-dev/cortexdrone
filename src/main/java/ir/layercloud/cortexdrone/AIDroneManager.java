@@ -73,6 +73,10 @@ public class AIDroneManager {
     private final TaskCoordinator taskCoordinator;
     private final QuestionService questionService;
 
+    /**
+     * -- GETTER --
+     * The controller registry; read-only to callers.
+     */
     private final DroneRegistry registry = new DroneRegistry();
     private final OcHardwareBridge ocHardwareBridge = new OcHardwareBridge();
     private final DamageJournal damageJournal = new DamageJournal();
@@ -177,10 +181,6 @@ public class AIDroneManager {
         return this.harness != null ? this.harness.agent() : null;
     }
 
-    public DamageJournal getDamageJournal() {
-        return this.damageJournal;
-    }
-
     public <T> T callOnMainThread(final Callable<T> callable, long timeoutMs) throws Exception {
         if (ir.layercloud.cortexdrone.harness.tool.Threads.isServerThread()) {
             return callable.call();
@@ -263,11 +263,6 @@ public class AIDroneManager {
 
     public DroneController registerDroneController(Drone drone, String name, String ownerName) {
         return this.lifecycle.register(drone, name, ownerName);
-    }
-
-    /** The controller registry; read-only to callers. */
-    public DroneRegistry getRegistry() {
-        return this.registry;
     }
 
     /** Read-only view of every live controller. */

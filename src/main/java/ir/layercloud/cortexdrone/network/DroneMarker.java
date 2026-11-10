@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.network;
 
+import lombok.Getter;
+
 /**
  * One drone position in the map-sync snapshot.
  *
@@ -8,6 +10,7 @@ package ir.layercloud.cortexdrone.network;
  * needs: a stable controller id, a display name, the owner, the dimension and
  * the exact world position.</p>
  */
+@Getter
 public final class DroneMarker {
     private final int id;
     private final String name;
@@ -28,31 +31,4 @@ public final class DroneMarker {
         this.z = z;
     }
 
-    public int getId() {
-        return this.id;
-    }
-
-    public String getName() {
-        return this.name;
-    }
-
-    public String getOwner() {
-        return this.owner;
-    }
-
-    public int getDimension() {
-        return this.dimension;
-    }
-
-    public double getX() {
-        return this.x;
-    }
-
-    public double getY() {
-        return this.y;
-    }
-
-    public double getZ() {
-        return this.z;
-    }
 }

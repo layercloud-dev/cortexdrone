@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.service.world;
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import li.cil.oc.common.entity.Drone;
+import lombok.Getter;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -280,6 +281,7 @@ public final class BlockSight {
     }
 
     /** Result of one line-of-sight query. */
+    @Getter
     public static final class Result {
         private final boolean visible;
         private final double distance;
@@ -301,21 +303,6 @@ public final class BlockSight {
             return new Result(false, distance, occluder, occluderName);
         }
 
-        public boolean isVisible() {
-            return this.visible;
-        }
-
-        public double getDistance() {
-            return this.distance;
-        }
-
-        public int[] getOccluder() {
-            return this.occluder;
-        }
-
-        public String getOccluderName() {
-            return this.occluderName;
-        }
     }
 
     /** Minimal grid predicate so the DDA can be unit-tested without a World. */

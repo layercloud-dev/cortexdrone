@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.network;
 import cpw.mods.fml.common.network.ByteBufUtils;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import io.netty.buffer.ByteBuf;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +18,7 @@ import java.util.List;
  * following the drone across the whole world map. It is small and sent once
  * per second.</p>
  */
+@Getter
 public class DroneMapSnapshot implements IMessage {
     private List<DroneMarker> markers = Collections.emptyList();
 
@@ -25,10 +27,6 @@ public class DroneMapSnapshot implements IMessage {
 
     public DroneMapSnapshot(List<DroneMarker> markers) {
         this.markers = markers != null ? markers : Collections.<DroneMarker>emptyList();
-    }
-
-    public List<DroneMarker> getMarkers() {
-        return this.markers;
     }
 
     @Override

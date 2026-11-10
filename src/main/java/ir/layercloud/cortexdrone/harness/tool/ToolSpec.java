@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.harness.tool;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +15,7 @@ import java.util.Set;
  * schema, thread affinity and timeout. A spec is intentionally handler-free so
  * the whole surface can be inspected and unit-tested without Minecraft.
  */
+@Getter
 public final class ToolSpec {
     private final String name;
     private final String description;
@@ -21,6 +23,11 @@ public final class ToolSpec {
     private final ToolAffinity affinity;
     private final boolean internal;
     private final long timeoutMs;
+    /**
+     * -- GETTER --
+     * Declared behavioural capabilities; defaults to
+     * .
+     */
     private final Set<ToolCapability> capabilities;
 
     private ToolSpec(Builder builder) {
@@ -38,35 +45,6 @@ public final class ToolSpec {
 
     public static Builder builder(String name) {
         return new Builder(name);
-    }
-
-    public String getName() {
-        return this.name;
-    }
-
-    public String getDescription() {
-        return this.description;
-    }
-
-    public JsonObject getParameters() {
-        return this.parameters;
-    }
-
-    public ToolAffinity getAffinity() {
-        return this.affinity;
-    }
-
-    public boolean isInternal() {
-        return this.internal;
-    }
-
-    public long getTimeoutMs() {
-        return this.timeoutMs;
-    }
-
-    /** Declared behavioural capabilities; defaults to {@link ToolCapability#READ_ONLY}. */
-    public Set<ToolCapability> getCapabilities() {
-        return this.capabilities;
     }
 
     /** True when the tool declares {@code capability}. */

@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.service.inventory;
 
 import ir.layercloud.cortexdrone.service.world.BlockSight;
 import li.cil.oc.common.entity.Drone;
+import lombok.Getter;
 import lombok.experimental.UtilityClass;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
@@ -28,9 +29,15 @@ public final class ContainerAccess {
     public static final double REACH = BlockSight.REACH;
 
     /** Why a container cannot be used, plus where to go instead. */
+    @Getter
     public static final class Result {
         private final boolean accessible;
         private final double distance;
+        /**
+         * -- GETTER --
+         * Drone-space point to move to, or
+         *  when nothing is visible.
+         */
         private final double[] standoff;
         private final String reason;
 
@@ -41,22 +48,6 @@ public final class ContainerAccess {
             this.reason = reason;
         }
 
-        public boolean isAccessible() {
-            return this.accessible;
-        }
-
-        public double getDistance() {
-            return this.distance;
-        }
-
-        /** Drone-space point to move to, or {@code null} when nothing is visible. */
-        public double[] getStandoff() {
-            return this.standoff;
-        }
-
-        public String getReason() {
-            return this.reason;
-        }
     }
 
     public static Result check(World world, Drone drone, int x, int y, int z) {

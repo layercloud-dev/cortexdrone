@@ -18,6 +18,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * <p>Reads stay in {@link OcStateService}; this manager only runs actions. Every
  * operation is one-shot, so there is no retained execution to tick.</p>
  */
+@SuppressWarnings("unused")
 public final class OcManager extends ActionManager<OcContext, OcRequest, OcResult> {
     private final OcStateService state;
 
@@ -26,12 +27,16 @@ public final class OcManager extends ActionManager<OcContext, OcRequest, OcResul
         this.state = new OcStateService();
     }
 
-    /** Read-only snapshot for the {@code oc_state} and {@code oc_methods} tools. */
+    /**
+     * Read-only snapshot for the {@code oc_state} and {@code oc_methods} tools.
+     */
     public OcState inspect(DroneController controller) {
         return this.state.read(controller != null ? controller.drone : null);
     }
 
-    /** True when OpenComputers is installed and the drone fields resolved. */
+    /**
+     * True when OpenComputers is installed and the drone fields resolved.
+     */
     public boolean available() {
         return this.state.ready();
     }

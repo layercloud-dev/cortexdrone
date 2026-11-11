@@ -1,28 +1,21 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.DroneController;
-import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
-import ir.layercloud.cortexdrone.service.world.ChunkAccess;
-import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import ir.layercloud.cortexdrone.service.world.WorldScanner;
-import li.cil.oc.common.entity.Drone;
-import ir.layercloud.cortexdrone.service.world.WorldBounds;
-import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.MathHelper;
-import net.minecraft.world.biome.BiomeGenBase;
-import net.minecraft.world.World;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.harness.tool.*;
+import ir.layercloud.cortexdrone.service.world.ChunkAccess;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
+import ir.layercloud.cortexdrone.service.world.WorldScanner;
+import li.cil.oc.common.entity.Drone;
+import net.minecraft.block.Block;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.util.MathHelper;
+import net.minecraft.world.World;
+import net.minecraft.world.biome.BiomeGenBase;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -38,9 +31,13 @@ import java.util.Map;
  */
 public final class WorldBlockReadTools implements ToolProvider {
     private static final int DEFAULT_RAY_DISTANCE = 80;
-    /** Largest square box edge a single read may cover. */
+    /**
+     * Largest square box edge a single read may cover.
+     */
     public static final int MAX_BOX_EDGE = 32;
-    /** Block descriptors returned by a box read before the sample is truncated. */
+    /**
+     * Block descriptors returned by a box read before the sample is truncated.
+     */
     public static final int MAX_BOX_SAMPLE = 2500;
 
     private static final List<ToolSpec> SPECS = Arrays.asList(
@@ -69,8 +66,8 @@ public final class WorldBlockReadTools implements ToolProvider {
                             + "Use it to resolve 'this block', 'the block I'm looking at' or a schematic spot.")
                     .parameters(ToolSchema.object()
                             .optionalInt("max_dist", "Ray length in blocks, "
-                                    + ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MIN_DISTANCE
-                                    + ".." + ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MAX_DISTANCE + ".",
+                                            + ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MIN_DISTANCE
+                                            + ".." + ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MAX_DISTANCE + ".",
                                     ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MIN_DISTANCE,
                                     ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MAX_DISTANCE,
                                     DEFAULT_RAY_DISTANCE))

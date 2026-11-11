@@ -9,9 +9,13 @@ package ir.layercloud.cortexdrone.manager.chunk.impl;
  * changes chunk, and otherwise every {@link #PLAN_INTERVAL_TICKS}.</p>
  */
 final class DroneChunkCursor {
-    /** Recompute the plan at least this often, in ticks. */
+    /**
+     * Recompute the plan at least this often, in ticks.
+     */
     static final int PLAN_INTERVAL_TICKS = 5;
-    /** Minimum ticks between two identical ownership log lines. */
+    /**
+     * Minimum ticks between two identical ownership log lines.
+     */
     static final int LOG_INTERVAL_TICKS = 600;
 
     private int chunkX = Integer.MIN_VALUE;
@@ -35,7 +39,9 @@ final class DroneChunkCursor {
         return moved || periodic || !hasTicket;
     }
 
-    /** Records that a plan was just built. */
+    /**
+     * Records that a plan was just built.
+     */
     void recordPlan(int newChunkX, int newChunkZ, int newDimension, long now) {
         this.chunkX = newChunkX;
         this.chunkZ = newChunkZ;

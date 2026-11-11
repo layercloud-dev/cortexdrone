@@ -1,8 +1,8 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import ir.layercloud.cortexdrone.service.web.WebLimits;
 import com.google.gson.*;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.web.WebLimits;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
@@ -145,7 +145,9 @@ public class DocLookupService {
         return ir.layercloud.cortexdrone.config.ConfigDirectory.resolve();
     }
 
-    /** The documentation endpoints in reverse preference order. */
+    /**
+     * The documentation endpoints in reverse preference order.
+     */
     private static String[] reversedDocEndpoints() {
         java.util.List<String> endpoints =
                 ir.layercloud.cortexdrone.service.machine.HbmDescriptor.docEndpoints();
@@ -185,7 +187,7 @@ public class DocLookupService {
                         if (idx < 0 && machineName.toLowerCase().contains(qToken)) idx = 0;
                         int matchesInFile = 0;
                         while (idx >= 0 && matchesInFile < WebLimits.MAX_MATCHES_PER_FILE
-                        && out.size() < WebLimits.MAX_RESULTS) {
+                                && out.size() < WebLimits.MAX_RESULTS) {
                             int start = Math.max(0, idx - 120);
                             int end = Math.min(full.length(), idx + 280);
                             JsonObject mo = new JsonObject();
@@ -210,7 +212,7 @@ public class DocLookupService {
         }
         String[] endpoints = (modId != null
                 && modId.toLowerCase(java.util.Locale.ROOT).contains(
-                        ir.layercloud.cortexdrone.service.machine.HbmDescriptor.MOD_ID))
+                ir.layercloud.cortexdrone.service.machine.HbmDescriptor.MOD_ID))
                 ? ir.layercloud.cortexdrone.service.machine.HbmDescriptor.docEndpoints().toArray(new String[0])
                 : reversedDocEndpoints();
 

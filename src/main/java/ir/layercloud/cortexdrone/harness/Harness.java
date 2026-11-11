@@ -10,37 +10,10 @@ import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.harness.session.SessionJournal;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.skill.SkillRefiner;
-import ir.layercloud.cortexdrone.harness.tool.ScanJobs;
-import ir.layercloud.cortexdrone.harness.tool.ToolCatalog;
-import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.Tool;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
-import ir.layercloud.cortexdrone.harness.tools.BlockTools;
-import ir.layercloud.cortexdrone.harness.tools.CodeTools;
-import ir.layercloud.cortexdrone.harness.tools.CombatTools;
-import ir.layercloud.cortexdrone.harness.tools.InteractionTools;
-import ir.layercloud.cortexdrone.harness.tools.InventoryActionTools;
-import ir.layercloud.cortexdrone.harness.tools.InventoryQueryTools;
-import ir.layercloud.cortexdrone.harness.tools.LessonTools;
-import ir.layercloud.cortexdrone.harness.tools.MemoryTools;
-import ir.layercloud.cortexdrone.harness.tools.NavigationTools;
-import ir.layercloud.cortexdrone.harness.tools.OcTools;
-import ir.layercloud.cortexdrone.harness.tools.OreDictTools;
-import ir.layercloud.cortexdrone.harness.tools.QuestionTools;
-import ir.layercloud.cortexdrone.harness.tools.ScanTools;
-import ir.layercloud.cortexdrone.harness.tools.SessionTools;
-import ir.layercloud.cortexdrone.harness.tools.SkillTools;
-import ir.layercloud.cortexdrone.harness.tools.VisualsTools;
-import ir.layercloud.cortexdrone.harness.tools.WebTools;
-import ir.layercloud.cortexdrone.harness.tools.WorldTools;
+import ir.layercloud.cortexdrone.harness.tool.*;
+import ir.layercloud.cortexdrone.harness.tools.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Composition root of the harness.
@@ -50,6 +23,7 @@ import java.util.Set;
  * model tool list, the JavaScript `drone` surface and the prompt catalog cannot
  * drift apart.</p>
  */
+@SuppressWarnings("unused")
 public final class Harness {
     private final AIDroneManager manager;
     private final ModConfig config;
@@ -173,7 +147,9 @@ public final class Harness {
         this.invoker.onServerTickEnd();
     }
 
-    /** Compact tool catalog injected into the context message. */
+    /**
+     * Compact tool catalog injected into the context message.
+     */
     public String registryCatalog() {
         StringBuilder out = new StringBuilder();
         for (ToolSpec spec : this.registry.modelTools()) {

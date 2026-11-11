@@ -1,11 +1,6 @@
 package ir.layercloud.cortexdrone.harness.session;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -18,10 +13,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  * drone controller carries none of this; {@link SessionManager} keeps one
  * instance per controller.</p>
  */
+@SuppressWarnings("unused")
 public final class DroneSession {
     private static final int MAX_NOTES = 8;
     private static final int MAX_THOUGHTS = 12;
-    /** Player messages waiting to be read by the running loop. */
+    /**
+     * Player messages waiting to be read by the running loop.
+     */
     private static final int MAX_INBOX = 8;
 
     private boolean active;
@@ -66,7 +64,9 @@ public final class DroneSession {
         }
     }
 
-    /** Queues one player message for the running loop; the model interprets it. */
+    /**
+     * Queues one player message for the running loop; the model interprets it.
+     */
     public void enqueueMessage(String message) {
         if (message == null || message.trim().isEmpty()) return;
         this.inbox.addLast(message.trim());
@@ -75,7 +75,9 @@ public final class DroneSession {
         }
     }
 
-    /** Removes and returns every queued message, oldest first. */
+    /**
+     * Removes and returns every queued message, oldest first.
+     */
     public List<String> drainMessages() {
         List<String> drained = new ArrayList<>();
         String next;
@@ -163,7 +165,9 @@ public final class DroneSession {
         return loopId > 0 && this.cancelledLoopIds.contains(loopId);
     }
 
-    /** Why a loop was cancelled: player_cancel, model_cancel, replaced_by_new_task, drone_despawned. */
+    /**
+     * Why a loop was cancelled: player_cancel, model_cancel, replaced_by_new_task, drone_despawned.
+     */
     public String cancelReason(int loopId) {
         return loopId > 0 ? this.cancelReasons.get(loopId) : null;
     }

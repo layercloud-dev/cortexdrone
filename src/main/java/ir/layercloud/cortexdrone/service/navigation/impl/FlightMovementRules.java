@@ -10,7 +10,9 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
  * tested directly and the search loop reads as search.</p>
  */
 final class FlightMovementRules {
-    /** Voxel view the rules need: one passability query. */
+    /**
+     * Voxel view the rules need: one passability query.
+     */
     interface Voxels {
         boolean isPassable(int x, int y, int z);
     }
@@ -53,7 +55,9 @@ final class FlightMovementRules {
         return true;
     }
 
-    /** True when the cell is a legal drone position at all (feet + head free). */
+    /**
+     * True when the cell is a legal drone position at all (feet + head free).
+     */
     static boolean isPositionLegal(Voxels voxels, int x, int y, int z) {
         return voxels != null && voxels.isPassable(x, y, z)
                 && voxels.isPassable(x, y + 1, z);

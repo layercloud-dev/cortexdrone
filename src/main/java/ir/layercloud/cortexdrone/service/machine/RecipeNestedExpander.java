@@ -51,7 +51,9 @@ final class RecipeNestedExpander {
         return best;
     }
 
-    /** Adds the shared {@code outputType} fluid when the inner recipe names an amount. */
+    /**
+     * Adds the shared {@code outputType} fluid when the inner recipe names an amount.
+     */
     private static void appendFluidOutput(MachineRecipeService.NormalizedRecipe recipe,
                                           JsonObject nested, String fluidName) {
         if (fluidName.isEmpty() || !nested.has("outputAmount")) return;
@@ -63,7 +65,9 @@ final class RecipeNestedExpander {
         recipe.outputFluids.add(fluid);
     }
 
-    /** Reads one nested recipe object; supplied by the parser to avoid a cycle. */
+    /**
+     * Reads one nested recipe object; supplied by the parser to avoid a cycle.
+     */
     interface RecipeEntryReader {
         MachineRecipeService.NormalizedRecipe read(JsonObject recipe, String machine, String fileName);
     }

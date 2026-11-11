@@ -5,14 +5,18 @@ import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.init.Blocks;
-import net.minecraft.item.*;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.IPlantable;
 import net.minecraftforge.common.IShearable;
-import net.minecraftforge.fluids.*;
+import net.minecraftforge.fluids.Fluid;
+import net.minecraftforge.fluids.FluidContainerRegistry;
+import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fluids.IFluidBlock;
 import net.minecraftforge.oredict.OreDictionary;
 
 import java.lang.reflect.Method;
@@ -336,12 +340,16 @@ public final class RegistryIntrospector {
 
     // ==================== Dynamic Storage Container vs. Processing Machine Detection ====================
 
-    /** @see ContainerTiles#isFurnace(World, TileEntity) */
+    /**
+     * @see ContainerTiles#isFurnace(World, TileEntity)
+     */
     public static boolean isFurnaceTile(World world, TileEntity te) {
         return ContainerTiles.isFurnace(world, te);
     }
 
-    /** @see ContainerTiles#isStorage(World, TileEntity) */
+    /**
+     * @see ContainerTiles#isStorage(World, TileEntity)
+     */
     public static boolean isStorageContainerTile(World world, TileEntity te) {
         return ContainerTiles.isStorage(world, te);
     }

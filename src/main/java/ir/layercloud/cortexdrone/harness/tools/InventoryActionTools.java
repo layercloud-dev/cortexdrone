@@ -1,17 +1,10 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
-import ir.layercloud.cortexdrone.harness.tool.ToolContext;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tools.view.InventoryView;
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,6 +13,7 @@ import java.util.List;
  * Inventory mutation: one explicit transfer/craft operation per call.
  * Transfers may fly the drone into reach and then wait for completion.
  */
+@SuppressWarnings("unused")
 public final class InventoryActionTools implements ToolProvider {
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("move_item")
@@ -111,8 +105,8 @@ public final class InventoryActionTools implements ToolProvider {
                             + "blocks; items that do not fit remain on the ground.")
                     .parameters(ToolSchema.object()
                             .optionalNumber("radius", "Pickup radius in blocks, "
-                                    + InventoryLimits.MIN_SUCK_RADIUS + ".."
-                                    + InventoryLimits.MAX_SUCK_RADIUS + ".",
+                                            + InventoryLimits.MIN_SUCK_RADIUS + ".."
+                                            + InventoryLimits.MAX_SUCK_RADIUS + ".",
                                     InventoryLimits.MIN_SUCK_RADIUS,
                                     InventoryLimits.MAX_SUCK_RADIUS,
                                     InventoryLimits.DEFAULT_SUCK_RADIUS))

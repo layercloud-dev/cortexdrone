@@ -17,7 +17,9 @@ import java.util.List;
  * adjust the plan or cancel.</p>
  */
 final class AgentInbox {
-    /** Extra time to land a carried player when the task budget runs out. */
+    /**
+     * Extra time to land a carried player when the task budget runs out.
+     */
     static final long RIDER_WRAP_UP_MS = 180_000L;
 
     private AgentInbox() {

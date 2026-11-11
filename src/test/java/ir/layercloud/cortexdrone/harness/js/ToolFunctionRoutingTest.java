@@ -7,7 +7,8 @@ import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Auto-polling is decided by the declared capability, not the tool name.

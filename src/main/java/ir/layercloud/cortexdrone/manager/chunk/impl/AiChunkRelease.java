@@ -17,15 +17,23 @@ import java.util.Set;
  * "unload what is out of view" paths use these rules.</p>
  */
 final class AiChunkRelease {
-    /** Everything the release logic needs from the manager. */
+    /**
+     * Everything the release logic needs from the manager.
+     */
     interface Host {
-        /** AI-generated chunks per world. */
+        /**
+         * AI-generated chunks per world.
+         */
         Map<World, Set<ChunkCoordIntPair>> aiLoaded();
 
-        /** True when any drone is near the chunk. */
+        /**
+         * True when any drone is near the chunk.
+         */
         boolean isAnyDroneNear(World world, ChunkCoordIntPair pair);
 
-        /** Asks vanilla to unload the chunk. */
+        /**
+         * Asks vanilla to unload the chunk.
+         */
         void dropChunk(WorldServer world, ChunkCoordIntPair pair);
     }
 
@@ -59,7 +67,9 @@ final class AiChunkRelease {
         return fullyReleased;
     }
 
-    /** Drops only the AI chunks no player can see and no drone is near. */
+    /**
+     * Drops only the AI chunks no player can see and no drone is near.
+     */
     void releaseOutsideView() {
         for (Map.Entry<World, Set<ChunkCoordIntPair>> entry : this.host.aiLoaded().entrySet()) {
             World world = entry.getKey();
@@ -73,7 +83,9 @@ final class AiChunkRelease {
         }
     }
 
-    /** A chunk is owned while a player can see it or a drone is near it. */
+    /**
+     * A chunk is owned while a player can see it or a drone is near it.
+     */
     boolean isOwned(World world, ChunkCoordIntPair pair) {
         return PlayerChunkOwnership.isWithinAnyPlayerView(world, pair.chunkXPos, pair.chunkZPos)
                 || this.host.isAnyDroneNear(world, pair);

@@ -11,55 +11,103 @@ public final class NavigationTuning {
     private NavigationTuning() {
     }
 
-    /** Vertical gap that makes a sheltered goal trigger a surface detour. */
+    /**
+     * Vertical gap that makes a sheltered goal trigger a surface detour.
+     */
     public static final double SURFACE_DETOUR_HEIGHT = 6.0;
-    /** Horizontal distance that makes a sheltered goal trigger a surface detour. */
+    /**
+     * Horizontal distance that makes a sheltered goal trigger a surface detour.
+     */
     public static final double SURFACE_DETOUR_DISTANCE = 20.0;
-    /** Largest distance to a usable surface anchor. */
+    /**
+     * Largest distance to a usable surface anchor.
+     */
     public static final double SURFACE_ANCHOR_RADIUS = 24.0;
-    /** Vertical tolerance for treating a goal as on the surface. */
+    /**
+     * Vertical tolerance for treating a goal as on the surface.
+     */
     public static final int SURFACE_TOLERANCE = 3;
 
-    /** Stride trigger distance under open sky. */
+    /**
+     * Stride trigger distance under open sky.
+     */
     public static final double STRIDE_TRIGGER_OPEN_SKY = 18.0;
-    /** Stride trigger distance under a roof. */
+    /**
+     * Stride trigger distance under a roof.
+     */
     public static final double STRIDE_TRIGGER_SHELTERED = 32.0;
-    /** Stride length under open sky. */
+    /**
+     * Stride length under open sky.
+     */
     public static final double STRIDE_STEP_OPEN_SKY = 16.0;
-    /** Stride length under a roof. */
+    /**
+     * Stride length under a roof.
+     */
     public static final double STRIDE_STEP_SHELTERED = 24.0;
-    /** Extra clearance above terrain for an open-sky stride. */
+    /**
+     * Extra clearance above terrain for an open-sky stride.
+     */
     public static final double STRIDE_CLEARANCE = 4.5;
 
-    /** Sentinel for "no path goal recorded yet". */
+    /**
+     * Sentinel for "no path goal recorded yet".
+     */
     public static final double NO_GOAL_SENTINEL = 999.0;
-    /** Goal drift that triggers a repath. */
+    /**
+     * Goal drift that triggers a repath.
+     */
     public static final double REPATH_DISTANCE = 0.85;
-    /** Waypoint drift that triggers a retarget. */
+    /**
+     * Waypoint drift that triggers a retarget.
+     */
     public static final double WAYPOINT_RETARGET_DISTANCE = 0.90;
-    /** Ticks stuck before a forced repath. */
+    /**
+     * Ticks stuck before a forced repath.
+     */
     public static final int STUCK_REPATH_TICKS = 12;
-    /** Distance below which the short repath cooldown is used. */
+    /**
+     * Distance below which the short repath cooldown is used.
+     */
     public static final double REPATH_NEAR_DISTANCE = 18.0;
-    /** Repath cooldown for a short leg, in ticks. */
+    /**
+     * Repath cooldown for a short leg, in ticks.
+     */
     public static final int REPATH_COOLDOWN_NEAR = 8;
-    /** Repath cooldown for a long leg, in ticks. */
+    /**
+     * Repath cooldown for a long leg, in ticks.
+     */
     public static final int REPATH_COOLDOWN_FAR = 12;
 
-    /** Height offset for a surface-anchor target. */
+    /**
+     * Height offset for a surface-anchor target.
+     */
     public static final double ANCHOR_HEIGHT_OFFSET = 1.0;
-    /** Height above the current column for the emergency escape target. */
+    /**
+     * Height above the current column for the emergency escape target.
+     */
     public static final double ESCAPE_HEIGHT_OFFSET = 2.5;
-    /** Target delta used to command a full stop. */
+    /**
+     * Target delta used to command a full stop.
+     */
     public static final float STOP_DELTA = 0.05f;
-    /** Velocity damping applied when the active waypoint is blocked. */
+    /**
+     * Velocity damping applied when the active waypoint is blocked.
+     */
     public static final double BRAKE_DAMPING = 0.3;
-    /** Stuck ticks recorded when the active waypoint is blocked. */
+    /**
+     * Stuck ticks recorded when the active waypoint is blocked.
+     */
     public static final int BLOCKED_STUCK_TICKS = 6;
-    /** Target delta used for a normal waypoint. */
+    /**
+     * Target delta used for a normal waypoint.
+     */
     public static final float WAYPOINT_DELTA = 0.1f;
-    /** Terrain sampling step along a high-speed stride. */
+    /**
+     * Terrain sampling step along a high-speed stride.
+     */
     public static final double STRIDE_SAMPLE_STEP = 8.0;
-    /** Body height above the feet used by the passability check. */
+    /**
+     * Body height above the feet used by the passability check.
+     */
     public static final int BODY_HEIGHT = 1;
 }

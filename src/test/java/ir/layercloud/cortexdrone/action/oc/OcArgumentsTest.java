@@ -2,15 +2,13 @@ package ir.layercloud.cortexdrone.action.oc;
 
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.*;
 
-/** JSON-ish values must flatten to the shapes OpenComputers expects. */
+/**
+ * JSON-ish values must flatten to the shapes OpenComputers expects.
+ */
 public class OcArgumentsTest {
     @Test
     public void proxyIsNullWhenOpenComputersIsAbsent() {

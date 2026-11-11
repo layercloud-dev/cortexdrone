@@ -137,7 +137,9 @@ public final class InventoryTransfers {
         return working.stackSize <= 0;
     }
 
-    /** One insert performed while a container is open. */
+    /**
+     * One insert performed while a container is open.
+     */
     public interface TransferStep {
         int insert(IInventory target, ItemStack working);
     }
@@ -180,7 +182,9 @@ public final class InventoryTransfers {
         return bestSlot;
     }
 
-    /** True when no slot can accept another item of any kind. */
+    /**
+     * True when no slot can accept another item of any kind.
+     */
     public static boolean isInventoryFull(IInventory inv) {
         if (inv == null) return true;
         int size = inv.getSizeInventory();
@@ -193,7 +197,9 @@ public final class InventoryTransfers {
         return true;
     }
 
-    /** Total number of items across every slot. */
+    /**
+     * Total number of items across every slot.
+     */
     public static int countInventoryItems(IInventory inv) {
         if (inv == null) return 0;
         int total = 0;

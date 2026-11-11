@@ -40,7 +40,9 @@ final class JsBudget {
         return this.tripped;
     }
 
-    /** True when the script stopped because a newer task replaced this one. */
+    /**
+     * True when the script stopped because a newer task replaced this one.
+     */
     boolean superseded() {
         return this.superseded;
     }

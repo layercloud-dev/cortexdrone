@@ -8,11 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BooleanSupplier;
 
@@ -29,7 +25,9 @@ import java.util.function.BooleanSupplier;
  * cancelled task, a disconnect or a timeout cannot leak a pending dialog.</p>
  */
 public final class QuestionService {
-    /** Where a question ended up. */
+    /**
+     * Where a question ended up.
+     */
     public enum Status {
         ANSWERED,
         CANCELLED,
@@ -38,7 +36,9 @@ public final class QuestionService {
         ABORTED
     }
 
-    /** Immutable outcome of one question. */
+    /**
+     * Immutable outcome of one question.
+     */
     public static final class Answer {
         private final Status status;
         private final String text;
@@ -73,7 +73,9 @@ public final class QuestionService {
         }
     }
 
-    /** The transport that reaches the player; injectable so tests need no client. */
+    /**
+     * The transport that reaches the player; injectable so tests need no client.
+     */
     public interface Transport {
         void send(EntityPlayerMP player, QuestionRequestMessage request);
 
@@ -116,7 +118,9 @@ public final class QuestionService {
         this(transport, QuestionLimits.POLL_MS, QuestionLimits.CHAT_FALLBACK_MS);
     }
 
-    /** Test seam: shorter polling and chat fallback. */
+    /**
+     * Test seam: shorter polling and chat fallback.
+     */
     public QuestionService(Transport transport, long pollMs, long chatFallbackMs) {
         this.transport = transport;
         this.pollMs = Math.max(10L, pollMs);
@@ -181,13 +185,17 @@ public final class QuestionService {
         }
     }
 
-    /** The client opened the dialog; suppress the chat fallback. */
+    /**
+     * The client opened the dialog; suppress the chat fallback.
+     */
     public void markOpened(long id, String playerName) {
         Pending entry = this.pending.get(id);
         if (entry != null && samePlayer(entry, playerName)) entry.opened = true;
     }
 
-    /** Records the dialog answer. Returns false for a stale id or another player. */
+    /**
+     * Records the dialog answer. Returns false for a stale id or another player.
+     */
     public boolean answer(long id, String playerName, String text, int optionIndex, boolean cancelled) {
         Pending entry = this.pending.get(id);
         if (entry == null || !samePlayer(entry, playerName)) return false;
@@ -214,7 +222,9 @@ public final class QuestionService {
         return false;
     }
 
-    /** Dismisses any question already waiting for this player. */
+    /**
+     * Dismisses any question already waiting for this player.
+     */
     public void cancelFor(String playerName) {
         if (playerName == null) return;
         for (Pending entry : this.pending.values()) {
@@ -224,7 +234,9 @@ public final class QuestionService {
         }
     }
 
-    /** Number of live questions; diagnostics and tests. */
+    /**
+     * Number of live questions; diagnostics and tests.
+     */
     public int activeCount() {
         return this.pending.size();
     }

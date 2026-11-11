@@ -15,7 +15,9 @@ public final class PrivateHosts {
     private PrivateHosts() {
     }
 
-    /** True when the URL's host is loopback, link-local or RFC1918 private. */
+    /**
+     * True when the URL's host is loopback, link-local or RFC1918 private.
+     */
     public static boolean isPrivateUrl(String url) {
         if (url == null || url.trim().isEmpty()) return false;
         try {
@@ -25,7 +27,9 @@ public final class PrivateHosts {
         }
     }
 
-    /** True when the host name/address is loopback, link-local or RFC1918. */
+    /**
+     * True when the host name/address is loopback, link-local or RFC1918.
+     */
     public static boolean isPrivateHost(String host) {
         if (host == null) return false;
         String value = host.trim().toLowerCase(Locale.ROOT);

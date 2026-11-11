@@ -11,6 +11,7 @@ import com.google.gson.JsonPrimitive;
  * {@code parameters} object. Property insertion order is preserved so the
  * JavaScript runtime can map positional call arguments deterministically.</p>
  */
+@SuppressWarnings("unused")
 public final class ToolSchema {
     private final JsonObject properties = new JsonObject();
     private final JsonArray required = new JsonArray();
@@ -109,7 +110,9 @@ public final class ToolSchema {
         return add(name, schema, false, null);
     }
 
-    /** Adds a free-form object property (for {@code {x,y,z}} style arguments). */
+    /**
+     * Adds a free-form object property (for {@code {x,y,z}} style arguments).
+     */
     public ToolSchema optionalObject(String name, String description) {
         JsonObject schema = new JsonObject();
         schema.addProperty("type", "object");
@@ -126,7 +129,9 @@ public final class ToolSchema {
         return add(name, schema, true, null);
     }
 
-    /** Escape hatch for a hand-written property schema. */
+    /**
+     * Escape hatch for a hand-written property schema.
+     */
     public ToolSchema property(String name, JsonObject schema, boolean isRequired) {
         return add(name, schema, isRequired, null);
     }

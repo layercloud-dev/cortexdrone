@@ -1,7 +1,6 @@
 package ir.layercloud.cortexdrone.manager.building.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
@@ -9,10 +8,10 @@ import ir.layercloud.cortexdrone.action.block.impl.BreakBlockAction;
 import ir.layercloud.cortexdrone.action.block.impl.PlaceBlockAction;
 import ir.layercloud.cortexdrone.action.block.impl.ReplaceBlockAction;
 import ir.layercloud.cortexdrone.action.block.impl.RestoreBlocksAction;
-import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
 import ir.layercloud.cortexdrone.manager.ActionManager;
+import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
@@ -21,6 +20,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * action; the physical work lives in {@link BreakBlockAction} and
  * {@link PlaceBlockAction}.
  */
+@SuppressWarnings("unused")
 public final class BuildingManager extends ActionManager<BlockContext, BlockRequest, BlockResult> {
     private final DroneLogger logger;
     private final DamageJournal journal;
@@ -31,7 +31,9 @@ public final class BuildingManager extends ActionManager<BlockContext, BlockRequ
         this.journal = journal;
     }
 
-    /** The damage journal this manager records navigation digs into. */
+    /**
+     * The damage journal this manager records navigation digs into.
+     */
     public DamageJournal journal() {
         return this.journal;
     }

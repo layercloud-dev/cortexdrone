@@ -17,7 +17,9 @@ import java.util.List;
  * only translates chat arguments into store calls and prints the result.</p>
  */
 public final class MemoryCommands {
-    /** Maximum entries shown per query. */
+    /**
+     * Maximum entries shown per query.
+     */
     private static final int PAGE_SIZE = 12;
 
     private MemoryCommands() {

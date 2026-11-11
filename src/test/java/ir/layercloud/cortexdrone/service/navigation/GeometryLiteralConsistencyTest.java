@@ -11,7 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Block-centre and world-height arithmetic has one source each.
@@ -56,7 +57,9 @@ public class GeometryLiteralConsistencyTest {
         return new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
     }
 
-    /** Lines of code, without comments. */
+    /**
+     * Lines of code, without comments.
+     */
     private static List<String> codeLines(String file) throws Exception {
         List<String> out = new ArrayList<>();
         for (String line : read(file).split("\n")) {
@@ -67,7 +70,9 @@ public class GeometryLiteralConsistencyTest {
         return out;
     }
 
-    /** True when this line is one of the constant declarations itself. */
+    /**
+     * True when this line is one of the constant declarations itself.
+     */
     private static boolean isDefinitionLine(String code) {
         for (String declaration : DEFINITION_LINES) {
             if (declaration.equals(code)) return true;

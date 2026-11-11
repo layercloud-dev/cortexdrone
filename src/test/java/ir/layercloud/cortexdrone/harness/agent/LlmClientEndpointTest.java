@@ -2,7 +2,8 @@ package ir.layercloud.cortexdrone.harness.agent;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * A gateway on a private LAN address or a bare hostname is local enough to

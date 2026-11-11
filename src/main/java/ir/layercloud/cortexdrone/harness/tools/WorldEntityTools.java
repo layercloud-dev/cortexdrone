@@ -1,17 +1,12 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.DroneController;
-import ir.layercloud.cortexdrone.harness.tool.ScanLimits;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import li.cil.oc.common.entity.Drone;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
+import li.cil.oc.common.entity.Drone;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.passive.EntityAnimal;
@@ -20,9 +15,6 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
-
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 
 import java.util.Arrays;
 import java.util.List;
@@ -34,13 +26,21 @@ import java.util.List;
  * read-only query into a full-entity scan of the world.</p>
  */
 public final class WorldEntityTools implements ToolProvider {
-    /** Largest entity search radius. */
+    /**
+     * Largest entity search radius.
+     */
     public static final int MAX_ENTITY_RADIUS = ScanLimits.MAX_ENTITY_RADIUS;
-    /** Largest dropped-item search radius. */
+    /**
+     * Largest dropped-item search radius.
+     */
     public static final int MAX_DROP_RADIUS = ScanLimits.MAX_DROP_RADIUS;
-    /** Vertical half-window for entity and drop searches. */
+    /**
+     * Vertical half-window for entity and drop searches.
+     */
     public static final int VERTICAL_WINDOW = 32;
-    /** Vertical half-window for dropped items (items rarely fly far vertically). */
+    /**
+     * Vertical half-window for dropped items (items rarely fly far vertically).
+     */
     public static final int DROP_VERTICAL_WINDOW = 24;
 
     private static final List<ToolSpec> SPECS = Arrays.asList(

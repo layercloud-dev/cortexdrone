@@ -1,20 +1,15 @@
 package ir.layercloud.cortexdrone.action.navigation.impl;
 
-import ir.layercloud.cortexdrone.service.navigation.NavigationTuning;
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
-import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
-import ir.layercloud.cortexdrone.service.navigation.NavigationState;
-import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
-import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
+import ir.layercloud.cortexdrone.service.navigation.*;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.util.MathHelper;
@@ -99,7 +94,7 @@ public final class NavigateAction implements Action<NavigationContext> {
                 }
             }
         } else if (horizDist > DroneSpeed.strideTrigger(inOpenSky ? NavigationTuning.STRIDE_TRIGGER_OPEN_SKY
-                : NavigationTuning.STRIDE_TRIGGER_SHELTERED,
+                        : NavigationTuning.STRIDE_TRIGGER_SHELTERED,
                 this.state.speedMultiplier)) {
             // The stride must cover the braking distance at the current speed,
             // otherwise the drone enters ease-in, decelerates, and starts a new
@@ -107,7 +102,7 @@ public final class NavigateAction implements Action<NavigationContext> {
             // drone at ~20 b/s even though its cap was 75 b/s.
             double step = DroneSpeed.stride(this.state.speedMultiplier,
                     inOpenSky ? NavigationTuning.STRIDE_STEP_OPEN_SKY
-                    : NavigationTuning.STRIDE_STEP_SHELTERED);
+                            : NavigationTuning.STRIDE_STEP_SHELTERED);
             effGx = drone.posX + (gx - drone.posX) / horizDist * step;
             effGz = drone.posZ + (gz - drone.posZ) / horizDist * step;
             if (inOpenSky) {
@@ -142,8 +137,8 @@ public final class NavigateAction implements Action<NavigationContext> {
             this.state.pathGoalY = effGy;
             this.state.pathGoalZ = effGz;
             this.state.repathCooldown = DroneSpeed.repathTicks(horizDist > NavigationTuning.REPATH_NEAR_DISTANCE
-                    ? NavigationTuning.REPATH_COOLDOWN_NEAR
-                    : NavigationTuning.REPATH_COOLDOWN_FAR,
+                            ? NavigationTuning.REPATH_COOLDOWN_NEAR
+                            : NavigationTuning.REPATH_COOLDOWN_FAR,
                     this.state.speedMultiplier);
         }
 

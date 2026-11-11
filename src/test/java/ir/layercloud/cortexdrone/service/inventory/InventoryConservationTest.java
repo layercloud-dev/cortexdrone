@@ -18,7 +18,9 @@ import static org.junit.Assert.*;
  * created items out of nothing.</p>
  */
 public class InventoryConservationTest {
-    /** One shared item instance: distinct {@code new Item()} objects never stack. */
+    /**
+     * One shared item instance: distinct {@code new Item()} objects never stack.
+     */
     private static final Item ITEM = new Item();
 
     private static ItemStack stack(int size) {

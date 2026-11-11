@@ -6,7 +6,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/** Reach rules must never report a distant or invisible container as usable. */
+/**
+ * Reach rules must never report a distant or invisible container as usable.
+ */
 public class ContainerAccessTest {
     @Test
     public void missingWorldIsNeverAccessible() {

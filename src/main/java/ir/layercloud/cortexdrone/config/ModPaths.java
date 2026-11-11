@@ -15,6 +15,7 @@ import java.io.File;
  *   logs/         debug log
  * </pre>
  */
+@SuppressWarnings("unused")
 public final class ModPaths {
     private ModPaths() {
     }
@@ -28,7 +29,9 @@ public final class ModPaths {
         return new File(root, "config.json");
     }
 
-    /** Learned/refined skills, one SKILL.md directory per skill. */
+    /**
+     * Learned/refined skills, one SKILL.md directory per skill.
+     */
     public static File skillsDir(File root) {
         return new File(root, "skills");
     }
@@ -37,7 +40,9 @@ public final class ModPaths {
         return new File(root, "memory.json");
     }
 
-    /** Learned lessons, one LESSON.md directory per lesson. */
+    /**
+     * Learned lessons, one LESSON.md directory per lesson.
+     */
     public static File lessonsDir(File root) {
         return new File(root, "lessons");
     }

@@ -1,13 +1,7 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tools.view.VisualsView;
 import ir.layercloud.cortexdrone.service.visuals.VisualLimits;
 
@@ -37,7 +31,7 @@ public final class VisualsTools implements ToolProvider {
                             .optionalBoolean("enabled", "Turn the aura on or off.")
                             .optionalBoolean("toggle", "Toggle the current aura state instead of setting it.", false)
                             .optionalInt("radius", "Aura radius in blocks, "
-                                    + VisualLimits.MIN_RADIUS + ".." + VisualLimits.MAX_RADIUS + ".",
+                                            + VisualLimits.MIN_RADIUS + ".." + VisualLimits.MAX_RADIUS + ".",
                                     VisualLimits.MIN_RADIUS, VisualLimits.MAX_RADIUS,
                                     VisualLimits.DEFAULT_RADIUS)
                             .optionalInt("level", "Light level " + VisualLimits.MIN_LEVEL + ".." + VisualLimits.MAX_LEVEL + ".",
@@ -55,7 +49,7 @@ public final class VisualsTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .optionalString("type", "Particle name.", "heart")
                             .optionalInt("count", "Particles in this burst, " + VisualLimits.MIN_PARTICLES + ".."
-                                    + VisualLimits.MAX_PARTICLES + ".", VisualLimits.MIN_PARTICLES,
+                                            + VisualLimits.MAX_PARTICLES + ".", VisualLimits.MIN_PARTICLES,
                                     VisualLimits.MAX_PARTICLES, VisualLimits.DEFAULT_PARTICLES)
                             .optionalNumber("spread", "Random spread in blocks.", 0.35)
                             .optionalNumber("speed", "Particle motion speed.", 0.05)
@@ -86,7 +80,7 @@ public final class VisualsTools implements ToolProvider {
                             + VisualLimits.MAX_SEMITONE + ") at the drone.")
                     .parameters(ToolSchema.object()
                             .optionalInt("semitone", "Note index " + VisualLimits.MIN_SEMITONE + ".."
-                                    + VisualLimits.MAX_SEMITONE + ".", VisualLimits.MIN_SEMITONE,
+                                            + VisualLimits.MAX_SEMITONE + ".", VisualLimits.MIN_SEMITONE,
                                     VisualLimits.MAX_SEMITONE, VisualLimits.DEFAULT_SEMITONE))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(ToolTimeouts.READ_MS)

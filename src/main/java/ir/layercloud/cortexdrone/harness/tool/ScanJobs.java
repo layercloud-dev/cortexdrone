@@ -1,10 +1,9 @@
 package ir.layercloud.cortexdrone.harness.tool;
 
-import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
@@ -12,13 +11,7 @@ import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -30,17 +23,26 @@ import java.util.concurrent.ConcurrentHashMap;
  * are distance-sorted, capped, and explicitly marked {@code pending} /
  * {@code truncated} so callers can poll instead of re-scanning.</p>
  */
+@SuppressWarnings("unused")
 public class ScanJobs {
     private static final long MAX_JOB_AGE_MS = 30_000L;
     private static final long MAX_SLICE_MS = 8L;
     private static final int MAX_SLICE_VOXELS = 30_000;
-    /** @see ScanLimits#MAX_RADIUS */
+    /**
+     * @see ScanLimits#MAX_RADIUS
+     */
     public static final int MAX_ADVERTISED_RADIUS = ScanLimits.MAX_RADIUS;
-    /** @see ScanLimits#MAX_RESULTS */
+    /**
+     * @see ScanLimits#MAX_RESULTS
+     */
     public static final int MAX_ADVERTISED_RESULTS = ScanLimits.MAX_RESULTS;
-    /** Hard ceiling on a single slice radius. */
+    /**
+     * Hard ceiling on a single slice radius.
+     */
     public static final int ABSOLUTE_RADIUS_CAP = ScanLimits.MAX_RADIUS;
-    /** Hard ceiling on returned results. */
+    /**
+     * Hard ceiling on returned results.
+     */
     public static final int MAX_RESULTS = ScanLimits.MAX_RESULTS;
     private static final long RETENTION_MS = 120_000L;
 
@@ -184,7 +186,9 @@ public class ScanJobs {
         }
     }
 
-    /** Same shape gate as {@code scan_blocks}; see {@link ScanShape}. */
+    /**
+     * Same shape gate as {@code scan_blocks}; see {@link ScanShape}.
+     */
     private static boolean withinShape(String shape, int dx, int dy, int dz, int radius) {
         return ScanShape.parse(shape).contains(dx, dy, dz, radius);
     }

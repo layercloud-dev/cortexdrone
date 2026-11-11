@@ -30,7 +30,9 @@ final class NavigationSpeed {
                 session != null ? session.speedMultiplier : 0.0, carrying);
     }
 
-    /** Multiplier stored on a new session: request first, then config. */
+    /**
+     * Multiplier stored on a new session: request first, then config.
+     */
     static double requested(ir.layercloud.cortexdrone.manager.navigation.NavigationRequest request,
                             ModConfig config) {
         return DroneSpeed.clampMultiplier(request.getSpeedMultiplier() > 0.0

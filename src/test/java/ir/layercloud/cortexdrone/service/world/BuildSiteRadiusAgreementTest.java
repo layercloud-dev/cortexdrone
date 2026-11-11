@@ -3,8 +3,6 @@ package ir.layercloud.cortexdrone.service.world;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import org.junit.Test;
 
-import java.util.List;
-
 import static org.junit.Assert.*;
 
 /**
@@ -19,7 +17,9 @@ import static org.junit.Assert.*;
  * numbers, so schema/handler drift fails here.</p>
  */
 public class BuildSiteRadiusAgreementTest {
-    /** The range the tool schema declares for {@code max_radius}. */
+    /**
+     * The range the tool schema declares for {@code max_radius}.
+     */
     private static int[] schemaRange() {
         for (ToolSpec spec : ir.layercloud.cortexdrone.harness.tools.WorldTools.specs()) {
             if (!"find_build_site".equals(spec.getName())) continue;

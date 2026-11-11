@@ -44,7 +44,9 @@ public final class ToolArgs {
         return element != null && element.isJsonObject() ? element.getAsJsonObject() : null;
     }
 
-    /** Adds snake_case schema keys from camelCase caller keys before validation. */
+    /**
+     * Adds snake_case schema keys from camelCase caller keys before validation.
+     */
     public static JsonObject aliasesForSchema(JsonObject args, JsonObject parameters) {
         JsonObject copy = new JsonObject();
         if (args == null) return copy;
@@ -66,7 +68,10 @@ public final class ToolArgs {
         boolean upper = false;
         for (int i = 0; i < key.length(); i++) {
             char c = key.charAt(i);
-            if (c == '_') { upper = true; continue; }
+            if (c == '_') {
+                upper = true;
+                continue;
+            }
             camel.append(upper ? Character.toUpperCase(c) : c);
             upper = false;
         }

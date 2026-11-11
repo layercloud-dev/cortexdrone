@@ -2,7 +2,7 @@ package ir.layercloud.cortexdrone.service.combat;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Vanilla 1.7.10 combat arithmetic.

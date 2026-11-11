@@ -1,7 +1,5 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.service.skill.SkillLimits;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
@@ -9,13 +7,8 @@ import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.skill.SkillRefiner;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolContext;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
+import ir.layercloud.cortexdrone.service.skill.SkillLimits;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,6 +23,7 @@ import java.util.List;
  * {@code skills.call(name, params)}, so a compound workflow references small
  * primitives instead of duplicating them.</p>
  */
+@SuppressWarnings("unused")
 public final class SkillTools implements ToolProvider {
     private static final int MIN_SEARCH_LIMIT = 1;
     private static final int MAX_SEARCH_LIMIT = 20;
@@ -46,7 +40,7 @@ public final class SkillTools implements ToolProvider {
                             .optionalString("name", "Skill name (required for action=load).")
                             .optionalString("query", "Natural-language query (action=search).")
                             .optionalInt("limit", "Maximum results, " + MIN_SEARCH_LIMIT + ".."
-                                    + MAX_SEARCH_LIMIT + ".", MIN_SEARCH_LIMIT,
+                                            + MAX_SEARCH_LIMIT + ".", MIN_SEARCH_LIMIT,
                                     MAX_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT))
                     .affinity(ToolAffinity.ASYNC)
                     .timeoutMs(ToolTimeouts.READ_MS)
@@ -64,7 +58,7 @@ public final class SkillTools implements ToolProvider {
                             .requiredString("name", "Skill name (snake_case, from `skill` search).")
                             .optionalObject("params", "Parameter object passed to the skill as `params`.")
                             .optionalInt("timeout_ms", "Wall-clock budget, "
-                                    + SkillLimits.MIN_TIMEOUT_MS + ".." + SkillLimits.MAX_TIMEOUT_MS + ".",
+                                            + SkillLimits.MIN_TIMEOUT_MS + ".." + SkillLimits.MAX_TIMEOUT_MS + ".",
                                     SkillLimits.MIN_TIMEOUT_MS, SkillLimits.MAX_TIMEOUT_MS,
                                     SkillLimits.DEFAULT_TIMEOUT_MS))
                     .affinity(ToolAffinity.ASYNC)

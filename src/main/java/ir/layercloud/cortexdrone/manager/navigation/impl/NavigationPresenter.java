@@ -1,7 +1,7 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import li.cil.oc.common.entity.Drone;
 
@@ -14,10 +14,14 @@ import li.cil.oc.common.entity.Drone;
  * the manager stops mixing routing with presentation.</p>
  */
 final class NavigationPresenter {
-    /** LED colour shown on arrival. */
+    /**
+     * LED colour shown on arrival.
+     */
     static final int ARRIVED_LED = 0x00FFAA;
 
-    /** Everything presentation needs from the manager. */
+    /**
+     * Everything presentation needs from the manager.
+     */
     interface Host {
         NavigationState state(DroneController controller);
 
@@ -39,7 +43,9 @@ final class NavigationPresenter {
         this.host = host;
     }
 
-    /** Marks the request arrived and puts the drone in its arrived state. */
+    /**
+     * Marks the request arrived and puts the drone in its arrived state.
+     */
     void arrive(DroneController controller, NavigationSession session) {
         NavigationState state = this.host.state(controller);
         this.host.releaseSession(controller);
@@ -64,7 +70,9 @@ final class NavigationPresenter {
         }
     }
 
-    /** Marks the request failed, clears the route and reports a snapshot. */
+    /**
+     * Marks the request failed, clears the route and reports a snapshot.
+     */
     void fail(DroneController controller, String reason) {
         if (controller == null) return;
         NavigationSession session = this.host.session(controller);

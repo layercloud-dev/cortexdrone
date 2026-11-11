@@ -11,37 +11,63 @@ public final class InventoryLimits {
     private InventoryLimits() {
     }
 
-    /** Smallest accepted search radius. */
+    /**
+     * Smallest accepted search radius.
+     */
     public static final int MIN_RADIUS = 4;
-    /** Largest accepted search radius for item/container tools. */
+    /**
+     * Largest accepted search radius for item/container tools.
+     */
     public static final int MAX_RADIUS = 64;
-    /** Largest accepted radius for a furnace scan; the scan policy owns it. */
+    /**
+     * Largest accepted radius for a furnace scan; the scan policy owns it.
+     */
     public static final int MAX_FURNACE_RADIUS =
             ir.layercloud.cortexdrone.service.world.ScanLimits.MAX_FURNACE_RADIUS;
-    /** Default search radius. */
+    /**
+     * Default search radius.
+     */
     public static final int DEFAULT_RADIUS = 32;
-    /** Default container search radius. */
+    /**
+     * Default container search radius.
+     */
     public static final int DEFAULT_CHEST_RADIUS = 28;
-    /** Largest number of results a query will return. */
+    /**
+     * Largest number of results a query will return.
+     */
     public static final int MAX_RESULTS = 64;
-    /** Smallest pickup radius for a drop vacuum. */
+    /**
+     * Smallest pickup radius for a drop vacuum.
+     */
     public static final int MIN_SUCK_RADIUS = 1;
-    /** Largest pickup radius for a drop vacuum. */
+    /**
+     * Largest pickup radius for a drop vacuum.
+     */
     public static final int MAX_SUCK_RADIUS = 16;
-    /** Pickup radius when the caller names none. */
+    /**
+     * Pickup radius when the caller names none.
+     */
     public static final double DEFAULT_SUCK_RADIUS = 6.5;
 
-    /** Largest item count a transfer may move in one call (36 stacks). */
+    /**
+     * Largest item count a transfer may move in one call (36 stacks).
+     */
     public static final int MAX_TRANSFER_COUNT = 2304;
-    /** Item count a transfer moves when the caller names none. */
+    /**
+     * Item count a transfer moves when the caller names none.
+     */
     public static final int DEFAULT_TRANSFER_COUNT = 512;
 
-    /** Clamps a requested radius into the supported range. */
+    /**
+     * Clamps a requested radius into the supported range.
+     */
     public static int clampRadius(int radius) {
         return Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, radius));
     }
 
-    /** Clamps a drop-vacuum radius into the supported range. */
+    /**
+     * Clamps a drop-vacuum radius into the supported range.
+     */
     public static double clampSuckRadius(double radius) {
         return Math.max(MIN_SUCK_RADIUS, Math.min(MAX_SUCK_RADIUS, radius));
     }

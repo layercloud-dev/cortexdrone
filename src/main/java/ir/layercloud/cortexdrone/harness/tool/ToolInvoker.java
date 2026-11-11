@@ -1,11 +1,10 @@
 package ir.layercloud.cortexdrone.harness.tool;
 
-import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
+import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
-
-import com.google.gson.JsonObject;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
@@ -16,9 +15,12 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * runtime. Calls are in-process, typed by the registry schema, and errors are
  * returned to the model as data.</p>
  */
+@SuppressWarnings("unused")
 public final class ToolInvoker {
     private static final long DEFAULT_MAIN_TIMEOUT_MS = ToolTimeouts.DEFAULT_TOOL_MS;
-    /** How long a transfer may keep the agent thread waiting. */
+    /**
+     * How long a transfer may keep the agent thread waiting.
+     */
     private static final long TRANSFER_WAIT_MS = ToolTimeouts.LONG_MS;
     private static final int LARGE_SCAN_RADIUS = ScanLimits.TIME_SLICE_RADIUS;
 
@@ -293,7 +295,9 @@ public final class ToolInvoker {
         return Threads.isServerThread();
     }
 
-    /** Convenience for tools that need a default player when none was supplied. */
+    /**
+     * Convenience for tools that need a default player when none was supplied.
+     */
     public static EntityPlayerMP resolvePlayer(ToolContext context, DroneController controller) {
         if (context != null && context.player() != null) return context.player();
         if (controller != null && controller.ownerName != null) {

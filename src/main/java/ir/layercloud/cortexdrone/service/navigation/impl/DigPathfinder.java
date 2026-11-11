@@ -1,18 +1,14 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
-import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Baritone-style dig-aware A*: the route may pass through breakable blocks at a
@@ -32,10 +28,13 @@ import java.util.Set;
  * is bounded by node count and wall-clock time because it runs on the server
  * thread.</p>
  */
+@SuppressWarnings("unused")
 public final class DigPathfinder {
     private static final int MAX_EXPANSIONS = 900;
     private static final long BUDGET_NANOS = 2_000_000L;
-    /** Routes longer than this are re-planned from the new position anyway. */
+    /**
+     * Routes longer than this are re-planned from the new position anyway.
+     */
     private static final double MAX_RADIUS = 40.0D;
     private static final double BREAK_BASE_COST = 6.0D;
     private static final double FALLING_COST = 18.0D;
@@ -45,7 +44,9 @@ public final class DigPathfinder {
     private DigPathfinder() {
     }
 
-    /** One accepted step plus how it was traversed. */
+    /**
+     * One accepted step plus how it was traversed.
+     */
     private static final class Node implements Comparable<Node> {
         final int x;
         final int y;
@@ -71,9 +72,13 @@ public final class DigPathfinder {
         }
     }
 
-    /** Result of one dig-aware search. */
+    /**
+     * Result of one dig-aware search.
+     */
     public static final class Result {
-        /** First block on the route that must be broken, or {@code null}. */
+        /**
+         * First block on the route that must be broken, or {@code null}.
+         */
         public final int[] breakBlock;
         public final int expanded;
         public final boolean reachedGoal;
@@ -98,7 +103,6 @@ public final class DigPathfinder {
         int startY = MathHelper.floor_double(drone.posY);
         int startZ = MathHelper.floor_double(drone.posZ);
         Clamped goal = clampGoal(startX, startY, startZ, gx, gy, gz);
-        if (goal == null) return new Result(null, 0, false);
 
         PriorityQueue<Node> open = new PriorityQueue<>();
         Map<Long, Double> bestG = new HashMap<>();
@@ -115,6 +119,7 @@ public final class DigPathfinder {
 
         while (!open.isEmpty() && expanded < MAX_EXPANSIONS && System.nanoTime() < deadline) {
             Node cur = open.poll();
+            if (cur == null) break;
             long key = FlightPathfinder.packBlockPos(cur.x, cur.y, cur.z);
             if (!closed.add(key)) continue;
             expanded++;
@@ -159,7 +164,9 @@ public final class DigPathfinder {
         return new Result(firstBreak, expanded, reached != null);
     }
 
-    /** A new open flight waypoint on the dig-aware route, or {@code null}. */
+    /**
+     * A new open flight waypoint on the dig-aware route, or {@code null}.
+     */
     public static double[] firstOpenStep(World world, Drone drone,
                                          double gx, double gy, double gz) {
         Result result = firstBreak(world, drone, gx, gy, gz, new HashSet<>());
@@ -168,7 +175,8 @@ public final class DigPathfinder {
                 result.breakBlock[0], result.breakBlock[1], result.breakBlock[2]);
     }
 
-    private static final class Step {        final double cost;
+    private static final class Step {
+        final double cost;
         final boolean solid;
 
         Step(double cost, boolean solid) {

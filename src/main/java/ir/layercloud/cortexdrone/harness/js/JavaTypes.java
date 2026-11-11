@@ -14,7 +14,9 @@ import java.util.Map;
  * {@code Class.forName("int")} does not exist.</p>
  */
 final class JavaTypes {
-    /** Suffix a script appends to ask for a class literal. */
+    /**
+     * Suffix a script appends to ask for a class literal.
+     */
     static final String CLASS_SUFFIX = ".class";
     private static final String ARRAY_SUFFIX = "[]";
 
@@ -56,7 +58,9 @@ final class JavaTypes {
                 : Array.newInstance(type, new int[dimensions]).getClass();
     }
 
-    /** Loads a class through the given, context and system class loaders. */
+    /**
+     * Loads a class through the given, context and system class loaders.
+     */
     private static Class<?> load(String name, ClassLoader loader) {
         Class<?> primitive = PRIMITIVES.get(name);
         if (primitive != null) return primitive;
@@ -71,14 +75,18 @@ final class JavaTypes {
         throw new IllegalArgumentException("unknown class '" + name + "'", last);
     }
 
-    /** The loader, then the thread's context loader, then the system loader. */
+    /**
+     * The loader, then the thread's context loader, then the system loader.
+     */
     private static ClassLoader[] candidates(ClassLoader loader) {
         ClassLoader context = Thread.currentThread().getContextClassLoader();
         if (context == null || context == loader) return new ClassLoader[]{loader};
         return new ClassLoader[]{loader, context};
     }
 
-    /** True when {@code name} is a JVM primitive (or {@code void}). */
+    /**
+     * True when {@code name} is a JVM primitive (or {@code void}).
+     */
     static boolean isPrimitive(String name) {
         return name != null && PRIMITIVES.containsKey(name);
     }

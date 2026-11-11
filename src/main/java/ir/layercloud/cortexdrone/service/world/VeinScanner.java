@@ -22,15 +22,22 @@ import java.util.Map;
  * {@link VeinClustering} so it can be tested without a live world.</p>
  */
 @UtilityClass
+@SuppressWarnings("unused")
 public final class VeinScanner {
     /** Ring-search radius bounds for a vein scan. */
-    /** @see ir.layercloud.cortexdrone.service.world.ScanLimits#MIN_VEIN_RADIUS */
+    /**
+     * @see ir.layercloud.cortexdrone.service.world.ScanLimits#MIN_VEIN_RADIUS
+     */
     public static final int MIN_RADIUS =
             ScanLimits.MIN_VEIN_RADIUS;
-    /** @see ir.layercloud.cortexdrone.service.world.ScanLimits#MAX_VEIN_RADIUS */
+    /**
+     * @see ir.layercloud.cortexdrone.service.world.ScanLimits#MAX_VEIN_RADIUS
+     */
     public static final int MAX_RADIUS =
             ScanLimits.MAX_VEIN_RADIUS;
-    /** Largest number of veins returned in one response. */
+    /**
+     * Largest number of veins returned in one response.
+     */
     public static final int MAX_VEINS_RETURNED = 80;
 
     private static final VeinClustering.PositionKey BLOCK_KEYS = FlightPathfinder::packBlockPos;

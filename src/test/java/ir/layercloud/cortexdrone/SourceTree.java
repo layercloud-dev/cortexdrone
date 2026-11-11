@@ -19,7 +19,9 @@ public final class SourceTree {
     private SourceTree() {
     }
 
-    /** Reads one file, or returns an empty string when it is absent. */
+    /**
+     * Reads one file, or returns an empty string when it is absent.
+     */
     public static String read(String path) {
         try {
             return new String(Files.readAllBytes(new File(path).toPath()), StandardCharsets.UTF_8);
@@ -28,7 +30,9 @@ public final class SourceTree {
         }
     }
 
-    /** Reads one file; fails loudly when it is absent. */
+    /**
+     * Reads one file; fails loudly when it is absent.
+     */
     public static String require(String path) {
         String text = read(path);
         if (text.isEmpty()) {

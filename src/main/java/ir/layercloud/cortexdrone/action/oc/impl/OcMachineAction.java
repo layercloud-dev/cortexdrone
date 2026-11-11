@@ -102,7 +102,9 @@ public final class OcMachineAction implements Action<OcContext> {
         return null;
     }
 
-    /** Uses scala.collection.JavaConverters when present, else a bare array. */
+    /**
+     * Uses scala.collection.JavaConverters when present, else a bare array.
+     */
     private static Object scalaSeq(List<Object> payload) {
         Map<String, Object> table = new LinkedHashMap<>();
         if (payload != null) {

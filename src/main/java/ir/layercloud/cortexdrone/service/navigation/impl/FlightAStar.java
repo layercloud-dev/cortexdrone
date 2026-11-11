@@ -5,11 +5,7 @@ import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import net.minecraft.block.Block;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
 
 /**
  * The 3D flight A* search.
@@ -28,30 +24,54 @@ import java.util.Set;
  * </ul>
  */
 final class FlightAStar {
-    /** Coefficients for the multi-heuristic partial-path backoff (Baritone). */
+    /**
+     * Coefficients for the multi-heuristic partial-path backoff (Baritone).
+     */
     private static final double[] BACKOFF_COEFFICIENTS = {1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 10.0};
-    /** A node only replaces a best partial when it improves by this much. */
+    /**
+     * A node only replaces a best partial when it improves by this much.
+     */
     private static final double MIN_IMPROVEMENT = 0.01D;
-    /** Hard cap on expanded nodes; the search runs on the server tick. */
+    /**
+     * Hard cap on expanded nodes; the search runs on the server tick.
+     */
     static final int MAX_EXPANSIONS = 1400;
-    /** Wall-clock budget for one search. */
+    /**
+     * Wall-clock budget for one search.
+     */
     static final long SEARCH_BUDGET_NANOS = 4_000_000L;
-    /** Theta* shortcuts only within this squared distance. */
+    /**
+     * Theta* shortcuts only within this squared distance.
+     */
     private static final double MAX_THETA_DIST_SQ = 64.0D;
-    /** Multiplier applied to the heuristic for the f-score. */
+    /**
+     * Multiplier applied to the heuristic for the f-score.
+     */
     private static final double HEURISTIC_WEIGHT = 1.15D;
-    /** Preferred minimum distance for a partial path, in blocks. */
+    /**
+     * Preferred minimum distance for a partial path, in blocks.
+     */
     static final double MIN_PARTIAL_DIST = 5.0D;
-    /** Shortest segment still worth returning, in blocks. */
+    /**
+     * Shortest segment still worth returning, in blocks.
+     */
     static final double MIN_PARTIAL_STEP = 2.0D;
 
-    /** Outcome of one search. */
+    /**
+     * Outcome of one search.
+     */
     static final class Search {
-        /** The goal node when reached, otherwise {@code null}. */
+        /**
+         * The goal node when reached, otherwise {@code null}.
+         */
         AStarNode reached;
-        /** Best partial node, used when the goal was unreachable. */
+        /**
+         * Best partial node, used when the goal was unreachable.
+         */
         AStarNode partial;
-        /** Nodes expanded. */
+        /**
+         * Nodes expanded.
+         */
         int expanded;
     }
 
@@ -86,6 +106,7 @@ final class FlightAStar {
         while (!open.isEmpty() && result.expanded < MAX_EXPANSIONS
                 && System.nanoTime() < deadline) {
             AStarNode current = open.poll();
+            if (current == null) break;
             if (!closed.add(FlightPathfinder.packBlockPos(current.x, current.y, current.z))) continue;
             result.expanded++;
 
@@ -102,7 +123,9 @@ final class FlightAStar {
         return result;
     }
 
-    /** Expands every legal neighbour of {@code current}. */
+    /**
+     * Expands every legal neighbour of {@code current}.
+     */
     private static void expand(ChunkCacheContext voxels, AStarNode current,
                                int gx, int gy, int gz,
                                PriorityQueue<AStarNode> open, Map<Long, Double> bestG,
@@ -179,7 +202,9 @@ final class FlightAStar {
         return candidate <= currentG ? candidate : -1.0D;
     }
 
-    /** Records a node as the best partial under each backoff coefficient. */
+    /**
+     * Records a node as the best partial under each backoff coefficient.
+     */
     private static void rememberPartial(AStarNode[] bestSoFar, double[] bestHeuristicSoFar,
                                         AStarNode child, double g, double h) {
         for (int i = 0; i < BACKOFF_COEFFICIENTS.length; i++) {

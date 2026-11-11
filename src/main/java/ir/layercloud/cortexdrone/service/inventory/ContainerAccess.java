@@ -25,10 +25,14 @@ import java.util.List;
  */
 @UtilityClass
 public final class ContainerAccess {
-    /** A slot transfer needs the same reach as a block interaction. */
+    /**
+     * A slot transfer needs the same reach as a block interaction.
+     */
     public static final double REACH = BlockSight.REACH;
 
-    /** Why a container cannot be used, plus where to go instead. */
+    /**
+     * Why a container cannot be used, plus where to go instead.
+     */
     @Getter
     public static final class Result {
         private final boolean accessible;
@@ -36,7 +40,7 @@ public final class ContainerAccess {
         /**
          * -- GETTER --
          * Drone-space point to move to, or
-         *  when nothing is visible.
+         * when nothing is visible.
          */
         private final double[] standoff;
         private final String reason;

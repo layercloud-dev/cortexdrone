@@ -2,8 +2,6 @@ package ir.layercloud.cortexdrone.harness.tool;
 
 import org.junit.Test;
 
-import java.util.Set;
-
 import static org.junit.Assert.*;
 
 /**

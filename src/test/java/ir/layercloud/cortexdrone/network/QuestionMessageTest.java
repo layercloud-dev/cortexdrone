@@ -8,15 +8,14 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * The question messages cross the FML channel, so both ends must read exactly
  * what the other wrote. The payload also clamps text so a long question or
  * answer cannot overflow the dialog or the chat fallback.
  */
+@SuppressWarnings("SpellCheckingInspection")
 public class QuestionMessageTest {
     @Test
     public void requestRoundTrips() {
@@ -99,7 +98,9 @@ public class QuestionMessageTest {
         }
     }
 
-    /** A model or a modified client must not be able to inject chat styling. */
+    /**
+     * A model or a modified client must not be able to inject chat styling.
+     */
     @Test
     public void wireTextIsSanitized() {
         ByteBuf buffer = Unpooled.buffer();

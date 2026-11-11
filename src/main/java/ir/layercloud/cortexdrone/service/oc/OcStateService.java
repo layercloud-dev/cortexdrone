@@ -15,6 +15,7 @@ import java.util.Map;
  * OpenComputers, or a different OC build, degrades to an
  * {@link OcState#unavailable} snapshot instead of failing to load this class.</p>
  */
+@SuppressWarnings("unused")
 public final class OcStateService {
     private final Field machineField;
     private final Field controlField;
@@ -38,7 +39,9 @@ public final class OcStateService {
         this.ready = machine != null;
     }
 
-    /** True when the drone/machine fields could be resolved. */
+    /**
+     * True when the drone/machine fields could be resolved.
+     */
     public boolean ready() {
         return this.ready;
     }
@@ -83,7 +86,9 @@ public final class OcStateService {
         }
     }
 
-    /** The component object that exposes the OC callbacks for this drone. */
+    /**
+     * The component object that exposes the OC callbacks for this drone.
+     */
     public Object component(Drone drone) {
         if (drone == null) return null;
         try {
@@ -94,7 +99,9 @@ public final class OcStateService {
         }
     }
 
-    /** The live machine object, or {@code null} when the drone has none. */
+    /**
+     * The live machine object, or {@code null} when the drone has none.
+     */
     public Object machine(Drone drone) {
         if (drone == null || this.machineField == null) return null;
         try {
@@ -104,12 +111,16 @@ public final class OcStateService {
         }
     }
 
-    /** The OC {@code Context} for a drone; the entity itself implements it. */
+    /**
+     * The OC {@code Context} for a drone; the entity itself implements it.
+     */
     public Object context(Drone drone) {
         return drone;
     }
 
-    /** Loads an OC component class by name for deeper introspection. */
+    /**
+     * Loads an OC component class by name for deeper introspection.
+     */
     public Class<?> componentClass(String name) {
         return OcComponentIntrospector.ocClass(name);
     }

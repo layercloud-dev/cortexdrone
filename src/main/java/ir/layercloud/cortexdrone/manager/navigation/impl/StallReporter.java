@@ -193,7 +193,7 @@ final class StallReporter {
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     Block b = world.getBlock(bx + dx, by + dy, bz + dz);
-                    if (b != null && ItemClassifier.isLiquidBlock(b)) count++;
+                    if (ItemClassifier.isLiquidBlock(b)) count++;
                 }
             }
         }

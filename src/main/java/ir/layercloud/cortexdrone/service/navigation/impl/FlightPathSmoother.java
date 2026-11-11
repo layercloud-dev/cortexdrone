@@ -12,13 +12,17 @@ import java.util.List;
  * world: the caller supplies the line-of-sight check.</p>
  */
 final class FlightPathSmoother {
-    /** How many nodes ahead one smoothing probe may reach. */
+    /**
+     * How many nodes ahead one smoothing probe may reach.
+     */
     static final int LOOKAHEAD = 16;
 
     private FlightPathSmoother() {
     }
 
-    /** Line-of-sight check between two points; true when the drone can fly it. */
+    /**
+     * Line-of-sight check between two points; true when the drone can fly it.
+     */
     interface LineOfSight {
         boolean isClear(double x1, double y1, double z1, double x2, double y2, double z2);
     }

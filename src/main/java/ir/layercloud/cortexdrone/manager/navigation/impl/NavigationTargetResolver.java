@@ -1,13 +1,13 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
-import ir.layercloud.cortexdrone.service.world.WorldBounds;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
-import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -77,7 +77,9 @@ final class NavigationTargetResolver {
         return null;
     }
 
-    /** Explains why {@link #resolve} returned {@code null}. */
+    /**
+     * Explains why {@link #resolve} returned {@code null}.
+     */
     static String describeFailure(NavigationRequest request) {
         if (request == null) return "goto needs a destination.";
         if (request.isCoordinates()

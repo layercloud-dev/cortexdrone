@@ -2,11 +2,7 @@ package ir.layercloud.cortexdrone.harness.js;
 
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
-import org.mozilla.javascript.BaseFunction;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Function;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.ScriptableObject;
+import org.mozilla.javascript.*;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -55,7 +51,9 @@ final class SkillNamespace extends ScriptableObject {
         return name != null && RESERVED.contains(fold(name));
     }
 
-    /** Binds one skill under its normalized and camelCase names. */
+    /**
+     * Binds one skill under its normalized and camelCase names.
+     */
     void bindSkill(String snakeName, String camelName, Object function) {
         if (isReserved(snakeName)) return;
         ScriptableObject.putProperty(this, snakeName, function);
@@ -112,7 +110,9 @@ final class SkillNamespace extends ScriptableObject {
         }
     }
 
-    /** A function that runs one named skill; used by {@code skills.fn(name)}. */
+    /**
+     * A function that runs one named skill; used by {@code skills.fn(name)}.
+     */
     static Function lookup(SkillLibrary library, String name) {
         if (library == null) {
             throw Context.reportRuntimeError("Skill library is unavailable in this runtime.");

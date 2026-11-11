@@ -10,12 +10,20 @@ public final class SkillLimits {
     private SkillLimits() {
     }
 
-    /** Smallest wall-clock budget a caller may request. */
+    /**
+     * Smallest wall-clock budget a caller may request.
+     */
     public static final int MIN_TIMEOUT_MS = 1_000;
-    /** Largest wall-clock budget a caller may request. */
+    /**
+     * Largest wall-clock budget a caller may request.
+     */
     public static final int MAX_TIMEOUT_MS = 280_000;
-    /** Budget used when the caller names none. */
+    /**
+     * Budget used when the caller names none.
+     */
     public static final int DEFAULT_TIMEOUT_MS = 180_000;
-    /** Wrapper timeout for the {@code skill} tool itself. */
+    /**
+     * Wrapper timeout for the {@code skill} tool itself.
+     */
     public static final int EXECUTE_TIMEOUT_MS = 300_000;
 }

@@ -21,7 +21,9 @@ final class OreDictDescribe {
     private OreDictDescribe() {
     }
 
-    /** Builds the {@code find_oredict} response for already-resolved tags. */
+    /**
+     * Builds the {@code find_oredict} response for already-resolved tags.
+     */
     static JsonObject tagsAndItems(String query, int limit, List<String> tags) {
         JsonObject out = new JsonObject();
         out.addProperty("query", query);

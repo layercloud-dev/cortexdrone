@@ -17,7 +17,9 @@ import java.util.Set;
  * without spamming the log every tick.</p>
  */
 final class ForgeTicketOps {
-    /** Reports a swallowed Forge failure, once per distinct operation. */
+    /**
+     * Reports a swallowed Forge failure, once per distinct operation.
+     */
     interface Listener {
         void onFailure(String operation, Throwable cause);
     }
@@ -28,7 +30,9 @@ final class ForgeTicketOps {
         this.listener = listener;
     }
 
-    /** Respect Forge's per-mod chunkloading config (a zero disables it). */
+    /**
+     * Respect Forge's per-mod chunkloading config (a zero disables it).
+     */
     static boolean isAvailable() {
         try {
             return ForgeChunkManager.getMaxChunkDepthFor(CortexDroneMod.MODID) > 0
@@ -38,7 +42,9 @@ final class ForgeTicketOps {
         }
     }
 
-    /** Requests an entity ticket bound to a drone, or {@code null} on failure. */
+    /**
+     * Requests an entity ticket bound to a drone, or {@code null} on failure.
+     */
     ForgeChunkManager.Ticket requestEntityTicket(CortexDroneMod mod,
                                                  net.minecraft.world.World world) {
         if (world == null) return null;
@@ -53,12 +59,16 @@ final class ForgeTicketOps {
         }
     }
 
-    /** Reports a failure that a caller caught itself. */
+    /**
+     * Reports a failure that a caller caught itself.
+     */
     void report(String operation, Throwable cause) {
         if (this.listener != null) this.listener.onFailure(operation, cause);
     }
 
-    /** Forces a chunk into the ticket; true when the ticket now holds it. */
+    /**
+     * Forces a chunk into the ticket; true when the ticket now holds it.
+     */
     boolean force(ForgeChunkManager.Ticket ticket, ChunkCoordIntPair pair) {
         if (ticket == null || pair == null) return false;
         try {
@@ -97,7 +107,9 @@ final class ForgeTicketOps {
         }
     }
 
-    /** Caps the ticket's depth at the planner's maximum. */
+    /**
+     * Caps the ticket's depth at the planner's maximum.
+     */
     static void configure(ForgeChunkManager.Ticket ticket) {
         if (ticket == null) return;
         try {
@@ -110,7 +122,9 @@ final class ForgeTicketOps {
         }
     }
 
-    /** First element of {@code chunks} not present in {@code keep}. */
+    /**
+     * First element of {@code chunks} not present in {@code keep}.
+     */
     static ChunkCoordIntPair firstNotIn(Collection<ChunkCoordIntPair> chunks,
                                         Set<ChunkCoordIntPair> keep) {
         for (ChunkCoordIntPair pair : chunks) {

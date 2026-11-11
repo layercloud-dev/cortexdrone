@@ -6,7 +6,9 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
-/** Chat line shaping rules. */
+/**
+ * Chat line shaping rules.
+ */
 public class ChatLinesTest {
     @Test
     public void shortMessagesStayOnOneLine() {

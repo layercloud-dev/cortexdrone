@@ -1,32 +1,14 @@
 package ir.layercloud.cortexdrone.harness.js;
 
-import ir.layercloud.cortexdrone.service.code.CodeLimits;
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.config.ModConfig;
-import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
-import ir.layercloud.cortexdrone.harness.tool.Tool;
-import ir.layercloud.cortexdrone.harness.tool.ToolContext;
-import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import org.mozilla.javascript.BaseFunction;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextAction;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.EvaluatorException;
-import org.mozilla.javascript.Function;
-import org.mozilla.javascript.ImporterTopLevel;
-import org.mozilla.javascript.JavaScriptException;
-import org.mozilla.javascript.RhinoException;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.ScriptableObject;
-import org.mozilla.javascript.WrappedException;
+import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
+import ir.layercloud.cortexdrone.harness.tool.*;
+import ir.layercloud.cortexdrone.service.code.CodeLimits;
+import org.mozilla.javascript.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,13 +25,17 @@ import java.util.List;
  * produces Java 8 bytecode, which Minecraft 1.7.10's class loader requires.
  * {@link JsSource} normalizes modern syntax the engine does not parse.</p>
  */
+@SuppressWarnings("unused")
 public final class JsEngine {
     private static final ThreadLocal<JsBudget> BUDGET = new ThreadLocal<>();
 
-    /** The budget of the script currently running on this thread, if any. */
+    /**
+     * The budget of the script currently running on this thread, if any.
+     */
     static JsBudget currentBudget() {
         return BUDGET.get();
     }
+
     private static final ThreadLocal<Boolean> RUNNING = new ThreadLocal<>();
     private static final String BOOTSTRAP = loadBootstrap();
 
@@ -89,7 +75,9 @@ public final class JsEngine {
         };
     }
 
-    /** True while this thread is already inside a script (nested execute is unsafe). */
+    /**
+     * True while this thread is already inside a script (nested execute is unsafe).
+     */
     public static boolean isExecuting() {
         return Boolean.TRUE.equals(RUNNING.get());
     }
@@ -237,7 +225,9 @@ public final class JsEngine {
         return ir.layercloud.cortexdrone.harness.tool.Threads.isServerThread(thread);
     }
 
-    /** Importer scope so Packages, java.* and importClass work like Rhino's shell. */
+    /**
+     * Importer scope so Packages, java.* and importClass work like Rhino's shell.
+     */
     private static Scriptable javaScope(Context cx) {
         // The constructor already initializes the standard objects and the
         // importer globals; calling initStandardObjects again throws.

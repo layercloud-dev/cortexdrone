@@ -25,14 +25,18 @@ import net.minecraft.world.World;
  * </ol>
  */
 final class NavigationDecider {
-    /** Everything the decider needs from the manager. */
+    /**
+     * Everything the decider needs from the manager.
+     */
     interface Host {
         NavigationState state(DroneController controller);
 
         void startLeg(DroneController controller, NavigationSession session,
                       double x, double y, double z, String label);
 
-        /** Starts digging the obstruction, or returns false when it cannot. */
+        /**
+         * Starts digging the obstruction, or returns false when it cannot.
+         */
         boolean startDig(DroneController controller, NavigationSession session, int[] target);
     }
 
@@ -46,7 +50,9 @@ final class NavigationDecider {
         this.logger = logger;
     }
 
-    /** Picks and starts the next leg. */
+    /**
+     * Picks and starts the next leg.
+     */
     void decide(DroneController controller, NavigationSession session) {
         if (session.replanCooldown > 0) return;
 
@@ -76,7 +82,9 @@ final class NavigationDecider {
         this.host.startLeg(controller, session, state.goalX, state.goalY, state.goalZ, "Flight");
     }
 
-    /** A buried standoff target: clear the line instead of aiming at the block. */
+    /**
+     * A buried standoff target: clear the line instead of aiming at the block.
+     */
     private void decideTunnelToBlock(DroneController controller, NavigationSession session,
                                      NavigationState state, World world, Drone drone) {
         int[] obstruction = TunnelPlanner.nextObstruction(world, drone,
@@ -91,7 +99,9 @@ final class NavigationDecider {
                 "Approach block");
     }
 
-    /** Flies to a useful trail endpoint; false when no useful trail exists. */
+    /**
+     * Flies to a useful trail endpoint; false when no useful trail exists.
+     */
     private boolean tryTrail(DroneController controller, NavigationSession session,
                              NavigationState state) {
         TrailPlan trail = this.breadcrumbs.planBacktrack(controller,

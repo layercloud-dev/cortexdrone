@@ -15,9 +15,13 @@ import java.util.List;
  * action ({@code forget}) that delegates to the store.</p>
  */
 public final class LessonCommands {
-    /** Longest lesson summary shown in chat. */
+    /**
+     * Longest lesson summary shown in chat.
+     */
     private static final int SUMMARY_PREVIEW = 160;
-    /** Maximum lessons shown per query. */
+    /**
+     * Maximum lessons shown per query.
+     */
     private static final int PAGE_SIZE = 12;
 
     private LessonCommands() {

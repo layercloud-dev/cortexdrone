@@ -63,7 +63,9 @@ final class DroneSubsystems {
         this.taskCoordinator = builder.taskCoordinator;
     }
 
-    /** Builds the graph for one manager. */
+    /**
+     * Builds the graph for one manager.
+     */
     static DroneSubsystems create(AIDroneManager manager, CortexDroneMod mod,
                                   DroneLogger logger, DamageJournal damageJournal) {
         return new Builder(manager, mod, logger, damageJournal).build();

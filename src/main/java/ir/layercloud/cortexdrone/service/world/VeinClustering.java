@@ -1,12 +1,6 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 26-connected clustering of matched block positions.
@@ -16,18 +10,24 @@ import java.util.Set;
  * this class independent of the navigation pathfinder's packing layout.</p>
  */
 public final class VeinClustering {
-    /** Maximum block coordinates a single vein response carries. */
+    /**
+     * Maximum block coordinates a single vein response carries.
+     */
     public static final int MAX_BLOCKS_PER_VEIN = 256;
 
     private VeinClustering() {
     }
 
-    /** Packs a block position into the key used by the matched map. */
+    /**
+     * Packs a block position into the key used by the matched map.
+     */
     public interface PositionKey {
         long key(int x, int y, int z);
     }
 
-    /** One connected component: its full size plus a bounded coordinate sample. */
+    /**
+     * One connected component: its full size plus a bounded coordinate sample.
+     */
     public static final class Cluster {
         private final List<int[]> blocks;
         private final int totalCount;
@@ -39,22 +39,30 @@ public final class VeinClustering {
             this.center = center;
         }
 
-        /** Coordinate sample, at most {@link #MAX_BLOCKS_PER_VEIN} entries. */
+        /**
+         * Coordinate sample, at most {@link #MAX_BLOCKS_PER_VEIN} entries.
+         */
         public List<int[]> blocks() {
             return this.blocks;
         }
 
-        /** Exact number of connected blocks, even when the sample is capped. */
+        /**
+         * Exact number of connected blocks, even when the sample is capped.
+         */
         public int totalCount() {
             return this.totalCount;
         }
 
-        /** Centroid of the whole component. */
+        /**
+         * Centroid of the whole component.
+         */
         public int[] center() {
             return this.center;
         }
 
-        /** True when {@link #blocks()} is shorter than {@link #totalCount()}. */
+        /**
+         * True when {@link #blocks()} is shorter than {@link #totalCount()}.
+         */
         public boolean truncated() {
             return this.blocks.size() < this.totalCount;
         }

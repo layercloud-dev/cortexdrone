@@ -27,13 +27,21 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@link ISidedInventory} or {@link IFluidHandler} are excluded outright.</p>
  */
 public final class ContainerTiles {
-    /** Slots a container must have before the behavioural probe is trusted. */
+    /**
+     * Slots a container must have before the behavioural probe is trusted.
+     */
     private static final int MIN_CONTAINER_SLOTS = 5;
-    /** Slots that imply storage even without a telling name. */
+    /**
+     * Slots that imply storage even without a telling name.
+     */
     private static final int NAME_FREE_STORAGE_SLOTS = 9;
-    /** Slots probed with a building block before calling something storage. */
+    /**
+     * Slots probed with a building block before calling something storage.
+     */
     private static final int PROBE_SLOTS = 6;
-    /** Class-name words that mark real storage. */
+    /**
+     * Class-name words that mark real storage.
+     */
     private static final String[] CONTAINER_WORDS = {
             "chest", "crate", "barrel", "locker", "cabinet", "safe", "backpack"
     };
@@ -43,7 +51,9 @@ public final class ContainerTiles {
     private ContainerTiles() {
     }
 
-    /** True when the tile is a furnace (vanilla or a modded equivalent). */
+    /**
+     * True when the tile is a furnace (vanilla or a modded equivalent).
+     */
     public static boolean isFurnace(World world, TileEntity tile) {
         if (tile == null) return false;
         if (tile instanceof TileEntityFurnace) return true;
@@ -55,7 +65,9 @@ public final class ContainerTiles {
         return tokens.contains("furnace");
     }
 
-    /** True when the tile is a general-purpose storage container. */
+    /**
+     * True when the tile is a general-purpose storage container.
+     */
     public static boolean isStorage(World world, TileEntity tile) {
         if (!(tile instanceof IInventory) || tile instanceof TileEntityEnderChest) return false;
         if (tile instanceof TileEntityChest) return true;

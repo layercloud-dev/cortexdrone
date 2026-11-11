@@ -129,15 +129,15 @@ There is **no Node.js process, no temp file and no RPC hop**.
 - `tools.call(name, argsObj)` / `tools.list()` are the registry escape hatches.
 - Java interop is available when the server enables reflection
   (`allowJavaReflection`, on by default):
-  - `Java.type("fully.qualified.Class")` -> class handle; add `.class` for the
-    `java.lang.Class` object, and `[]` for arrays (`Java.type("int[]")`).
-  - `Packages.java.util.ArrayList`, `java.util.ArrayList` and
-    `importClass('java.util.ArrayList')` / `importPackage('java.util')` work.
-  - `Java.from(arr)`, `Java.to(jsArray, "int[]")`, `Java.isJavaObject(x)`,
-    `Java.isType(x)`, `Java.getClassName(x)`, `JavaAdapter` for interfaces.
-  - Reflection works: `Java.type("java.lang.Class").forName(...)`,
-    `getDeclaredMethods()`, `Method.invoke(...)`.
-  - Live objects are wrapped, so `.getClass()` and `.class` are available.
+    - `Java.type("fully.qualified.Class")` -> class handle; add `.class` for the
+      `java.lang.Class` object, and `[]` for arrays (`Java.type("int[]")`).
+    - `Packages.java.util.ArrayList`, `java.util.ArrayList` and
+      `importClass('java.util.ArrayList')` / `importPackage('java.util')` work.
+    - `Java.from(arr)`, `Java.to(jsArray, "int[]")`, `Java.isJavaObject(x)`,
+      `Java.isType(x)`, `Java.getClassName(x)`, `JavaAdapter` for interfaces.
+    - Reflection works: `Java.type("java.lang.Class").forName(...)`,
+      `getDeclaredMethods()`, `Method.invoke(...)`.
+    - Live objects are wrapped, so `.getClass()` and `.class` are available.
 - **Threading:** scripts run on the agent thread and Minecraft state is not
   thread safe. Read-only inspection is fine; any mutation of live objects must
   use `main(fn)`, which runs `fn` on the server thread and returns its value:
@@ -163,20 +163,20 @@ Runtime compatibility notes:
   while a player is online it force-loads a small corridor ahead of the drone
   with Forge tickets, so a destination thousands of blocks away is reachable
   and a distant base, mine or biome is a normal trip. Practical rules:
-  - The first ~10 seconds after a player logs in are a loading blackout; if a
-    scan returns `Chunk is not loaded`, wait a moment and retry, do not abort.
-  - A chunk belonging to a player's own view is loaded by vanilla; the drone
-    never forces or generates those.
-  - When the drone itself is in an unloaded chunk (after a teleport, a server
-    restart or a long flight), `state` and raw reads can fail with
-    `chunk_not_loaded`: fly with `goto` first, then read. `goto`, `scan_*`, A*
-    and raycasts re-load on demand; a plain `get_block` at an arbitrary distant
-    coordinate does not.
-  - Never assume a far coordinate is empty or safe before it loads. Do reconnaissance
-    where the drone is, `goto` the area, then scan again.
-  - Long trips are fine, but they take real time. Give `goto` a generous
-    `max_wait_ms` (for example 180000 for >500 blocks) and report progress
-    instead of retrying the same call.
+    - The first ~10 seconds after a player logs in are a loading blackout; if a
+      scan returns `Chunk is not loaded`, wait a moment and retry, do not abort.
+    - A chunk belonging to a player's own view is loaded by vanilla; the drone
+      never forces or generates those.
+    - When the drone itself is in an unloaded chunk (after a teleport, a server
+      restart or a long flight), `state` and raw reads can fail with
+      `chunk_not_loaded`: fly with `goto` first, then read. `goto`, `scan_*`, A*
+      and raycasts re-load on demand; a plain `get_block` at an arbitrary distant
+      coordinate does not.
+    - Never assume a far coordinate is empty or safe before it loads. Do reconnaissance
+      where the drone is, `goto` the area, then scan again.
+    - Long trips are fine, but they take real time. Give `goto` a generous
+      `max_wait_ms` (for example 180000 for >500 blocks) and report progress
+      instead of retrying the same call.
 - `scan_blocks` is the advanced search: `shape` (`cube`, `sphere`, `cylinder`,
   `shell`), `radius`, `min_y`/`max_y`, `limit` (up to 2000), `include_air`, and
   explicit `x`/`y`/`z`. Use `shell` to find surface ores or cave walls, `sphere`

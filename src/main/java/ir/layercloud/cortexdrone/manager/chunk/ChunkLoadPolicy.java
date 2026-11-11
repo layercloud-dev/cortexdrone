@@ -27,12 +27,16 @@ public final class ChunkLoadPolicy {
     private boolean unloadAll;
     private boolean playerOnline;
 
-    /** Server-thread tick called once per server tick. */
+    /**
+     * Server-thread tick called once per server tick.
+     */
     public synchronized void tick(MinecraftServer server) {
         tick(hasAnyPlayer(server), System.currentTimeMillis());
     }
 
-    /** Pure timing transition, exposed for tests. */
+    /**
+     * Pure timing transition, exposed for tests.
+     */
     public synchronized void tick(boolean hasPlayer, long nowMs) {
         this.playerOnline = hasPlayer;
         if (hasPlayer) {
@@ -60,7 +64,9 @@ public final class ChunkLoadPolicy {
         return this.unloadAll;
     }
 
-    /** Clears the login/logout clocks for a fresh server start. */
+    /**
+     * Clears the login/logout clocks for a fresh server start.
+     */
     public synchronized void reset() {
         this.playerOnlineSinceMs = 0L;
         this.noPlayerSinceMs = 0L;

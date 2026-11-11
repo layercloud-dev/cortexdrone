@@ -16,7 +16,9 @@ final class OptionalChainingRewriter {
     private OptionalChainingRewriter() {
     }
 
-    /** Rewrites every optional chain in {@code source}. */
+    /**
+     * Rewrites every optional chain in {@code source}.
+     */
     static String rewrite(String source) {
         String mask = TypeScriptEraser.maskLiterals(source);
         StringBuilder out = new StringBuilder(source.length() + 32);
@@ -36,7 +38,8 @@ final class OptionalChainingRewriter {
             int after = i + 2;
             String suffix;
             int consumedTo;
-            if (after < mask.length() && mask.charAt(after) == '[') {
+            boolean indexAccess = after < mask.length() && mask.charAt(after) == '[';
+            if (indexAccess) {
                 int close = matchingForward(mask, after, '[', ']');
                 if (close < 0) {
                     i += 2;
@@ -68,7 +71,7 @@ final class OptionalChainingRewriter {
                 expr = out.substring(outStart);
             }
             out.setLength(outStart);
-            out.append(after < mask.length() && mask.charAt(after) == '['
+            out.append(indexAccess
                     ? "__optIndex(" : "__opt(").append(expr);
             out.append(',').append(suffix);
             lastExprOutStart = outStart;
@@ -79,7 +82,9 @@ final class OptionalChainingRewriter {
         return out.toString();
     }
 
-    /** Start index of the receiver expression that ends before {@code end}. */
+    /**
+     * Start index of the receiver expression that ends before {@code end}.
+     */
     private static int expressionStart(String mask, int end) {
         int i = previousSignificant(mask, end - 1);
         if (i < 0) return -1;

@@ -60,8 +60,9 @@ final class TypeScriptEraser {
     }
 
 
-
-    /** Removes entire {@code interface X {...}}, {@code type X = ...;} and {@code declare ...;} statements. */
+    /**
+     * Removes entire {@code interface X {...}}, {@code type X = ...;} and {@code declare ...;} statements.
+     */
     private static String stripBlocks(String source) {
         StringBuilder out = new StringBuilder(source.length());
         int i = 0;
@@ -102,7 +103,9 @@ final class TypeScriptEraser {
         return out.toString();
     }
 
-    /** Returns the index when a statement-level keyword starts at {@code i}, else -1. */
+    /**
+     * Returns the index when a statement-level keyword starts at {@code i}, else -1.
+     */
     private static int statementTokenAt(String source, int i) {
         if (!isIdentifierStart(source.charAt(i))) return -1;
         int previous = previousSignificant(source, i - 1);
@@ -145,7 +148,9 @@ final class TypeScriptEraser {
         return Character.isLetterOrDigit(c) || c == '_' || c == '$';
     }
 
-    /** Applies a regex only outside string literals, template literals, regexes and comments. */
+    /**
+     * Applies a regex only outside string literals, template literals, regexes and comments.
+     */
     static String replaceOutsideLiterals(String source, Pattern pattern, String replacement) {
         String mask = maskLiterals(source);
         Matcher matcher = pattern.matcher(mask);

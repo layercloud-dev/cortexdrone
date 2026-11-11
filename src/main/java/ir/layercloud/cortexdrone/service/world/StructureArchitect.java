@@ -1,8 +1,7 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.DroneController;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
@@ -92,12 +91,16 @@ public class StructureArchitect {
         return plan;
     }
 
-    /** A platform/pad/floor has no walls or roof. */
+    /**
+     * A platform/pad/floor has no walls or roof.
+     */
     private static boolean isFlat(String style) {
         return style.equals("platform") || style.equals("pad") || style.equals("floor");
     }
 
-    /** Pass 1: clear everything from the roof down to the floor, top-down. */
+    /**
+     * Pass 1: clear everything from the roof down to the floor, top-down.
+     */
     private static void clearFootprint(World world, StructurePlan plan,
                                        BlueprintSpec spec, int maxY) {
         for (int y = maxY; y >= spec.floorY; y--) {
@@ -110,7 +113,9 @@ public class StructureArchitect {
         }
     }
 
-    /** Pass 2: foundation below the floor, then the floor layer itself. */
+    /**
+     * Pass 2: foundation below the floor, then the floor layer itself.
+     */
     private static void layFoundation(StructurePlan plan, BlueprintSpec spec) {
         for (int x = spec.x1; x <= spec.x2; x++) {
             for (int z = spec.z1; z <= spec.z2; z++) {
@@ -128,7 +133,9 @@ public class StructureArchitect {
         }
     }
 
-    /** Pass 3: corners, door opening, windows and wall fills. */
+    /**
+     * Pass 3: corners, door opening, windows and wall fills.
+     */
     private static void buildWalls(StructurePlan plan, BlueprintSpec spec, int effectiveHeight) {
         int midX = (spec.x1 + spec.x2) / 2;
         int midZ = (spec.z1 + spec.z2) / 2;
@@ -162,13 +169,17 @@ public class StructureArchitect {
         }
     }
 
-    /** Test seam: the roof builder is pure geometry and must be unit-testable. */
+    /**
+     * Test seam: the roof builder is pure geometry and must be unit-testable.
+     */
     static void addRoofForTest(StructurePlan plan, int x1, int z1, int x2, int z2,
                                int roofBaseY, String roofStyle, String roofBlock) {
         addRoof(plan, x1, z1, x2, z2, roofBaseY, roofStyle, roofBlock);
     }
 
-    /** Test seam for the layer count that drives {@code maxY}. */
+    /**
+     * Test seam for the layer count that drives {@code maxY}.
+     */
     static int roofLayersForTest(int width, int depth, String roofStyle) {
         return roofLayers(width, depth, roofStyle);
     }

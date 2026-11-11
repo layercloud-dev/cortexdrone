@@ -6,19 +6,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.config.ModPaths;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,6 +31,7 @@ import java.util.logging.Logger;
  * single-file {@code skills.json} is not read. The library never decides when to
  * use a skill; it only stores, searches, versions and composes them.</p>
  */
+@SuppressWarnings("unused")
 public final class SkillLibrary {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
     private static final int MAX_SKILL_CODE_CHARS = 16_000;
@@ -132,7 +123,9 @@ public final class SkillLibrary {
         return true;
     }
 
-    /** Names that are missing from the library but required by the given skill. */
+    /**
+     * Names that are missing from the library but required by the given skill.
+     */
     public synchronized List<String> missingRequires(String name) {
         List<String> missing = new ArrayList<>();
         Skill skill = this.skills.get(normalize(name));
@@ -162,7 +155,8 @@ public final class SkillLibrary {
             object.add("triggers", triggers);
             JsonArray requires = new JsonArray();
             if (skill.getRequires() != null) {
-                for (String dependency : skill.getRequires()) requires.add(new com.google.gson.JsonPrimitive(dependency));
+                for (String dependency : skill.getRequires())
+                    requires.add(new com.google.gson.JsonPrimitive(dependency));
             }
             object.add("requires", requires);
             if (includeCode) {

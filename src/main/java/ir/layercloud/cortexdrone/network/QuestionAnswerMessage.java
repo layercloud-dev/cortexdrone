@@ -16,11 +16,17 @@ import lombok.Getter;
  */
 @Getter
 public class QuestionAnswerMessage implements IMessage {
-    /** The dialog is on screen; the client understands the question. */
+    /**
+     * The dialog is on screen; the client understands the question.
+     */
     public static final byte STATUS_OPENED = 1;
-    /** The player picked an option or typed an answer. */
+    /**
+     * The player picked an option or typed an answer.
+     */
     public static final byte STATUS_ANSWERED = 2;
-    /** The player dismissed the dialog. */
+    /**
+     * The player dismissed the dialog.
+     */
     public static final byte STATUS_CANCELLED = 3;
 
     private long id;
@@ -28,7 +34,9 @@ public class QuestionAnswerMessage implements IMessage {
     private String answer = "";
     private int optionIndex = -1;
 
-    /** FML instantiates messages reflectively. */
+    /**
+     * FML instantiates messages reflectively.
+     */
     public QuestionAnswerMessage() {
     }
 

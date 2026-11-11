@@ -5,7 +5,9 @@ import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.world.World;
 
-/** The manager's wiring for {@link NavigationTicker}. */
+/**
+ * The manager's wiring for {@link NavigationTicker}.
+ */
 final class TickerHost implements NavigationTicker.Host {
     private final NavigationManager manager;
 

@@ -18,9 +18,13 @@ public final class DronePhysicsService {
      * Longest single collision sweep. The drone body is 0.75 wide, so a step
      * under half of that keeps wall and corner resolution accurate.
      */
-    /** Per-tick motion sub-step ceiling, shared with the braking model. */
+    /**
+     * Per-tick motion sub-step ceiling, shared with the braking model.
+     */
     static final double MAX_SUBSTEP = 0.35;
-    /** Per-tick step ceiling; 3.75 / 0.35 rounds to 11. */
+    /**
+     * Per-tick step ceiling; 3.75 / 0.35 rounds to 11.
+     */
     private static final int MAX_SUBSTEPS = 16;
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {

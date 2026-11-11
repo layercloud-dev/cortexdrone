@@ -1,10 +1,10 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import ir.layercloud.cortexdrone.service.web.WebLimits;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import ir.layercloud.cortexdrone.service.web.WebLimits;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -26,7 +26,9 @@ import java.util.regex.Pattern;
  */
 public final class WebLookupService {
     private static final String USER_AGENT = WebIdentity.userAgent();
-    /** Wiki hosts, kept next to the mod descriptor that supplies them. */
+    /**
+     * Wiki hosts, kept next to the mod descriptor that supplies them.
+     */
     private static final String HBM_HOST =
             ir.layercloud.cortexdrone.service.machine.HbmDescriptor.HBM_WIKI_HOST;
     private static final String VANILLA_HOST =

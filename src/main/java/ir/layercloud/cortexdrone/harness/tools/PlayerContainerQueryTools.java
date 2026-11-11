@@ -1,16 +1,10 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.CortexDroneMod;
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
@@ -31,7 +25,9 @@ import java.util.List;
  * and its own dispatch stays readable.</p>
  */
 public final class PlayerContainerQueryTools {
-    /** Cardinal directions indexed by vanilla facing. */
+    /**
+     * Cardinal directions indexed by vanilla facing.
+     */
     private static final String[] FACING_NAMES = {"South(+Z)", "West(-X)", "North(-Z)", "East(+X)"};
 
     private final InventoryService inventoryService;
@@ -108,7 +104,9 @@ public final class PlayerContainerQueryTools {
         }
     }
 
-    /** Resolves the requested player, falling back to the task player. */
+    /**
+     * Resolves the requested player, falling back to the task player.
+     */
     private static EntityPlayerMP resolve(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         String name = ToolArgs.string(args, "name", ctrl.ownerName);
         EntityPlayerMP found = name != null ? CortexDroneMod.findPlayer(name) : player;

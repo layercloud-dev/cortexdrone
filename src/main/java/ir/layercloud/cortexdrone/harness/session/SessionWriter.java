@@ -26,7 +26,9 @@ final class SessionWriter {
         this.logger = logger;
     }
 
-    /** Writes the run and returns the transcript's path relative to the root. */
+    /**
+     * Writes the run and returns the transcript's path relative to the root.
+     */
     String write(SessionJournal.SessionRun run, SessionOutcome outcome, String reason, String topic) {
         SessionMarkdown.Snapshot snapshot = run.markdownSnapshot();
         File directory = new File(this.sessionsRoot, outcome.directory());
@@ -61,7 +63,9 @@ final class SessionWriter {
                         + " errors=" + run.toolErrors() + " durationMs=" + run.durationMs());
     }
 
-    /** A free file name in {@code directory}, appending {@code -2}, {@code -3}, ... */
+    /**
+     * A free file name in {@code directory}, appending {@code -2}, {@code -3}, ...
+     */
     private static File uniqueFile(File directory, String baseName, String extension) {
         File candidate = new File(directory, baseName + extension);
         int suffix = 2;

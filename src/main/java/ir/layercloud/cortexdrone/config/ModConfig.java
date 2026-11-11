@@ -1,8 +1,7 @@
 package ir.layercloud.cortexdrone.config;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.Gson;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import lombok.Data;
 import lombok.Getter;
@@ -11,11 +10,7 @@ import lombok.Setter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,9 +28,13 @@ import java.util.logging.Logger;
 public class ModConfig {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
 
-    /** Default OpenAI-compatible gateway used when nothing else is configured. */
+    /**
+     * Default OpenAI-compatible gateway used when nothing else is configured.
+     */
     public static final String DEFAULT_API_URL = "http://127.0.0.1:7002/v1/chat/completions";
-    /** Default model id used when nothing else is configured. */
+    /**
+     * Default model id used when nothing else is configured.
+     */
     public static final String DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash";
 
     // Defaults are declared once here and referenced by both the field
@@ -123,7 +122,9 @@ public class ModConfig {
         }
     }
 
-    /** Repairs missing/blank values after a migration or a hand edit. */
+    /**
+     * Repairs missing/blank values after a migration or a hand edit.
+     */
     public ModConfig sanitized() {
         if (this.apiUrl == null || this.apiUrl.trim().isEmpty()) {
             this.apiUrl = env("CORTEXDRONE_API_URL", DEFAULT_API_URL);

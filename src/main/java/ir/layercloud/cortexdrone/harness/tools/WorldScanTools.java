@@ -1,39 +1,19 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.DroneController;
-import ir.layercloud.cortexdrone.harness.tool.ScanShape;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tool.ScanLimits;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
-import ir.layercloud.cortexdrone.service.world.ChunkAccess;
-import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import ir.layercloud.cortexdrone.service.world.RoomScanner;
-import ir.layercloud.cortexdrone.service.world.WorldScanner;
+import ir.layercloud.cortexdrone.service.world.*;
 import li.cil.oc.common.entity.Drone;
-import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Area scans: room geometry, block filters, connected veins and distant
@@ -44,22 +24,38 @@ import java.util.Set;
  * time-sliced by {@code ScanJobs} instead of running to completion here.</p>
  */
 public final class WorldScanTools implements ToolProvider {
-    /** Clamp for a synchronous filter scan. */
+    /**
+     * Clamp for a synchronous filter scan.
+     */
     public static final int MAX_SCAN_RADIUS = ir.layercloud.cortexdrone.harness.tool.ScanLimits.MAX_RADIUS;
-    /** Clamp for a connected-vein scan. */
+    /**
+     * Clamp for a connected-vein scan.
+     */
     public static final int MAX_VEIN_RADIUS = ScanLimits.MAX_VEIN_RADIUS;
-    /** Clamp for a distant search, in blocks. */
+    /**
+     * Clamp for a distant search, in blocks.
+     */
     public static final int MAX_DISTANT_RADIUS = ScanLimits.MAX_DISTANT_RADIUS;
-    /** Result limit for a filter scan. */
+    /**
+     * Result limit for a filter scan.
+     */
     public static final int MAX_SCAN_RESULTS = ir.layercloud.cortexdrone.harness.tool.ScanLimits.MAX_RESULTS;
-    /** Room scan radius bounds. */
+    /**
+     * Room scan radius bounds.
+     */
     public static final int MAX_ROOM_RADIUS = RoomScanner.MAX_RADIUS;
-    /** @see ir.layercloud.cortexdrone.harness.tool.ScanLimits#DEFAULT_RADIUS */
+    /**
+     * @see ir.layercloud.cortexdrone.harness.tool.ScanLimits#DEFAULT_RADIUS
+     */
     private static final int DEFAULT_RADIUS =
             ir.layercloud.cortexdrone.harness.tool.ScanLimits.DEFAULT_RADIUS;
-    /** @see ir.layercloud.cortexdrone.harness.tool.ScanLimits#DEFAULT_RESULTS */
+    /**
+     * @see ir.layercloud.cortexdrone.harness.tool.ScanLimits#DEFAULT_RESULTS
+     */
     private static final int DEFAULT_RESULTS = ir.layercloud.cortexdrone.harness.tool.ScanLimits.DEFAULT_RESULTS;
-    /** Ore-dictionary tag cache key separator. */
+    /**
+     * Ore-dictionary tag cache key separator.
+     */
     private static final String TAG_KEY_SEPARATOR = ":";
 
     private final WorldScanner worldScanner;

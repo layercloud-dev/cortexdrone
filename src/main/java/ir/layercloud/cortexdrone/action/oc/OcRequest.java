@@ -15,18 +15,28 @@ import java.util.List;
 @Value
 @Builder
 public class OcRequest {
-    /** OC callback name, e.g. {@code move}, {@code detect}, {@code inventorySize}. */
+    /**
+     * OC callback name, e.g. {@code move}, {@code detect}, {@code inventorySize}.
+     */
     String method;
 
-    /** Positional arguments passed to the callback, already JSON-decoded. */
+    /**
+     * Positional arguments passed to the callback, already JSON-decoded.
+     */
     List<Object> arguments;
 
-    /** Machine control operation for {@code oc_machine}: start, stop, pause, signal. */
+    /**
+     * Machine control operation for {@code oc_machine}: start, stop, pause, signal.
+     */
     String control;
 
-    /** Seconds for {@code pause}, signal name for {@code signal}. */
+    /**
+     * Seconds for {@code pause}, signal name for {@code signal}.
+     */
     String value;
 
-    /** Signal payload for {@code signal}. */
+    /**
+     * Signal payload for {@code signal}.
+     */
     List<Object> payload;
 }

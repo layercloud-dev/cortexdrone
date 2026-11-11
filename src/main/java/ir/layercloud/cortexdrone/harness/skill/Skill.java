@@ -24,12 +24,18 @@ public class Skill {
     private String description = "";
     private String tags = "";
     private List<String> triggers = new ArrayList<>();
-    /** Other skills this one calls through {@code skills.call}. */
+    /**
+     * Other skills this one calls through {@code skills.call}.
+     */
     private List<String> requires = new ArrayList<>();
-    /** File name of the JavaScript body inside the skill directory (default code.js). */
+    /**
+     * File name of the JavaScript body inside the skill directory (default code.js).
+     */
     private String codeFile;
     private String code = "";
-    /** Markdown body of SKILL.md: usage, parameters, returns and pitfalls. */
+    /**
+     * Markdown body of SKILL.md: usage, parameters, returns and pitfalls.
+     */
     private String docs = "";
     private int version = 1;
     private int uses;

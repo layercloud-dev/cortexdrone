@@ -15,10 +15,13 @@ import static org.junit.Assert.*;
  * killed or could be killed by a dismount. The scanner must refuse all of them
  * and still find the nearest safe cell when one exists.</p>
  */
+@SuppressWarnings("unused")
 public class LandingScannerTest {
     private static final int FLOOR = 64;
 
-    /** Flat stone plane at y=FLOOR, open air above, whole world loaded. */
+    /**
+     * Flat stone plane at y=FLOOR, open air above, whole world loaded.
+     */
     private static final class PlainWorld implements LandingProbe {
         final Set<String> floors = new HashSet<>();
         final Set<String> water = new HashSet<>();

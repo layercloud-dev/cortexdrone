@@ -10,17 +10,21 @@ import java.util.Locale;
  * prefix rules can be tested without a chat event or a live player.</p>
  */
 final class ChatInstruction {
-    /** Global command prefix. */
+    /**
+     * Global command prefix.
+     */
     static final String GLOBAL_PREFIX = "@drone";
-    /** Message used when the player only types the prefix. */
+    /**
+     * Message used when the player only types the prefix.
+     */
     static final String DEFAULT_MESSAGE = "status";
 
     private ChatInstruction() {
     }
 
     /**
-     * @param message      the raw chat line
-     * @param droneName    the sender's drone name, if they own one
+     * @param message   the raw chat line
+     * @param droneName the sender's drone name, if they own one
      * @return the instruction, or {@code null} when this line is not for a drone
      */
     static String parse(String message, String droneName) {

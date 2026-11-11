@@ -17,7 +17,9 @@ public class NavigationResult {
     double goalY;
     double goalZ;
     String phase;
-    /** Monotonic token for this request; waiters use it to read the outcome. */
+    /**
+     * Monotonic token for this request; waiters use it to read the outcome.
+     */
     long requestId;
 
     public static NavigationResult failure(String error) {

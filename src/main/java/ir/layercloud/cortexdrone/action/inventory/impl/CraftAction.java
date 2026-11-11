@@ -1,7 +1,6 @@
 package ir.layercloud.cortexdrone.action.inventory.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.CraftResult;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
@@ -27,6 +26,7 @@ import java.util.List;
  * for read-only recipe data.</p>
  */
 @RequiredArgsConstructor
+@SuppressWarnings("unused")
 public final class CraftAction implements Action<InventoryContext> {
     private static final int MAX_SUBCRAFT_DEPTH = 1;
 

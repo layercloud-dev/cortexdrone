@@ -6,7 +6,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Connected-vein clustering must account for every matched block.
@@ -19,12 +20,16 @@ import static org.junit.Assert.*;
 public class VeinClusteringTest {
     private static final VeinClustering.PositionKey KEY = (x, y, z) -> pack(x, y, z);
 
-    /** Distinct bit ranges: x[40..], z[20..], y[0..19]. No overlap. */
+    /**
+     * Distinct bit ranges: x[40..], z[20..], y[0..19]. No overlap.
+     */
     private static long pack(int x, int y, int z) {
         return ((long) (x & 0xFFFFF) << 40) | ((long) (z & 0xFFFFF) << 20) | (y & 0xFFFFFL);
     }
 
-    /** Builds a solid cube of one block identity. */
+    /**
+     * Builds a solid cube of one block identity.
+     */
     private static Map<Long, int[]> cube(int size, int id, int meta) {
         Map<Long, int[]> matched = new LinkedHashMap<>();
         for (int x = 0; x < size; x++) {
@@ -53,8 +58,7 @@ public class VeinClusteringTest {
     @Test
     public void everyMatchedBlockIsAccountedForAcrossClusters() {
         // Two disjoint cubes of different ores.
-        Map<Long, int[]> matched = new LinkedHashMap<>();
-        matched.putAll(cube(4, 15, 0));
+        Map<Long, int[]> matched = new LinkedHashMap<>(cube(4, 15, 0));
         Map<Long, int[]> second = new LinkedHashMap<>();
         for (int x = 100; x < 104; x++) {
             for (int y = 0; y < 4; y++) {

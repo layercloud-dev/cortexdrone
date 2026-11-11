@@ -20,13 +20,19 @@ public class OcResult {
     boolean ok;
     String error;
 
-    /** The method or control that ran, for tracing. */
+    /**
+     * The method or control that ran, for tracing.
+     */
     String operation;
 
-    /** First return value from the OC callback. */
+    /**
+     * First return value from the OC callback.
+     */
     Object value;
 
-    /** Complete return tuple. */
+    /**
+     * Complete return tuple.
+     */
     List<Object> values;
 
     @Singular("field")

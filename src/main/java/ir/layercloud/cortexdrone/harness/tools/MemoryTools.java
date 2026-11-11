@@ -1,7 +1,5 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.service.search.RankedSearch;
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
@@ -9,13 +7,8 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolContext;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
+import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 import java.util.ArrayList;
@@ -31,6 +24,7 @@ import java.util.List;
  * {@code kind + name}, so a later "rename/update this base" updates the same
  * entry instead of creating duplicates.</p>
  */
+@SuppressWarnings("unused")
 public final class MemoryTools implements ToolProvider {
     private static final int DEFAULT_RESULTS = 8;
     private static final List<ToolSpec> SPECS = Arrays.asList(
@@ -177,7 +171,9 @@ public final class MemoryTools implements ToolProvider {
         return tags;
     }
 
-    /** Reads the position on the server thread; the tool itself runs on the agent thread. */
+    /**
+     * Reads the position on the server thread; the tool itself runs on the agent thread.
+     */
     private static Position currentPosition(ToolContext context) {
         if (context == null || context.manager() == null) return null;
         try {

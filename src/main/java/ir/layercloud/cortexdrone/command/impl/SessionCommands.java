@@ -1,15 +1,13 @@
 package ir.layercloud.cortexdrone.command.impl;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.harness.session.SessionJournal;
 import ir.layercloud.cortexdrone.harness.session.SessionOutcome;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.EnumChatFormatting;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import ir.layercloud.cortexdrone.CortexDroneMod;
 
 import java.io.File;
 import java.io.FileReader;
@@ -25,11 +23,17 @@ import java.util.Map;
  * journal and the chat sender.</p>
  */
 public final class SessionCommands {
-    /** Longest final reply shown in chat. */
+    /**
+     * Longest final reply shown in chat.
+     */
     private static final int REPLY_PREVIEW = 300;
-    /** Longest prompt shown in the list view. */
+    /**
+     * Longest prompt shown in the list view.
+     */
     private static final int PROMPT_PREVIEW = 90;
-    /** Default number of sessions listed. */
+    /**
+     * Default number of sessions listed.
+     */
     private static final int DEFAULT_LIMIT = 10;
 
     private SessionCommands() {

@@ -27,7 +27,9 @@ public final class OcArguments {
         return new OcArguments(normalize(values));
     }
 
-    /** The proxy implementing OC's {@code Arguments}, or {@code null} when OC is absent. */
+    /**
+     * The proxy implementing OC's {@code Arguments}, or {@code null} when OC is absent.
+     */
     public Object proxy() {
         Class<?> type = type();
         if (type == null) return null;
@@ -92,7 +94,6 @@ public final class OcArguments {
         if ("ByteArray".equals(kind)) return value instanceof byte[]
                 ? value : String.valueOf(value).getBytes(java.nio.charset.StandardCharsets.UTF_8);
         if ("Table".equals(kind)) return value instanceof Map ? value : new LinkedHashMap<String, Object>();
-        if ("ItemStack".equals(kind)) return value;
         return value;
     }
 

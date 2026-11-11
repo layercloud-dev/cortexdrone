@@ -56,7 +56,9 @@ public final class OcMethod {
         return this.limit;
     }
 
-    /** Distinct class that declared the callback, for grouping and tracing. */
+    /**
+     * Distinct class that declared the callback, for grouping and tracing.
+     */
     public String owner() {
         return this.owner;
     }

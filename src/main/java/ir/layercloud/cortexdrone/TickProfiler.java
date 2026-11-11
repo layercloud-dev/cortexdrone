@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Warn threshold and cooldown are dynamic via environment variables so they
  * can be retuned without a code change.
  */
+@SuppressWarnings("unused")
 public final class TickProfiler {
     private static final int SAMPLE_CAPACITY = 600;
     private static final double DEFAULT_WARN_MS = 50.0;

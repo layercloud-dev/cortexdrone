@@ -15,11 +15,16 @@ import java.util.concurrent.Callable;
  * if needed, then hand off to {@link TaskCoordinator}. Those are one workflow,
  * so they live together instead of inside the manager's event handlers.</p>
  */
+@SuppressWarnings("unused")
 final class InstructionRouter {
-    /** How long an instruction may wait for the server thread. */
+    /**
+     * How long an instruction may wait for the server thread.
+     */
     private static final long DISPATCH_TIMEOUT_MS = 5_000L;
 
-    /** Everything the router needs from the manager. */
+    /**
+     * Everything the router needs from the manager.
+     */
     interface Host {
         DroneController droneFor(String playerName);
 
@@ -33,7 +38,9 @@ final class InstructionRouter {
 
         DroneLogger logger();
 
-        /** Runs a task on the server thread and waits for it. */
+        /**
+         * Runs a task on the server thread and waits for it.
+         */
         <T> T onMainThread(Callable<T> task, long timeoutMs) throws Exception;
     }
 
@@ -43,7 +50,9 @@ final class InstructionRouter {
         this.host = host;
     }
 
-    /** Handles a chat line; ignores lines that are not addressed to a drone. */
+    /**
+     * Handles a chat line; ignores lines that are not addressed to a drone.
+     */
     void onChat(EntityPlayerMP player, String message) {
         String droneName = null;
         DroneController owned = this.host.droneFor(player.getCommandSenderName());
@@ -53,7 +62,9 @@ final class InstructionRouter {
         handle(player, prompt);
     }
 
-    /** Handles one instruction for the sender's drone, auto-spawning if needed. */
+    /**
+     * Handles one instruction for the sender's drone, auto-spawning if needed.
+     */
     void handle(EntityPlayerMP player, String prompt) {
         if (!Threads.isServerThread()) {
             dispatch(() -> handle(player, prompt));
@@ -71,7 +82,9 @@ final class InstructionRouter {
         handle(player, controller, prompt);
     }
 
-    /** Handles one instruction for an explicit drone. */
+    /**
+     * Handles one instruction for an explicit drone.
+     */
     void handle(EntityPlayerMP player, DroneController controller, String prompt) {
         if (!Threads.isServerThread()) {
             dispatch(() -> handle(player, controller, prompt));
@@ -80,7 +93,9 @@ final class InstructionRouter {
         this.host.taskCoordinator().handle(player, controller, prompt);
     }
 
-    /** Runs {@code task} on the server thread, logging a failed hop. */
+    /**
+     * Runs {@code task} on the server thread, logging a failed hop.
+     */
     private void dispatch(Runnable task) {
         try {
             this.host.onMainThread((Callable<Void>) () -> {

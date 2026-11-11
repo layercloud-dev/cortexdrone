@@ -108,7 +108,9 @@ public final class ToolInspector {
         return -1;
     }
 
-    /** Fire aspect on the selected weapon, in seconds. */
+    /**
+     * Fire aspect on the selected weapon, in seconds.
+     */
     public static int getFireAspectSeconds(IInventory inv, int slot) {
         ItemStack held = stackIn(inv, slot);
         if (held == null) return 0;

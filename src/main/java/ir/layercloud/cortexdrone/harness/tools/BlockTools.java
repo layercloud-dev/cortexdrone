@@ -1,18 +1,11 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tools.view.BuildingView;
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
@@ -37,7 +30,7 @@ public final class BlockTools implements ToolProvider {
                             .requiredInt("y", "Block Y coordinate.")
                             .requiredInt("z", "Block Z coordinate.")
                             .optionalInt("max_wait_ms", "Upper bound for the movement retry, "
-                                    + NavigationLimits.MIN_WAIT_MS + ".." + NavigationLimits.MAX_WAIT_MS + ".",
+                                            + NavigationLimits.MIN_WAIT_MS + ".." + NavigationLimits.MAX_WAIT_MS + ".",
                                     NavigationLimits.MIN_WAIT_MS, NavigationLimits.MAX_WAIT_MS,
                                     NavigationLimits.DEFAULT_WAIT_MS))
                     .affinity(ToolAffinity.MAIN)

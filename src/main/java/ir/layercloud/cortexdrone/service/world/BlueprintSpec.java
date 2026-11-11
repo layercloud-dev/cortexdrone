@@ -16,16 +16,27 @@ import java.util.Locale;
  * ({@code x1/z1/x2/z2}), a centre ({@code x/z}), or a fresh site search. Resolving
  * them here keeps the emitter a linear sequence of build phases.</p>
  */
+@SuppressWarnings("unused")
 final class BlueprintSpec {
-    /** Default footprint edge. */
+    /**
+     * Default footprint edge.
+     */
     private static final int DEFAULT_SIDE = 5;
-    /** Default wall height. */
+    /**
+     * Default wall height.
+     */
     private static final int DEFAULT_HEIGHT = 3;
-    /** Default material when the caller names none. */
+    /**
+     * Default material when the caller names none.
+     */
     private static final String DEFAULT_BLOCK = "cobblestone";
-    /** Default window material. */
+    /**
+     * Default window material.
+     */
     private static final String DEFAULT_WINDOW = "glass";
-    /** Search radius used when no footprint is given. */
+    /**
+     * Search radius used when no footprint is given.
+     */
     private static final int SITE_SEARCH_RADIUS = 22;
 
     final int x1;
@@ -70,7 +81,9 @@ final class BlueprintSpec {
         this.foundationBlock = string(spec, "foundation", DEFAULT_BLOCK);
     }
 
-    /** Parses and resolves one plan request. */
+    /**
+     * Parses and resolves one plan request.
+     */
     static BlueprintSpec parse(StructureArchitect architect, World world, EntityPlayerMP player,
                                DroneController ctrl, JsonObject spec) {
         int width = spec.has("width") ? clampSide(spec.get("width").getAsInt()) : DEFAULT_SIDE;
@@ -89,7 +102,9 @@ final class BlueprintSpec {
                 style, roofStyle, windows, fallback);
     }
 
-    /** Where the structure goes, and at what floor level. */
+    /**
+     * Where the structure goes, and at what floor level.
+     */
     private static final class Footprint {
         int x1;
         int z1;
@@ -117,7 +132,9 @@ final class BlueprintSpec {
         return result;
     }
 
-    /** An explicit surveyed box; the box wins over width/depth. */
+    /**
+     * An explicit surveyed box; the box wins over width/depth.
+     */
     private static void explicitBox(StructureArchitect architect, World world,
                                     EntityPlayerMP player, DroneController ctrl,
                                     JsonObject spec, Footprint out) {
@@ -140,7 +157,9 @@ final class BlueprintSpec {
                 (out.x1 + out.x2) * 0.5, (out.z1 + out.z2) * 0.5);
     }
 
-    /** A centre point plus the requested width/depth. */
+    /**
+     * A centre point plus the requested width/depth.
+     */
     private static void centre(StructureArchitect architect, World world,
                                EntityPlayerMP player, DroneController ctrl,
                                JsonObject spec, Footprint out) {
@@ -160,7 +179,9 @@ final class BlueprintSpec {
                 playerX(player, ctrl), playerZ(player, ctrl), cx, cz);
     }
 
-    /** No footprint given: search for a flat pad. */
+    /**
+     * No footprint given: search for a flat pad.
+     */
     private static void searched(StructureArchitect architect, World world,
                                  EntityPlayerMP player, DroneController ctrl,
                                  JsonObject spec, Footprint out) {
@@ -174,7 +195,9 @@ final class BlueprintSpec {
         out.defaultDoorSide = site.get("doorSide").getAsString();
     }
 
-    /** An explicit {@code y}/{@code floorY}, or {@link Integer#MIN_VALUE}. */
+    /**
+     * An explicit {@code y}/{@code floorY}, or {@link Integer#MIN_VALUE}.
+     */
     private static int explicitFloorY(JsonObject spec) {
         if (spec.has("y")) return spec.get("y").getAsInt();
         if (spec.has("floorY")) return spec.get("floorY").getAsInt();

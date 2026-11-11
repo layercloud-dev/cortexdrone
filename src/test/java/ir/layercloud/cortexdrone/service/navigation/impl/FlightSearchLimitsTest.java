@@ -2,7 +2,8 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * The flight search's published limits are a single source of truth.

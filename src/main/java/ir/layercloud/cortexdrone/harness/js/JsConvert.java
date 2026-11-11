@@ -1,19 +1,9 @@
 package ir.layercloud.cortexdrone.harness.js;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.NativeArray;
-import org.mozilla.javascript.NativeJSON;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.ScriptableObject;
-import org.mozilla.javascript.Undefined;
+import org.mozilla.javascript.*;
 
 import java.util.List;
 
@@ -22,6 +12,7 @@ import java.util.List;
  * objects from a tool call: results are plain JS objects, which keeps model
  * scripts simple and serialization predictable.
  */
+@SuppressWarnings("unused")
 final class JsConvert {
     private JsConvert() {
     }
@@ -75,7 +66,9 @@ final class JsConvert {
         return nativeObject;
     }
 
-    /** Maps either a single options object or positional arguments to the schema. */
+    /**
+     * Maps either a single options object or positional arguments to the schema.
+     */
     static JsonObject argumentsToJson(Context cx, Scriptable scope, Object[] args, ToolSpec spec) {
         JsonObject result = new JsonObject();
         if (args == null || args.length == 0) return result;

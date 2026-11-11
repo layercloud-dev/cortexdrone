@@ -37,7 +37,9 @@ public final class ItemClassifier {
         return RegistryIntrospector.isFluidBlock(b);
     }
 
-    /** Lava is a fluid, but it must never be a flight corridor. */
+    /**
+     * Lava is a fluid, but it must never be a flight corridor.
+     */
     public static boolean isDangerousLiquid(Block b) {
         if (b == null) return false;
         Material m = b.getMaterial();
@@ -157,12 +159,16 @@ public final class ItemClassifier {
         return sb.toString();
     }
 
-    /** @see RegistryNames#blockDisplayName(Block, int) */
+    /**
+     * @see RegistryNames#blockDisplayName(Block, int)
+     */
     public static String getBlockDisplayName(Block b, int meta) {
         return RegistryNames.blockDisplayName(b, meta);
     }
 
-    /** @see RegistryNames#blockIdentifier(Block, int) */
+    /**
+     * @see RegistryNames#blockIdentifier(Block, int)
+     */
     public static String getBlockIdentifier(Block b, int meta) {
         return RegistryNames.blockIdentifier(b, meta);
     }
@@ -171,7 +177,9 @@ public final class ItemClassifier {
         return RegistryNames.blockIdentifier(b, 0);
     }
 
-    /** @see RegistryNames#itemIdentifier(ItemStack) */
+    /**
+     * @see RegistryNames#itemIdentifier(ItemStack)
+     */
     public static String getItemIdentifier(ItemStack st) {
         return RegistryNames.itemIdentifier(st);
     }
@@ -309,12 +317,16 @@ public final class ItemClassifier {
         return EntityClassifier.isHostile(el);
     }
 
-    /** @see EntityClassifier#matches(EntityLivingBase, String) */
+    /**
+     * @see EntityClassifier#matches(EntityLivingBase, String)
+     */
     public static boolean matchesEntityFilter(EntityLivingBase el, String filter) {
         return EntityClassifier.matches(el, filter);
     }
 
-    /** Compact OreDictionary tag array for a block, or null when unregistered. */
+    /**
+     * Compact OreDictionary tag array for a block, or null when unregistered.
+     */
     public static JsonArray blockOreDictJson(Block b, int meta) {
         List<String> tags = getOreDictNames(b, meta);
         if (tags.isEmpty()) return null;

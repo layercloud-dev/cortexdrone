@@ -1,11 +1,10 @@
 package ir.layercloud.cortexdrone.service.inventory;
 
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.service.machine.MachineRecipeService;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.Getter;
@@ -25,6 +24,7 @@ import java.util.List;
  * smart slot-swapping withdrawals, deposits, and item vacuuming.
  * Delegates crafting and fluid scooping to focused helpers.
  */
+@SuppressWarnings("unused")
 public class InventoryService {
     private final DroneLogger logger;
     @Getter
@@ -79,7 +79,9 @@ public class InventoryService {
         return InventoryTransfers.insertIntoInventory(inv, stack);
     }
 
-    /** @see InventoryTransfers#findPlaceableSlot(IInventory, String) */
+    /**
+     * @see InventoryTransfers#findPlaceableSlot(IInventory, String)
+     */
     public static int findPlaceableItemSlot(IInventory inv, String filter) {
         return InventoryTransfers.findPlaceableSlot(inv, filter);
     }
@@ -212,7 +214,9 @@ public class InventoryService {
         return totalMoved;
     }
 
-    /** True when the destination can take the filtered item (or any item). */
+    /**
+     * True when the destination can take the filtered item (or any item).
+     */
     private boolean hasRoomFor(IInventory dst, String resolved) {
         for (int i = 0; i < dst.getSizeInventory(); i++) {
             ItemStack st = dst.getStackInSlot(i);
@@ -251,7 +255,9 @@ public class InventoryService {
         }
     }
 
-    /** The tile list restricted to the IInventories of the candidate tiles. */
+    /**
+     * The tile list restricted to the IInventories of the candidate tiles.
+     */
     private static List<IInventory> inventoryTargets(List<TileEntity> tiles) {
         List<IInventory> out = new ArrayList<>(tiles.size());
         for (TileEntity te : tiles) {
@@ -351,12 +357,16 @@ public class InventoryService {
         return this.playerInventoryOps.moveInventorySlot(srcInv, srcSlot, itemFilter, dstInv, dstSlot, maxCount, syncPlayer);
     }
 
-    /** @see GroundItems#suck(Drone, double, double, double, double) */
+    /**
+     * @see GroundItems#suck(Drone, double, double, double, double)
+     */
     public static void suckNearbyItems(Drone d, double x, double y, double z, double radius) {
         GroundItems.suck(d, x, y, z, radius);
     }
 
-    /** @see GroundItems#dropAll(Drone, World, double, double, double) */
+    /**
+     * @see GroundItems#dropAll(Drone, World, double, double, double)
+     */
     public static int dropAllDroneItemsAt(Drone d, World w, double x, double y, double z) {
         return GroundItems.dropAll(d, w, x, y, z);
     }

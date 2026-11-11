@@ -24,12 +24,16 @@ final class RecipeKeys {
             "acid", "hydrogen", "flux", "stamp", "particle", "gas", "gasIn", "itemIn"
     };
 
-    /** Fields holding explicit item/fluid input lists. */
+    /**
+     * Fields holding explicit item/fluid input lists.
+     */
     static final String[] TYPED_INPUTS = {
             "inputItems", "inputItem", "inputFluids", "inputFluid"
     };
 
-    /** Fields that contribute an item or fluid output. */
+    /**
+     * Fields that contribute an item or fluid output.
+     */
     static final String[] OUTPUTS = {
             "output", "output0", "output1", "output2", "output3", "output4",
             "outputItem", "outputItems", "outputs",
@@ -37,12 +41,16 @@ final class RecipeKeys {
             "outputFluid", "outputFluids", "fluidOutput"
     };
 
-    /** True when an output key names a fluid. */
+    /**
+     * True when an output key names a fluid.
+     */
     static boolean isFluidOutput(String key) {
         return key.contains("Fluid") || "fluidOutput".equals(key);
     }
 
-    /** True when an input key names a fluid. */
+    /**
+     * True when an input key names a fluid.
+     */
     static boolean isFluidInput(String key) {
         return key.contains("Fluid");
     }

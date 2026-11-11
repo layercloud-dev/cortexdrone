@@ -6,7 +6,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
 
 import java.util.concurrent.Callable;
 
-/** The manager's wiring for {@link InstructionRouter}. */
+/**
+ * The manager's wiring for {@link InstructionRouter}.
+ */
 final class InstructionHost implements InstructionRouter.Host {
     private final AIDroneManager manager;
 

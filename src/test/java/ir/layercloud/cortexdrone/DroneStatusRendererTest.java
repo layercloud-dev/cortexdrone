@@ -2,9 +2,12 @@ package ir.layercloud.cortexdrone;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-/** Drone status formatting must stay within the drone display and never NPE. */
+/**
+ * Drone status formatting must stay within the drone display and never NPE.
+ */
 public class DroneStatusRendererTest {
     @Test
     public void statusIsTrimmedToTheDisplayWidth() {

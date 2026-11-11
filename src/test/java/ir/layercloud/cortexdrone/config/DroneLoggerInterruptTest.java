@@ -2,7 +2,7 @@ package ir.layercloud.cortexdrone.config;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 /**
  * The batched log flush must not clear a pending interrupt.
@@ -20,7 +20,7 @@ public class DroneLoggerInterruptTest {
             assertTrue("the flush delay must not clear a pending interrupt",
                     Thread.currentThread().isInterrupted());
         } finally {
-            Thread.interrupted();
+            assertTrue(Thread.interrupted());
         }
     }
 }

@@ -31,7 +31,9 @@ public final class PlayerChunkOwnership {
                 && Math.abs(playerChunkZ - chunkZ) <= view;
     }
 
-    /** True when the chunk is inside any online player's server view square. */
+    /**
+     * True when the chunk is inside any online player's server view square.
+     */
     public static boolean isWithinAnyPlayerView(World world, int chunkX, int chunkZ) {
         if (!(world instanceof WorldServer)) return false;
         java.util.List<?> players = world.playerEntities;

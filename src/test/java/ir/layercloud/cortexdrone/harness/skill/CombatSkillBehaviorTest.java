@@ -2,8 +2,6 @@ package ir.layercloud.cortexdrone.harness.skill;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import java.util.List;
-
 import org.junit.Test;
 
 import static org.junit.Assert.*;

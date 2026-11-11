@@ -27,7 +27,9 @@ public final class SkillMarkdown {
     private SkillMarkdown() {
     }
 
-    /** Parses one SKILL.md document. Returns {@code null} when it is empty. */
+    /**
+     * Parses one SKILL.md document. Returns {@code null} when it is empty.
+     */
     public static Skill read(String text, String source) {
         if (text == null || text.trim().isEmpty()) return null;
         Frontmatter.Document doc = Frontmatter.parse(text);
@@ -59,7 +61,9 @@ public final class SkillMarkdown {
         return skill;
     }
 
-    /** Renders a skill directory's SKILL.md, including its usage/docs body. */
+    /**
+     * Renders a skill directory's SKILL.md, including its usage/docs body.
+     */
     public static String write(Skill skill) {
         StringBuilder out = new StringBuilder(1024);
         out.append("---\n");

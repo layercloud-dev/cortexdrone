@@ -12,6 +12,7 @@ import java.util.Locale;
  * it. It reads a {@link Snapshot} so the run keeps its counters private and a
  * rendering change can never affect the audit record.</p>
  */
+@SuppressWarnings("unused")
 final class SessionMarkdown {
     private SessionMarkdown() {
     }
@@ -46,7 +47,9 @@ final class SessionMarkdown {
         List<JsonObject> transcript = java.util.Collections.emptyList();
     }
 
-    /** Renders the snapshot as Markdown. */
+    /**
+     * Renders the snapshot as Markdown.
+     */
     static String render(Snapshot run, SessionOutcome outcome, String reason, String topic) {
         StringBuilder out = new StringBuilder(4_096);
         out.append("# Session ").append(run.id).append('\n').append('\n');
@@ -97,7 +100,9 @@ final class SessionMarkdown {
         }
     }
 
-    /** Two-decimal coordinate, stable across locales. */
+    /**
+     * Two-decimal coordinate, stable across locales.
+     */
     static String fmt(double value) {
         return String.format(Locale.ROOT, "%.2f", value);
     }

@@ -3,7 +3,6 @@ package ir.layercloud.cortexdrone.harness.skill;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -73,20 +72,20 @@ public class CraftingSkillBehaviorTest extends SkillTestSupport {
         // not 1, or the audit would under-collect and the craft would fail.
         Harness harness = new Harness(library(),
                 state("Cobblestone:|:minecraft:cobblestone:|:0:|:5"), (name, args) -> {
-                    if (!"get_recipes".equals(name)) return null;
-                    JsonObject recipes = ToolJson.ok();
-                    recipes.addProperty("count", 1);
-                    JsonArray list = new JsonArray();
-                    JsonObject recipe = new JsonObject();
-                    recipe.addProperty("output", "Furnace");
-                    recipe.addProperty("outputCount", 1);
-                    JsonArray ingredients = new JsonArray();
-                    for (int i = 0; i < 8; i++) ingredients.add(new com.google.gson.JsonPrimitive("Cobblestone"));
-                    recipe.add("ingredients", ingredients);
-                    list.add(recipe);
-                    recipes.add("recipes", list);
-                    return recipes;
-                });
+            if (!"get_recipes".equals(name)) return null;
+            JsonObject recipes = ToolJson.ok();
+            recipes.addProperty("count", 1);
+            JsonArray list = new JsonArray();
+            JsonObject recipe = new JsonObject();
+            recipe.addProperty("output", "Furnace");
+            recipe.addProperty("outputCount", 1);
+            JsonArray ingredients = new JsonArray();
+            for (int i = 0; i < 8; i++) ingredients.add(new com.google.gson.JsonPrimitive("Cobblestone"));
+            recipe.add("ingredients", ingredients);
+            list.add(recipe);
+            recipes.add("recipes", list);
+            return recipes;
+        });
         JsonObject result = harness.run("craft_items", "{filter:'furnace',count:1,dry_run:true}");
         JsonArray missing = result.getAsJsonArray("missing");
         assertEquals("one ingredient entry after aggregation", 1, missing.size());
@@ -97,7 +96,8 @@ public class CraftingSkillBehaviorTest extends SkillTestSupport {
     }
 
     @Test
-    public void smeltingReportsAFuelStallInsteadOfHanging() throws Exception {        JsonObject furnace = new JsonObject();
+    public void smeltingReportsAFuelStallInsteadOfHanging() throws Exception {
+        JsonObject furnace = new JsonObject();
         furnace.addProperty("x", 0);
         furnace.addProperty("y", 64);
         furnace.addProperty("z", 0);
@@ -113,14 +113,14 @@ public class CraftingSkillBehaviorTest extends SkillTestSupport {
 
         Harness harness = new Harness(library(),
                 state("Iron Ore:|:minecraft:iron_ore:|:0:|:4"), (name, args) -> {
-                    if (!"scan_furnaces".equals(name)) return null;
-                    JsonObject scan = ToolJson.ok();
-                    scan.addProperty("count", 1);
-                    JsonArray furnaces = new JsonArray();
-                    furnaces.add(furnace);
-                    scan.add("furnaces", furnaces);
-                    return scan;
-                });
+            if (!"scan_furnaces".equals(name)) return null;
+            JsonObject scan = ToolJson.ok();
+            scan.addProperty("count", 1);
+            JsonArray furnaces = new JsonArray();
+            furnaces.add(furnace);
+            scan.add("furnaces", furnaces);
+            return scan;
+        });
         JsonObject result = harness.run("smelt_items",
                 "{filter:'iron_ore',count:4,wait:true,max_wait_s:5}");
         assertFalse("nothing was smelted", result.get("ok").getAsBoolean());

@@ -1,11 +1,11 @@
 package ir.layercloud.cortexdrone.service.machine;
 
-import ir.layercloud.cortexdrone.service.world.LoadedTiles;
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
-import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.LoadedTiles;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.inventory.IInventory;
@@ -13,7 +13,8 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Discovers HBM/modified processing machines by scanning loaded TileEntities
@@ -34,7 +35,7 @@ public final class MachineTileInspector {
 
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isMachineTile(World world, TileEntity te) {
-        if (te == null || !(te instanceof IInventory)) return false;
+        if (!(te instanceof IInventory)) return false;
         if (MachineAliases.isMachineClass(te.getClass().getName())) return true;
         if (world != null) {
             Block block = world.getBlock(te.xCoord, te.yCoord, te.zCoord);
@@ -70,7 +71,9 @@ public final class MachineTileInspector {
         return MachineAliases.normalize(raw);
     }
 
-    /** @see MachineAliases#fromFileName(String) */
+    /**
+     * @see MachineAliases#fromFileName(String)
+     */
     public static String recipeFileToMachine(String fileName) {
         return MachineAliases.fromFileName(fileName);
     }

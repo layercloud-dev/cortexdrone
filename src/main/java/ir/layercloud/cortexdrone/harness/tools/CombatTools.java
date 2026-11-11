@@ -1,17 +1,9 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tools.view.CombatView;
 import ir.layercloud.cortexdrone.service.combat.CombatAssessment;
 import ir.layercloud.cortexdrone.service.combat.CombatAssessmentService;
@@ -28,6 +20,7 @@ import java.util.List;
  * trade will take. Actual damage is still {@code attack_entity}, one hit per
  * call, because Minecraft damage must run on the server tick.</p>
  */
+@SuppressWarnings("unused")
 public final class CombatTools implements ToolProvider {
     private static final int MIN_SLOT = 0;
     private static final int MAX_SLOT = 7;

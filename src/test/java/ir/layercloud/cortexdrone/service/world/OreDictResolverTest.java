@@ -118,7 +118,8 @@ public class OreDictResolverTest {
     }
 
     @Test
-    public void unknownQueryDegradesInsteadOfThrowing() {        List<String> tags = OreDictResolver.resolveTagQuery("this-tag-does-not-exist-xyz");
+    public void unknownQueryDegradesInsteadOfThrowing() {
+        List<String> tags = OreDictResolver.resolveTagQuery("this-tag-does-not-exist-xyz");
         assertNotNull(tags);
         assertTrue("an unknown tag must resolve to nothing", tags.isEmpty());
         assertEquals(0, OreDictResolver.scoreIdentifierTagMatch("", "tin"));

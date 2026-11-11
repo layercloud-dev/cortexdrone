@@ -9,23 +9,22 @@ import ir.layercloud.cortexdrone.harness.Harness;
 import ir.layercloud.cortexdrone.harness.agent.AgentService;
 import ir.layercloud.cortexdrone.harness.agent.LoopTracer;
 import ir.layercloud.cortexdrone.harness.js.JsEngine;
-import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.session.SessionManager;
-import ir.layercloud.cortexdrone.harness.tool.MainThreadCall;
 import ir.layercloud.cortexdrone.harness.session.SessionOutcome;
+import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.task.TaskCoordinator;
+import ir.layercloud.cortexdrone.harness.tool.MainThreadCall;
 import ir.layercloud.cortexdrone.manager.ActionRegistry;
 import ir.layercloud.cortexdrone.manager.TickManager;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
+import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
 import ir.layercloud.cortexdrone.manager.interact.impl.InteractionManager;
 import ir.layercloud.cortexdrone.manager.inventory.impl.InventoryManager;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 import ir.layercloud.cortexdrone.manager.oc.impl.OcManager;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
-import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
 import ir.layercloud.cortexdrone.network.QuestionNetwork;
-import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
@@ -33,6 +32,7 @@ import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.question.QuestionService;
 import ir.layercloud.cortexdrone.service.question.ServerQuestionTransport;
 import ir.layercloud.cortexdrone.service.text.TextSanitizer;
+import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import ir.layercloud.cortexdrone.service.world.DocLookupService;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import li.cil.oc.common.entity.Drone;
@@ -42,10 +42,10 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraftforge.event.ServerChatEvent;
 
 import java.io.File;
-import java.util.*;
 import java.util.concurrent.Callable;
 
 @Getter
+@SuppressWarnings("unused")
 public class AIDroneManager {
     private final CortexDroneMod mod;
     private File configRoot;
@@ -114,7 +114,9 @@ public class AIDroneManager {
     }
 
     /** Releases everything that holds per-drone state. */
-    /** Releases navigation, visuals, chunks, session and breadcrumb state. */
+    /**
+     * Releases navigation, visuals, chunks, session and breadcrumb state.
+     */
     void forgetController(DroneController controller) {
         this.visualsManager.forget(controller);
         this.navigationManager.forget(controller);
@@ -127,7 +129,7 @@ public class AIDroneManager {
     }
 
     public void onServerStarting(FMLServerStartingEvent event) {
-        this.configRoot = ModPaths.ensure(this.configRoot);
+        ModPaths.ensure(this.configRoot);
         this.configFile = ModPaths.configFile(this.configRoot);
         this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
         this.chunkLoadingManager.attach();
@@ -135,7 +137,7 @@ public class AIDroneManager {
         this.logger.setDebugLogFile(ModPaths.logFile(this.configRoot));
         reconnectUnlinkedWorldDrones();
         this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION
-                + " (in-process tool harness) initialized",
+                        + " (in-process tool harness) initialized",
                 "configDir=" + this.configRoot.getAbsolutePath()
                         + " tools=" + this.harness.registry().modelTools().size());
 
@@ -233,7 +235,9 @@ public class AIDroneManager {
         this.tickLoop.onTickEnd();
     }
 
-    /** Exposed for the tick loop and diagnostics. */
+    /**
+     * Exposed for the tick loop and diagnostics.
+     */
     boolean anyDroneBusy() {
         return this.tickLoop.anyDroneBusy();
     }
@@ -265,12 +269,16 @@ public class AIDroneManager {
         return this.lifecycle.register(drone, name, ownerName);
     }
 
-    /** Read-only view of every live controller. */
+    /**
+     * Read-only view of every live controller.
+     */
     public java.util.Collection<DroneController> controllers() {
         return this.registry.all();
     }
 
-    /** Live controller count, for status lines and diagnostics. */
+    /**
+     * Live controller count, for status lines and diagnostics.
+     */
     public int controllerCount() {
         return this.registry.size();
     }
@@ -283,7 +291,9 @@ public class AIDroneManager {
         return this.lifecycle.linkNearest(player);
     }
 
-    /** True when the mod deliberately despawned this entity. */
+    /**
+     * True when the mod deliberately despawned this entity.
+     */
     boolean wasDespawned(Drone drone) {
         return drone != null && this.registry.wasDespawned(drone.getUniqueID());
     }
@@ -292,7 +302,9 @@ public class AIDroneManager {
         return this.lifecycle.despawn(controller, dropTargetPlayer);
     }
 
-    /** @see DroneStatusRenderer#trimStatus(String) */
+    /**
+     * @see DroneStatusRenderer#trimStatus(String)
+     */
     public static String trimStatus(String s) {
         return DroneStatusRenderer.trimStatus(s);
     }

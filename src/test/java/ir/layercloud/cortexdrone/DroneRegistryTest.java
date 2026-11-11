@@ -15,7 +15,9 @@ import static org.junit.Assert.*;
  * that stops outside code mutating the index.</p>
  */
 public class DroneRegistryTest {
-    /** Drone is a live entity class; a headless instance is not constructible. */
+    /**
+     * Drone is a live entity class; a headless instance is not constructible.
+     */
     private static DroneController controller(int id, String owner) {
         return DroneController.forTest(id, "drone-" + id, owner);
     }

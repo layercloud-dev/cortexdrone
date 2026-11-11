@@ -1,19 +1,14 @@
 package ir.layercloud.cortexdrone.harness.agent;
 
-import ir.layercloud.cortexdrone.DroneController;
-import ir.layercloud.cortexdrone.config.DroneLogger;
-import ir.layercloud.cortexdrone.config.ModConfig;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.config.ModConfig;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URL;
@@ -28,8 +23,11 @@ import java.util.List;
  * {@code message.tool_calls}. It never asks the model to emit a JSON envelope
  * in prose and does not fall back to the retired {@code functions} protocol.</p>
  */
+@SuppressWarnings("unused")
 public final class LlmClient {
-    /** HTTP read timeout for a model response. */
+    /**
+     * HTTP read timeout for a model response.
+     */
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int READ_TIMEOUT_MS = 180_000;
     private final ModConfig config;
@@ -99,7 +97,7 @@ public final class LlmClient {
                 sleep(Math.min(15_000L, 1_000L * attempt * attempt));
             }
         }
-        throw last != null ? last : new IllegalStateException("LLM request failed");
+        throw last;
     }
 
     /**
@@ -136,8 +134,6 @@ public final class LlmClient {
         for (int depth = 0; cause != null && depth < 8; depth++) {
             if (cause instanceof java.io.EOFException
                     || cause instanceof java.net.SocketException
-                    || cause instanceof java.net.SocketTimeoutException
-                    || cause instanceof java.net.ConnectException
                     || cause instanceof javax.net.ssl.SSLException
                     || cause instanceof java.io.InterruptedIOException) {
                 return true;
@@ -342,7 +338,9 @@ public final class LlmClient {
         }
     }
 
-    /** HTTP failure with the status code exposed for retry decisions. */
+    /**
+     * HTTP failure with the status code exposed for retry decisions.
+     */
     public static final class GatewayException extends Exception {
         private final int httpCode;
 

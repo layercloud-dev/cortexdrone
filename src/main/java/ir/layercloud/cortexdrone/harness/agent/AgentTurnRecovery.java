@@ -14,31 +14,53 @@ import ir.layercloud.cortexdrone.harness.session.DroneSession;
  * discarded once the retries are spent.</p>
  */
 final class AgentTurnRecovery {
-    /** Retries tolerated before the turn is reported as dead. */
+    /**
+     * Retries tolerated before the turn is reported as dead.
+     */
     static final int MAX_RETRIES = 4;
-    /** First completion budget used after an unusable turn. */
+    /**
+     * First completion budget used after an unusable turn.
+     */
     static final int MIN_TOKENS = 4_096;
-    /** Hard ceiling for the escalated completion budget. */
+    /**
+     * Hard ceiling for the escalated completion budget.
+     */
     static final int MAX_TOKENS = 16_384;
 
     private AgentTurnRecovery() {
     }
 
-    /** One decision for the agent loop. */
+    /**
+     * One decision for the agent loop.
+     */
     static final class Decision {
-        /** Retry the same turn with {@link #nextBudget}. */
+        /**
+         * Retry the same turn with {@link #nextBudget}.
+         */
         final boolean retry;
-        /** The turn had no text at all (as opposed to a cut-off answer). */
+        /**
+         * The turn had no text at all (as opposed to a cut-off answer).
+         */
         final boolean empty;
-        /** Completion budget for the retry. */
+        /**
+         * Completion budget for the retry.
+         */
         final int nextBudget;
-        /** Instruction appended as the next user message. */
+        /**
+         * Instruction appended as the next user message.
+         */
         final String nudge;
-        /** Player-facing explanation when the turn is abandoned. */
+        /**
+         * Player-facing explanation when the turn is abandoned.
+         */
         final String finalMessage;
-        /** Deliver the cut-off answer instead of asking again. */
+        /**
+         * Deliver the cut-off answer instead of asking again.
+         */
         final boolean deliverTruncated;
-        /** Provider finish reason, for logging. */
+        /**
+         * Provider finish reason, for logging.
+         */
         final String finish;
 
         private Decision(boolean retry, boolean empty, int nextBudget, String nudge,
@@ -101,7 +123,9 @@ final class AgentTurnRecovery {
         return "length".equalsIgnoreCase(response.finishReason());
     }
 
-    /** Player-facing explanation for a loop that ran out of budget. */
+    /**
+     * Player-facing explanation for a loop that ran out of budget.
+     */
     static String partial(String reason, DroneSession session) {
         String last = session != null ? session.lastThought() : "";
         StringBuilder message = new StringBuilder("Stopped at the ").append(reason)

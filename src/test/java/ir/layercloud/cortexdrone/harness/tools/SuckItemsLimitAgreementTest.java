@@ -4,7 +4,8 @@ import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * The {@code suck_items} schema and the action must share one radius policy.

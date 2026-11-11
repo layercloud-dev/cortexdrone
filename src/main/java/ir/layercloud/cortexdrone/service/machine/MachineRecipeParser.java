@@ -43,7 +43,9 @@ final class MachineRecipeParser {
         }
     }
 
-    /** The shared fluid {@code outputType} some mixer-style files declare. */
+    /**
+     * The shared fluid {@code outputType} some mixer-style files declare.
+     */
     private static void readOutputType(JsonObject recipe, MachineRecipeService.NormalizedRecipe out) {
         if (!recipe.has("outputType")) return;
         JsonObject fluid = parseFluidEntryJson(recipe.get("outputType").getAsString(), 0);

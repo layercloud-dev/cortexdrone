@@ -43,7 +43,9 @@ public final class MemoryCapture {
     private MemoryCapture() {
     }
 
-    /** True when the message starts with an explicit memory instruction. */
+    /**
+     * True when the message starts with an explicit memory instruction.
+     */
     public static boolean isMemoryMessage(String message) {
         String text = normalize(message);
         return text.startsWith("remember") || text.startsWith("keep in mind")
@@ -56,7 +58,9 @@ public final class MemoryCapture {
                 || text.startsWith("save this spot");
     }
 
-    /** True when a BY_THE_WAY note should also be persisted. */
+    /**
+     * True when a BY_THE_WAY note should also be persisted.
+     */
     public static boolean containsMemoryCue(String message) {
         String text = normalize(message);
         return text.contains("remember") || text.contains("keep in mind")
@@ -79,7 +83,9 @@ public final class MemoryCapture {
                 || THIS_IS.matcher(text).find();
     }
 
-    /** Extracts an explicit "x y z" coordinate triple, or {@code null}. */
+    /**
+     * Extracts an explicit "x y z" coordinate triple, or {@code null}.
+     */
     public static int[] explicitCoordinates(String message) {
         Matcher matcher = COORDS.matcher(normalize(message));
         if (!matcher.find()) return null;
@@ -94,7 +100,9 @@ public final class MemoryCapture {
         }
     }
 
-    /** Extracts a short label such as "base", "iron farm" or "the north mine". */
+    /**
+     * Extracts a short label such as "base", "iron farm" or "the north mine".
+     */
     public static String label(String message) {
         String text = normalize(message);
         Matcher matcher = PLACE_IS.matcher(text);
@@ -113,7 +121,9 @@ public final class MemoryCapture {
         return deriveFromText(text);
     }
 
-    /** Removes the memory prefix so stored text reads naturally. */
+    /**
+     * Removes the memory prefix so stored text reads naturally.
+     */
     public static String canonicalText(String message) {
         String text = normalize(message);
         Matcher matcher = REMEMBER.matcher(text);
@@ -125,7 +135,9 @@ public final class MemoryCapture {
         return text;
     }
 
-    /** Parses "in the nether" / "in the end" / "overworld" if present. */
+    /**
+     * Parses "in the nether" / "in the end" / "overworld" if present.
+     */
     public static Integer explicitDimension(String message) {
         String text = normalize(message);
         if (text.contains("nether")) return -1;

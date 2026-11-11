@@ -26,7 +26,9 @@ public final class RegistryNames {
     private RegistryNames() {
     }
 
-    /** Display name for a block, never {@code null}. */
+    /**
+     * Display name for a block, never {@code null}.
+     */
     public static String blockDisplayName(Block block, int meta) {
         if (block == null || block == Blocks.air) return "Air";
         int key = RegistryIntrospector.blockCacheKey(block, meta);
@@ -43,7 +45,9 @@ public final class RegistryNames {
         return resolved;
     }
 
-    /** The item form's display name, or {@code null} when it is not usable. */
+    /**
+     * The item form's display name, or {@code null} when it is not usable.
+     */
     private static String fromItemStack(Block block, int meta) {
         try {
             Item item = Item.getItemFromBlock(block);
@@ -62,7 +66,9 @@ public final class RegistryNames {
         return isUsableName(localized) ? localized : null;
     }
 
-    /** A name is usable when it is not a raw translation key. */
+    /**
+     * A name is usable when it is not a raw translation key.
+     */
     private static boolean isUsableName(String name) {
         return name != null && !name.isEmpty()
                 && !name.endsWith(".name")
@@ -88,7 +94,9 @@ public final class RegistryNames {
         return identifier;
     }
 
-    /** Search blob for an item stack. */
+    /**
+     * Search blob for an item stack.
+     */
     public static String itemIdentifier(ItemStack stack) {
         if (stack == null || stack.getItem() == null) return "";
         Item item = stack.getItem();

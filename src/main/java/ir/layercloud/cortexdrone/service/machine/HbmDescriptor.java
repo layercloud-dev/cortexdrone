@@ -18,9 +18,13 @@ import java.util.List;
  * survive a {@link ClassNotFoundException}.</p>
  */
 public final class HbmDescriptor {
-    /** Mod id used as a registry prefix. */
+    /**
+     * Mod id used as a registry prefix.
+     */
     public static final String MOD_ID = "hbm";
-    /** Directory under {@code config/} holding flat recipe JSON files. */
+    /**
+     * Directory under {@code config/} holding flat recipe JSON files.
+     */
     public static final String RECIPE_DIRECTORY = "hbmRecipes";
 
     /**
@@ -60,7 +64,9 @@ public final class HbmDescriptor {
                     new String[]{"com.hbm.inventory.recipes.BlastFurnaceRecipesNT", "blast_furnace"}
             ));
 
-    /** External documentation endpoints, most specific first. */
+    /**
+     * External documentation endpoints, most specific first.
+     */
     private static final List<String> DOC_ENDPOINTS = Collections.unmodifiableList(Arrays.asList(
             "https://ntm.fandom.com/api.php",
             "https://minecraft.wiki/api.php"
@@ -69,38 +75,54 @@ public final class HbmDescriptor {
     private HbmDescriptor() {
     }
 
-    /** Fallback handlers as {@code {className, machineKind}} pairs. */
+    /**
+     * Fallback handlers as {@code {className, machineKind}} pairs.
+     */
     public static List<String[]> fallbackHandlers() {
         return FALLBACK_HANDLERS;
     }
 
-    /** Recipe-bearing classes to probe reflectively. */
+    /**
+     * Recipe-bearing classes to probe reflectively.
+     */
     public static List<String> recipeClasses() {
         return RECIPE_CLASSES;
     }
 
-    /** Wrapper classes to unwrap when reading live recipes. */
+    /**
+     * Wrapper classes to unwrap when reading live recipes.
+     */
     public static List<String> wrapperClasses() {
         return WRAPPER_CLASSES;
     }
 
-    /** Wiki API endpoints used by the documentation fallback. */
+    /**
+     * Wiki API endpoints used by the documentation fallback.
+     */
     public static List<String> docEndpoints() {
         return DOC_ENDPOINTS;
     }
 
-    /** Host used for the HBM wiki. */
+    /**
+     * Host used for the HBM wiki.
+     */
     public static final String HBM_WIKI_HOST = "ntm.fandom.com";
-    /** Host used for the vanilla/Minecraft wiki. */
+    /**
+     * Host used for the vanilla/Minecraft wiki.
+     */
     public static final String VANILLA_WIKI_HOST = "minecraft.wiki";
 
-    /** True when {@code registryName} belongs to this mod. */
+    /**
+     * True when {@code registryName} belongs to this mod.
+     */
     public static boolean ownsRegistryName(String registryName) {
         return registryName != null
                 && registryName.toLowerCase(java.util.Locale.ROOT).startsWith(MOD_ID + ":");
     }
 
-    /** True when {@code className} is one of the classes this mod provides. */
+    /**
+     * True when {@code className} is one of the classes this mod provides.
+     */
     public static boolean isOwnClass(String className) {
         return className != null
                 && className.toLowerCase(java.util.Locale.ROOT).startsWith("com.hbm.");

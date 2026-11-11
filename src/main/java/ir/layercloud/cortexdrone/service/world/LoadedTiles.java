@@ -47,7 +47,9 @@ public final class LoadedTiles {
         return found;
     }
 
-    /** Squared distance from the point to the tile's centre. */
+    /**
+     * Squared distance from the point to the tile's centre.
+     */
     public static double distanceSq(TileEntity tile, double x, double y, double z) {
         double dx = tile.xCoord + DroneGeometry.CELL_CENTER - x;
         double dy = tile.yCoord + DroneGeometry.CELL_CENTER - y;
@@ -55,7 +57,9 @@ public final class LoadedTiles {
         return dx * dx + dy * dy + dz * dz;
     }
 
-    /** Chests sort before other containers at equal convenience. */
+    /**
+     * Chests sort before other containers at equal convenience.
+     */
     private static final Comparator<TileEntity> CHESTS_FIRST =
             Comparator.comparingInt(tile -> tile instanceof TileEntityChest ? 0 : 1);
 }

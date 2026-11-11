@@ -26,7 +26,9 @@ public class CombatAssessment {
     boolean animal;
     boolean player;
 
-    /** True when policy allows an attack: alive and not a player. */
+    /**
+     * True when policy allows an attack: alive and not a player.
+     */
     boolean attackable;
 
     float health;
@@ -34,10 +36,14 @@ public class CombatAssessment {
     float absorption;
     float totalHealth;
     int armor;
-    /** Potion resistance level: 0 = none, 1 = Resistance I, ... */
+    /**
+     * Potion resistance level: 0 = none, 1 = Resistance I, ...
+     */
     int resistanceLevel;
     int hurtResistantTime;
-    /** True while a hit would be ignored by the hurt-resistance window. */
+    /**
+     * True while a hit would be ignored by the hurt-resistance window.
+     */
     boolean immune;
     int nextAttackInMs;
 
@@ -55,7 +61,9 @@ public class CombatAssessment {
     boolean canDamage;
     int attacksToKill;
     double estimatedSeconds;
-    /** Human-readable reason the target cannot be finished, or {@code null}. */
+    /**
+     * Human-readable reason the target cannot be finished, or {@code null}.
+     */
     String blocker;
 
     public static CombatAssessment notFound(int entityId) {

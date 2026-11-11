@@ -29,6 +29,7 @@ import java.util.List;
  * </ul>
  */
 @RequiredArgsConstructor
+@SuppressWarnings("unused")
 public final class RestoreBlocksAction implements Action<BlockContext> {
     private final DamageJournal journal;
 
@@ -71,7 +72,9 @@ public final class RestoreBlocksAction implements Action<BlockContext> {
                 .build());
     }
 
-    /** @return true when the recorded block is back in the world */
+    /**
+     * @return true when the recorded block is back in the world
+     */
     private static boolean restore(World world, DamageJournal.Record record) {
         if (record == null || record.block() == null) return false;
         int x = record.x();
@@ -97,7 +100,9 @@ public final class RestoreBlocksAction implements Action<BlockContext> {
         return true;
     }
 
-    /** Convenience for other actions that need to capture a tile snapshot. */
+    /**
+     * Convenience for other actions that need to capture a tile snapshot.
+     */
     public static NBTTagCompound snapshotTile(World world, int x, int y, int z) {
         try {
             TileEntity entity = world.getTileEntity(x, y, z);

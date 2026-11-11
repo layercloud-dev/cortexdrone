@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.action.visuals;
 
 import ir.layercloud.cortexdrone.service.visuals.VisualLimits;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,6 +18,8 @@ public final class VisualsState {
     public int lightCooldown = 0;
     public long lightAnchor = Long.MIN_VALUE;
 
-    /** Packed world position -> original block-light level, for exact restore. */
+    /**
+     * Packed world position -> original block-light level, for exact restore.
+     */
     public final Map<Long, Integer> lightCells = new HashMap<>();
 }

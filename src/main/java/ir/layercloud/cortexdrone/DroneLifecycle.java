@@ -21,24 +21,42 @@ import java.util.List;
  * unit-testable with fakes and makes the coupling explicit.</p>
  */
 final class DroneLifecycle {
-    /** How far a player can be from a drone and still link it. */
+    /**
+     * How far a player can be from a drone and still link it.
+     */
     static final double LINK_RADIUS = 8.0;
-    /** Y offset used when the spawn point in front of the player is blocked. */
+    /**
+     * Y offset used when the spawn point in front of the player is blocked.
+     */
     private static final double FALLBACK_SPAWN_Y = 1.5D;
-    /** Y offset used for a normal spawn in front of the player. */
+    /**
+     * Y offset used for a normal spawn in front of the player.
+     */
     private static final double SPAWN_Y = 1.25D;
-    /** Spawn offset in front of the player. */
+    /**
+     * Spawn offset in front of the player.
+     */
     private static final double SPAWN_FORWARD = 2.0D;
-    /** LED colour of a freshly spawned drone. */
+    /**
+     * LED colour of a freshly spawned drone.
+     */
     private static final int SPAWN_LED = 0x00FFFF;
-    /** LED colour of a newly linked drone. */
+    /**
+     * LED colour of a newly linked drone.
+     */
     private static final int LINK_LED = 0x00FF88;
-    /** Initial flight-target acceleration for a spawned drone. */
+    /**
+     * Initial flight-target acceleration for a spawned drone.
+     */
     private static final float SPAWN_ACCELERATION = 0.1F;
-    /** Suffix appended to the owner's name for a default drone name. */
+    /**
+     * Suffix appended to the owner's name for a default drone name.
+     */
     static final String DEFAULT_NAME_SUFFIX = "-AI";
 
-    /** Everything the lifecycle touches outside the registry. */
+    /**
+     * Everything the lifecycle touches outside the registry.
+     */
     interface Collaborators {
         DroneRegistry registry();
 
@@ -50,16 +68,22 @@ final class DroneLifecycle {
 
         boolean ensureMachineRunningState(Drone drone);
 
-        /** Releases navigation, visuals, chunks, sessions and breadcrumbs. */
+        /**
+         * Releases navigation, visuals, chunks, sessions and breadcrumbs.
+         */
         void forgetController(DroneController controller);
 
-        /** Drops the drone's inventory at the given point. */
+        /**
+         * Drops the drone's inventory at the given point.
+         */
         int dropInventory(Drone drone, World world, double x, double y, double z);
     }
 
     private final Collaborators collaborators;
 
-    /** Creates and indexes a controller for a live drone. */
+    /**
+     * Creates and indexes a controller for a live drone.
+     */
     DroneController register(Drone drone, String name, String ownerName) {
         DroneRegistry registry = this.collaborators.registry();
         DroneController controller = new DroneController(registry.nextId(), drone, name, ownerName);
@@ -67,7 +91,9 @@ final class DroneLifecycle {
         return controller;
     }
 
-    /** Finds a controller by the entity it points at or by entity UUID. */
+    /**
+     * Finds a controller by the entity it points at or by entity UUID.
+     */
     DroneController findByEntity(Drone drone) {
         if (drone == null) return null;
         DroneController byInstance = this.collaborators.registry().findByControllerEntity(drone);
@@ -227,7 +253,9 @@ final class DroneLifecycle {
         return dropped;
     }
 
-    /** Removes the persisted binding for a despawned entity. */
+    /**
+     * Removes the persisted binding for a despawned entity.
+     */
     private void removeSavedBinding(Drone drone) {
         ModConfig config = this.collaborators.config();
         if (config == null || config.getSavedDrones() == null) return;

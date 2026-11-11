@@ -8,13 +8,17 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
  * cost" question has one answer that can be tested without a world.</p>
  */
 final class FlightStepRules {
-    /** Extra cost when the step has no floor below it. */
+    /**
+     * Extra cost when the step has no floor below it.
+     */
     static final double NO_GROUND_PENALTY = 0.35D;
 
     private FlightStepRules() {
     }
 
-    /** Number of non-zero axes in a step (1 = face, 2 = edge, 3 = corner). */
+    /**
+     * Number of non-zero axes in a step (1 = face, 2 = edge, 3 = corner).
+     */
     static int manhattan(int dx, int dy, int dz) {
         int count = 0;
         if (dx != 0) count++;
@@ -23,7 +27,9 @@ final class FlightStepRules {
         return count;
     }
 
-    /** Geometric length of a unit step along the non-zero axes. */
+    /**
+     * Geometric length of a unit step along the non-zero axes.
+     */
     static double baseCost(int dx, int dy, int dz) {
         switch (manhattan(dx, dy, dz)) {
             case 1:
@@ -40,9 +46,9 @@ final class FlightStepRules {
     /**
      * Adds the liquid and no-ground penalties to a base cost.
      *
-     * @param inLiquid      the destination cell holds a liquid
-     * @param dangerous     that liquid is lava or another damaging fluid
-     * @param hasGround     a solid block sits directly below the destination
+     * @param inLiquid  the destination cell holds a liquid
+     * @param dangerous that liquid is lava or another damaging fluid
+     * @param hasGround a solid block sits directly below the destination
      */
     static double withPenalties(double baseCost, boolean inLiquid, boolean dangerous,
                                 boolean hasGround) {

@@ -16,6 +16,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * A context with a {@code null} controller is valid for drone-independent
  * tools such as {@code web_search}.</p>
  */
+@SuppressWarnings("unused")
 public final class ToolContext {
     private final Harness harness;
     private final DroneController controller;
@@ -65,7 +66,9 @@ public final class ToolContext {
         return this.loopId;
     }
 
-    /** True when the generation that created this context has been superseded. */
+    /**
+     * True when the generation that created this context has been superseded.
+     */
     public boolean cancelled() {
         if (this.controller == null || this.harness == null) return false;
         if (this.controller.drone == null || this.controller.drone.isDead) return true;

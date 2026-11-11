@@ -17,14 +17,19 @@ import static org.junit.Assert.*;
  * case used to produce a one-waypoint "path" that immediately blocked and burned
  * the recovery budget.</p>
  */
+@SuppressWarnings({"SameReturnValue", "unused"})
 public class FlightPathSmootherTest {
-    /** Every line is "clear", so smoothing takes the furthest probe. */
+    /**
+     * Every line is "clear", so smoothing takes the furthest probe.
+     */
     private static boolean alwaysClear(double x1, double y1, double z1,
                                        double x2, double y2, double z2) {
         return true;
     }
 
-    /** Nothing is clear, so smoothing must keep every raw waypoint. */
+    /**
+     * Nothing is clear, so smoothing must keep every raw waypoint.
+     */
     private static boolean neverClear(double x1, double y1, double z1,
                                       double x2, double y2, double z2) {
         return false;
@@ -68,7 +73,10 @@ public class FlightPathSmootherTest {
         for (double[] point : result) {
             boolean fromInput = false;
             for (double[] candidate : input) {
-                if (Arrays.equals(candidate, point)) fromInput = true;
+                if (Arrays.equals(candidate, point)) {
+                    fromInput = true;
+                    break;
+                }
             }
             assertTrue("smoothed waypoints must come from the raw path", fromInput);
         }

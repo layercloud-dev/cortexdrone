@@ -18,7 +18,9 @@ import static org.junit.Assert.*;
  * <em>sender's</em> feet. Permission level 0 made it available to everyone.</p>
  */
 public class DespawnTargetsTest {
-    /** DroneController needs a live Drone entity, so use a name-only stand-in. */
+    /**
+     * DroneController needs a live Drone entity, so use a name-only stand-in.
+     */
     private static DroneController drone(int id, String name, String owner) {
         return DroneController.forTest(id, name, owner);
     }

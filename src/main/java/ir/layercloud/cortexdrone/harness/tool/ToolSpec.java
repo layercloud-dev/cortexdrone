@@ -4,11 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Immutable declaration of one tool: name, model-facing description, JSON
@@ -16,6 +12,7 @@ import java.util.Set;
  * the whole surface can be inspected and unit-tested without Minecraft.
  */
 @Getter
+@SuppressWarnings("unused")
 public final class ToolSpec {
     private final String name;
     private final String description;
@@ -47,17 +44,23 @@ public final class ToolSpec {
         return new Builder(name);
     }
 
-    /** True when the tool declares {@code capability}. */
+    /**
+     * True when the tool declares {@code capability}.
+     */
     public boolean has(ToolCapability capability) {
         return capability != null && this.capabilities.contains(capability);
     }
 
-    /** True when the tool changes the world or an inventory. */
+    /**
+     * True when the tool changes the world or an inventory.
+     */
     public boolean mutatesAnything() {
         return has(ToolCapability.MUTATES_WORLD) || has(ToolCapability.MUTATES_INVENTORY);
     }
 
-    /** Ordered property names, used to map positional JavaScript arguments. */
+    /**
+     * Ordered property names, used to map positional JavaScript arguments.
+     */
     public List<String> argumentOrder() {
         JsonObject properties = this.parameters.getAsJsonObject("properties");
         List<String> order = new ArrayList<>();
@@ -68,7 +71,9 @@ public final class ToolSpec {
         return Collections.unmodifiableList(order);
     }
 
-    /** OpenAI {@code tools[]} entry for this spec (internal tools are skipped there). */
+    /**
+     * OpenAI {@code tools[]} entry for this spec (internal tools are skipped there).
+     */
     public JsonObject toOpenAiTool() {
         JsonObject function = new JsonObject();
         function.addProperty("name", this.name);
@@ -81,7 +86,9 @@ public final class ToolSpec {
         return tool;
     }
 
-    /** Compact one-line description used in the generated prompt tool map. */
+    /**
+     * Compact one-line description used in the generated prompt tool map.
+     */
     public JsonObject toPromptEntry() {
         JsonObject entry = new JsonObject();
         entry.addProperty("name", this.name);
@@ -137,7 +144,9 @@ public final class ToolSpec {
             return this;
         }
 
-        /** Internal tools exist for the JS transport layer and are hidden from the model. */
+        /**
+         * Internal tools exist for the JS transport layer and are hidden from the model.
+         */
         public Builder internal() {
             this.internal = true;
             return this;
@@ -148,7 +157,9 @@ public final class ToolSpec {
             return this;
         }
 
-        /** Declares one behavioural capability. */
+        /**
+         * Declares one behavioural capability.
+         */
         public Builder capability(ToolCapability value) {
             if (value != null) {
                 this.capabilities.add(value);
@@ -158,7 +169,9 @@ public final class ToolSpec {
             return this;
         }
 
-        /** Declares several behavioural capabilities. */
+        /**
+         * Declares several behavioural capabilities.
+         */
         public Builder capabilities(ToolCapability... values) {
             if (values != null) {
                 for (ToolCapability value : values) capability(value);

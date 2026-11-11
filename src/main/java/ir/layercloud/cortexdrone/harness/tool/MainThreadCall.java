@@ -17,7 +17,9 @@ import java.util.function.Consumer;
  * The queued body therefore checks an abandoned flag before doing any work.</p>
  */
 public final class MainThreadCall {
-    /** Outcome of one main-thread dispatch. */
+    /**
+     * Outcome of one main-thread dispatch.
+     */
     public static final class Result<T> {
         private final T value;
         private final Throwable error;
@@ -39,12 +41,16 @@ public final class MainThreadCall {
             return this.error;
         }
 
-        /** True when the deadline passed before the task finished. */
+        /**
+         * True when the deadline passed before the task finished.
+         */
         public boolean timedOut() {
             return this.timedOut;
         }
 
-        /** True when the task was abandoned and deliberately never ran. */
+        /**
+         * True when the task was abandoned and deliberately never ran.
+         */
         public boolean skipped() {
             return this.skipped;
         }

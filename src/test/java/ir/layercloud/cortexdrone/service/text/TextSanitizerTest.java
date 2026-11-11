@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
  * and the line-based debug log without losing legitimate Unicode (including
  * Persian, which relies on ZWNJ).
  */
+@SuppressWarnings("SpellCheckingInspection")
 public class TextSanitizerTest {
     @Test
     public void sectionSignFormattingIsRemoved() {

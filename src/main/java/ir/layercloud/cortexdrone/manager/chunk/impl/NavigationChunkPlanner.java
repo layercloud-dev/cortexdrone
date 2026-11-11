@@ -34,8 +34,8 @@ final class NavigationChunkPlanner {
      * spends its depth on a chunk the drone will not reach soon.
      */
     static List<ChunkCoordIntPair> buildDronePlan(DroneController ctrl,
-                                                   NavigationState nav,
-                                                   int chunkX, int chunkZ) {
+                                                  NavigationState nav,
+                                                  int chunkX, int chunkZ) {
         List<ChunkCoordIntPair> plan = new ArrayList<>();
         Set<ChunkCoordIntPair> seen = new HashSet<>();
 

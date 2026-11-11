@@ -3,7 +3,8 @@ package ir.layercloud.cortexdrone.harness.tool;
 import com.google.gson.JsonObject;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Only a spec that opts into inline-small scans may use the time-sliced queue.

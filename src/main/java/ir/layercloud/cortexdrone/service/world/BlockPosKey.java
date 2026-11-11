@@ -13,25 +13,33 @@ public final class BlockPosKey {
     private BlockPosKey() {
     }
 
-    /** Packs a block position. */
+    /**
+     * Packs a block position.
+     */
     public static long pack(int x, int y, int z) {
         return (((long) x & 0x3FFFFFFL) << 38)
                 | (((long) z & 0x3FFFFFFL) << 12)
                 | ((long) y & 0xFFFL);
     }
 
-    /** Unpacks the X component. */
+    /**
+     * Unpacks the X component.
+     */
     public static int unpackX(long key) {
         int x = (int) ((key >> 38) & 0x3FFFFFFL);
         return x >= 0x2000000 ? x - 0x4000000 : x;
     }
 
-    /** Unpacks the Y component. */
+    /**
+     * Unpacks the Y component.
+     */
     public static int unpackY(long key) {
         return (int) (key & 0xFFFL);
     }
 
-    /** Unpacks the Z component. */
+    /**
+     * Unpacks the Z component.
+     */
     public static int unpackZ(long key) {
         int z = (int) ((key >> 12) & 0x3FFFFFFL);
         return z >= 0x2000000 ? z - 0x4000000 : z;

@@ -13,9 +13,13 @@ import java.util.UUID;
  * queue.</p>
  */
 public class DroneController {
-    /** Slots every AI drone is normalised to. */
+    /**
+     * Slots every AI drone is normalised to.
+     */
     public static final int INVENTORY_SLOTS = 8;
-    /** Owner value for drones that belong to the server, not a player. */
+    /**
+     * Owner value for drones that belong to the server, not a player.
+     */
     public static final String SERVER_OWNER = "Server";
 
     public final int id;

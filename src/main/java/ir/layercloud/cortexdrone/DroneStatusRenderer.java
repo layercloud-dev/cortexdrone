@@ -18,20 +18,26 @@ import net.minecraft.util.EnumChatFormatting;
  * place every UI string is edited.</p>
  */
 public final class DroneStatusRenderer {
-    /** Longest status line a drone puts on its own display. */
+    /**
+     * Longest status line a drone puts on its own display.
+     */
     public static final int STATUS_DISPLAY_CHARS = 10;
 
     private DroneStatusRenderer() {
     }
 
-    /** Trims a status string to what fits on the drone's own display. */
+    /**
+     * Trims a status string to what fits on the drone's own display.
+     */
     public static String trimStatus(String value) {
         String clean = TextSanitizer.chat(value);
         return clean.length() > STATUS_DISPLAY_CHARS
                 ? clean.substring(0, STATUS_DISPLAY_CHARS) : clean;
     }
 
-    /** Formats one spoken line as a chat message. */
+    /**
+     * Formats one spoken line as a chat message.
+     */
     public static String say(String droneName, String message) {
         String cleanName = TextSanitizer.chat(droneName);
         String name = cleanName.isEmpty() ? "AI" : cleanName;
@@ -39,7 +45,9 @@ public final class DroneStatusRenderer {
                 + EnumChatFormatting.WHITE + message;
     }
 
-    /** Prints the full status block for one drone. */
+    /**
+     * Prints the full status block for one drone.
+     */
     public static void render(ICommandSender sender, DroneController ctrl,
                               NavigationManager navigation, ActionRegistry actions,
                               VisualsManager visualsManager) {

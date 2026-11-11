@@ -25,7 +25,9 @@ import java.util.List;
  * player leaves, the task is cancelled or the timeout expires.</p>
  */
 public final class QuestionView {
-    /** How long the player lookup may take on the server thread. */
+    /**
+     * How long the player lookup may take on the server thread.
+     */
     private static final long LOOKUP_TIMEOUT_MS = 3_000L;
 
     private final AIDroneManager manager;

@@ -1,16 +1,11 @@
 package ir.layercloud.cortexdrone.harness.lesson;
 
-import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import ir.layercloud.cortexdrone.config.ModPaths;
+import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -31,6 +26,7 @@ import java.util.logging.Logger;
  * the directory format is supported; the retired {@code lessons.json} is not
  * read.</p>
  */
+@SuppressWarnings("unused")
 public final class LessonStore {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
     private static final int MAX_ENTRIES = 400;
@@ -200,7 +196,6 @@ public final class LessonStore {
             LOG.warning("Could not delete lesson " + (lesson != null ? lesson.getTitle() : "?"));
         }
     }
-
 
 
     private static String slug(String value, String fallback) {

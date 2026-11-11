@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Mutable navigation state for one drone.
@@ -13,7 +14,9 @@ import java.util.Map;
  * object instead.</p>
  */
 public final class NavigationState {
-    /** Last requested/active goal. Kept at the current position on stop/idle. */
+    /**
+     * Last requested/active goal. Kept at the current position on stop/idle.
+     */
     public double goalX;
     public double goalY;
     public double goalZ;
@@ -25,12 +28,14 @@ public final class NavigationState {
      * otherwise a replace/stop from another task looks like a successful
      * arrival (the old session simply disappeared).
      */
-    public volatile long nextRequestId;
+    public final AtomicLong nextRequestId = new AtomicLong();
     public volatile long finishedRequestId;
     public volatile String finishedOutcome = "";
     public volatile String finishedError = "";
 
-    /** Current A* path and the goal it was planned for. */
+    /**
+     * Current A* path and the goal it was planned for.
+     */
     public final List<double[]> pathWaypoints = new ArrayList<>();
     public int pathIndex = 0;
     public double pathGoalX = Double.NaN;
@@ -43,11 +48,15 @@ public final class NavigationState {
     public String lastPathLogKey = "";
     public int lastPathLogTick = -10000;
 
-    /** Path cache signature (world revision + endpoint bucket). */
+    /**
+     * Path cache signature (world revision + endpoint bucket).
+     */
     public long cachedPathSignature = Long.MIN_VALUE;
     public long cachedPathCreatedTick = -1L;
 
-    /** Stall detection and throttled logging. */
+    /**
+     * Stall detection and throttled logging.
+     */
     public int stuckTicks = 0;
     public String lastStuckReason = "";
     public String lastStuckKey = "";
@@ -59,10 +68,14 @@ public final class NavigationState {
      */
     public final Map<Long, Integer> solidWaypointHits = new HashMap<>();
 
-    /** Per-drone tick clock used by the navigation cache/log throttles. */
+    /**
+     * Per-drone tick clock used by the navigation cache/log throttles.
+     */
     public int ticks = 0;
 
-    /** Last sampled drone position and movement delta, used for stall detection. */
+    /**
+     * Last sampled drone position and movement delta, used for stall detection.
+     */
     public double lastX;
     public double lastY;
     public double lastZ;
@@ -83,21 +96,27 @@ public final class NavigationState {
         this.lastZ = goalZ;
     }
 
-    /** Moves the logical goal to the position the drone currently holds. */
+    /**
+     * Moves the logical goal to the position the drone currently holds.
+     */
     public void hold(double x, double y, double z) {
         this.goalX = x;
         this.goalY = y;
         this.goalZ = z;
     }
 
-    /** Starts a new request and returns its token. */
+    /**
+     * Starts a new request and returns its token.
+     */
     public long beginRequest() {
-        long id = ++this.nextRequestId;
+        long id = this.nextRequestId.incrementAndGet();
         this.error = "";
         return id;
     }
 
-    /** Marks a request finished exactly once; later callers keep the first outcome. */
+    /**
+     * Marks a request finished exactly once; later callers keep the first outcome.
+     */
     public void finishRequest(long requestId, String outcome, String error) {
         if (requestId <= 0L || requestId <= this.finishedRequestId) return;
         // Write payload first, id last: a reader that observes the new id is
@@ -111,7 +130,9 @@ public final class NavigationState {
         return requestId > 0L && this.finishedRequestId >= requestId;
     }
 
-    /** Clears the active path without touching the logical goal. */
+    /**
+     * Clears the active path without touching the logical goal.
+     */
     public void clearPath() {
         this.pathWaypoints.clear();
         this.pathIndex = 0;

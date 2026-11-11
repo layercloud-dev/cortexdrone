@@ -16,11 +16,7 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.ForgeChunkManager.Ticket;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -44,10 +40,15 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>after the last logout, AI chunks are kept for 10s and then released.</li>
  * </ul>
  */
+@SuppressWarnings("unused")
 public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallback, ChunkAccess.Loader {
-    /** New chunk loads per 5-tick drone plan update. Prevents flight stutter. */
+    /**
+     * New chunk loads per 5-tick drone plan update. Prevents flight stutter.
+     */
     private static final int DRONE_LOAD_BUDGET = 3;
-    /** Hard cap for synchronous ray/path reads in one server tick. */
+    /**
+     * Hard cap for synchronous ray/path reads in one server tick.
+     */
     private static final int RAYCAST_LOAD_BUDGET = 2;
 
     private final AIDroneManager manager;
@@ -63,7 +64,9 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
     private final Map<Integer, Ticket> droneTickets = new ConcurrentHashMap<>();
     private final Map<Integer, DroneChunkCursor> cursors = new ConcurrentHashMap<>();
     private final Map<Ticket, Map<ChunkCoordIntPair, Long>> releaseAt = new ConcurrentHashMap<>();
-    /** Chunks this manager explicitly generated/loaded. Safe to queue for unload. */
+    /**
+     * Chunks this manager explicitly generated/loaded. Safe to queue for unload.
+     */
     private final Map<World, Set<ChunkCoordIntPair>> aiLoaded = new ConcurrentHashMap<>();
 
     private boolean unloadedAll;
@@ -133,7 +136,9 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
     // Policy / lifecycle
     // ------------------------------------------------------------------
 
-    /** Called once per server tick from AIDroneManager. */
+    /**
+     * Called once per server tick from AIDroneManager.
+     */
     public synchronized void tickPolicy(boolean anyDroneBusy) {
         this.raycastLoads = 0;
         this.policy.tick(MinecraftServer.getServer());
@@ -167,7 +172,9 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
         }
     }
 
-    /** Releases all AI tickets/chunks for a world that is being unloaded. */
+    /**
+     * Releases all AI tickets/chunks for a world that is being unloaded.
+     */
     public synchronized void releaseWorld(World world) {
         if (world == null) return;
         for (Ticket ticket : new ArrayList<>(this.droneTickets.values())) {
@@ -185,14 +192,18 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
         ChunkAccess.setLoader(null);
     }
 
-    /** Drops every AI chunk that is genuinely unowned. */
+    /**
+     * Drops every AI chunk that is genuinely unowned.
+     */
     private boolean releaseAllAiChunks() {
         boolean fullyReleased = releaseAiChunks(true);
         this.releaseAt.clear();
         return fullyReleased;
     }
 
-    /** @see AiChunkRelease#releaseAll() */
+    /**
+     * @see AiChunkRelease#releaseAll()
+     */
     private boolean releaseAiChunks(boolean dropTickets) {
         if (dropTickets) {
             for (Ticket ticket : new ArrayList<>(this.droneTickets.values())) {
@@ -204,7 +215,9 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
         return fullyReleased;
     }
 
-    /** @see AiChunkRelease#releaseOutsideView() */
+    /**
+     * @see AiChunkRelease#releaseOutsideView()
+     */
     private void unloadAiOutsideView() {
         this.release.releaseOutsideView();
         for (Ticket ticket : new ArrayList<>(this.droneTickets.values())) {

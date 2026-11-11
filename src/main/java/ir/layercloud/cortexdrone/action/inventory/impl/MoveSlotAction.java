@@ -1,15 +1,14 @@
 package ir.layercloud.cortexdrone.action.inventory.impl;
 
-import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
-import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.inventory.ContainerGuard;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
-import ir.layercloud.cortexdrone.service.inventory.ContainerAnimation;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
+import ir.layercloud.cortexdrone.service.inventory.ContainerAnimation;
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -84,13 +83,17 @@ public final class MoveSlotAction implements Action<InventoryContext> {
         context.result(InventoryResult.success("moved", moved));
     }
 
-    /** Nearest container in reach, used when the caller did not name one. */
+    /**
+     * Nearest container in reach, used when the caller did not name one.
+     */
     private TileEntity nearestReachableSource(World world, Drone drone) {
         java.util.List<TileEntity> tiles = this.reachableContainers(world, drone);
         return tiles.isEmpty() ? null : tiles.get(0);
     }
 
-    /** Nearest reachable container that still has free space. */
+    /**
+     * Nearest reachable container that still has free space.
+     */
     private TileEntity nearestReachableTarget(World world, Drone drone, TileEntity source) {
         for (TileEntity tile : this.reachableContainers(world, drone)) {
             if (tile == source || !(tile instanceof IInventory)) continue;

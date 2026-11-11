@@ -23,15 +23,23 @@ public final class WorldScanBudget {
      */
     public static final long SEARCH_BUDGET_MS = 8_000L;
 
-    /** Nearest spiral radius, in blocks. */
+    /**
+     * Nearest spiral radius, in blocks.
+     */
     public static final int SEARCH_MIN_RADIUS = 16;
 
-    /** How far each spiral pass advances, in blocks. */
+    /**
+     * How far each spiral pass advances, in blocks.
+     */
     public static final int SEARCH_RADIUS_STEP = 24;
 
-    /** Blocks sampled around each spiral point along X and Z. */
+    /**
+     * Blocks sampled around each spiral point along X and Z.
+     */
     public static final int SEARCH_SAMPLE_RADIUS = 5;
 
-    /** Extra chunks a distant search will force-load per call. */
+    /**
+     * Extra chunks a distant search will force-load per call.
+     */
     public static final int SEARCH_MAX_CHUNK_LOADS = 16;
 }

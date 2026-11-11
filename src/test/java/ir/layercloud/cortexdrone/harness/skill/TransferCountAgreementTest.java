@@ -1,8 +1,8 @@
 package ir.layercloud.cortexdrone.harness.skill;
 
-import ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner;
-import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
+import ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner;
 import ir.layercloud.cortexdrone.service.world.ScanLimits;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import org.junit.Test;
@@ -17,7 +17,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * The script-side limit table mirrors the Java policy classes.

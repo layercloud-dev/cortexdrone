@@ -16,7 +16,9 @@ final class RecipeOutputReader {
     private RecipeOutputReader() {
     }
 
-    /** Reads every item and fluid output declared by {@code recipe}. */
+    /**
+     * Reads every item and fluid output declared by {@code recipe}.
+     */
     static void read(JsonObject recipe, MachineRecipeService.NormalizedRecipe out) {
         for (String key : RecipeKeys.OUTPUTS) {
             readKey(recipe, key, out);
@@ -40,7 +42,9 @@ final class RecipeOutputReader {
         }
     }
 
-    /** A key explicitly typed as fluid: one entry or a list of entries. */
+    /**
+     * A key explicitly typed as fluid: one entry or a list of entries.
+     */
     private static void readFluidValue(JsonElement element,
                                        MachineRecipeService.NormalizedRecipe out) {
         if (element.isJsonArray()) {
@@ -103,7 +107,9 @@ final class RecipeOutputReader {
         addSingle(array, out);
     }
 
-    /** Parses the whole array as one item, falling back to each element. */
+    /**
+     * Parses the whole array as one item, falling back to each element.
+     */
     private static void addSingle(JsonArray array, MachineRecipeService.NormalizedRecipe out) {
         JsonObject item = MachineRecipeParser.parseOutputEntry(array);
         if (item != null) {
@@ -132,7 +138,9 @@ final class RecipeOutputReader {
         return MachineRecipeParser.isFluidNameHeuristic(name);
     }
 
-    /** A key explicitly holding a fluid-output list. */
+    /**
+     * A key explicitly holding a fluid-output list.
+     */
     private static void readFluidOutputArray(JsonObject recipe, String key,
                                              MachineRecipeService.NormalizedRecipe out) {
         if (!recipe.has(key) || !recipe.get(key).isJsonArray()) return;

@@ -10,6 +10,7 @@ import lombok.Value;
  * it and stops as soon as the block is visible and within reach.</p>
  */
 @Value
+@SuppressWarnings("unused")
 public class NavigationTarget {
     double x;
     double y;

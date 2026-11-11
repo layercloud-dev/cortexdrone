@@ -3,7 +3,8 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
 import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Flies the real integrator and measures the achieved speed.
@@ -16,7 +17,9 @@ import static org.junit.Assert.*;
  * distance actually covered per tick.</p>
  */
 public class FlightSpeedModelTest {
-    /** Drone drag in air; OC's drone uses 0.91. */
+    /**
+     * Drone drag in air; OC's drone uses 0.91.
+     */
     private static final double DRAG = 0.91;
     private static final float ACCEL_FLOOR = 0.1f;
 

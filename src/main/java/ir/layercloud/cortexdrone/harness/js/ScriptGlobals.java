@@ -4,11 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import org.mozilla.javascript.BaseFunction;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.ScriptableObject;
-import org.mozilla.javascript.Undefined;
+import org.mozilla.javascript.*;
 
 import java.util.List;
 
@@ -20,12 +16,19 @@ import java.util.List;
  * surface is the {@code drone} and {@code skills} objects, and everything here
  * exists so a script can log and pause without reaching for Java.</p>
  */
+@SuppressWarnings({"SynchronizationOnLocalVariableOrMethodParameter", "unused"})
 final class ScriptGlobals {
-    /** Longest a script may sleep in one call. */
+    /**
+     * Longest a script may sleep in one call.
+     */
     static final long MAX_SLEEP_MS = 10_000L;
-    /** Longest log line kept in the result envelope. */
+    /**
+     * Longest log line kept in the result envelope.
+     */
     private static final int MAX_LOG_CHARS = 24_000;
-    /** Most log lines kept in the result envelope. */
+    /**
+     * Most log lines kept in the result envelope.
+     */
     private static final int MAX_LOG_ENTRIES = 200;
 
     private final ToolRegistry registry;
@@ -34,7 +37,9 @@ final class ScriptGlobals {
         this.registry = registry;
     }
 
-    /** Installs {@code console}, {@code log}, {@code sleep} and {@code ctx}. */
+    /**
+     * Installs {@code console}, {@code log}, {@code sleep} and {@code ctx}.
+     */
     void bind(Context cx, Scriptable scope, ToolContext context, List<String> logs, JsBudget budget) {
         bindConsole(cx, scope, logs);
         bindSleep(cx, scope, budget);
@@ -73,7 +78,9 @@ final class ScriptGlobals {
         ScriptableObject.putProperty(scope, "sleep", sleep);
     }
 
-    /** Sleeps, restoring the interrupt flag rather than swallowing it. */
+    /**
+     * Sleeps, restoring the interrupt flag rather than swallowing it.
+     */
     static void sleepQuietly(long ms) {
         try {
             Thread.sleep(ms);
@@ -98,7 +105,9 @@ final class ScriptGlobals {
         ScriptableObject.putProperty(scope, "ctx", meta);
     }
 
-    /** Appends one formatted log line, bounded in count and size. */
+    /**
+     * Appends one formatted log line, bounded in count and size.
+     */
     static void appendLog(List<String> logs, Context cx, Scriptable scope, Object[] args) {
         StringBuilder line = new StringBuilder();
         int total = 0;
@@ -119,7 +128,9 @@ final class ScriptGlobals {
         }
     }
 
-    /** Logs as a JSON array, copied under the list's lock. */
+    /**
+     * Logs as a JSON array, copied under the list's lock.
+     */
     static JsonArray logsJson(List<String> logs) {
         JsonArray array = new JsonArray();
         synchronized (logs) {

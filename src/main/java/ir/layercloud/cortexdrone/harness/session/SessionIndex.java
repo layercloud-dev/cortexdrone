@@ -29,7 +29,9 @@ final class SessionIndex {
         this.indexFile = indexFile;
     }
 
-    /** Appends one entry as a single line. Failures are silent by design. */
+    /**
+     * Appends one entry as a single line. Failures are silent by design.
+     */
     synchronized void append(JsonObject entry) {
         if (entry == null) return;
         File parent = this.indexFile.getParentFile();
@@ -42,7 +44,9 @@ final class SessionIndex {
         }
     }
 
-    /** Every readable entry, oldest first. */
+    /**
+     * Every readable entry, oldest first.
+     */
     synchronized List<JsonObject> read() {
         List<JsonObject> entries = new ArrayList<>();
         if (!this.indexFile.isFile()) return entries;
@@ -66,7 +70,9 @@ final class SessionIndex {
         return entries;
     }
 
-    /** Most recent entries first, optionally filtered, capped at {@code limit}. */
+    /**
+     * Most recent entries first, optionally filtered, capped at {@code limit}.
+     */
     List<JsonObject> recent(int limit, SessionOutcome filter) {
         List<JsonObject> all = read();
         List<JsonObject> out = new ArrayList<>();
@@ -78,7 +84,9 @@ final class SessionIndex {
         return out;
     }
 
-    /** One counter per known outcome, in enum order. */
+    /**
+     * One counter per known outcome, in enum order.
+     */
     java.util.Map<String, Integer> counts() {
         java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
         for (SessionOutcome outcome : SessionOutcome.values()) counts.put(outcome.id(), 0);
@@ -90,7 +98,9 @@ final class SessionIndex {
         return counts;
     }
 
-    /** Finds an entry by full id, id prefix or file path fragment. */
+    /**
+     * Finds an entry by full id, id prefix or file path fragment.
+     */
     JsonObject find(String key) {
         if (key == null || key.trim().isEmpty()) return null;
         String needle = key.trim();
@@ -107,7 +117,9 @@ final class SessionIndex {
         return null;
     }
 
-    /** Resolves the transcript file of one index entry. */
+    /**
+     * Resolves the transcript file of one index entry.
+     */
     File fileFor(File sessionsRoot, JsonObject entry) {
         String file = string(entry, "file");
         return file.isEmpty() ? null : new File(sessionsRoot, file);

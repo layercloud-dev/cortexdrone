@@ -15,12 +15,18 @@ import net.minecraft.world.World;
  * time budget, check arrival, advance the leg, then plan if idle.</p>
  */
 final class NavigationTicker {
-    /** Hard cap on a single request's lifetime, in ticks. */
+    /**
+     * Hard cap on a single request's lifetime, in ticks.
+     */
     static final int MAX_FLIGHT_TICKS = 12000;
-    /** Distance gain that counts as real progress, in blocks. */
+    /**
+     * Distance gain that counts as real progress, in blocks.
+     */
     private static final double PROGRESS_EPSILON = 0.5D;
 
-    /** Everything the ticker needs from the manager. */
+    /**
+     * Everything the ticker needs from the manager.
+     */
     interface Host {
         NavigationState state(DroneController controller);
 
@@ -46,7 +52,9 @@ final class NavigationTicker {
         this.host = host;
     }
 
-    /** Advances one session, if the drone has one. */
+    /**
+     * Advances one session, if the drone has one.
+     */
     void tick(DroneController controller) {
         if (controller == null || controller.drone == null) return;
         NavigationState state = this.host.state(controller);
@@ -93,7 +101,9 @@ final class NavigationTicker {
         state.lastMoveSq = movedSq;
     }
 
-    /** True when the session is finished and the drone has been told. */
+    /**
+     * True when the session is finished and the drone has been told.
+     */
     private boolean hasArrived(DroneController controller, NavigationSession session,
                                NavigationState state, Drone drone) {
         if (session.targetBlock != null && TunnelPlanner.inReach(drone,
@@ -112,7 +122,9 @@ final class NavigationTicker {
         return false;
     }
 
-    /** Resets the recovery budget whenever the drone actually gets closer. */
+    /**
+     * Resets the recovery budget whenever the drone actually gets closer.
+     */
     private static void noteProgress(NavigationSession session, Drone drone, NavigationState state) {
         double distance = drone.getDistance(state.goalX, state.goalY, state.goalZ);
         if (distance < session.bestDistance - PROGRESS_EPSILON) {

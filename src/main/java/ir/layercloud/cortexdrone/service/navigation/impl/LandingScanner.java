@@ -2,8 +2,8 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
 
 import ir.layercloud.cortexdrone.service.navigation.LandingSpot;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-import lombok.experimental.UtilityClass;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
+import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.util.MathHelper;
@@ -30,12 +30,19 @@ import net.minecraft.world.World;
  * </ol>
  */
 @UtilityClass
+@SuppressWarnings("unused")
 public final class LandingScanner {
-    /** Vanilla safe fall distance is 3; a passenger should never need more than 2. */
+    /**
+     * Vanilla safe fall distance is 3; a passenger should never need more than 2.
+     */
     public static final int MAX_SAFE_DROP = 2;
-    /** How far below the requested Y a surface landing may be found. */
+    /**
+     * How far below the requested Y a surface landing may be found.
+     */
     public static final int MAX_SCAN_DOWN = 48;
-    /** How far above the requested Y a landing may be found (hill, canopy gap). */
+    /**
+     * How far above the requested Y a landing may be found (hill, canopy gap).
+     */
     public static final int MAX_SCAN_UP = 8;
     private static final int MIN_Y = WorldBounds.MIN_SCAN_Y + 1;
     private static final int MAX_Y = WorldBounds.MAX_LANDING_Y;
@@ -46,13 +53,19 @@ public final class LandingScanner {
      * only bounds the pathological "no landing anywhere" case.
      */
     private static final int MAX_COLUMNS = 384;
-    /** Horizontal search-radius bounds; the tool schema aliases these. */
+    /**
+     * Horizontal search-radius bounds; the tool schema aliases these.
+     */
     public static final int MIN_RADIUS = 1;
     public static final int MAX_RADIUS = 24;
-    /** Default horizontal search radius. */
+    /**
+     * Default horizontal search radius.
+     */
     public static final int DEFAULT_RADIUS = 12;
 
-    /** World-backed probe used by every public entry point. */
+    /**
+     * World-backed probe used by every public entry point.
+     */
     public static LandingProbe probe(World world) {
         return new WorldLandingProbe(world);
     }
@@ -60,13 +73,13 @@ public final class LandingScanner {
     /**
      * Finds the best safe landing column within {@code radius} of the request.
      *
-     * @param world           server world
-     * @param cx              requested centre X
-     * @param cz              requested centre Z
-     * @param refY            the Y the caller aimed at (a preference, not a limit)
-     * @param radius          horizontal search radius, clamped to 1..24
-     * @param requireOpenSky  skip covered pockets; a passenger is only flown
-     *                        into open sky, because entering a cave crushes them
+     * @param world          server world
+     * @param cx             requested centre X
+     * @param cz             requested centre Z
+     * @param refY           the Y the caller aimed at (a preference, not a limit)
+     * @param radius         horizontal search radius, clamped to 1..24
+     * @param requireOpenSky skip covered pockets; a passenger is only flown
+     *                       into open sky, because entering a cave crushes them
      * @return the best safe spot, or {@code null} when every candidate is unsafe
      */
     public static LandingSpot findSafeSpot(World world, int cx, int cz, int refY,
@@ -109,7 +122,6 @@ public final class LandingScanner {
             if (ringBest != null && ringScore < bestScore) {
                 // An outer ring is only better when it is dramatically clearer;
                 // the first usable ring is normally the right answer.
-                bestScore = ringScore;
                 best = ringBest;
                 break;
             }
@@ -121,7 +133,9 @@ public final class LandingScanner {
         return findSafeSpot(world, cx, cz, refY, radius, false);
     }
 
-    /** Probe-backed variant for callers that already built a probe. */
+    /**
+     * Probe-backed variant for callers that already built a probe.
+     */
     public static LandingSpot findSafeSpot(LandingProbe probe, int cx, int cz, int refY, int radius) {
         return findSafeSpot(probe, cx, cz, refY, radius, false);
     }
@@ -203,7 +217,9 @@ public final class LandingScanner {
                 probe.floorName(x, feetY - 1, z));
     }
 
-    /** True when this exact block is a safe passenger feet position. */
+    /**
+     * True when this exact block is a safe passenger feet position.
+     */
     public static boolean isSafe(World world, int x, int y, int z) {
         LandingSpot spot = inspectAt(world, x, y, z, y);
         return spot != null && spot.isSafe();
@@ -241,12 +257,16 @@ public final class LandingScanner {
         return spot != null && spot.isSafe();
     }
 
-    /** Probe-backed variant of {@link #isSafe(World, int, int, int)}. */
+    /**
+     * Probe-backed variant of {@link #isSafe(World, int, int, int)}.
+     */
     public static boolean isSafeAt(LandingProbe probe, int x, int y, int z) {
         return isSafe(probe, x, y, z);
     }
 
-    /** The nearest hover point where {@link #canDismountHere} is true. */
+    /**
+     * The nearest hover point where {@link #canDismountHere} is true.
+     */
     public static LandingSpot findDismountSpot(World world, double x, double y, double z,
                                                int radius) {
         return findDismountSpot(world, x, y, z, radius, false);
@@ -288,7 +308,9 @@ public final class LandingScanner {
         return null;
     }
 
-    /** Builds a probe over a live world. Package-private for the tests. */
+    /**
+     * Builds a probe over a live world. Package-private for the tests.
+     */
     static final class WorldLandingProbe implements LandingProbe {
         private final World world;
 

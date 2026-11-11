@@ -23,7 +23,9 @@ public final class MineFilter {
     private MineFilter() {
     }
 
-    /** True when the block matches one clause of a mine filter. */
+    /**
+     * True when the block matches one clause of a mine filter.
+     */
     public static boolean matches(Block block, int meta, String filter) {
         if (block == null || filter == null) return false;
         String clause = normalize(filter);
@@ -53,7 +55,9 @@ public final class MineFilter {
         return LexicalItemMatcher.scoreSingleMatch(display, identifier, normalizedMeta, clause) > 0;
     }
 
-    /** Category words resolve without touching the dictionary. */
+    /**
+     * Category words resolve without touching the dictionary.
+     */
     private static Boolean matchCategory(Block block, int meta, String clause) {
         switch (clause) {
             case "all non air":

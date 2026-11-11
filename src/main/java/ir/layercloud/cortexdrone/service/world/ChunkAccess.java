@@ -22,7 +22,9 @@ public final class ChunkAccess {
     private ChunkAccess() {
     }
 
-    /** Installed by the navigation chunk manager for one server lifetime. */
+    /**
+     * Installed by the navigation chunk manager for one server lifetime.
+     */
     public interface Loader {
         boolean ensureLoaded(World world, int chunkX, int chunkZ);
     }

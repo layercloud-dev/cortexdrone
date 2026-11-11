@@ -8,7 +8,9 @@ import java.util.Set;
 import static org.junit.Assert.*;
 
 public class BlockSightTest {
-    /** Solid 3x3x3 cube of stone from (0,0,0) to (2,2,2), everything else air. */
+    /**
+     * Solid 3x3x3 cube of stone from (0,0,0) to (2,2,2), everything else air.
+     */
     private static final BlockSight.VoxelPassability CUBE = (x, y, z) ->
             x < 0 || x > 2 || y < 0 || y > 2 || z < 0 || z > 2;
 

@@ -1,8 +1,8 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.navigation.impl.DigPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
@@ -32,13 +32,17 @@ import net.minecraft.world.World;
  * diagonal the straight ray never sampled.</p>
  */
 final class TunnelRecovery {
-    /** A dig-aware route never starts with a block farther than this. */
+    /**
+     * A dig-aware route never starts with a block farther than this.
+     */
     private static final double MAX_FIRST_BREAK = 24.0D;
 
     private TunnelRecovery() {
     }
 
-    /** Consecutive non-approaching digs before the tunnel is re-routed. */
+    /**
+     * Consecutive non-approaching digs before the tunnel is re-routed.
+     */
     private static final int MAX_USELESS_DIGS = 24;
 
     /**

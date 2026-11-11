@@ -4,7 +4,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/** The admin subcommands must only reveal a masked secret. */
+/**
+ * The admin subcommands must only reveal a masked secret.
+ */
 public class AdminCommandsTest {
     @Test
     public void secretsAreMaskedWithPrefixAndSuffixOnly() {

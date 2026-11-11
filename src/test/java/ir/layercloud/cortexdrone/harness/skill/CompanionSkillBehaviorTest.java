@@ -3,10 +3,10 @@ package ir.layercloud.cortexdrone.harness.skill;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
+import org.junit.Test;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import org.junit.Test;
 
 import static org.junit.Assert.*;
 
@@ -142,7 +142,7 @@ public class CompanionSkillBehaviorTest extends SkillTestSupport {
         });
         JsonObject result = harness.run("carry_player",
                 "{destination:{x:20,y:120,z:20}}");
-        assertFalse("a trip with no safe landing must not report success", 
+        assertFalse("a trip with no safe landing must not report success",
                 result.get("ok").getAsBoolean());
         boolean dismounted = false;
         for (Call call : harness.calls) {

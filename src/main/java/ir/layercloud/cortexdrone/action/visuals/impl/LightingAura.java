@@ -1,14 +1,13 @@
 package ir.layercloud.cortexdrone.action.visuals.impl;
 
-import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.action.visuals.LightConfig;
 import ir.layercloud.cortexdrone.action.visuals.LightResult;
-import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.action.visuals.VisualsState;
+import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.service.visuals.VisualLimits;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -229,7 +228,6 @@ public class LightingAura {
         int bit = 1 << (y >> 4);
         chunkMasks.compute(key, (k, old) -> (old == null ? 0 : old) | bit);
     }
-
 
 
     private static long pack(int x, int y, int z) {

@@ -6,9 +6,12 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-/** Session topic classification is a small, testable vocabulary. */
+/**
+ * Session topic classification is a small, testable vocabulary.
+ */
 public class SessionTopicsTest {
     @Test
     public void promptsMapToTheirTopic() {

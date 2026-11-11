@@ -15,18 +15,24 @@ import java.util.Locale;
  * for tokenizing and singularizing.</p>
  */
 public final class EntityClassifier {
-    /** Default filter when the caller names none. */
+    /**
+     * Default filter when the caller names none.
+     */
     static final String DEFAULT_FILTER = "animal";
 
     private EntityClassifier() {
     }
 
-    /** True when the entity is hostile or a mutant variant. */
+    /**
+     * True when the entity is hostile or a mutant variant.
+     */
     public static boolean isHostile(EntityLivingBase entity) {
         return RegistryIntrospector.isHostileEntity(entity);
     }
 
-    /** True when the entity is passive (an animal or similar). */
+    /**
+     * True when the entity is passive (an animal or similar).
+     */
     public static boolean isPassive(EntityLivingBase entity) {
         return RegistryIntrospector.isPassiveEntity(entity);
     }

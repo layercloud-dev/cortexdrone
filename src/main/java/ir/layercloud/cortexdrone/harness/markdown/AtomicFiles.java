@@ -1,11 +1,6 @@
 package ir.layercloud.cortexdrone.harness.markdown;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
-import java.io.FileWriter;
-import java.io.FileReader;
+import java.io.*;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -40,15 +35,17 @@ public final class AtomicFiles {
         } catch (Exception e) {
             // Never leave a half-written .tmp behind: on the next run it reads as
             // a real file to tools and confuses the user.
-            temp.delete();
+            if (temp.exists() && !temp.delete()) return false;
             return false;
         }
         if (replace(temp, target)) return true;
-        temp.delete();
+        temp.deleteOnExit();
         return false;
     }
 
-    /** Moves {@code temp} over {@code target}, falling back to a plain replace. */
+    /**
+     * Moves {@code temp} over {@code target}, falling back to a plain replace.
+     */
     public static boolean replace(File temp, File target) {
         if (temp == null || target == null || !temp.isFile()) return false;
         try {
@@ -68,7 +65,9 @@ public final class AtomicFiles {
         }
     }
 
-    /** Reads a whole text file, or returns {@code null} when it cannot be read. */
+    /**
+     * Reads a whole text file, or returns {@code null} when it cannot be read.
+     */
     public static String readText(File file) {
         if (file == null || !file.isFile()) return null;
         try (Reader reader = new FileReader(file)) {
@@ -82,7 +81,9 @@ public final class AtomicFiles {
         }
     }
 
-    /** Deletes a file or directory tree; missing paths are a no-op. */
+    /**
+     * Deletes a file or directory tree; missing paths are a no-op.
+     */
     public static boolean deleteRecursively(File file) {
         if (file == null || !file.exists()) return true;
         File[] children = file.listFiles();

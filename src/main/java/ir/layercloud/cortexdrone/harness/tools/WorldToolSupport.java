@@ -1,11 +1,10 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.service.world.ChunkAccess;
-import ir.layercloud.cortexdrone.service.world.ItemClassifier;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
+import ir.layercloud.cortexdrone.service.world.ChunkAccess;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -19,6 +18,7 @@ import net.minecraft.world.World;
  * world query reports the same fields and the same "chunk not loaded" guidance
  * instead of each tool inventing its own.</p>
  */
+@SuppressWarnings("unused")
 public final class WorldToolSupport {
     private WorldToolSupport() {
     }
@@ -44,7 +44,9 @@ public final class WorldToolSupport {
         return new int[]{x, y, z};
     }
 
-    /** True when the drone's own chunk is loaded; most world reads need it. */
+    /**
+     * True when the drone's own chunk is loaded; most world reads need it.
+     */
     public static boolean droneChunkLoaded(Drone drone) {
         World world = drone.worldObj;
         return world == null || world.isRemote
@@ -65,7 +67,9 @@ public final class WorldToolSupport {
                 true);
     }
 
-    /** Full descriptor for one block, used by single reads. */
+    /**
+     * Full descriptor for one block, used by single reads.
+     */
     public static JsonObject blockJson(World world, int x, int y, int z) {
         Block block = world.getBlock(x, y, z);
         int meta = world.getBlockMetadata(x, y, z);
@@ -83,7 +87,9 @@ public final class WorldToolSupport {
         return out;
     }
 
-    /** Appends the ore-dictionary tags of a block when it has any. */
+    /**
+     * Appends the ore-dictionary tags of a block when it has any.
+     */
     public static void addOreDict(JsonObject target, Block block, int meta, boolean air) {
         if (air) return;
         JsonArray tags = ItemClassifier.blockOreDictJson(block, meta);

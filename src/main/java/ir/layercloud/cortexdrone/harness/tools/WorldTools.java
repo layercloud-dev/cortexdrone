@@ -7,7 +7,6 @@ import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +31,9 @@ public final class WorldTools implements ToolProvider {
         this.buildPlans = new WorldBuildPlanTools(manager);
     }
 
-    /** Every spec declared by the world providers. */
+    /**
+     * Every spec declared by the world providers.
+     */
     public static List<ToolSpec> specs() {
         List<ToolSpec> specs = new ArrayList<>();
         specs.addAll(WorldBlockReadTools.specs());
@@ -50,7 +51,9 @@ public final class WorldTools implements ToolProvider {
         this.buildPlans.register(registry);
     }
 
-    /** Shape gate for {@code scan_blocks}; kept for callers and tests. */
+    /**
+     * Shape gate for {@code scan_blocks}; kept for callers and tests.
+     */
     static boolean withinShape(String shape, int dx, int dy, int dz, int radius) {
         return ScanShape.parse(shape).contains(dx, dy, dz, radius);
     }

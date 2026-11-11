@@ -1,7 +1,6 @@
 package ir.layercloud.cortexdrone.action.interact.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
 import ir.layercloud.cortexdrone.action.interact.InteractionResult;
@@ -159,7 +158,7 @@ public final class InteractBlockAction implements Action<InteractionContext> {
     }
 
     private static boolean isBucket(ItemStack stack) {
-        return stack != null && RegistryIntrospector.isEmptyFluidContainer(stack);
+        return RegistryIntrospector.isEmptyFluidContainer(stack);
     }
 
     private static ItemStack resolveFilledContainer(Block block, ItemStack emptyContainer) {

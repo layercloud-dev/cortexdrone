@@ -69,7 +69,9 @@ public class CraftingService {
 
     private final Map<String, RecipeCacheEntry> recipeRankCache = new ConcurrentHashMap<>();
 
-    /** Ranked recipes matching {@code filter}, capped and cached for 30s. */
+    /**
+     * Ranked recipes matching {@code filter}, capped and cached for 30s.
+     */
     public List<IRecipe> rankedRecipes(String filter) {
         if (filter == null || filter.trim().isEmpty()) return Collections.emptyList();
         String key = filter.trim().toLowerCase();
@@ -185,7 +187,9 @@ public class CraftingService {
         return result;
     }
 
-    /** JSON view of matching recipes for the read-only recipe tools. */
+    /**
+     * JSON view of matching recipes for the read-only recipe tools.
+     */
     public JsonObject getRecipesForFilter(String filter) {
         JsonObject res = new JsonObject();
         res.addProperty("ok", true);

@@ -1,10 +1,10 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
-import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.BlockSight;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import li.cil.oc.common.entity.Drone;
 import lombok.experimental.UtilityClass;
@@ -23,11 +23,16 @@ import net.minecraft.world.World;
  * touched.</p>
  */
 @UtilityClass
+@SuppressWarnings("unused")
 public final class TunnelPlanner {
-    /** Do not start a tunnel when the first obstruction is farther than this. */
+    /**
+     * Do not start a tunnel when the first obstruction is farther than this.
+     */
     public static final double MAX_LOOKAHEAD = 8.0D;
 
-    /** Falling blocks this close above the player are never mined. */
+    /**
+     * Falling blocks this close above the player are never mined.
+     */
     private static final double FALLING_CLEARANCE = 1.5D;
 
     /**
@@ -179,7 +184,9 @@ public final class TunnelPlanner {
         return null;
     }
 
-    /** Below-step is usable when the voxel is solid and the drone's space stays clear. */
+    /**
+     * Below-step is usable when the voxel is solid and the drone's space stays clear.
+     */
     private static boolean canDescend(World world, EntityPlayerMP player, int[] target) {
         if (!world.blockExists(target[0], target[1], target[2])) return false;
         if (world.isAirBlock(target[0], target[1], target[2])) return false;
@@ -189,7 +196,9 @@ public final class TunnelPlanner {
                 && ItemClassifier.isPassableVoxel(world, target[0], target[1] + 2, target[2]);
     }
 
-    /** Above-step is usable when the ceiling is solid and the space beyond is open. */
+    /**
+     * Above-step is usable when the ceiling is solid and the space beyond is open.
+     */
     private static boolean canAscend(World world, EntityPlayerMP player, int[] target) {
         if (!world.blockExists(target[0], target[1], target[2])) return false;
         if (world.isAirBlock(target[0], target[1], target[2])) return false;
@@ -251,13 +260,17 @@ public final class TunnelPlanner {
         return best;
     }
 
-    /** True when the freed floor voxel leaves a body-sized column to sink into. */
+    /**
+     * True when the freed floor voxel leaves a body-sized column to sink into.
+     */
     private static boolean canSinkInto(World world, int x, int y, int z) {
         return ItemClassifier.isPassableVoxel(world, x, y + 1, z)
                 && ItemClassifier.isPassableVoxel(world, x, y + 2, z);
     }
 
-    /** True when the drone can break the voxel without moving. */
+    /**
+     * True when the drone can break the voxel without moving.
+     */
     public static boolean inReach(Drone drone, int x, int y, int z) {
         if (drone == null) return false;
         BlockSight.Result sight = BlockSight.check(drone.worldObj,

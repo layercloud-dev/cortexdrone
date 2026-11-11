@@ -1,19 +1,13 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.service.search.RankedSearch;
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.harness.lesson.Lesson;
 import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
+import ir.layercloud.cortexdrone.service.search.RankedSearch;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,6 +22,7 @@ import java.util.List;
  * behind the waterfall". Lessons are injected into the task context and are
  * searchable before planning a similar job.</p>
  */
+@SuppressWarnings("unused")
 public final class LessonTools implements ToolProvider {
     private static final int DEFAULT_RESULTS = 6;
     private static final List<ToolSpec> SPECS = Arrays.asList(

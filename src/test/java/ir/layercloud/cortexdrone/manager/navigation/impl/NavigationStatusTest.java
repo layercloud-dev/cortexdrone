@@ -5,7 +5,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/** The navigation status snapshot is presentation only and must stay pure. */
+/**
+ * The navigation status snapshot is presentation only and must stay pure.
+ */
 public class NavigationStatusTest {
     @Test
     public void idleIsNotActive() {
@@ -47,4 +49,5 @@ public class NavigationStatusTest {
         assertTrue(WorldBounds.inWorld(WorldBounds.MAX_Y));
         assertFalse(WorldBounds.inWorld(WorldBounds.MIN_Y - 1));
         assertFalse(WorldBounds.inWorld(WorldBounds.MAX_Y + 1));
-    }}
+    }
+}

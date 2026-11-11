@@ -1,8 +1,6 @@
 package ir.layercloud.cortexdrone.action.interact.impl;
 
-import ir.layercloud.cortexdrone.service.world.BlockSight;
 import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
 import ir.layercloud.cortexdrone.action.interact.InteractionResult;
@@ -11,6 +9,7 @@ import ir.layercloud.cortexdrone.action.interact.InteractionSupport;
 import ir.layercloud.cortexdrone.context.impl.InteractionContext;
 import ir.layercloud.cortexdrone.service.combat.CombatMath;
 import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
+import ir.layercloud.cortexdrone.service.world.BlockSight;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.Entity;
@@ -118,8 +117,7 @@ public final class AttackEntityAction implements Action<InteractionContext> {
 
         EntityLivingBase living = (EntityLivingBase) target;
         float before = living.getHealth();
-        ItemStack weapon = slot >= 0 && inventory != null && slot < size
-                ? inventory.getStackInSlot(slot) : null;
+        ItemStack weapon = inventory == null || slot < 0 ? null : inventory.getStackInSlot(slot);
         float damage = ToolInspector.computeAttackDamage(inventory, slot, living);
         int fireSeconds = ToolInspector.getFireAspectSeconds(inventory, slot);
         if (fireSeconds > 0) living.setFire(fireSeconds);

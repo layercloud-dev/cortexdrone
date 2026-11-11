@@ -72,7 +72,9 @@ public class NavigationTargetResolverTest {
         assertTrue("must describe the block", reason.contains("10, 64, 10"));
     }
 
-    /** Small mirror of the real bounds so this test needs no Minecraft world. */
+    /**
+     * Small mirror of the real bounds so this test needs no Minecraft world.
+     */
     private static final class WorldBoundsStub {
         static boolean diggable(int y) {
             return ir.layercloud.cortexdrone.service.world.WorldBounds.diggable(y);

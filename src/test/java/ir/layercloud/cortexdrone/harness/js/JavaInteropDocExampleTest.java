@@ -13,7 +13,9 @@ import java.nio.file.Files;
 
 import static org.junit.Assert.*;
 
-/** Guards the Java-interop examples published in docs and the system prompt. */
+/**
+ * Guards the Java-interop examples published in docs and the system prompt.
+ */
 public class JavaInteropDocExampleTest {
     private static JsonObject run(String code) throws Exception {
         ToolRegistry registry = new ToolRegistry();

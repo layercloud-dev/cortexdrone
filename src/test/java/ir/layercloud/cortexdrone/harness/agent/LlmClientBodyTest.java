@@ -18,7 +18,9 @@ import static org.junit.Assert.*;
  * "invalid JSON" message instead of a network error.</p>
  */
 public class LlmClientBodyTest {
-    /** A stream that yields one line then fails, like a dropped connection. */
+    /**
+     * A stream that yields one line then fails, like a dropped connection.
+     */
     private static InputStream failsMidBody() {
         byte[] first = "{\"choices\":[".getBytes(StandardCharsets.UTF_8);
         return new InputStream() {
@@ -26,7 +28,7 @@ public class LlmClientBodyTest {
 
             @Override
             public int read() throws IOException {
-                if (index < first.length) return first[index++];
+                if (index < first.length) return first[index++] & 0xFF;
                 throw new IOException("connection reset");
             }
         };

@@ -5,7 +5,9 @@ import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 
-/** The manager's wiring for {@link NavigationLegRunner}. */
+/**
+ * The manager's wiring for {@link NavigationLegRunner}.
+ */
 final class LegRunnerHost implements NavigationLegRunner.Host {
     private final NavigationManager manager;
 

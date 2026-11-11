@@ -18,11 +18,16 @@ import li.cil.oc.common.entity.Drone;
  * class means the manager only decides *which* leg to run, and the leg's own
  * lifecycle (start, tick, watchdog, result) is readable end to end.</p>
  */
+@SuppressWarnings("unused")
 final class NavigationLegRunner {
-    /** A leg that moved at least this far counts as progress. */
+    /**
+     * A leg that moved at least this far counts as progress.
+     */
     private static final double PROGRESS_MOVE_SQ = 0.0025D;
 
-    /** Everything the runner needs from the manager. */
+    /**
+     * Everything the runner needs from the manager.
+     */
     interface Host {
         NavigationState state(DroneController controller);
 
@@ -30,18 +35,26 @@ final class NavigationLegRunner {
 
         void fail(DroneController controller, String reason);
 
-        /** Handles a finished leg's result. */
+        /**
+         * Handles a finished leg's result.
+         */
         void handleResult(DroneController controller, NavigationSession session,
                           NavigationContext context, NavigateResult result);
 
-        /** Handles an in-progress leg's result. */
+        /**
+         * Handles an in-progress leg's result.
+         */
         void handleProgress(DroneController controller, NavigationSession session,
                             NavigateResult result);
 
-        /** Enters recovery after a stalled leg. */
+        /**
+         * Enters recovery after a stalled leg.
+         */
         void recover(DroneController controller, NavigationSession session, String reason);
 
-        /** Breaks a pending dig target. */
+        /**
+         * Breaks a pending dig target.
+         */
         void digPending(DroneController controller, NavigationSession session);
     }
 
@@ -55,7 +68,9 @@ final class NavigationLegRunner {
         this.breadcrumbs = breadcrumbs;
     }
 
-    /** Plans and starts a leg toward the given point. */
+    /**
+     * Plans and starts a leg toward the given point.
+     */
     void start(DroneController controller, NavigationSession session,
                double targetX, double targetY, double targetZ, String label) {
         // A passenger is only flown in open sky; see RiderGuard for why a
@@ -86,7 +101,9 @@ final class NavigationLegRunner {
         }
     }
 
-    /** Advances the active leg by one tick. */
+    /**
+     * Advances the active leg by one tick.
+     */
     void tick(DroneController controller, NavigationSession session) {
         NavigationSession.Leg leg = session.leg;
         if (!leg.context.isActive()) {
@@ -115,7 +132,9 @@ final class NavigationLegRunner {
         if (result != null) this.host.handleProgress(controller, session, result);
     }
 
-    /** Cancels the active leg, if any. */
+    /**
+     * Cancels the active leg, if any.
+     */
     static void cancel(NavigationSession session) {
         if (session.leg != null && session.leg.context.isActive()) {
             session.leg.action.cancel(session.leg.context);

@@ -26,10 +26,14 @@ public final class RoomScanner {
             {0, -1}, {0, 1}, {-1, 0}, {1, 0}
     };
 
-    /** Largest room scan radius; the tool schema aliases this value. */
+    /**
+     * Largest room scan radius; the tool schema aliases this value.
+     */
     public static final int MAX_RADIUS =
             ScanLimits.MAX_ROOM_RADIUS;
-    /** Smallest room scan radius. */
+    /**
+     * Smallest room scan radius.
+     */
     public static final int MIN_RADIUS =
             ScanLimits.MIN_ROOM_RADIUS;
 

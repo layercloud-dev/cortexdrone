@@ -20,7 +20,9 @@ public class Lesson {
     private String title = "";
     private String body = "";
     private List<String> tags = new ArrayList<>();
-    /** success, failure or note. */
+    /**
+     * success, failure or note.
+     */
     private String outcome = "note";
     private boolean pinned;
     private int uses;
@@ -30,7 +32,9 @@ public class Lesson {
     private long createdAt;
     private long updatedAt;
 
-    /** Absolute LESSON.md directory; transient, never persisted. */
+    /**
+     * Absolute LESSON.md directory; transient, never persisted.
+     */
     private transient String path;
 
     public void touch() {
@@ -39,7 +43,9 @@ public class Lesson {
         this.updatedAt = now;
     }
 
-    /** One-line summary used in the prompt context. */
+    /**
+     * One-line summary used in the prompt context.
+     */
     public String summary(int max) {
         String text = this.body != null && !this.body.trim().isEmpty() ? this.body : this.title;
         if (text == null) return "";

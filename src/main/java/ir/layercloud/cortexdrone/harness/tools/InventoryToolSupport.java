@@ -18,11 +18,14 @@ import java.util.List;
  * the model uses them interchangeably. Keeping that fallback in one place stops
  * each provider from spelling the chain differently.</p>
  */
+@SuppressWarnings("unused")
 final class InventoryToolSupport {
     private InventoryToolSupport() {
     }
 
-    /** First non-null string among the given keys, or {@code fallback}. */
+    /**
+     * First non-null string among the given keys, or {@code fallback}.
+     */
     static String firstString(JsonObject args, String fallback, String... keys) {
         for (String key : keys) {
             if (ToolArgs.has(args, key)) return args.get(key).getAsString();
@@ -30,35 +33,47 @@ final class InventoryToolSupport {
         return fallback;
     }
 
-    /** Clamped radius from the shared inventory-query envelope. */
+    /**
+     * Clamped radius from the shared inventory-query envelope.
+     */
     static int radius(JsonObject args, int fallback) {
         return ToolArgs.clampedInt(args, "radius", fallback,
                 InventoryLimits.MIN_RADIUS, InventoryLimits.MAX_RADIUS);
     }
 
-    /** Clamped furnace-scan radius. */
+    /**
+     * Clamped furnace-scan radius.
+     */
     static int furnaceRadius(JsonObject args, int fallback) {
         return ToolArgs.clampedInt(args, "radius", fallback,
                 InventoryLimits.MIN_RADIUS, InventoryLimits.MAX_FURNACE_RADIUS);
     }
 
-    /** Clamped result limit. */
+    /**
+     * Clamped result limit.
+     */
     static int limit(JsonObject args, int fallback) {
         return ToolArgs.clampedInt(args, "limit", fallback, 1, InventoryLimits.MAX_RESULTS);
     }
 
-    /** The machine argument, or an empty string. */
+    /**
+     * The machine argument, or an empty string.
+     */
     static String machine(JsonObject args) {
         return firstString(args, "", "machine", "machineKind");
     }
 
-    /** Standard "player is offline" envelope. */
+    /**
+     * Standard "player is offline" envelope.
+     */
     static JsonObject playerOffline() {
         return ToolJson.error("player_offline", "Player offline",
                 "Check the player name with get_player, or wait until they are online.", true);
     }
 
-    /** Item summaries for one inventory. */
+    /**
+     * Item summaries for one inventory.
+     */
     static JsonArray itemsOf(net.minecraft.inventory.IInventory inventory) {
         JsonArray items = new JsonArray();
         if (inventory == null) return items;
@@ -71,7 +86,9 @@ final class InventoryToolSupport {
         return items;
     }
 
-    /** Machine recipe box resolution used by both recipe tools. */
+    /**
+     * Machine recipe box resolution used by both recipe tools.
+     */
     static JsonObject bestRecipe(InventoryService service, net.minecraft.world.World world,
                                  li.cil.oc.common.entity.Drone drone, EntityPlayerMP player,
                                  JsonObject args, String defaultFilter) {
@@ -80,7 +97,9 @@ final class InventoryToolSupport {
                 world, drone, player, filter, machine(args), radius(args, InventoryLimits.DEFAULT_RADIUS));
     }
 
-    /** Total items in a list of inventories, for summaries. */
+    /**
+     * Total items in a list of inventories, for summaries.
+     */
     static int totalItems(List<? extends net.minecraft.inventory.IInventory> inventories) {
         int total = 0;
         for (net.minecraft.inventory.IInventory inventory : inventories) {

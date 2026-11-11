@@ -18,7 +18,9 @@ import static org.junit.Assert.*;
  * expansion) take a reader callback precisely so they can be tested here.</p>
  */
 public class MachineRecipeParserTest {
-    /** A reader that reports whatever the nested object declares. */
+    /**
+     * A reader that reports whatever the nested object declares.
+     */
     private static final RecipeNestedExpander.RecipeEntryReader STUB =
             (recipe, machine, fileName) -> {
                 MachineRecipeService.NormalizedRecipe parsed =

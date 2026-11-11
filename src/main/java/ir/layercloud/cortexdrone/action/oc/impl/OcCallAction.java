@@ -76,7 +76,9 @@ public final class OcCallAction implements Action<OcContext> {
         }
     }
 
-    /** OC callbacks return {@code Object[]}; a few helpers return a single value. */
+    /**
+     * OC callbacks return {@code Object[]}; a few helpers return a single value.
+     */
     private static List<Object> tuple(Object raw) {
         List<Object> values = new ArrayList<>();
         if (raw == null) return values;

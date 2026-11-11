@@ -7,11 +7,7 @@ import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.ForgeChunkManager;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Applies a chunk plan to a Forge ticket.
@@ -29,23 +25,36 @@ import java.util.Set;
  * actually makes a chunk readable, and its budget is why flight does not stall on
  * world generation.</p>
  */
+@SuppressWarnings("unused")
 final class TicketPlanApplier {
-    /** A released claim waits this many ticks before it is dropped. */
+    /**
+     * A released claim waits this many ticks before it is dropped.
+     */
     private static final int RELEASE_GRACE_TICKS = 60;
-    /** Chunks generated per ticket update. */
+    /**
+     * Chunks generated per ticket update.
+     */
     static final int LOAD_BUDGET = 3;
 
-    /** Everything the applier needs from the manager. */
+    /**
+     * Everything the applier needs from the manager.
+     */
     interface Host {
         ForgeTicketOps ticketOps();
 
-        /** True when a drone other than this one is near the chunk. */
+        /**
+         * True when a drone other than this one is near the chunk.
+         */
         boolean isAnyDroneNear(net.minecraft.world.World world, ChunkCoordIntPair pair);
 
-        /** Loads one chunk, recording it as AI-loaded. */
+        /**
+         * Loads one chunk, recording it as AI-loaded.
+         */
         void loadChunk(WorldServer world, ChunkCoordIntPair pair);
 
-        /** Pending release deadlines per ticket. */
+        /**
+         * Pending release deadlines per ticket.
+         */
         Map<ForgeChunkManager.Ticket, Map<ChunkCoordIntPair, Long>> releaseAt();
     }
 
@@ -85,7 +94,9 @@ final class TicketPlanApplier {
         return loadMissing(world, desired, held, LOAD_BUDGET);
     }
 
-    /** Pass 1: drop claims no longer wanted, after the grace period. */
+    /**
+     * Pass 1: drop claims no longer wanted, after the grace period.
+     */
     private void releaseUnwanted(WorldServer world, ForgeChunkManager.Ticket ticket,
                                  Set<ChunkCoordIntPair> desired,
                                  Map<ChunkCoordIntPair, Long> pending, long now) {
@@ -104,7 +115,9 @@ final class TicketPlanApplier {
         }
     }
 
-    /** Pass 2: claim the desired set, evicting the lowest-priority claim. */
+    /**
+     * Pass 2: claim the desired set, evicting the lowest-priority claim.
+     */
     private Set<ChunkCoordIntPair> claimDesired(WorldServer world, ForgeChunkManager.Ticket ticket,
                                                 List<ChunkCoordIntPair> desired,
                                                 Set<ChunkCoordIntPair> desiredSet,
@@ -125,7 +138,9 @@ final class TicketPlanApplier {
         return held;
     }
 
-    /** Pass 3: highest-priority chunk at the tail of the ticket list. */
+    /**
+     * Pass 3: highest-priority chunk at the tail of the ticket list.
+     */
     private void reorder(ForgeChunkManager.Ticket ticket, List<ChunkCoordIntPair> desired,
                          Set<ChunkCoordIntPair> held) {
         for (int i = desired.size() - 1; i >= 0; i--) {
@@ -134,7 +149,9 @@ final class TicketPlanApplier {
         }
     }
 
-    /** Pass 4: generate missing claimed chunks, nearest first, within budget. */
+    /**
+     * Pass 4: generate missing claimed chunks, nearest first, within budget.
+     */
     private int loadMissing(WorldServer world, List<ChunkCoordIntPair> desired,
                             Set<ChunkCoordIntPair> held, int budget) {
         int loads = 0;
@@ -148,7 +165,9 @@ final class TicketPlanApplier {
         return loads;
     }
 
-    /** Loads up to {@code budget} chunks from a plan, skipping protected ones. */
+    /**
+     * Loads up to {@code budget} chunks from a plan, skipping protected ones.
+     */
     int loadHotChunks(WorldServer world, List<ChunkCoordIntPair> plan, int budget) {
         int loaded = 0;
         for (ChunkCoordIntPair pair : plan) {
@@ -161,7 +180,9 @@ final class TicketPlanApplier {
         return loaded;
     }
 
-    /** A chunk inside a player's view, or near another drone, is not ours to touch. */
+    /**
+     * A chunk inside a player's view, or near another drone, is not ours to touch.
+     */
     private boolean isProtected(net.minecraft.world.World world, ChunkCoordIntPair pair) {
         return PlayerChunkOwnership.isWithinAnyPlayerView(world, pair.chunkXPos, pair.chunkZPos)
                 || this.host.isAnyDroneNear(world, pair);

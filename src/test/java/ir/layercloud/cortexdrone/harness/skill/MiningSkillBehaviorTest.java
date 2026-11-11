@@ -2,10 +2,10 @@ package ir.layercloud.cortexdrone.harness.skill;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
+import org.junit.Test;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import org.junit.Test;
 
 import static org.junit.Assert.*;
 
@@ -57,7 +57,7 @@ public class MiningSkillBehaviorTest extends SkillTestSupport {
         });
         JsonObject result = harness.run("dig_shaft", "{depth:6,start:{x:0,y:63,z:0}}");
         assertTrue("the shaft must report progress", result.get("mined").getAsInt() > 0);
-        assertEquals("no bedrock is present in this world", false,
+        assertFalse("no bedrock is present in this world",
                 result.get("reachedBedrock").getAsBoolean());
     }
 

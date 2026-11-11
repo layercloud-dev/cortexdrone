@@ -26,7 +26,9 @@ public class QuestionRequestMessage implements IMessage {
     private boolean allowFreeText = true;
     private int timeoutMs = QuestionLimits.DEFAULT_TIMEOUT_MS;
 
-    /** FML instantiates messages reflectively. */
+    /**
+     * FML instantiates messages reflectively.
+     */
     public QuestionRequestMessage() {
     }
 

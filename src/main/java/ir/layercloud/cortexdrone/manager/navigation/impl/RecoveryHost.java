@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.manager.navigation.impl;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 
-/** The manager's wiring for {@link NavigationRecovery}. */
+/**
+ * The manager's wiring for {@link NavigationRecovery}.
+ */
 final class RecoveryHost implements NavigationRecovery.Host {
     private final NavigationManager manager;
 

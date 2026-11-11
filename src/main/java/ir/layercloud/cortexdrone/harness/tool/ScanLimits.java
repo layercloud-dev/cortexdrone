@@ -8,6 +8,7 @@ package ir.layercloud.cortexdrone.harness.tool;
  * layer does not depend on the harness. This class exists so tool schemas read
  * naturally; it declares no numbers of its own.</p>
  */
+@SuppressWarnings("unused")
 public final class ScanLimits {
     private ScanLimits() {
     }

@@ -7,6 +7,7 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
  * {@code f} score is precomputed so the priority queue compares a field instead
  * of recomputing it on every poll.</p>
  */
+@SuppressWarnings("unused")
 final class AStarNode implements Comparable<AStarNode> {
     final int x;
     final int y;

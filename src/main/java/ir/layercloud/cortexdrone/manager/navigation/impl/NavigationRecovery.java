@@ -30,15 +30,24 @@ import net.minecraft.world.World;
  *       exhausted.</li>
  * </ol>
  */
+@SuppressWarnings("unused")
 final class NavigationRecovery {
-    /** Absolute recovery ceiling; successful digging resets the soft budget. */
+    /**
+     * Absolute recovery ceiling; successful digging resets the soft budget.
+     */
     static final int MAX_RECOVERIES = 96;
-    /** Consecutive instant failures before digging is preferred over detours. */
+    /**
+     * Consecutive instant failures before digging is preferred over detours.
+     */
     static final int MAX_INSTANT_FAILURES = 2;
-    /** Tunnel directions attempted before reporting exhaustion. */
+    /**
+     * Tunnel directions attempted before reporting exhaustion.
+     */
     private static final int TUNNEL_ATTEMPTS = 4;
 
-    /** The manager operations recovery needs; keeps the two classes decoupled. */
+    /**
+     * The manager operations recovery needs; keeps the two classes decoupled.
+     */
     interface Host {
         NavigationState state(DroneController controller);
 
@@ -170,7 +179,9 @@ final class NavigationRecovery {
         return false;
     }
 
-    /** Starts digging {@code target}, or flies to its reachable standoff. */
+    /**
+     * Starts digging {@code target}, or flies to its reachable standoff.
+     */
     boolean startDig(DroneController controller, NavigationSession session, int[] target) {
         if (target == null) return false;
         // The rider guard belongs at the single choke point every dig passes
@@ -200,7 +211,9 @@ final class NavigationRecovery {
         return true;
     }
 
-    /** Breaks the pending obstruction, then replans the route. */
+    /**
+     * Breaks the pending obstruction, then replans the route.
+     */
     void digPending(DroneController controller, NavigationSession session, NavigationState state) {
         int[] target = session.digTarget;
         session.digTarget = null;

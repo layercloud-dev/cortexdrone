@@ -10,9 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
-/** Repeated tool wrapper timeouts have one owner. */
+/**
+ * Repeated tool wrapper timeouts have one owner.
+ */
 public class ToolTimeoutAgreementTest {
     private static final String ROOT = "src/main/java/ir/layercloud/cortexdrone/harness/tools/";
 

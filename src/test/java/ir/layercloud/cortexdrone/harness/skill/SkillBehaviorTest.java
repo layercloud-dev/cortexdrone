@@ -1,10 +1,10 @@
 package ir.layercloud.cortexdrone.harness.skill;
 
 import com.google.gson.JsonObject;
-
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * A bundled skill runs through its bound function name, not just skills.call.

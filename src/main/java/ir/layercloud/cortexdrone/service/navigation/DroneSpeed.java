@@ -1,8 +1,7 @@
 package ir.layercloud.cortexdrone.service.navigation;
 
-import ir.layercloud.cortexdrone.service.navigation.impl.FlightSpeedModel;
-
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.service.navigation.impl.FlightSpeedModel;
 
 /**
  * Drone flight-speed policy.
@@ -28,26 +27,44 @@ import ir.layercloud.cortexdrone.config.ModConfig;
  * far more dangerous than the saved travel time is worth.</p>
  */
 public final class DroneSpeed {
-    /** Base cap for a close approach; tuned for the 0.85 arrival radius. */
+    /**
+     * Base cap for a close approach; tuned for the 0.85 arrival radius.
+     */
     public static final double NEAR = 0.40;
-    /** Base cap for a medium leg. */
+    /**
+     * Base cap for a medium leg.
+     */
     public static final double MID = 0.55;
-    /** Base cap for a long leg; the fastest the navigator was originally tuned for. */
+    /**
+     * Base cap for a long leg; the fastest the navigator was originally tuned for.
+     */
     public static final double FAR = 0.75;
-    /** Distances used to pick a tier, matching TickManager's historical values. */
+    /**
+     * Distances used to pick a tier, matching TickManager's historical values.
+     */
     public static final double MID_DISTANCE = 14.0;
     public static final double FAR_DISTANCE = 24.0;
 
-    /** The user-facing ceiling: five times the tuned long-range speed. */
+    /**
+     * The user-facing ceiling: five times the tuned long-range speed.
+     */
     public static final double MAX_MULTIPLIER = 5.0;
-    /** Below this the drone would crawl; 0.25 is a quarter of normal speed. */
+    /**
+     * Below this the drone would crawl; 0.25 is a quarter of normal speed.
+     */
     public static final double MIN_MULTIPLIER = 0.25;
-    /** Default multiplier: exactly the pre-existing speed. */
+    /**
+     * Default multiplier: exactly the pre-existing speed.
+     */
     public static final double DEFAULT_MULTIPLIER = 1.0;
-    /** Replan at least this often in ticks, so A* cannot eat the tick budget. */
+    /**
+     * Replan at least this often in ticks, so A* cannot eat the tick budget.
+     */
     public static final int REPATH_FLOOR = 4;
 
-    /** Absolute velocity ceiling, so no code path can exceed the 5x promise. */
+    /**
+     * Absolute velocity ceiling, so no code path can exceed the 5x promise.
+     */
     public static final double HARD_CAP = FAR * MAX_MULTIPLIER;
 
     private DroneSpeed() {
@@ -80,13 +97,17 @@ public final class DroneSpeed {
         return clampCap(baseCap(distance) * clampMultiplier(multiplier));
     }
 
-    /** Clamps any multiplier into the supported range. */
+    /**
+     * Clamps any multiplier into the supported range.
+     */
     public static double clampMultiplier(double multiplier) {
         if (Double.isNaN(multiplier)) return DEFAULT_MULTIPLIER;
         return Math.max(MIN_MULTIPLIER, Math.min(MAX_MULTIPLIER, multiplier));
     }
 
-    /** Clamps any velocity into the absolute ceiling. */
+    /**
+     * Clamps any velocity into the absolute ceiling.
+     */
     public static double clampCap(double cap) {
         if (Double.isNaN(cap)) return NEAR;
         return Math.max(0.0, Math.min(HARD_CAP, cap));
@@ -114,11 +135,13 @@ public final class DroneSpeed {
      */
     public static double effective(double configured, double requested, boolean carrying) {
         if (carrying) return DEFAULT_MULTIPLIER;
-        double chosen = requested > 0.0 && !Double.isNaN(requested) ? requested : configured;
+        double chosen = requested > 0.0 ? requested : configured;
         return clampMultiplier(chosen);
     }
 
-    /** Human-readable tier name used in logs and status text. */
+    /**
+     * Human-readable tier name used in logs and status text.
+     */
     public static String describe(double distance) {
         if (distance > FAR_DISTANCE) return "far";
         if (distance > MID_DISTANCE) return "mid";
@@ -137,7 +160,9 @@ public final class DroneSpeed {
         return 0.85 * Math.sqrt(clampMultiplier(multiplier));
     }
 
-    /** Waypoint-advance tolerance at {@code multiplier}. */
+    /**
+     * Waypoint-advance tolerance at {@code multiplier}.
+     */
     public static double waypointRadius(double multiplier) {
         return 0.75 * Math.sqrt(clampMultiplier(multiplier));
     }

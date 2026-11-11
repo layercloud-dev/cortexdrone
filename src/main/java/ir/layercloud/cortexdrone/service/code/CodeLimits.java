@@ -12,12 +12,20 @@ public final class CodeLimits {
     private CodeLimits() {
     }
 
-    /** Smallest code-execution budget. */
+    /**
+     * Smallest code-execution budget.
+     */
     public static final int MIN_TIMEOUT_MS = 1_000;
-    /** Largest code-execution budget. */
+    /**
+     * Largest code-execution budget.
+     */
     public static final int MAX_TIMEOUT_MS = 300_000;
-    /** Default code-execution budget; {@link ModConfig} is the owner. */
+    /**
+     * Default code-execution budget; {@link ModConfig} is the owner.
+     */
     public static final int DEFAULT_TIMEOUT_MS = ModConfig.DEFAULT_EXECUTE_TIMEOUT_MS;
-    /** Maximum Rhino instructions per execution. */
+    /**
+     * Maximum Rhino instructions per execution.
+     */
     public static final int MAX_INSTRUCTIONS = 20_000;
 }

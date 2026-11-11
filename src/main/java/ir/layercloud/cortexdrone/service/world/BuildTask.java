@@ -13,6 +13,7 @@ import lombok.ToString;
  */
 @Getter
 @ToString
+@SuppressWarnings("unused")
 public class BuildTask {
     public static final String FOUNDATION = "foundation";
     public static final String FLOOR = "floor";
@@ -46,7 +47,9 @@ public class BuildTask {
         this.phase = phase != null && !phase.isEmpty() ? phase : FLOOR;
     }
 
-    /** Phase rank; lower is placed first. */
+    /**
+     * Phase rank; lower is placed first.
+     */
     public int phaseRank() {
         if (FOUNDATION.equals(this.phase)) return 0;
         if (FLOOR.equals(this.phase)) return 1;

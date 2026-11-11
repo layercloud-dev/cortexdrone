@@ -4,7 +4,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/** Build-site geometry rules that do not need a live world. */
+/**
+ * Build-site geometry rules that do not need a live world.
+ */
 public class BuildSiteFinderTest {
     @Test
     public void playerClearanceIsSymmetric() {

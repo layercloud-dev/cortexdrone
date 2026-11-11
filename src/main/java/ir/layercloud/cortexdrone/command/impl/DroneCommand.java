@@ -1,12 +1,11 @@
 package ir.layercloud.cortexdrone.command.impl;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.command.BaseCommand;
-import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.config.ModConfig;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -209,7 +208,9 @@ public class DroneCommand extends BaseCommand {
         this.manager.handleNaturalInstruction(player, fullPrompt);
     }
 
-    /** @see AdminCommands#playerLevel(EntityPlayerMP) */
+    /**
+     * @see AdminCommands#playerLevel(EntityPlayerMP)
+     */
     private static int playerLevel(EntityPlayerMP player) {
         return AdminCommands.playerLevel(player);
     }

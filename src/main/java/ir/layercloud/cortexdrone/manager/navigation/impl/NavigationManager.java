@@ -1,8 +1,7 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.navigation.FlightController;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.action.navigation.NavigationMode;
@@ -10,12 +9,11 @@ import ir.layercloud.cortexdrone.action.navigation.impl.NavigateAction;
 import ir.layercloud.cortexdrone.action.navigation.impl.StopAction;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
+import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationResult;
-import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
-import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationTarget;
-import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
+import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.impl.TunnelPlanner;
@@ -40,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * timeout) prevents a wedged drone from spinning forever. The model only sees
  * a failure after every recovery attempt is exhausted.</p>
  */
+@SuppressWarnings("unused")
 public final class NavigationManager implements FlightController {
     private final AIDroneManager manager;
     private final DroneLogger logger;
@@ -76,7 +75,9 @@ public final class NavigationManager implements FlightController {
                 this.stallReporter, this.digger);
     }
 
-    /** Per-drone navigation state, created on first use. */
+    /**
+     * Per-drone navigation state, created on first use.
+     */
     public NavigationState state(DroneController controller) {
         if (controller == null) return null;
         return this.states.computeIfAbsent(controller, c -> {
@@ -184,11 +185,14 @@ public final class NavigationManager implements FlightController {
             context.complete();
         }
     }
+
     public boolean isActive(DroneController controller) {
         return controller != null && this.sessions.containsKey(controller);
     }
 
-    /** Flight-speed multiplier for this drone; 1.0 is the tuned baseline. */
+    /**
+     * Flight-speed multiplier for this drone; 1.0 is the tuned baseline.
+     */
     public double speedMultiplier(DroneController controller) {
         return NavigationSpeed.of(this.sessions.get(controller), controller,
                 this.manager.getConfig());
@@ -217,7 +221,9 @@ public final class NavigationManager implements FlightController {
         }
     }
 
-    /** Drops all per-drone navigation state when the controller goes away. */
+    /**
+     * Drops all per-drone navigation state when the controller goes away.
+     */
     public void forget(DroneController controller) {
         clear(controller);
         this.chunkLoader.releaseDroneTicket(controller);
@@ -360,7 +366,9 @@ public final class NavigationManager implements FlightController {
         }
     }
 
-    /** Breaks the pending obstruction, then replans the route. */
+    /**
+     * Breaks the pending obstruction, then replans the route.
+     */
     private void digPending(DroneController controller, NavigationSession session) {
         this.recovery.digPending(controller, session, state(controller));
     }

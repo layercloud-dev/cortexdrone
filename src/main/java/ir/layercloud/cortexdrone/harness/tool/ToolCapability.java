@@ -12,20 +12,36 @@ package ir.layercloud.cortexdrone.harness.tool;
  * safety classification, not a permissions system.</p>
  */
 public enum ToolCapability {
-    /** Changes blocks or entities in the world. */
+    /**
+     * Changes blocks or entities in the world.
+     */
     MUTATES_WORLD,
-    /** Moves items between inventories. */
+    /**
+     * Moves items between inventories.
+     */
     MUTATES_INVENTORY,
-    /** Changes only the drone's own presentation (LED, particles, chat). */
+    /**
+     * Changes only the drone's own presentation (LED, particles, chat).
+     */
     PRESENTATION,
-    /** Starts a server-side job and only resolves once it finishes. */
+    /**
+     * Starts a server-side job and only resolves once it finishes.
+     */
     AWAITS_COMPLETION,
-    /** Resolves only when the navigation job reaches its destination or fails. */
+    /**
+     * Resolves only when the navigation job reaches its destination or fails.
+     */
     AWAITS_NAVIGATION,
-    /** Returns a pollable job id instead of a finished result. */
+    /**
+     * Returns a pollable job id instead of a finished result.
+     */
     TIME_SLICED,
-    /** Stays inline while its radius is at or below the time-slice threshold. */
+    /**
+     * Stays inline while its radius is at or below the time-slice threshold.
+     */
     INLINE_WHEN_SMALL,
-    /** Reads the world without changing it. */
+    /**
+     * Reads the world without changing it.
+     */
     READ_ONLY
 }

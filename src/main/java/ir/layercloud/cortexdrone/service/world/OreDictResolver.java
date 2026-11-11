@@ -5,7 +5,6 @@ import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraftforge.oredict.OreDictionary;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,18 +33,23 @@ import java.util.concurrent.ConcurrentHashMap;
  * "iron" request never silently returns dust or nuggets.</p>
  */
 @UtilityClass
+@SuppressWarnings("unused")
 public final class OreDictResolver {
     private static final String[] TAG_PREFIXES = {
             "oredict:", "ore_dict:", "ore-dict:", "dict:", "tag:", "#"
     };
 
-    /** Tag shapes that mean an actual obtainable material, best first. */
+    /**
+     * Tag shapes that mean an actual obtainable material, best first.
+     */
     private static final String[] RESOURCE_SHAPE_PREFIXES = {
             "ore", "raw", "ingot", "gem", "crystal", "cluster", "dust", "nugget",
             "plate", "gear", "billet", "coal", "lignite"
     };
 
-    /** Filler words that never select a tag on their own. */
+    /**
+     * Filler words that never select a tag on their own.
+     */
     private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(
             "of", "the", "a", "an", "some", "any", "me", "my", "please", "bring",
             "get", "give", "fetch", "find", "more", "and", "for", "to", "from", "with"
@@ -55,7 +59,9 @@ public final class OreDictResolver {
     private static final int MAX_TOKEN_FALLBACK_TAGS = 64;
     private static final Map<String, List<String>> QUERY_CACHE = new ConcurrentHashMap<>();
 
-    /** Category words are matched by dedicated code, never by dictionary sweep. */
+    /**
+     * Category words are matched by dedicated code, never by dictionary sweep.
+     */
     private static final Set<String> CATEGORY_TOKENS = new HashSet<>(Arrays.asList(
             "ore", "vein", "all", "any", "stone", "wood", "log", "crop", "crops",
             "plant", "liquid", "block", "blocks", "item", "items", "solid", "tree"
@@ -64,7 +70,9 @@ public final class OreDictResolver {
     private static volatile Map<String, String> compactIndex = Collections.emptyMap();
     private static volatile Map<String, List<String>> tokenIndex = Collections.emptyMap();
 
-    /** True when the filter explicitly names an OreDictionary tag. */
+    /**
+     * True when the filter explicitly names an OreDictionary tag.
+     */
     public static boolean hasExplicitPrefix(String rawFilter) {
         String raw = normalizeRaw(rawFilter);
         if (raw.isEmpty()) return false;
@@ -74,7 +82,9 @@ public final class OreDictResolver {
         return false;
     }
 
-    /** Removes a leading {@code #}/{@code oredict:}/{@code dict:} marker, preserving case. */
+    /**
+     * Removes a leading {@code #}/{@code oredict:}/{@code dict:} marker, preserving case.
+     */
     public static String stripPrefix(String rawFilter) {
         String raw = rawFilter == null ? "" : rawFilter.trim();
         String lower = raw.toLowerCase(Locale.ROOT);
@@ -143,7 +153,7 @@ public final class OreDictResolver {
         String exact = compact.get(compactKey(name));
         if (exact != null) out.add(exact);
 
-        if (!explicit && out.isEmpty() && !filteredTokens.isEmpty()) {
+        if (!explicit && out.isEmpty()) {
             List<String> sorted = new ArrayList<>(filteredTokens);
             Collections.sort(sorted);
             List<String> sameTokens = tokens.get(joinTokens(sorted));
@@ -217,7 +227,9 @@ public final class OreDictResolver {
     }
 
     /** JSON description of tags and their registered stacks, for {@code doc_lookup}. */
-    /** @see OreDictDescribe#tagsAndItems(String, int, java.util.List) */
+    /**
+     * @see OreDictDescribe#tagsAndItems(String, int, java.util.List)
+     */
     public static com.google.gson.JsonObject describeTagQuery(String rawFilter, int limit) {
         return OreDictDescribe.tagsAndItems(normalizeRaw(rawFilter), limit, resolveTagQuery(rawFilter));
     }
@@ -291,7 +303,9 @@ public final class OreDictResolver {
         return out;
     }
 
-    /** True when a tag starts with a material shape prefix such as {@code ore}. */
+    /**
+     * True when a tag starts with a material shape prefix such as {@code ore}.
+     */
     private static boolean hasResourceShapePrefix(String tag) {
         if (tag == null) return false;
         String lower = tag.toLowerCase(Locale.ROOT);
@@ -330,7 +344,9 @@ public final class OreDictResolver {
     }
 
 
-    /** Canonical tag for a block/metadata pair, or null when unregistered. */
+    /**
+     * Canonical tag for a block/metadata pair, or null when unregistered.
+     */
     public static String tagForBlock(Block block, int meta) {
         if (block == null || block == Blocks.air) return null;
         try {
@@ -350,7 +366,9 @@ public final class OreDictResolver {
         return OreDictText.normalizeRaw(raw);
     }
 
-    /** @see OreDictText#compactKey(String) */
+    /**
+     * @see OreDictText#compactKey(String)
+     */
     public static String compactKey(String value) {
         return OreDictText.compactKey(value);
     }
@@ -360,7 +378,9 @@ public final class OreDictResolver {
     }
 
 
-    /** @see OreDictText#containsWord(String, String) */
+    /**
+     * @see OreDictText#containsWord(String, String)
+     */
     static boolean containsWord(String text, String word) {
         return OreDictText.containsWord(text, word);
     }

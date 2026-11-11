@@ -12,6 +12,7 @@ import java.util.Map;
  * <p>This is data only: it never starts, stops or mutates the machine. Actions
  * own every write.</p>
  */
+@SuppressWarnings("unused")
 public final class OcState {
     private final boolean available;
     private final String address;
@@ -119,7 +120,9 @@ public final class OcState {
         return this.error;
     }
 
-    /** Mutable builder so the service stays a single readable method. */
+    /**
+     * Mutable builder so the service stays a single readable method.
+     */
     public static final class Builder {
         private boolean available = true;
         private String address;
@@ -211,7 +214,9 @@ public final class OcState {
         }
     }
 
-    /** Component map keys, sorted for stable output. */
+    /**
+     * Component map keys, sorted for stable output.
+     */
     public static List<String> sortedKeys(Map<String, String> components) {
         List<String> keys = new ArrayList<>(components.keySet());
         Collections.sort(keys);

@@ -3,7 +3,8 @@ package ir.layercloud.cortexdrone.service.navigation;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Speed policy: the ceiling is 5x the tuned cruise speed, and nothing may

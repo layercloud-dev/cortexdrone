@@ -1,11 +1,10 @@
 package ir.layercloud.cortexdrone.harness.agent;
 
-import ir.layercloud.cortexdrone.CortexDroneMod;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import ir.layercloud.cortexdrone.CortexDroneMod;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +17,7 @@ import java.util.List;
  * enter the prompt, and old turns are replaced by a compact digest instead of
  * dropping the original task or orphaning a tool result.</p>
  */
+@SuppressWarnings("unused")
 public final class Conversation {
     private static final int KEEP_RECENT = 12;
     private static final int DIGEST_ENTRY_CHARS = 400;

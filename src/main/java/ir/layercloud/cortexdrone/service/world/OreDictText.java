@@ -15,7 +15,9 @@ final class OreDictText {
     private OreDictText() {
     }
 
-    /** Lower-case and trim; the canonical form for comparisons. */
+    /**
+     * Lower-case and trim; the canonical form for comparisons.
+     */
     static String normalizeRaw(String raw) {
         return raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
     }
@@ -34,7 +36,9 @@ final class OreDictText {
         return out.toString();
     }
 
-    /** Joins tokens with {@code |} for a cache key. */
+    /**
+     * Joins tokens with {@code |} for a cache key.
+     */
     static String joinTokens(List<String> tokens) {
         StringBuilder out = new StringBuilder();
         for (String token : tokens) {
@@ -44,7 +48,9 @@ final class OreDictText {
         return out.toString();
     }
 
-    /** True when {@code value} starts with any of {@code prefixes}. */
+    /**
+     * True when {@code value} starts with any of {@code prefixes}.
+     */
     static boolean startsWithAny(String value, String[] prefixes) {
         for (String prefix : prefixes) {
             if (value.startsWith(prefix)) return true;
@@ -52,7 +58,9 @@ final class OreDictText {
         return false;
     }
 
-    /** True when {@code word} occurs in {@code text} on word boundaries. */
+    /**
+     * True when {@code word} occurs in {@code text} on word boundaries.
+     */
     static boolean containsWord(String text, String word) {
         if (text == null || word == null || word.isEmpty()) return false;
         int from = 0;

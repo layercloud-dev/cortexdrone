@@ -202,13 +202,17 @@ public final class QuestionScreen extends GuiScreen {
         return trimmed.length() < value.length() ? trimmed + "..." : value;
     }
 
-    /** 1.7.10 exposes the button list as a raw {@code List}. */
+    /**
+     * 1.7.10 exposes the button list as a raw {@code List}.
+     */
     @SuppressWarnings("unchecked")
     private static List<GuiButton> buttons(List<?> raw) {
         return (List<GuiButton>) raw;
     }
 
-    /** 1.7.10 {@code listFormattedStringToWidth} returns a raw list of lines. */
+    /**
+     * 1.7.10 {@code listFormattedStringToWidth} returns a raw list of lines.
+     */
     @SuppressWarnings("unchecked")
     private List<String> wrap(String text, int width) {
         return this.fontRendererObj.listFormattedStringToWidth(text, width);

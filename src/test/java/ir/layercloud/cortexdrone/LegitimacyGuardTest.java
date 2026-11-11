@@ -2,7 +2,8 @@ package ir.layercloud.cortexdrone;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Structural guards for the "play fair" rules.

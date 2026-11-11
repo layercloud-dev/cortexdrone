@@ -4,7 +4,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/** The hover geometry must be one shared definition. */
+/**
+ * The hover geometry must be one shared definition.
+ */
 public class DroneGeometryTest {
     @Test
     public void aimPointIsTheCellCentreAtAimHeight() {

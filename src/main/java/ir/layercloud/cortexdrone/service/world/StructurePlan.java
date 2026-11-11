@@ -4,12 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /**
  * One generated structure plan: placements, clearing list and material totals.
@@ -19,13 +14,18 @@ import java.util.Map;
  * by height so a block is never placed in mid-air.</p>
  */
 @Getter
+@SuppressWarnings("unused")
 public class StructurePlan {
-    /** Build order: lower phases are placed first. */
+    /**
+     * Build order: lower phases are placed first.
+     */
     public enum Phase {
         FOUNDATION, FLOOR, CORNER, WALL, WINDOW, RAILING, ROOF, DETAIL
     }
 
-    /** Highest number of placement tasks one plan may hold. */
+    /**
+     * Highest number of placement tasks one plan may hold.
+     */
     private static final int MAX_TASKS = 6000;
 
     private final int x1;
@@ -68,7 +68,9 @@ public class StructurePlan {
         this.phaseCounts.merge(task.getPhase(), 1, Integer::sum);
     }
 
-    /** Records one voxel that must be cleared before building. */
+    /**
+     * Records one voxel that must be cleared before building.
+     */
     public void addClearBlock(int x, int y, int z) {
         this.clearBlocks.add(new int[]{x, y, z});
     }
@@ -79,7 +81,9 @@ public class StructurePlan {
         this.doorZ = z;
     }
 
-    /** Placements ordered so lower phases and lower Y come first. */
+    /**
+     * Placements ordered so lower phases and lower Y come first.
+     */
     public List<BuildTask> orderedTasks() {
         List<BuildTask> ordered = new ArrayList<>(this.buildTasks);
         ordered.sort(Comparator

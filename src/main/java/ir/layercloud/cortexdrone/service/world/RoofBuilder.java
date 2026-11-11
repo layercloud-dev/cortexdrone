@@ -10,9 +10,13 @@ import java.util.Locale;
  * and to keep the builder an orchestrator.</p>
  */
 final class RoofBuilder {
-    /** Names that mean a gable/peak roof. */
+    /**
+     * Names that mean a gable/peak roof.
+     */
     private static final String[] GABLE = {"gable", "pitched", "peak"};
-    /** Names that mean a hip/pyramid roof. */
+    /**
+     * Names that mean a hip/pyramid roof.
+     */
     private static final String[] HIP = {"hip", "pyramid"};
 
     private RoofBuilder() {
@@ -45,7 +49,9 @@ final class RoofBuilder {
         }
     }
 
-    /** Number of vertical layers {@link #build} will place. */
+    /**
+     * Number of vertical layers {@link #build} will place.
+     */
     static int layerCount(int width, int depth, String roofStyle) {
         String style = normalize(roofStyle);
         if (matches(style, GABLE)) {

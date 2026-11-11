@@ -13,8 +13,11 @@ import java.util.Locale;
  * id so it is readable and stable. Writes are atomic, so a crash cannot leave a
  * half-written lesson behind.</p>
  */
+@SuppressWarnings("unused")
 final class LessonFiles {
-    /** Longest directory-name segment derived from a title or scope. */
+    /**
+     * Longest directory-name segment derived from a title or scope.
+     */
     private static final int MAX_SLUG = 48;
 
     private final File lessonsDir;
@@ -23,7 +26,9 @@ final class LessonFiles {
         this.lessonsDir = lessonsDir;
     }
 
-    /** The directory a lesson belongs in. */
+    /**
+     * The directory a lesson belongs in.
+     */
     File directoryFor(Lesson lesson) {
         if (lesson.getPath() != null && !lesson.getPath().trim().isEmpty()) {
             return new File(lesson.getPath());
@@ -35,7 +40,9 @@ final class LessonFiles {
         return new File(this.lessonsDir, scope + "-" + title + "-" + id);
     }
 
-    /** Writes the lesson's markdown; returns false when the directory is unusable. */
+    /**
+     * Writes the lesson's markdown; returns false when the directory is unusable.
+     */
     boolean persist(Lesson lesson) {
         File directory = directoryFor(lesson);
         if (!directory.isDirectory() && !directory.mkdirs()) return false;
@@ -44,18 +51,24 @@ final class LessonFiles {
                 LessonMarkdown.write(lesson));
     }
 
-    /** Removes the lesson's directory. */
+    /**
+     * Removes the lesson's directory.
+     */
     boolean delete(Lesson lesson) {
         if (lesson == null) return false;
         return AtomicFiles.deleteRecursively(directoryFor(lesson));
     }
 
-    /** Reads the markdown of one lesson directory, or {@code null}. */
+    /**
+     * Reads the markdown of one lesson directory, or {@code null}.
+     */
     String read(Lesson lesson) {
         return AtomicFiles.readText(new File(directoryFor(lesson), LessonMarkdown.FILE_NAME));
     }
 
-    /** Every lesson directory, sorted by name for a stable load order. */
+    /**
+     * Every lesson directory, sorted by name for a stable load order.
+     */
     File[] directories() {
         if (this.lessonsDir == null) return new File[0];
         File[] found = this.lessonsDir.listFiles(File::isDirectory);
@@ -64,7 +77,9 @@ final class LessonFiles {
         return found;
     }
 
-    /** Lowercase, dash-separated, bounded; falls back when nothing survives. */
+    /**
+     * Lowercase, dash-separated, bounded; falls back when nothing survives.
+     */
     static String slug(String value, String fallback) {
         String clean = value != null ? value.trim().toLowerCase(Locale.ROOT) : "";
         clean = clean.replaceAll("[^a-z0-9]+", "-")

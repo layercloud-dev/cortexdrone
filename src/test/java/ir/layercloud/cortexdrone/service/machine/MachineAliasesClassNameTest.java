@@ -67,7 +67,10 @@ public class MachineAliasesClassNameTest {
         assertTrue("the token list must cover the alias table", tokens.length > 40);
         boolean hasBlast = false;
         for (String token : tokens) {
-            if ("blast_furnace".equals(token) || "blastfurnace".equals(token)) hasBlast = true;
+            if ("blast_furnace".equals(token) || "blastfurnace".equals(token)) {
+                hasBlast = true;
+                break;
+            }
         }
         assertTrue("a blast furnace token must exist", hasBlast);
     }

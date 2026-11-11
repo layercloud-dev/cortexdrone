@@ -1,9 +1,8 @@
 package ir.layercloud.cortexdrone.harness.tools.view;
 
+import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.service.combat.CombatAssessment;
-
-import com.google.gson.JsonObject;
 
 /**
  * JSON translation boundary for one combat assessment.
@@ -64,13 +63,13 @@ public final class CombatView {
         out.addProperty("estimated_seconds", assessment.getEstimatedSeconds());
         out.addProperty("hint", assessment.isCanDamage()
                 ? "Attack " + assessment.getAttacksToKill()
-                        + " time(s), waiting next_attack_in_ms between hits"
-                        + (assessment.isImmune()
-                        ? "; the target is inside its hurt-resistance window right now"
-                        : "")
-                        + ". Early hits inside that window are ignored."
+                + " time(s), waiting next_attack_in_ms between hits"
+                + (assessment.isImmune()
+                ? "; the target is inside its hurt-resistance window right now"
+                : "")
+                + ". Early hits inside that window are ignored."
                 : "This target cannot be finished with the current weapon"
-                        + (assessment.getBlocker() != null ? ": " + assessment.getBlocker() : "."));
+                + (assessment.getBlocker() != null ? ": " + assessment.getBlocker() : "."));
         return out;
     }
 }

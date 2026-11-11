@@ -5,7 +5,8 @@ import org.junit.Test;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Flight movement legality: the drone occupies two voxels and must not clip a
@@ -16,7 +17,9 @@ import static org.junit.Assert.*;
  * blocks and then velocity-blocking, so they are pinned here.</p>
  */
 public class FlightMovementRulesTest {
-    /** A voxel set where only the listed cells are passable. */
+    /**
+     * A voxel set where only the listed cells are passable.
+     */
     private static FlightMovementRules.Voxels open(Set<String> passable) {
         return (x, y, z) -> passable.contains(x + "," + y + "," + z);
     }

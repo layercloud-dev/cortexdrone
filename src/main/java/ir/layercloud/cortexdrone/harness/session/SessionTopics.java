@@ -12,7 +12,9 @@ import java.util.Locale;
  * classification rules explicit and testable.</p>
  */
 public final class SessionTopics {
-    /** Ordered rules: the first match wins. */
+    /**
+     * Ordered rules: the first match wins.
+     */
     private static final Rule[] PROMPT_RULES = {
             new Rule("mining", "mine", "mining", "dig", "digging", "ore", "diamond", "coal",
                     "iron", "gold", "quarry", "excavat", "tunnel"),
@@ -27,7 +29,9 @@ public final class SessionTopics {
             new Rule("survival", "survive", "escape", "safe", "emergency", "lava", "fire", "fall"),
     };
 
-    /** Fallback rules keyed on the tool names actually used. */
+    /**
+     * Fallback rules keyed on the tool names actually used.
+     */
     private static final Rule[] TOOL_RULES = {
             new Rule("navigation", "goto", "breadcrumbs"),
             new Rule("mining", "break_block", "scan_blocks", "scan_veins"),
@@ -39,7 +43,9 @@ public final class SessionTopics {
     private SessionTopics() {
     }
 
-    /** Classifies the topic, defaulting to {@code general}. */
+    /**
+     * Classifies the topic, defaulting to {@code general}.
+     */
     public static String classify(String prompt, List<com.google.gson.JsonObject> transcript) {
         String text = prompt != null ? prompt.toLowerCase(Locale.ROOT) : "";
         for (Rule rule : PROMPT_RULES) {
@@ -53,7 +59,9 @@ public final class SessionTopics {
         return "general";
     }
 
-    /** Every topic the classifier can return, for validation and docs. */
+    /**
+     * Every topic the classifier can return, for validation and docs.
+     */
     public static List<String> known() {
         List<String> topics = new ArrayList<>();
         topics.add("mining");

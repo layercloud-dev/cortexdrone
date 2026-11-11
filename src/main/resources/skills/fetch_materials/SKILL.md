@@ -23,9 +23,9 @@ unavailable, so a single missing plank does not abort the whole trip.
 ## Parameters
 
 - `materials` - list of entries:
-  - `[{ "filter": "cobblestone", "count": 128 }, { "filter": "oak_planks", "count": 64 }]`
-  - or a map: `{ "cobblestone": 128, "oak_planks": 64 }`
-  - or a list of names (defaults to `count`).
+    - `[{ "filter": "cobblestone", "count": 128 }, { "filter": "oak_planks", "count": 64 }]`
+    - or a map: `{ "cobblestone": 128, "oak_planks": 64 }`
+    - or a list of names (defaults to `count`).
 - `count` - default amount when an entry has no count. Default 64.
 - `radius` - chest/player search radius 4..64. Default 32.
 

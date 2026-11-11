@@ -1,10 +1,9 @@
 package ir.layercloud.cortexdrone.harness.skill;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.harness.agent.AgentResources;
 import ir.layercloud.cortexdrone.harness.agent.LlmClient;
@@ -38,7 +37,9 @@ public final class SkillRefiner {
         this.logger = logger;
     }
 
-    /** Why the last refine attempt was refused, or null when it succeeded. */
+    /**
+     * Why the last refine attempt was refused, or null when it succeeded.
+     */
     public String lastRejection() {
         return this.lastRejection;
     }
@@ -83,7 +84,7 @@ public final class SkillRefiner {
                                String task, String code, String notes,
                                List<SkillCodeGuard.Violation> sourceViolations,
                                List<SkillCodeGuard.Violation> previousViolations) {
-        if (COMPILER_PROMPT == null || COMPILER_PROMPT.isEmpty()) return null;
+        if (COMPILER_PROMPT.isEmpty()) return null;
         List<JsonObject> messages = new ArrayList<>();
         messages.add(message("system", COMPILER_PROMPT));
         StringBuilder user = new StringBuilder();

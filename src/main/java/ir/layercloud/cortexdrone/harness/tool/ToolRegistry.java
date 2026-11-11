@@ -2,12 +2,7 @@ package ir.layercloud.cortexdrone.harness.tool;
 
 import com.google.gson.JsonArray;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Single source of truth for the harness tool surface.
@@ -25,6 +20,7 @@ import java.util.Map;
  * agent loop: adding a tool to a provider automatically exposes it to the
  * model, the JS runtime and the HTTP endpoint.</p>
  */
+@SuppressWarnings("unused")
 public final class ToolRegistry {
     private final Map<String, Binding> bindings = new LinkedHashMap<>();
 
@@ -63,13 +59,17 @@ public final class ToolRegistry {
         return this.bindings.containsKey(normalize(name));
     }
 
-    /** Declared spec, bound or not. */
+    /**
+     * Declared spec, bound or not.
+     */
     public ToolSpec spec(String name) {
         Binding binding = this.bindings.get(normalize(name));
         return binding != null ? binding.spec : null;
     }
 
-    /** Fully bound tool or {@code null} when the name is unknown/unbound. */
+    /**
+     * Fully bound tool or {@code null} when the name is unknown/unbound.
+     */
     public Tool find(String name) {
         Binding binding = this.bindings.get(normalize(name));
         if (binding == null || binding.handler == null) return null;
@@ -90,7 +90,9 @@ public final class ToolRegistry {
         return Collections.unmodifiableList(out);
     }
 
-    /** Public model tools only, in declaration order. */
+    /**
+     * Public model tools only, in declaration order.
+     */
     public List<ToolSpec> modelTools() {
         List<ToolSpec> out = new ArrayList<>();
         for (Binding binding : this.bindings.values()) {
@@ -99,14 +101,18 @@ public final class ToolRegistry {
         return Collections.unmodifiableList(out);
     }
 
-    /** OpenAI-compatible {@code tools} array for the chat completion request. */
+    /**
+     * OpenAI-compatible {@code tools} array for the chat completion request.
+     */
     public JsonArray toOpenAiTools() {
         JsonArray array = new JsonArray();
         for (ToolSpec spec : modelTools()) array.add(spec.toOpenAiTool());
         return array;
     }
 
-    /** Compact JSON catalog injected into the context message. */
+    /**
+     * Compact JSON catalog injected into the context message.
+     */
     public JsonArray toPromptCatalog() {
         JsonArray array = new JsonArray();
         for (ToolSpec spec : modelTools()) array.add(spec.toPromptEntry());
@@ -129,7 +135,9 @@ public final class ToolRegistry {
         return count;
     }
 
-    /** Fails fast at startup when a declared tool was never bound. */
+    /**
+     * Fails fast at startup when a declared tool was never bound.
+     */
     public void requireAllBound() {
         List<String> unbound = new ArrayList<>();
         for (Binding binding : this.bindings.values()) {

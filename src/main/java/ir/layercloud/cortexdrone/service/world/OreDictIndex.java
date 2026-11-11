@@ -3,12 +3,7 @@ package ir.layercloud.cortexdrone.service.world;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Cached indexes over the OreDictionary tag list.
@@ -19,7 +14,9 @@ import java.util.Map;
  * multi-word queries. Both are replaced atomically.</p>
  */
 final class OreDictIndex {
-    /** Aggregate tags that are not materials (e.g. {@code oreIron} groups). */
+    /**
+     * Aggregate tags that are not materials (e.g. {@code oreIron} groups).
+     */
     private static final String[] AGGREGATE_PREFIXES = {"listAll", "oredict"};
 
     private static volatile Map<String, String> compact = Collections.emptyMap();
@@ -29,7 +26,9 @@ final class OreDictIndex {
     private OreDictIndex() {
     }
 
-    /** One built index pair, for callers that supply their own tag universe. */
+    /**
+     * One built index pair, for callers that supply their own tag universe.
+     */
     static final class Snapshot {
         final Map<String, String> compact;
         final Map<String, List<String>> tokens;
@@ -40,7 +39,9 @@ final class OreDictIndex {
         }
     }
 
-    /** Builds an index from an explicit tag list (tests, offline resolution). */
+    /**
+     * Builds an index from an explicit tag list (tests, offline resolution).
+     */
     static Snapshot buildFor(String[] names) {
         Map<String, String> newCompact = new HashMap<>();
         Map<String, List<String>> newTokens = new HashMap<>();
@@ -48,34 +49,44 @@ final class OreDictIndex {
         return new Snapshot(newCompact, newTokens);
     }
 
-    /** The compact spelling-insensitive index, refreshing it when stale. */
+    /**
+     * The compact spelling-insensitive index, refreshing it when stale.
+     */
     static Map<String, String> compact() {
         refresh();
         return compact;
     }
 
-    /** The token-sorted index, refreshing it when stale. */
+    /**
+     * The token-sorted index, refreshing it when stale.
+     */
     static Map<String, List<String>> tokens() {
         refresh();
         return tokens;
     }
 
-    /** Every registered tag name, or an empty array when the registry is absent. */
+    /**
+     * Every registered tag name, or an empty array when the registry is absent.
+     */
     static String[] tagNames() {
         try {
             String[] names = OreDictionary.getOreNames();
-            return names != null ? names : new String[0];
+            return names;
         } catch (Throwable unavailable) {
             return new String[0];
         }
     }
 
-    /** The tag count observed at the last refresh, or {@code -1} before any. */
+    /**
+     * The tag count observed at the last refresh, or {@code -1} before any.
+     */
     static int tagCount() {
         return indexedTagCount;
     }
 
-    /** Rebuilds both indexes when the registry's tag count changed. */
+    /**
+     * Rebuilds both indexes when the registry's tag count changed.
+     */
     static void refresh() {
         String[] names;
         try {
@@ -83,7 +94,6 @@ final class OreDictIndex {
         } catch (Throwable unavailable) {
             names = new String[0];
         }
-        if (names == null) names = new String[0];
         if (names.length == indexedTagCount) return;
         build(names);
         indexedTagCount = names.length;
@@ -120,7 +130,9 @@ final class OreDictIndex {
         }
     }
 
-    /** The OreDictionary tags of a stack, lower-cased; empty when unregistered. */
+    /**
+     * The OreDictionary tags of a stack, lower-cased; empty when unregistered.
+     */
     static java.util.Set<String> tagsOf(ItemStack stack) {
         java.util.Set<String> out = new java.util.HashSet<>();
         try {
@@ -137,7 +149,9 @@ final class OreDictIndex {
         return out;
     }
 
-    /** The stacks registered under a tag; empty when the tag is unknown. */
+    /**
+     * The stacks registered under a tag; empty when the tag is unknown.
+     */
     static List<ItemStack> ores(String tag) {
         try {
             List<ItemStack> stacks = OreDictionary.getOres(tag, false);

@@ -21,6 +21,7 @@ import java.util.List;
  * under the line limit.
  */
 @UtilityClass
+@SuppressWarnings("unused")
 final class MachineRecipeRanker {
 
     private static final long COUNT_CACHE_TTL_MS = 1000L;
@@ -28,14 +29,14 @@ final class MachineRecipeRanker {
     private static final java.util.Map<String, Long> COUNT_CACHE_EXPIRY = new java.util.HashMap<>();
 
     static java.util.Map<String, Integer> countAllNearby(InventoryService inventoryService, World world,
-                                                        li.cil.oc.common.entity.Drone drone,
-                                                        EntityPlayerMP player, int radius) {
+                                                         li.cil.oc.common.entity.Drone drone,
+                                                         EntityPlayerMP player, int radius) {
         return countAllNearbyCached(inventoryService, world, drone, player, radius);
     }
 
     private static java.util.Map<String, Integer> countAllNearbyCached(InventoryService inventoryService, World world,
-                                                                      li.cil.oc.common.entity.Drone drone,
-                                                                      EntityPlayerMP player, int radius) {
+                                                                       li.cil.oc.common.entity.Drone drone,
+                                                                       EntityPlayerMP player, int radius) {
         // Cache the expensive nearby-inventory sweep for ~1s so the
         // getBestMachineRecipe loop (which re-assesses every ranked candidate
         // plus recipeDuration lookups re-enter getBest) does not re-scan
@@ -80,8 +81,8 @@ final class MachineRecipeRanker {
     }
 
     static java.util.Map<String, Integer> countAllNearbyUncached(InventoryService inventoryService, World world,
-                                                                li.cil.oc.common.entity.Drone drone,
-                                                                EntityPlayerMP player, int radius) {
+                                                                 li.cil.oc.common.entity.Drone drone,
+                                                                 EntityPlayerMP player, int radius) {
         java.util.Map<String, Integer> totals = new java.util.LinkedHashMap<>();
         try {
             if (world == null) return totals;

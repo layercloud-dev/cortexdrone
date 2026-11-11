@@ -11,7 +11,8 @@ import org.junit.Test;
 import java.io.File;
 import java.nio.file.Files;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Regression tests for the JavaScript failures seen in live sessions.

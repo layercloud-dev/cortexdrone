@@ -2,7 +2,8 @@ package ir.layercloud.cortexdrone.config;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * One private-host predicate shared by the LLM client (proxy bypass) and the web

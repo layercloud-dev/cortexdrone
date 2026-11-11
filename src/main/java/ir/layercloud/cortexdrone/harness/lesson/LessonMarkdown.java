@@ -24,7 +24,9 @@ public final class LessonMarkdown {
     private LessonMarkdown() {
     }
 
-    /** Parses one LESSON.md document. Returns {@code null} when it is empty. */
+    /**
+     * Parses one LESSON.md document. Returns {@code null} when it is empty.
+     */
     public static Lesson read(String text) {
         if (text == null || text.trim().isEmpty()) return null;
         Frontmatter.Document doc = Frontmatter.parse(text);

@@ -6,6 +6,7 @@ package ir.layercloud.cortexdrone.harness.tool;
  * path...). The invoker turns it into the standard error envelope without a
  * Java stack trace.
  */
+@SuppressWarnings("unused")
 public final class ToolFailure extends RuntimeException {
     private final String code;
     private final String hint;

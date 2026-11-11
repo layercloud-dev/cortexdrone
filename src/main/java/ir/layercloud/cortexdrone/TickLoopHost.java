@@ -7,7 +7,9 @@ import ir.layercloud.cortexdrone.manager.TickManager;
 import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
 
-/** The manager's wiring for {@link DroneTickLoop}. */
+/**
+ * The manager's wiring for {@link DroneTickLoop}.
+ */
 final class TickLoopHost implements DroneTickLoop.Host {
     private final AIDroneManager manager;
 

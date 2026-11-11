@@ -3,14 +3,9 @@ package ir.layercloud.cortexdrone.harness.js;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.ModConfig;
-import net.minecraft.entity.player.EntityPlayerMP;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
-import ir.layercloud.cortexdrone.harness.tool.ScanJobs;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
+import net.minecraft.entity.player.EntityPlayerMP;
 import org.junit.Test;
 
 import java.io.File;

@@ -1,17 +1,12 @@
 package ir.layercloud.cortexdrone.harness.session;
 
-import ir.layercloud.cortexdrone.config.ConfigDirectory;
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.config.ConfigDirectory;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 
 import java.io.File;
-
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
@@ -30,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * (replaced task, despawn, shutdown, cancel) is still written instead of being
  * lost.</p>
  */
+@SuppressWarnings("unused")
 public final class SessionJournal {
     private static final int MAX_TRANSCRIPT_ENTRIES = 500;
     private static final int MAX_ENTRY_CHARS = 6_000;
@@ -57,7 +53,9 @@ public final class SessionJournal {
         ensureDirectory(this.sessionsRoot);
     }
 
-    /** Installs the capability-driven world-action predicate. */
+    /**
+     * Installs the capability-driven world-action predicate.
+     */
     public void setWorldActionPredicate(java.util.function.Predicate<String> predicate) {
         if (predicate != null) this.worldAction = predicate;
     }
@@ -75,7 +73,9 @@ public final class SessionJournal {
         return run;
     }
 
-    /** Called by the run itself under its own lock. */
+    /**
+     * Called by the run itself under its own lock.
+     */
     private void finished(SessionRun run) {
         this.active.remove(run.id);
     }
@@ -95,7 +95,9 @@ public final class SessionJournal {
         return this.active.size();
     }
 
-    /** Recent index entries, newest first, optionally filtered by outcome. */
+    /**
+     * Recent index entries, newest first, optionally filtered by outcome.
+     */
     public List<JsonObject> recent(int limit, SessionOutcome filter) {
         return this.index.recent(limit, filter);
     }
@@ -104,7 +106,9 @@ public final class SessionJournal {
         return this.index.counts();
     }
 
-    /** Find an index entry by full id, id prefix or file path fragment. */
+    /**
+     * Find an index entry by full id, id prefix or file path fragment.
+     */
     public JsonObject find(String key) {
         return this.index.find(key);
     }
@@ -135,7 +139,9 @@ public final class SessionJournal {
         return SessionTopics.classify(prompt, transcript);
     }
 
-    /** One agent task from start to finish. */
+    /**
+     * One agent task from start to finish.
+     */
     public static final class SessionRun {
         private final SessionJournal journal;
         private final String id;
@@ -238,7 +244,9 @@ public final class SessionJournal {
             return Math.max(0L, this.endedAt - this.startedAt);
         }
 
-        /** True when every tool call in the session failed. */
+        /**
+         * True when every tool call in the session failed.
+         */
         public synchronized boolean allToolsFailed() {
             return this.toolCalls > 0 && this.toolErrors >= this.toolCalls;
         }
@@ -294,7 +302,9 @@ public final class SessionJournal {
             append(entry);
         }
 
-        /** Marks that the model itself asked to cancel the task. */
+        /**
+         * Marks that the model itself asked to cancel the task.
+         */
         public synchronized void cancelRequested(String reason) {
             if (this.finished) return;
             this.cancelReason = reason != null ? reason : "model_cancel";

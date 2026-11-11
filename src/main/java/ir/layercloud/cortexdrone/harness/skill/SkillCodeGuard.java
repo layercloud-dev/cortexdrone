@@ -1,11 +1,6 @@
 package ir.layercloud.cortexdrone.harness.skill;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,6 +27,7 @@ import java.util.regex.Pattern;
  * good: drone.pickEntity({ entity_id: target.id });
  * </pre>
  */
+@SuppressWarnings("unused")
 public final class SkillCodeGuard {
     public enum Kind {
         PLAYER_NAME("hardcoded player/owner name",
@@ -62,7 +58,9 @@ public final class SkillCodeGuard {
         }
     }
 
-    /** One literal that ties a skill to a single run. */
+    /**
+     * One literal that ties a skill to a single run.
+     */
     public static final class Violation {
         private final Kind kind;
         private final int line;
@@ -86,7 +84,9 @@ public final class SkillCodeGuard {
             return this.snippet;
         }
 
-        /** Sentence suitable for logs and compiler feedback. */
+        /**
+         * Sentence suitable for logs and compiler feedback.
+         */
         public String feedback() {
             return this.kind.label() + " " + this.snippet + " on line " + this.line
                     + "; " + this.kind.advice();
@@ -150,7 +150,9 @@ public final class SkillCodeGuard {
     private SkillCodeGuard() {
     }
 
-    /** All instance-specific literals found in {@code code}, in source order. */
+    /**
+     * All instance-specific literals found in {@code code}, in source order.
+     */
     public static List<Violation> inspect(String code) {
         List<Violation> violations = new ArrayList<>();
         if (code == null || code.trim().isEmpty()) return violations;
@@ -225,12 +227,16 @@ public final class SkillCodeGuard {
         return violations;
     }
 
-    /** True when the code contains no instance-specific literals. */
+    /**
+     * True when the code contains no instance-specific literals.
+     */
     public static boolean isClean(String code) {
         return inspect(code).isEmpty();
     }
 
-    /** Compact list for logs and tool errors. */
+    /**
+     * Compact list for logs and tool errors.
+     */
     public static String describe(List<Violation> violations) {
         if (violations == null || violations.isEmpty()) return "";
         StringBuilder out = new StringBuilder();
@@ -259,10 +265,10 @@ public final class SkillCodeGuard {
         if (Math.abs(x) >= 16.0 || Math.abs(z) >= 16.0) return true;
         String prefix = source.substring(Math.max(0, start - 72), start).toLowerCase(Locale.ROOT);
         return prefix.matches("(?s).*(?:destination|dest|home|base|site|targetpos"
-                        + "|targetposition|chestpos|location)\\s*[:=]\\s*$")
+                + "|targetposition|chestpos|location)\\s*[:=]\\s*$")
                 || prefix.matches("(?s).*\\.(?:goto|getblock|placeblock|breakblock|replaceblock"
-                        + "|interactblock|getblocksinbox|scanblocks|scanroom|withdrawchest"
-                        + "|depositchest|getchest|memory)\\s*\\(\\s*$");
+                + "|interactblock|getblocksinbox|scanblocks|scanroom|withdrawchest"
+                + "|depositchest|getchest|memory)\\s*\\(\\s*$");
     }
 
     private static boolean isSuspiciousLoneCoordinate(String key, double value) {

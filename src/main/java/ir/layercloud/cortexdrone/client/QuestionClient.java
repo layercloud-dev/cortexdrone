@@ -7,7 +7,6 @@ import ir.layercloud.cortexdrone.network.QuestionAnswerMessage;
 import ir.layercloud.cortexdrone.service.question.QuestionLimits;
 import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,7 +27,9 @@ public final class QuestionClient {
     private QuestionClient() {
     }
 
-    /** Opens the dialog; called reflectively from the network handler. */
+    /**
+     * Opens the dialog; called reflectively from the network handler.
+     */
     public static void open(final long id, final String question, final List<String> options,
                             final boolean allowFreeText, final int timeoutMs) {
         final Minecraft minecraft = Minecraft.getMinecraft();
@@ -55,7 +56,9 @@ public final class QuestionClient {
         });
     }
 
-    /** Sends one terminal answer for the dialog that is on screen. */
+    /**
+     * Sends one terminal answer for the dialog that is on screen.
+     */
     public static void answer(long id, String text, int optionIndex, boolean cancelled) {
         if (id <= 0L || id != activeId) return;
         activeId = -1L;

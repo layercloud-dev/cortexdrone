@@ -1,9 +1,8 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
@@ -12,12 +11,18 @@ import li.cil.oc.common.entity.Drone;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class FlightPathfinder {
-    /** Extra A* cost of a step that enters lava. */
+    /**
+     * Extra A* cost of a step that enters lava.
+     */
     public static final double LAVA_STEP_COST = 8.0;
-    /** Base A* cost of a normal diagonal/straight step. */
+    /**
+     * Base A* cost of a normal diagonal/straight step.
+     */
     public static final double BASE_STEP_COST = 2.0;
 
     private final DroneLogger logger;
@@ -88,8 +93,8 @@ public class FlightPathfinder {
     }
 
     public List<double[]> findFlightPath(World world, DroneController ctrl, NavigationState nav,
-                                          double sx, double sy, double sz,
-                                          double gx, double gy, double gz) {
+                                         double sx, double sy, double sz,
+                                         double gx, double gy, double gz) {
         List<double[]> result = new ArrayList<>(4);
         if (isFlightLineClear(world, sx, sy, sz, gx, gy, gz)) {
             result.add(new double[]{gx, gy, gz});

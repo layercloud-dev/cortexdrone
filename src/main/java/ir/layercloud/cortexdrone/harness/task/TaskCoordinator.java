@@ -1,9 +1,8 @@
 package ir.layercloud.cortexdrone.harness.task;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.agent.AgentService;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +53,9 @@ public final class TaskCoordinator {
                 player, ctrl, cleanPrompt, contextMessage, loopId, "MESSAGE"));
     }
 
-    /** Stops the active generation immediately; used by {@code /drone stop}. */
+    /**
+     * Stops the active generation immediately; used by {@code /drone stop}.
+     */
     public void stop(DroneController ctrl) {
         if (ctrl == null) return;
         DroneSession session = session(ctrl);

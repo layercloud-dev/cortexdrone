@@ -1,10 +1,6 @@
 package ir.layercloud.cortexdrone;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -26,7 +22,9 @@ public final class DroneRegistry {
     private final Map<String, DroneController> byOwner = new ConcurrentHashMap<>();
     private final Set<UUID> despawned = Collections.synchronizedSet(new java.util.HashSet<>());
 
-    /** Every live controller, in no particular order. */
+    /**
+     * Every live controller, in no particular order.
+     */
     public Collection<DroneController> all() {
         return Collections.unmodifiableCollection(byId.values());
     }
@@ -39,7 +37,9 @@ public final class DroneRegistry {
         return byId.isEmpty();
     }
 
-    /** The next controller id. Monotonic for the lifetime of the server. */
+    /**
+     * The next controller id. Monotonic for the lifetime of the server.
+     */
     public int nextId() {
         return this.nextId.getAndIncrement();
     }
@@ -58,7 +58,9 @@ public final class DroneRegistry {
         }
     }
 
-    /** Drops a controller and re-points the owner index at another live drone. */
+    /**
+     * Drops a controller and re-points the owner index at another live drone.
+     */
     public void remove(DroneController controller) {
         if (controller == null) return;
         this.byId.remove(controller.id);
@@ -74,7 +76,9 @@ public final class DroneRegistry {
         }
     }
 
-    /** Finds a controller by the entity it currently points at. */
+    /**
+     * Finds a controller by the entity it currently points at.
+     */
     public DroneController findByControllerEntity(Object entity) {
         if (entity == null) return null;
         for (DroneController controller : this.byId.values()) {
@@ -83,25 +87,33 @@ public final class DroneRegistry {
         return null;
     }
 
-    /** The controller owned by {@code playerName}, or {@code null}. */
+    /**
+     * The controller owned by {@code playerName}, or {@code null}.
+     */
     public DroneController byOwner(String playerName) {
         if (playerName == null) return null;
         return this.byOwner.get(CortexDroneMod.normKey(playerName));
     }
 
-    /** Re-indexes an existing controller under a new owner. */
+    /**
+     * Re-indexes an existing controller under a new owner.
+     */
     public void reassignOwner(DroneController controller, String ownerName) {
         if (controller == null || ownerName == null) return;
         controller.ownerName = ownerName;
         this.byOwner.put(CortexDroneMod.normKey(ownerName), controller);
     }
 
-    /** Records that this entity was deliberately despawned by the mod. */
+    /**
+     * Records that this entity was deliberately despawned by the mod.
+     */
     public void markDespawned(UUID entityUuid) {
         if (entityUuid != null) this.despawned.add(entityUuid);
     }
 
-    /** True when the entity was despawned by this mod (so reconnect must skip it). */
+    /**
+     * True when the entity was despawned by this mod (so reconnect must skip it).
+     */
     public boolean wasDespawned(UUID entityUuid) {
         return entityUuid != null && this.despawned.contains(entityUuid);
     }

@@ -1,14 +1,13 @@
 package ir.layercloud.cortexdrone.harness.tools.view;
 
-import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
+import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.manager.navigation.NavigationResult;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -64,9 +63,9 @@ public final class NavigationView {
                 .allowDig(allowDig)
                 .maxDigBlocks(maxDigBlocks)
                 .recoveryAttempts(ToolArgs.clampedInt(args, "recoveryAttempts",
-                NavigationLimits.DEFAULT_RECOVERY_ATTEMPTS,
-                NavigationLimits.MIN_RECOVERY_ATTEMPTS,
-                NavigationLimits.MAX_RECOVERY_ATTEMPTS))
+                        NavigationLimits.DEFAULT_RECOVERY_ATTEMPTS,
+                        NavigationLimits.MIN_RECOVERY_ATTEMPTS,
+                        NavigationLimits.MAX_RECOVERY_ATTEMPTS))
                 // 0 means "use the configured multiplier". DroneSpeed clamps
                 // whatever arrives into its supported range.
                 .speedMultiplier(ToolArgs.decimal(args, "speed", 0.0D))

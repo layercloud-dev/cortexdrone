@@ -15,7 +15,9 @@ import java.util.Locale;
  * another player's drone and receive its inventory at their own feet.</p>
  */
 public final class DespawnTargets {
-    /** @see CommandPermissions#OP_LEVEL */
+    /**
+     * @see CommandPermissions#OP_LEVEL
+     */
     public static final int OP_PERMISSION_LEVEL = CommandPermissions.OP_LEVEL;
 
     private DespawnTargets() {
@@ -41,7 +43,9 @@ public final class DespawnTargets {
         return null;
     }
 
-    /** True when {@code controller} belongs to {@code playerName}. */
+    /**
+     * True when {@code controller} belongs to {@code playerName}.
+     */
     public static boolean owns(String playerName, DroneController controller) {
         if (playerName == null || controller == null || controller.ownerName == null) return false;
         return playerName.trim().equalsIgnoreCase(controller.ownerName.trim());

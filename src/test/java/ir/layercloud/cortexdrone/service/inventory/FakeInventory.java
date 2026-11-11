@@ -4,7 +4,10 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 
-/** Minimal in-memory IInventory for transfer arithmetic tests. */
+/**
+ * Minimal in-memory IInventory for transfer arithmetic tests.
+ */
+@SuppressWarnings("unused")
 public class FakeInventory implements IInventory {
     private final ItemStack[] slots;
     private final int limit;

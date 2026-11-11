@@ -14,13 +14,14 @@ import net.minecraft.world.World;
  * the JavaScript binding navigates to before retrying. A direct model call gets
  * the same envelope and a clear error, never a silent long-range transfer.</p>
  */
+@SuppressWarnings("unused")
 public final class ContainerGuard {
     private ContainerGuard() {
     }
 
     /**
      * @return {@code null} when the container can be opened from here, otherwise
-     *         the typed failure envelope.
+     * the typed failure envelope.
      */
     public static InventoryResult blocked(World world, Drone drone, TileEntity tile, String action) {
         if (tile == null) {
@@ -52,7 +53,9 @@ public final class ContainerGuard {
                 .build();
     }
 
-    /** Guard for a container that has already been resolved to an inventory. */
+    /**
+     * Guard for a container that has already been resolved to an inventory.
+     */
     public static InventoryResult blocked(World world, Drone drone, IInventory inventory, String action) {
         return inventory instanceof TileEntity
                 ? blocked(world, drone, (TileEntity) inventory, action)

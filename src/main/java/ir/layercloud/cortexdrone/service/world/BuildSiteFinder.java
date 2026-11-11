@@ -1,8 +1,7 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.DroneController;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -31,7 +30,9 @@ public final class BuildSiteFinder {
      */
     public static final int SCHEMA_MIN_RADIUS = ScanLimits.MIN_BUILD_SITE_RADIUS;
     public static final int SCHEMA_MAX_RADIUS = ScanLimits.MAX_RADIUS;
-    /** Radius used when the caller names none. */
+    /**
+     * Radius used when the caller names none.
+     */
     public static final int DEFAULT_RADIUS = ScanLimits.DEFAULT_RADIUS;
 
     /**
@@ -45,11 +46,18 @@ public final class BuildSiteFinder {
     static int clampRadius(int requested) {
         return Math.max(SCHEMA_MIN_RADIUS, Math.min(SCHEMA_MAX_RADIUS, requested));
     }
-    /** How far the player's look point may bias the preferred centre. */
+
+    /**
+     * How far the player's look point may bias the preferred centre.
+     */
     private static final double LOOK_BIAS_DISTANCE = 32.0;
-    /** A look hit closer than this is the player's own block, not a target. */
+    /**
+     * A look hit closer than this is the player's own block, not a target.
+     */
     private static final double MIN_LOOK_DISTANCE = 4.0;
-    /** Minimum clear distance between the pad and the player. */
+    /**
+     * Minimum clear distance between the pad and the player.
+     */
     static final int PLAYER_CLEARANCE = 2;
 
     // Score weights: slope dominates, then liquid, then distance/elevation.
@@ -57,7 +65,9 @@ public final class BuildSiteFinder {
     private static final int LIQUID_PENALTY = 25;
     private static final double DISTANCE_WEIGHT = 1.4;
     private static final double ELEVATION_WEIGHT = 2.5;
-    /** Candidate stride: every other block keeps the search cheap. */
+    /**
+     * Candidate stride: every other block keeps the search cheap.
+     */
     private static final int CANDIDATE_STRIDE = 2;
 
     private BuildSiteFinder() {
@@ -106,7 +116,9 @@ public final class BuildSiteFinder {
         return toJson(best, w, d, radius, maxRadius, px, pz);
     }
 
-    /** Bias the preferred centre toward where the player is looking. */
+    /**
+     * Bias the preferred centre toward where the player is looking.
+     */
     private static int[] preferredCentre(World world, EntityPlayerMP player, boolean usePlayer,
                                          double px, double pz, int w, int d) {
         int centerX = MathHelper.floor_double(px);
@@ -125,13 +137,17 @@ public final class BuildSiteFinder {
         };
     }
 
-    /** True when the pad is closer than {@link #PLAYER_CLEARANCE} to the player. */
+    /**
+     * True when the pad is closer than {@link #PLAYER_CLEARANCE} to the player.
+     */
     static boolean overlapsPlayer(double px, double pz, int x1, int z1, int x2, int z2) {
         return px >= x1 - PLAYER_CLEARANCE && px <= x2 + PLAYER_CLEARANCE
                 && pz >= z1 - PLAYER_CLEARANCE && pz <= z2 + PLAYER_CLEARANCE;
     }
 
-    /** Scores one pad, or returns {@code null} when it is unusable. */
+    /**
+     * Scores one pad, or returns {@code null} when it is unusable.
+     */
     private static Candidate score(World world, int x1, int z1, int x2, int z2, int refY,
                                    int cx, int cz, int prefCenterX, int prefCenterZ) {
         int minY = Integer.MAX_VALUE;
@@ -203,7 +219,9 @@ public final class BuildSiteFinder {
         return result;
     }
 
-    /** One scored candidate pad. */
+    /**
+     * One scored candidate pad.
+     */
     private static final class Candidate {
         final int x1;
         final int z1;

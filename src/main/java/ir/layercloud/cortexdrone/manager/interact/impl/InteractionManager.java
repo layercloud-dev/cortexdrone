@@ -1,11 +1,10 @@
 package ir.layercloud.cortexdrone.manager.interact.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.action.Action;
-import ir.layercloud.cortexdrone.action.interact.InteractionState;
 import ir.layercloud.cortexdrone.action.interact.InteractionRequest;
 import ir.layercloud.cortexdrone.action.interact.InteractionResult;
+import ir.layercloud.cortexdrone.action.interact.InteractionState;
 import ir.layercloud.cortexdrone.action.interact.impl.*;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.InteractionContext;
@@ -32,13 +31,17 @@ public final class InteractionManager extends ActionManager<InteractionContext, 
         this.logger = logger;
     }
 
-    /** Per-drone interaction state, created on first use. */
+    /**
+     * Per-drone interaction state, created on first use.
+     */
     public InteractionState state(DroneController controller) {
         if (controller == null) return null;
         return this.states.computeIfAbsent(controller, ignored -> new InteractionState());
     }
 
-    /** Per-tick cooldown maintenance. */
+    /**
+     * Per-tick cooldown maintenance.
+     */
     public void tickCooldown(DroneController controller) {
         InteractionState state = state(controller);
         if (state != null && state.attackCooldown > 0) state.attackCooldown--;

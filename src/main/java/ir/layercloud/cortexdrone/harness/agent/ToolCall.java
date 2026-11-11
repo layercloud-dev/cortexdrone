@@ -2,7 +2,9 @@ package ir.layercloud.cortexdrone.harness.agent;
 
 import com.google.gson.JsonObject;
 
-/** One function call requested by the model. */
+/**
+ * One function call requested by the model.
+ */
 public final class ToolCall {
     private final String id;
     private final String name;

@@ -1,12 +1,7 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tools.view.QuestionView;
 import ir.layercloud.cortexdrone.service.question.QuestionLimits;
 
@@ -40,8 +35,8 @@ public final class QuestionTools implements ToolProvider {
                             .optionalBoolean("allow_free_text",
                                     "Offer a text field beside the option buttons. Default true.", true)
                             .optionalInt("timeout_ms", "How long to wait for an answer, "
-                                    + QuestionLimits.MIN_TIMEOUT_MS + ".."
-                                    + QuestionLimits.MAX_TIMEOUT_MS + " ms.",
+                                            + QuestionLimits.MIN_TIMEOUT_MS + ".."
+                                            + QuestionLimits.MAX_TIMEOUT_MS + " ms.",
                                     QuestionLimits.MIN_TIMEOUT_MS, QuestionLimits.MAX_TIMEOUT_MS,
                                     QuestionLimits.DEFAULT_TIMEOUT_MS)
                             .optionalString("player",

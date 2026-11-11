@@ -1,7 +1,6 @@
 package ir.layercloud.cortexdrone.context.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.action.navigation.NavigationMode;
 import ir.layercloud.cortexdrone.context.ActionContextBase;

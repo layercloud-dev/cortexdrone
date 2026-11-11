@@ -1,14 +1,9 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.DroneController;
+import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.world.BuildSiteFinder;
 import ir.layercloud.cortexdrone.service.world.SiteSurvey;
 import ir.layercloud.cortexdrone.service.world.StructureArchitect;
@@ -17,8 +12,6 @@ import li.cil.oc.common.entity.Drone;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
-
-import com.google.gson.JsonObject;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,19 +24,33 @@ import java.util.List;
  * skill) performs the placements.</p>
  */
 public final class WorldBuildPlanTools implements ToolProvider {
-    /** Smallest footprint edge for a survey or a planned structure. */
+    /**
+     * Smallest footprint edge for a survey or a planned structure.
+     */
     public static final int MIN_PLAN_SIDE = ir.layercloud.cortexdrone.service.world.WorldBounds.MIN_PLAN_SIDE;
-    /** Largest footprint edge for a survey or a planned structure. */
+    /**
+     * Largest footprint edge for a survey or a planned structure.
+     */
     public static final int MAX_SITE_SIDE = ir.layercloud.cortexdrone.service.world.WorldBounds.MAX_SITE_SIDE;
-    /** Largest footprint the blueprint planner will generate. */
+    /**
+     * Largest footprint the blueprint planner will generate.
+     */
     public static final int MAX_PLAN_SIDE = ir.layercloud.cortexdrone.service.world.WorldBounds.MAX_PLAN_SIDE;
-    /** Shortest wall the blueprint planner will generate. */
+    /**
+     * Shortest wall the blueprint planner will generate.
+     */
     public static final int MIN_PLAN_HEIGHT = ir.layercloud.cortexdrone.service.world.WorldBounds.MIN_PLAN_HEIGHT;
-    /** Tallest wall the blueprint planner will generate. */
+    /**
+     * Tallest wall the blueprint planner will generate.
+     */
     public static final int MAX_PLAN_HEIGHT = ir.layercloud.cortexdrone.service.world.WorldBounds.MAX_PLAN_HEIGHT;
-    /** Smallest headroom a site survey will check. */
+    /**
+     * Smallest headroom a site survey will check.
+     */
     public static final int MIN_SURVEY_HEIGHT = ir.layercloud.cortexdrone.service.world.WorldBounds.MIN_SURVEY_HEIGHT;
-    /** Largest headroom a site survey will check. */
+    /**
+     * Largest headroom a site survey will check.
+     */
     public static final int MAX_SURVEY_HEIGHT = ir.layercloud.cortexdrone.service.world.WorldBounds.MAX_SURVEY_HEIGHT;
 
     private final AIDroneManager manager;

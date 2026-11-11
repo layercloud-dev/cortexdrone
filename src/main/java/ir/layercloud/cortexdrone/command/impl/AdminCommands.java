@@ -23,14 +23,19 @@ import java.util.Set;
  * server/drone process rather than the agent, and two of them cross a trust
  * boundary. Keeping them together makes the permission checks easy to audit.</p>
  */
+@SuppressWarnings("unused")
 final class AdminCommands {
-    /** Console debug lines shown by {@code debug tail}. */
+    /**
+     * Console debug lines shown by {@code debug tail}.
+     */
     private static final int DEBUG_TAIL = 10;
 
     private AdminCommands() {
     }
 
-    /** {@code debug [on|off|toggle|tail|clear]} */
+    /**
+     * {@code debug [on|off|toggle|tail|clear]}
+     */
     static void debug(ICommandSender sender, EntityPlayerMP player, DroneLogger logger, String[] args) {
         String mode = args.length >= 2 ? args[1].toLowerCase() : "toggle";
         if ("tail".equals(mode)) {
@@ -66,7 +71,9 @@ final class AdminCommands {
         }
     }
 
-    /** {@code list} */
+    /**
+     * {@code list}
+     */
     static void list(ICommandSender sender, AIDroneManager manager) {
         if (manager.controllerCount() == 0) {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "[Drone] No active AI drones.");
@@ -87,7 +94,9 @@ final class AdminCommands {
         }
     }
 
-    /** {@code config [<url|model|key|speed> <value>]}; operator only. */
+    /**
+     * {@code config [<url|model|key|speed> <value>]}; operator only.
+     */
     static void config(ICommandSender sender, EntityPlayerMP player, AIDroneManager manager, String[] args) {
         if (!isOperator(player, sender)) {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
@@ -155,7 +164,9 @@ final class AdminCommands {
         });
     }
 
-    /** True when the sender may change server-level settings. */
+    /**
+     * True when the sender may change server-level settings.
+     */
     static boolean isOperator(EntityPlayerMP player, ICommandSender sender) {
         return player == null || CommandPermissions.isOperator(playerLevel(player));
     }
@@ -174,7 +185,9 @@ final class AdminCommands {
                 + "Usage: /drone config <url|model|key|speed> <value>");
     }
 
-    /** Shows only a recognisable prefix and suffix of a secret. */
+    /**
+     * Shows only a recognisable prefix and suffix of a secret.
+     */
     static String mask(String secret) {
         if (secret == null || secret.isEmpty()) return "<not set>";
         if (secret.length() <= 6) return "***";
@@ -189,7 +202,9 @@ final class AdminCommands {
         }
     }
 
-    /** Vanilla operator level for the executing player. */
+    /**
+     * Vanilla operator level for the executing player.
+     */
     static int playerLevel(EntityPlayerMP player) {
         if (player == null) return 0;
         try {

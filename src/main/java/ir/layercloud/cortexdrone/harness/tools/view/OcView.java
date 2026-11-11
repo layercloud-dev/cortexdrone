@@ -1,10 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tools.view;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import ir.layercloud.cortexdrone.action.oc.OcResult;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.service.oc.OcMethod;
@@ -56,7 +52,9 @@ public final class OcView {
         return out;
     }
 
-    /** One callback descriptor. */
+    /**
+     * One callback descriptor.
+     */
     public JsonObject method(OcMethod method) {
         JsonObject out = new JsonObject();
         out.addProperty("name", method.name());
@@ -69,7 +67,9 @@ public final class OcView {
         return out;
     }
 
-    /** {@code oc_methods}: searchable callback list. */
+    /**
+     * {@code oc_methods}: searchable callback list.
+     */
     public JsonObject methods(List<OcMethod> methods, String query) {
         JsonArray array = new JsonArray();
         for (OcMethod method : methods) array.add(method(method));
@@ -80,7 +80,9 @@ public final class OcView {
         return out;
     }
 
-    /** {@code oc_call} / {@code oc_machine}: unwrap OC tuples into JSON. */
+    /**
+     * {@code oc_call} / {@code oc_machine}: unwrap OC tuples into JSON.
+     */
     public JsonObject result(OcResult result) {
         if (result == null) return ToolJson.error("OpenComputers operation returned no result.");
         if (!result.isOk()) {
@@ -107,7 +109,9 @@ public final class OcView {
         return out;
     }
 
-    /** Converts one OC return value. */
+    /**
+     * Converts one OC return value.
+     */
     private JsonElement json(Object value) {
         if (value == null) return JsonNull.INSTANCE;
         if (value instanceof CharSequence) return new JsonPrimitive(value.toString());

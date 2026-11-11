@@ -10,7 +10,9 @@ package ir.layercloud.cortexdrone.harness.tool;
  * thread. The override property makes the check explicit and testable.</p>
  */
 public final class Threads {
-    /** Property used to force the server-thread answer in tests. */
+    /**
+     * Property used to force the server-thread answer in tests.
+     */
     public static final String SERVER_THREAD_OVERRIDE = "cortexdrone.serverThread";
 
     private static final String SERVER_THREAD_NAME = "Server thread";
@@ -18,14 +20,18 @@ public final class Threads {
     private Threads() {
     }
 
-    /** True when the calling thread is the Minecraft server tick thread. */
+    /**
+     * True when the calling thread is the Minecraft server tick thread.
+     */
     public static boolean isServerThread() {
         String override = System.getProperty(SERVER_THREAD_OVERRIDE);
         if (override != null) return Boolean.parseBoolean(override);
         return isServerThread(Thread.currentThread());
     }
 
-    /** True when {@code thread} is the server tick thread. */
+    /**
+     * True when {@code thread} is the server tick thread.
+     */
     public static boolean isServerThread(Thread thread) {
         if (thread == null) return false;
         String name = thread.getName();

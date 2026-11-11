@@ -2,12 +2,7 @@ package ir.layercloud.cortexdrone.service.oc;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -32,7 +27,9 @@ public final class OcComponentIntrospector {
     private OcComponentIntrospector() {
     }
 
-    /** True when OpenComputers is loaded and exposes the callback annotation. */
+    /**
+     * True when OpenComputers is loaded and exposes the callback annotation.
+     */
     public static boolean available() {
         return callbackType() != null;
     }
@@ -81,7 +78,7 @@ public final class OcComponentIntrospector {
         Map<String, Method> methods = new LinkedHashMap<>();
         for (Class<?> current : hierarchy(type)) {
             Method[] declared = current.getMethods();
-            Arrays.sort(declared, (left, right) -> left.getName().compareTo(right.getName()));
+            Arrays.sort(declared, Comparator.comparing(Method::getName));
             for (Method method : declared) {
                 Annotation callback = method.getAnnotation(annotation);
                 if (callback == null) continue;
@@ -110,9 +107,12 @@ public final class OcComponentIntrospector {
         return Collections.unmodifiableList(result);
     }
 
-    /** Class then superclasses then interfaces, most specific first. */
+    /**
+     * Class then superclasses then interfaces, most specific first.
+     */
     private static List<Class<?>> hierarchy(Class<?> type) {
         List<Class<?>> chain = new ArrayList<>();
+        if (type == null) return chain;
         for (Class<?> current = type; current != null && current != Object.class;
              current = current.getSuperclass()) {
             chain.add(current);
@@ -122,7 +122,9 @@ public final class OcComponentIntrospector {
         return chain;
     }
 
-    /** Lookup one callback by its OC name. */
+    /**
+     * Lookup one callback by its OC name.
+     */
     public static OcMethod method(Object target, String name) {
         if (target == null || name == null) return null;
         for (OcMethod method : methods(target)) {
@@ -166,7 +168,9 @@ public final class OcComponentIntrospector {
         return method.invoke(target, call);
     }
 
-    /** Loads an OpenComputers class by name, or {@code null} when absent. */
+    /**
+     * Loads an OpenComputers class by name, or {@code null} when absent.
+     */
     public static Class<?> ocClass(String name) {
         try {
             return Class.forName(name);

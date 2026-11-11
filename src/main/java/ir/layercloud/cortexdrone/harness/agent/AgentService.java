@@ -1,23 +1,22 @@
 package ir.layercloud.cortexdrone.harness.agent;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.lesson.Lesson;
 import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
-import ir.layercloud.cortexdrone.harness.skill.Skill;
-import ir.layercloud.cortexdrone.harness.skill.SkillCodeGuard;
-import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.session.SessionJournal;
 import ir.layercloud.cortexdrone.harness.session.SessionOutcome;
+import ir.layercloud.cortexdrone.harness.skill.Skill;
+import ir.layercloud.cortexdrone.harness.skill.SkillCodeGuard;
+import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
-import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
@@ -357,7 +356,7 @@ public final class AgentService {
         for (ToolSpec spec : this.registry.specs()) {
             if (!spec.mutatesAnything()) continue;
             String jsName = JsEngine.camelCase(spec.getName());
-            if (jsName != null && !jsName.isEmpty() && code.contains(jsName)) return true;
+            if (!jsName.isEmpty() && code.contains(jsName)) return true;
         }
         return false;
     }
@@ -392,7 +391,9 @@ public final class AgentService {
         }
     }
 
-    /** Minecraft chat is short; split long replies at sentence/word boundaries. */
+    /**
+     * Minecraft chat is short; split long replies at sentence/word boundaries.
+     */
     static java.util.List<String> splitChat(String message) {
         return ChatLines.split(message);
     }

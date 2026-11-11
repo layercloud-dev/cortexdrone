@@ -25,7 +25,9 @@ public final class FlightSpeedModel {
      */
     public static final double WATER_SPEED_CAP = 0.34;
 
-    /** Mutable per-tick kinematic state; mirrors the entity motion fields. */
+    /**
+     * Mutable per-tick kinematic state; mirrors the entity motion fields.
+     */
     public static final class State {
         public double x;
         public double y;
@@ -49,12 +51,12 @@ public final class FlightSpeedModel {
     /**
      * Advances one tick toward a target.
      *
-     * @param state       kinematics, updated in place
-     * @param tx,ty,tz    flight target
-     * @param cap         velocity cap for this tick (see {@code DroneSpeed})
-     * @param inLiquid    true when the drone is in water/lava
-     * @param drag        entity drag, applied to the stored motion like vanilla
-     * @param accelFloor  the entity's own acceleration attribute
+     * @param state      kinematics, updated in place
+     * @param tx,ty,tz   flight target
+     * @param cap        velocity cap for this tick (see {@code DroneSpeed})
+     * @param inLiquid   true when the drone is in water/lava
+     * @param drag       entity drag, applied to the stored motion like vanilla
+     * @param accelFloor the entity's own acceleration attribute
      * @return distance to the target after the move
      */
     public static double step(State state, double tx, double ty, double tz, double cap,
@@ -121,12 +123,18 @@ public final class FlightSpeedModel {
         return Math.sqrt(rx * rx + ry * ry + rz * rz);
     }
 
-    /** Ease-in radius multiplier: the drone starts braking this many caps out. */
+    /**
+     * Ease-in radius multiplier: the drone starts braking this many caps out.
+     */
     public static final double BRAKING_FACTOR = 6.0D;
-    /** Caps below one are treated as one when computing the braking radius. */
+    /**
+     * Caps below one are treated as one when computing the braking radius.
+     */
     public static final double BRAKING_MIN_CAP = 0.75D;
 
-    /** Braking radius for a cap; the single definition both policies use. */
+    /**
+     * Braking radius for a cap; the single definition both policies use.
+     */
     public static double brakingRadius(double cap) {
         return BRAKING_FACTOR * Math.max(1.0D, cap / BRAKING_MIN_CAP);
     }

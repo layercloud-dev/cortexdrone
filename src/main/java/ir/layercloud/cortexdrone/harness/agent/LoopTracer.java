@@ -1,8 +1,7 @@
 package ir.layercloud.cortexdrone.harness.agent;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import lombok.experimental.UtilityClass;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -12,6 +11,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * supersession gets one log line; API keys never appear in logs.
  */
 @UtilityClass
+@SuppressWarnings("unused")
 public final class LoopTracer {
     public static String maskKey(String key) {
         if (key == null || key.isEmpty()) return "<empty>";

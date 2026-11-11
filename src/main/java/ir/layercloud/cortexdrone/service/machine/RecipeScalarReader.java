@@ -15,13 +15,17 @@ final class RecipeScalarReader {
     private RecipeScalarReader() {
     }
 
-    /** Power keys that all describe the same energy cost. */
+    /**
+     * Power keys that all describe the same energy cost.
+     */
     private static final String[] POWER_KEYS = {
             "power", "consumption", "momentum", "steam", "flux",
             "antimatter", "consumptionPerTick"
     };
 
-    /** Fills the scalar fields of {@code out} from {@code recipe}. */
+    /**
+     * Fills the scalar fields of {@code out} from {@code recipe}.
+     */
     static void read(JsonObject recipe, MachineRecipeService.NormalizedRecipe out,
                      String fileName) {
         out.name = recipe.has("name")
@@ -43,7 +47,9 @@ final class RecipeScalarReader {
         if (recipe.has("overlay")) out.overlay = recipe.get("overlay").getAsString();
     }
 
-    /** True when the key exists and holds a JSON number. */
+    /**
+     * True when the key exists and holds a JSON number.
+     */
     private static boolean isNumber(JsonObject recipe, String key) {
         return recipe.has(key) && recipe.get(key).isJsonPrimitive()
                 && recipe.get(key).getAsJsonPrimitive().isNumber();

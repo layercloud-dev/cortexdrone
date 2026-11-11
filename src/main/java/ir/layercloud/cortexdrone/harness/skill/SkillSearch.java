@@ -1,13 +1,12 @@
 package ir.layercloud.cortexdrone.harness.skill;
 
 import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
+import lombok.experimental.UtilityClass;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import lombok.experimental.UtilityClass;
 
 /**
  * BM25 retrieval over skills, with the same fuzzy token matching used by item
@@ -16,7 +15,9 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public final class SkillSearch {
-    /** BM25 smoothing term; keeps the idf finite for unseen terms. */
+    /**
+     * BM25 smoothing term; keeps the idf finite for unseen terms.
+     */
     private static final double BM25_SMOOTHING = 0.5D;
     private static final double K1 = 1.5D;
     private static final double B = 0.75D;

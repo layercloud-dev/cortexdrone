@@ -1,10 +1,9 @@
 package ir.layercloud.cortexdrone.config;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.CortexDroneMod;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,6 +17,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
+@SuppressWarnings("unused")
 public class DroneLogger {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
     private static final int MAX_DEBUG_ENTRIES = 400;
@@ -92,7 +92,9 @@ public class DroneLogger {
         }
     }
 
-    /** Delay before the batched log flush; preserves the interrupt flag. */
+    /**
+     * Delay before the batched log flush; preserves the interrupt flag.
+     */
     static void pauseForFlush(long millis) {
         try {
             Thread.sleep(millis);

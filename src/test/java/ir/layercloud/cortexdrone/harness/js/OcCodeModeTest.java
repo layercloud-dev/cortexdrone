@@ -3,23 +3,19 @@ package ir.layercloud.cortexdrone.harness.js;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
-import ir.layercloud.cortexdrone.harness.tool.ScanJobs;
-import ir.layercloud.cortexdrone.harness.tool.ToolCatalog;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tools.OcTools;
 import org.junit.Test;
 
 import java.io.File;
 import java.nio.file.Files;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-/** Code Mode must reach the OpenComputers tools like any other tool. */
+/**
+ * Code Mode must reach the OpenComputers tools like any other tool.
+ */
 public class OcCodeModeTest {
     /**
      * Echo bindings with the same names and argument names as the OC tools.

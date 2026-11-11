@@ -6,7 +6,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Parsed assistant turn from an OpenAI-compatible chat completion. */
+/**
+ * Parsed assistant turn from an OpenAI-compatible chat completion.
+ */
+@SuppressWarnings("unused")
 public final class LlmResponse {
     private final String content;
     private final String reasoning;

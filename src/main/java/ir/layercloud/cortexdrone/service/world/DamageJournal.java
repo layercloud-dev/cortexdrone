@@ -7,11 +7,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Remembers blocks a drone had to break, so they can be put back afterwards.
@@ -24,12 +20,15 @@ import java.util.Map;
  * <p>This is storage, not policy: the action layer decides when to record and
  * when to repair.</p>
  */
+@SuppressWarnings("unused")
 public final class DamageJournal {
     private static final int MAX_RECORDS = 512;
 
     private final Map<DroneController, List<Record>> journals = new IdentityHashMap<>();
 
-    /** One broken block, with everything needed to put it back. */
+    /**
+     * One broken block, with everything needed to put it back.
+     */
     public static final class Record {
         private final int x;
         private final int y;
@@ -120,7 +119,9 @@ public final class DamageJournal {
         return record;
     }
 
-    /** Most recent records first, bounded by {@code limit}. */
+    /**
+     * Most recent records first, bounded by {@code limit}.
+     */
     public List<Record> snapshot(DroneController controller, int limit) {
         List<Record> journal = this.journals.get(controller);
         if (journal == null || journal.isEmpty()) return Collections.emptyList();
@@ -135,13 +136,17 @@ public final class DamageJournal {
         return journal != null ? journal.size() : 0;
     }
 
-    /** Oldest-first order, which is the order a repair should consume. */
+    /**
+     * Oldest-first order, which is the order a repair should consume.
+     */
     public List<Record> pending(DroneController controller) {
         List<Record> journal = this.journals.get(controller);
         return journal == null ? Collections.<Record>emptyList() : new ArrayList<>(journal);
     }
 
-    /** Clears records that were restored successfully. */
+    /**
+     * Clears records that were restored successfully.
+     */
     public void remove(DroneController controller, List<Record> restored) {
         List<Record> journal = this.journals.get(controller);
         if (journal == null || restored == null || restored.isEmpty()) return;
@@ -162,12 +167,16 @@ public final class DamageJournal {
         return journal;
     }
 
-    /** Convenience for the drone entity, for callers that only have it. */
+    /**
+     * Convenience for the drone entity, for callers that only have it.
+     */
     public static boolean isAir(World world, int x, int y, int z) {
         return world == null || world.isAirBlock(x, y, z);
     }
 
-    /** True when the drone still exists and is in the same world. */
+    /**
+     * True when the drone still exists and is in the same world.
+     */
     public static boolean sameWorld(Drone drone, World world) {
         return drone != null && drone.worldObj != null && drone.worldObj == world;
     }

@@ -2,7 +2,7 @@ package ir.layercloud.cortexdrone.service.world;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 /**
  * The distant-resource search advertises a 10 s tool budget but must give

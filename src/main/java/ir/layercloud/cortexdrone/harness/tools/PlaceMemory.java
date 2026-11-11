@@ -30,7 +30,9 @@ final class PlaceMemory {
     private PlaceMemory() {
     }
 
-    /** Records one visited container. Safe to call speculatively. */
+    /**
+     * Records one visited container. Safe to call speculatively.
+     */
     static void rememberContainer(ToolContext context, DroneController controller,
                                   World world, int x, int y, int z, String kind) {
         if (context == null || controller == null || world == null) return;
@@ -54,7 +56,9 @@ final class PlaceMemory {
                 tags, false, "drone");
     }
 
-    /** Records a visited machine only when its tile is present and reachable. */
+    /**
+     * Records a visited machine only when its tile is present and reachable.
+     */
     static void rememberTile(ToolContext context, DroneController controller,
                              World world, TileEntity tile) {
         if (tile == null || world == null) return;
@@ -108,7 +112,7 @@ final class PlaceMemory {
         try {
             net.minecraft.block.Block block = world.getBlock(x, y, z);
             String display = ItemClassifier.getBlockDisplayName(block, world.getBlockMetadata(x, y, z));
-            return display != null && !display.isEmpty() ? display : kind;
+            return !display.isEmpty() ? display : kind;
         } catch (Throwable ignored) {
             return kind;
         }

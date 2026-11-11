@@ -12,13 +12,17 @@ import java.io.File;
  * path is only ever a guess produced at runtime, never compiled in.</p>
  */
 public final class ConfigDirectory {
-    /** System property that overrides the resolution order (used by tests/ops). */
+    /**
+     * System property that overrides the resolution order (used by tests/ops).
+     */
     public static final String OVERRIDE_PROPERTY = "cortexdrone.configDir";
 
     private ConfigDirectory() {
     }
 
-    /** The best available {@code config/} directory, never {@code null}. */
+    /**
+     * The best available {@code config/} directory, never {@code null}.
+     */
     public static File resolve() {
         File override = fromProperty();
         if (override != null) return override;

@@ -11,34 +11,47 @@ package ir.layercloud.cortexdrone.service.text;
  * This class strips those while preserving legitimate Unicode, including
  * Persian (ZWNJ U+200C and ZWJ U+200D are kept).</p>
  */
+@SuppressWarnings("unused")
 public final class TextSanitizer {
-    /** Minecraft formatting-code prefix. */
+    /**
+     * Minecraft formatting-code prefix.
+     */
     public static final char FORMATTING = '\u00A7';
 
     private TextSanitizer() {
     }
 
-    /** Single-line text for chat, status lines and logs. */
+    /**
+     * Single-line text for chat, status lines and logs.
+     */
     public static String chat(String value) {
         return tidy(clean(value, false), false);
     }
 
-    /** Single-line text capped at {@code max} characters. */
+    /**
+     * Single-line text capped at {@code max} characters.
+     */
     public static String chat(String value, int max) {
         return truncate(chat(value), max);
     }
 
-    /** Multi-line text for the question dialog; line breaks are preserved. */
+    /**
+     * Multi-line text for the question dialog; line breaks are preserved.
+     */
     public static String dialog(String value) {
         return tidy(clean(value, true), true);
     }
 
-    /** Multi-line text capped at {@code max} characters. */
+    /**
+     * Multi-line text capped at {@code max} characters.
+     */
     public static String dialog(String value, int max) {
         return truncate(dialog(value), max);
     }
 
-    /** Single-line text for the debug log file. */
+    /**
+     * Single-line text for the debug log file.
+     */
     public static String log(String value) {
         return chat(value);
     }
@@ -47,7 +60,9 @@ public final class TextSanitizer {
         return truncate(log(value), max);
     }
 
-    /** Cuts at most {@code max} characters after sanitizing. */
+    /**
+     * Cuts at most {@code max} characters after sanitizing.
+     */
     public static String truncate(String value, int max) {
         if (value == null) return "";
         if (max <= 0) return "";
@@ -84,7 +99,7 @@ public final class TextSanitizer {
                 out.append(' ');
                 continue;
             }
-            if (Character.isISOControl(c) || Character.isSurrogate(c)) continue;
+            if (Character.isISOControl(c)) continue;
             if (isInvisible(c)) continue;
             out.append(c);
         }

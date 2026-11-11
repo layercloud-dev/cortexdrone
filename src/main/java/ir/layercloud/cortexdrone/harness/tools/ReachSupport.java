@@ -1,6 +1,5 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
@@ -25,8 +24,8 @@ final class ReachSupport {
      * Validates that {@code (x,y,z)} can be touched from the drone.
      *
      * @return {@code null} when reachable and visible, otherwise an envelope:
-     *         {@code needsMovement} with a visible standoff, or an
-     *         {@code out_of_reach}/{@code block_occluded} error.
+     * {@code needsMovement} with a visible standoff, or an
+     * {@code out_of_reach}/{@code block_occluded} error.
      */
     static JsonObject unreachable(DroneController controller, int x, int y, int z, String action) {
         if (controller == null || controller.drone == null

@@ -1,9 +1,9 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
-import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.world.World;
 
@@ -61,7 +61,7 @@ final class DetourPlanner {
             if (rejected.contains(key)) continue;
             rejected.add(key);
             return new double[]{bx + DroneGeometry.CELL_CENTER,
-                by + DroneGeometry.AIM_OFFSET, bz + DroneGeometry.CELL_CENTER};
+                    by + DroneGeometry.AIM_OFFSET, bz + DroneGeometry.CELL_CENTER};
         }
         return null;
     }

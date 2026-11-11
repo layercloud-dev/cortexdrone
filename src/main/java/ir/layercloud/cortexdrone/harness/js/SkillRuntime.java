@@ -20,12 +20,7 @@ import org.mozilla.javascript.Scriptable;
  */
 public final class SkillRuntime {
     private static final int MAX_DEPTH = 8;
-    private static final ThreadLocal<Integer> DEPTH = new ThreadLocal<Integer>() {
-        @Override
-        protected Integer initialValue() {
-            return 0;
-        }
-    };
+    private static final ThreadLocal<Integer> DEPTH = ThreadLocal.withInitial(() -> 0);
 
     private SkillRuntime() {
     }

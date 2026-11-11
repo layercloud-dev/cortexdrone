@@ -17,10 +17,15 @@ package ir.layercloud.cortexdrone.manager.navigation.impl;
  * <p>The watchdog never decides where to go; the navigation manager only asks
  * it whether the current leg should be abandoned.</p>
  */
+@SuppressWarnings("unused")
 final class LegWatchdog {
-    /** 2 s without any displacement: the leg is physically wedged. */
+    /**
+     * 2 s without any displacement: the leg is physically wedged.
+     */
     static final int STUCK_TICKS = 40;
-    /** 10 s without reducing the waypoint distance by 0.25: the leg is looping. */
+    /**
+     * 10 s without reducing the waypoint distance by 0.25: the leg is looping.
+     */
     static final int NO_PROGRESS_TICKS = 200;
     /**
      * Hard ceiling derived from the initial leg length (60 ticks per block).
@@ -37,7 +42,9 @@ final class LegWatchdog {
     private double initialDistance;
     private double bestDistance;
     private int maxTicks = MIN_MAX_TICKS;
-    /** The leg's speed multiplier; 1.0 is the tuned baseline. */
+    /**
+     * The leg's speed multiplier; 1.0 is the tuned baseline.
+     */
     private double speedMultiplier = 1.0;
 
     void begin(double distanceToTarget) {
@@ -83,7 +90,9 @@ final class LegWatchdog {
         return this.ticks;
     }
 
-    /** Hard ceiling for the current leg; package-private for the tests. */
+    /**
+     * Hard ceiling for the current leg; package-private for the tests.
+     */
     int maxTicks() {
         return this.maxTicks;
     }

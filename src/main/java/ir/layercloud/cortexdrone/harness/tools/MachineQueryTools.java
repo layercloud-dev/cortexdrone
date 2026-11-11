@@ -1,18 +1,13 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.machine.FurnaceScanner;
 import ir.layercloud.cortexdrone.service.machine.MachineTileInspector;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
@@ -27,6 +22,7 @@ import java.util.List;
  * <p>Split out of {@code InventoryQueryTools}. Read-only: a furnace is never
  * advanced by the mod, the world ticks it.</p>
  */
+@SuppressWarnings("unused")
 public final class MachineQueryTools {
     private final InventoryService inventoryService;
 

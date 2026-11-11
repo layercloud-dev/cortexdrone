@@ -1,17 +1,11 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.AIDroneManager;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
-import ir.layercloud.cortexdrone.harness.tool.ToolProvider;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tools.view.BreadcrumbView;
 import ir.layercloud.cortexdrone.harness.tools.view.LandingView;
 import ir.layercloud.cortexdrone.harness.tools.view.NavigationView;
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 
 import java.util.Arrays;
 import java.util.List;
@@ -47,19 +41,19 @@ public final class NavigationTools implements ToolProvider {
                             .optionalObject("standoff_of", "Block to stand beside: {x,y,z}. Resolves to a "
                                     + "reachable position within interaction range.")
                             .optionalInt("max_wait_ms", "Upper bound for arrival, "
-                                    + NavigationLimits.MIN_WAIT_MS + ".." + NavigationLimits.MAX_WAIT_MS + ".",
+                                            + NavigationLimits.MIN_WAIT_MS + ".." + NavigationLimits.MAX_WAIT_MS + ".",
                                     NavigationLimits.MIN_WAIT_MS, NavigationLimits.MAX_WAIT_MS,
                                     NavigationLimits.DEFAULT_WAIT_MS)
                             .optionalBoolean("allow_dig", "Allow this call to tunnel through obstructing "
                                     + "blocks when no no-dig route exists. Default true; set false for "
                                     + "non-destructive travel.", true)
                             .optionalInt("max_dig_blocks", "Maximum blocks this call may clear, "
-                                    + NavigationLimits.MIN_DIG_BLOCKS + ".." + NavigationLimits.MAX_DIG_BLOCKS + ".",
+                                            + NavigationLimits.MIN_DIG_BLOCKS + ".." + NavigationLimits.MAX_DIG_BLOCKS + ".",
                                     NavigationLimits.MIN_DIG_BLOCKS, NavigationLimits.MAX_DIG_BLOCKS,
                                     NavigationLimits.DEFAULT_DIG_BLOCKS)
                             .optionalInt("recovery_attempts", "Maximum dig/detour attempts for this call, "
-                                    + NavigationLimits.MIN_RECOVERY_ATTEMPTS + ".."
-                                    + NavigationLimits.MAX_RECOVERY_ATTEMPTS + ".",
+                                            + NavigationLimits.MIN_RECOVERY_ATTEMPTS + ".."
+                                            + NavigationLimits.MAX_RECOVERY_ATTEMPTS + ".",
                                     NavigationLimits.MIN_RECOVERY_ATTEMPTS,
                                     NavigationLimits.MAX_RECOVERY_ATTEMPTS,
                                     NavigationLimits.DEFAULT_RECOVERY_ATTEMPTS)
@@ -85,7 +79,7 @@ public final class NavigationTools implements ToolProvider {
                             + "a backtrack or escape.")
                     .parameters(ToolSchema.object()
                             .optionalInt("limit", "Number of most recent trail points, "
-                                    + MIN_BREADCRUMBS + ".." + MAX_BREADCRUMBS + ".",
+                                            + MIN_BREADCRUMBS + ".." + MAX_BREADCRUMBS + ".",
                                     MIN_BREADCRUMBS, MAX_BREADCRUMBS, DEFAULT_BREADCRUMBS))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(ToolTimeouts.FASTEST_MS)
@@ -107,8 +101,8 @@ public final class NavigationTools implements ToolProvider {
                             .optionalInt("y", "Reference Y; defaults to the drone's Y.")
                             .optionalInt("z", "Centre Z; defaults to the drone.")
                             .optionalInt("radius", "Horizontal search radius, "
-                                    + ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MIN_RADIUS
-                                    + ".." + ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MAX_RADIUS + ".",
+                                            + ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MIN_RADIUS
+                                            + ".." + ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MAX_RADIUS + ".",
                                     ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MIN_RADIUS,
                                     ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MAX_RADIUS,
                                     ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.DEFAULT_RADIUS)

@@ -144,6 +144,7 @@ tasks.register('validate') {
         tmp.get().asFile.text = 'done'
         if (!failures.isEmpty()) {
             failures.each { println it }
+            //noinspection Annotator
             throw new GradleException("validate failed: ${failures.size()} error(s)")
         }
         println 'ALL VALIDATED!'

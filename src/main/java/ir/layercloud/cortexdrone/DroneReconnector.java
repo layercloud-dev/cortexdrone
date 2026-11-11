@@ -18,8 +18,11 @@ import java.util.UUID;
  * its own. Keeping it here makes the merge rule (one active drone per owner)
  * readable in isolation.</p>
  */
+@SuppressWarnings("unused")
 final class DroneReconnector {
-    /** Everything the reconnector needs from the manager. */
+    /**
+     * Everything the reconnector needs from the manager.
+     */
     interface Host {
         DroneController findControllerByEntity(Drone drone);
 
@@ -37,14 +40,20 @@ final class DroneReconnector {
 
         ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager visualsManager();
 
-        /** Applies the saved aura/LED state and restores the aura action. */
+        /**
+         * Applies the saved aura/LED state and restores the aura action.
+         */
         void restoreVisuals(DroneController controller, boolean lightAura, Integer ledColor);
 
-        /** Moves items from a duplicate drone into the surviving one. */
+        /**
+         * Moves items from a duplicate drone into the surviving one.
+         */
         int mergeInventory(Drone from, Drone to);
     }
 
-    /** Name used when the drone exposes none. */
+    /**
+     * Name used when the drone exposes none.
+     */
     private static final String DEFAULT_NAME = "AI-Drone";
 
     private final Host host;
@@ -110,7 +119,9 @@ final class DroneReconnector {
                         owner, drone.posX, drone.posY, drone.posZ));
     }
 
-    /** Finds the saved binding by UUID first, then by owner. */
+    /**
+     * Finds the saved binding by UUID first, then by owner.
+     */
     private ModConfig.SavedDroneInfo matchSaved(UUID uuid, String owner) {
         List<ModConfig.SavedDroneInfo> saved = this.host.config().getSavedDrones();
         if (saved == null) return null;

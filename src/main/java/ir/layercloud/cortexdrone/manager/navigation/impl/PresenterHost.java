@@ -3,7 +3,9 @@ package ir.layercloud.cortexdrone.manager.navigation.impl;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 
-/** The manager's wiring for {@link NavigationPresenter}. */
+/**
+ * The manager's wiring for {@link NavigationPresenter}.
+ */
 final class PresenterHost implements NavigationPresenter.Host {
     private final NavigationManager manager;
 

@@ -10,7 +10,9 @@ import java.nio.file.Paths;
 
 import static org.junit.Assert.*;
 
-/** Skill time budgets have one owner. */
+/**
+ * Skill time budgets have one owner.
+ */
 public class SkillToolsLimitTest {
     private static ToolSpec skillSpec() {
         for (ToolSpec spec : SkillTools.specs()) {

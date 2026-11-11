@@ -1,10 +1,6 @@
 package ir.layercloud.cortexdrone.harness.markdown;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Minimal YAML frontmatter reader shared by skills and lessons.
@@ -25,11 +21,14 @@ import java.util.Map;
  * inline {@code [a, b]} lists and block lists. Everything after the closing
  * delimiter is the Markdown body, exactly like the normal SKILL.md layout.</p>
  */
+@SuppressWarnings("unused")
 public final class Frontmatter {
     private Frontmatter() {
     }
 
-    /** Parsed document: scalar fields, list fields and the Markdown body. */
+    /**
+     * Parsed document: scalar fields, list fields and the Markdown body.
+     */
     public static final class Document {
         private final Map<String, String> values;
         private final Map<String, List<String>> lists;
@@ -147,7 +146,9 @@ public final class Frontmatter {
         return new Document(values, lists, body.toString().trim());
     }
 
-    /** Quotes a YAML scalar so it always round-trips through {@link #parse}. */
+    /**
+     * Quotes a YAML scalar so it always round-trips through {@link #parse}.
+     */
     public static String quote(String value) {
         String text = value != null ? value : "";
         StringBuilder out = new StringBuilder(text.length() + 8);

@@ -3,7 +3,8 @@ package ir.layercloud.cortexdrone.harness.tool;
 import ir.layercloud.cortexdrone.harness.tools.WorldTools;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * Scan size limits have exactly one source, and the schema publishes it.

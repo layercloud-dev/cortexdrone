@@ -23,6 +23,7 @@ import java.util.Map;
  * pad; the {@code build_structure} skill calls this tool and reasons about the
  * returned numbers before placing a single block.</p>
  */
+@SuppressWarnings("unused")
 public final class SiteSurvey {
     private static final int MAX_SURVEY_COLUMNS = 1200;
     private static final int MAX_SIDE = WorldBounds.MAX_SITE_SIDE;
@@ -222,7 +223,9 @@ public final class SiteSurvey {
         return json;
     }
 
-    /** Column heights only, used by pads that need a quick flatness check. */
+    /**
+     * Column heights only, used by pads that need a quick flatness check.
+     */
     public static List<int[]> heights(World world, int x1, int z1, int x2, int z2, int refY) {
         List<int[]> heights = new ArrayList<>();
         for (int x = x1; x <= x2; x++) {

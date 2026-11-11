@@ -1,8 +1,8 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
-import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +14,7 @@ import java.util.Set;
  * It is package-private on purpose: the navigation manager is the only writer,
  * and {@link LegWatchdog} is the only piece worth testing on its own.</p>
  */
-final class NavigationSession {
+public class NavigationSession {
     enum Phase {
         PLAN,
         FLIGHT
@@ -50,7 +50,9 @@ final class NavigationSession {
     boolean allowDig = true;
     int maxDigBlocks = NavigationLimits.DEFAULT_DIG_BLOCKS;
     int recoveryAttempts = NavigationLimits.DEFAULT_RECOVERY_ATTEMPTS;
-    /** Per-call speed multiplier; 0 = fall back to the configured value. */
+    /**
+     * Per-call speed multiplier; 0 = fall back to the configured value.
+     */
     double speedMultiplier;
     int[] digTarget;
     /**
@@ -60,7 +62,9 @@ final class NavigationSession {
      * while carrying one. The caller opens a 2x2 escape shaft instead.
      */
     boolean carryingRider;
-    /** A block the caller asked to stand beside; enables tunnel-to-target. */
+    /**
+     * A block the caller asked to stand beside; enables tunnel-to-target.
+     */
     int[] targetBlock;
     final Set<Long> rejectedDigs = new HashSet<>();
     final Set<Long> rejectedDetours = new HashSet<>();

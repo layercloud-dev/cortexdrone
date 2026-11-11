@@ -15,17 +15,29 @@ import java.util.List;
  * knows; it never executes a skill (that is the task agent's job).</p>
  */
 public final class SkillCommands {
-    /** Source lines previewed per skill. */
+    /**
+     * Source lines previewed per skill.
+     */
     private static final int CODE_PREVIEW_LINES = 8;
-    /** Longest single source line shown in chat. */
+    /**
+     * Longest single source line shown in chat.
+     */
     private static final int LINE_PREVIEW = 160;
-    /** Longest description shown in the list view. */
+    /**
+     * Longest description shown in the list view.
+     */
     private static final int DESCRIPTION_PREVIEW = 120;
-    /** Default number of skills listed. */
+    /**
+     * Default number of skills listed.
+     */
     private static final int DEFAULT_LIMIT = 40;
-    /** Hard ceiling for one listing. */
+    /**
+     * Hard ceiling for one listing.
+     */
     private static final int MAX_LIMIT = 80;
-    /** Maximum search hits. */
+    /**
+     * Maximum search hits.
+     */
     private static final int SEARCH_HITS = 12;
 
     private SkillCommands() {

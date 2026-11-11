@@ -18,13 +18,17 @@ import java.util.List;
  * slot only after the entity exists.</p>
  */
 public final class GroundItems {
-    /** Pickup sound played when at least one item is absorbed. */
+    /**
+     * Pickup sound played when at least one item is absorbed.
+     */
     private static final String PICKUP_SOUND = "random.pop";
 
     private GroundItems() {
     }
 
-    /** Absorbs nearby dropped items into the drone's inventory. */
+    /**
+     * Absorbs nearby dropped items into the drone's inventory.
+     */
     public static void suck(Drone drone, double x, double y, double z, double radius) {
         if (drone == null) return;
         World world = drone.worldObj;

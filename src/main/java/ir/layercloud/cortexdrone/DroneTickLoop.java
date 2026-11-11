@@ -1,12 +1,12 @@
 package ir.layercloud.cortexdrone;
 
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
+import ir.layercloud.cortexdrone.harness.session.SessionManager;
 import ir.layercloud.cortexdrone.manager.ActionRegistry;
 import ir.layercloud.cortexdrone.manager.TickManager;
 import ir.layercloud.cortexdrone.manager.chunk.impl.ChunkLoadingManager;
 import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationManager;
-import ir.layercloud.cortexdrone.harness.session.DroneSession;
-import ir.layercloud.cortexdrone.harness.session.SessionManager;
 
 import java.util.ArrayList;
 
@@ -18,13 +18,20 @@ import java.util.ArrayList;
  * deciding whether the chunk policy may evict. Keeping it separate means the
  * manager no longer mixes lifecycle events with per-drone loop mechanics.</p>
  */
+@SuppressWarnings("unused")
 final class DroneTickLoop {
-    /** How often unlinked world drones are re-adopted, in ticks. */
+    /**
+     * How often unlinked world drones are re-adopted, in ticks.
+     */
     static final int RECONNECT_INTERVAL_TICKS = 40;
-    /** How often a repeated tick failure is logged, in ticks. */
+    /**
+     * How often a repeated tick failure is logged, in ticks.
+     */
     private static final int ERROR_LOG_INTERVAL_TICKS = 40;
 
-    /** Everything the tick loop needs from the manager. */
+    /**
+     * Everything the tick loop needs from the manager.
+     */
     interface Host {
         DroneRegistry registry();
 
@@ -44,10 +51,14 @@ final class DroneTickLoop {
 
         DroneLogger logger();
 
-        /** True when the harness is attached and wants its own tick. */
+        /**
+         * True when the harness is attached and wants its own tick.
+         */
         void tickHarness();
 
-        /** Ensures the drone's OpenComputers machine is running. */
+        /**
+         * Ensures the drone's OpenComputers machine is running.
+         */
         void ensureMachineRunning(DroneController controller);
     }
 
@@ -58,7 +69,9 @@ final class DroneTickLoop {
         this.host = host;
     }
 
-    /** Start-of-tick: ensure every drone's machine is running. */
+    /**
+     * Start-of-tick: ensure every drone's machine is running.
+     */
     void onTickStart() {
         this.host.tickProfiler().onTickStart();
         for (DroneController controller : this.host.registry().all()) {
@@ -68,7 +81,9 @@ final class DroneTickLoop {
         }
     }
 
-    /** End-of-tick: reap, tick each drone, then let the chunk policy run. */
+    /**
+     * End-of-tick: reap, tick each drone, then let the chunk policy run.
+     */
     void onTickEnd() {
         this.host.tickHarness();
         this.tickCounter++;
@@ -116,7 +131,9 @@ final class DroneTickLoop {
         return false;
     }
 
-    /** Visible for diagnostics and tests. */
+    /**
+     * Visible for diagnostics and tests.
+     */
     int tickCount() {
         return this.tickCounter;
     }

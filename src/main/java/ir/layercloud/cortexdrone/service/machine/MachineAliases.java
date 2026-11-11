@@ -1,10 +1,6 @@
 package ir.layercloud.cortexdrone.service.machine;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Maps machine aliases, registry names and recipe-file names to one canonical
@@ -21,9 +17,13 @@ import java.util.Map;
  * {@code blastfurnacelegacy} before {@code blastfurnace}).</p>
  */
 public final class MachineAliases {
-    /** Canonical kind for each exact spelling. */
+    /**
+     * Canonical kind for each exact spelling.
+     */
     private static final Map<String, String> EXACT = new LinkedHashMap<>();
-    /** Canonical kind for each substring fragment, in priority order. */
+    /**
+     * Canonical kind for each substring fragment, in priority order.
+     */
     private static final Map<String, String> FRAGMENTS = new LinkedHashMap<>();
 
     static {
@@ -244,14 +244,18 @@ public final class MachineAliases {
         return "".equals(mapped) ? base : mapped;
     }
 
-    /** Removes decorative affixes used by recipe and registry file names. */
+    /**
+     * Removes decorative affixes used by recipe and registry file names.
+     */
     public static String stripAffixes(String name) {
         String mod = HbmDescriptor.MOD_ID;
         return name.replace("_" + mod, "").replace(mod + "_", "")
                 .replace("machine_", "").replace("_machine", "");
     }
 
-    /** First fragment that occurs in {@code text}, or {@code ""}. */
+    /**
+     * First fragment that occurs in {@code text}, or {@code ""}.
+     */
     private static String fromFragments(String text) {
         String flat = text.replace("_", "");
         for (Map.Entry<String, String> entry : FRAGMENTS.entrySet()) {
@@ -282,7 +286,9 @@ public final class MachineAliases {
         return "machine";
     }
 
-    /** True when the class name looks like a processing machine. */
+    /**
+     * True when the class name looks like a processing machine.
+     */
     public static boolean isMachineClass(String className) {
         if (className == null || className.isEmpty()) return false;
         String cls = className.toLowerCase(Locale.ROOT);
@@ -290,7 +296,9 @@ public final class MachineAliases {
         return !"machine".equals(fromClassName(cls)) || cls.contains("machine");
     }
 
-    /** Every canonical kind the alias table can produce. */
+    /**
+     * Every canonical kind the alias table can produce.
+     */
     public static List<String> canonicalKinds() {
         List<String> kinds = new ArrayList<>(new java.util.LinkedHashSet<>(EXACT.values()));
         kinds.sort(String::compareTo);
@@ -325,7 +333,9 @@ public final class MachineAliases {
         return tokens.toArray(new String[0]);
     }
 
-    /** Every exact spelling, for documentation and validation. */
+    /**
+     * Every exact spelling, for documentation and validation.
+     */
     public static List<String> allSpellings() {
         List<String> spellings = new ArrayList<>(EXACT.keySet());
         spellings.sort(String::compareTo);

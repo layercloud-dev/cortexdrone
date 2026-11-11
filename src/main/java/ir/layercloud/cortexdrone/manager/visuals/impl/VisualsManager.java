@@ -1,8 +1,7 @@
 package ir.layercloud.cortexdrone.manager.visuals.impl;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
@@ -34,13 +33,17 @@ public final class VisualsManager extends ActionManager<VisualsContext, VisualsR
         this.lightingAura = new LightingAura(logger);
     }
 
-    /** Per-drone aura state, created on first use. */
+    /**
+     * Per-drone aura state, created on first use.
+     */
     public VisualsState state(DroneController controller) {
         if (controller == null) return null;
         return this.states.computeIfAbsent(controller, ignored -> new VisualsState());
     }
 
-    /** Drops per-drone visual state after restoring the world. */
+    /**
+     * Drops per-drone visual state after restoring the world.
+     */
     public void forget(DroneController controller) {
         clearLighting(controller);
         if (controller != null) this.states.remove(controller);

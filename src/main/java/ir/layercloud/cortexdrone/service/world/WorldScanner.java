@@ -1,10 +1,9 @@
 package ir.layercloud.cortexdrone.service.world;
 
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
@@ -34,7 +33,9 @@ public class WorldScanner {
     // for a hint-only field.
     private static final long NEARBY_RESOURCES_TTL_MS = 5000L;
     private static final int NEARBY_RESOURCES_CACHE_CELLS = 4;
-    /** Radius of the nearby-resource summary used by the context renderer. */
+    /**
+     * Radius of the nearby-resource summary used by the context renderer.
+     */
     public static final int NEARBY_RESOURCES_RADIUS = 24;
     private static final int NEARBY_RESOURCES_MAX_RADIUS = NEARBY_RESOURCES_RADIUS;
 
@@ -235,7 +236,7 @@ public class WorldScanner {
                     continue;
                 }
                 for (int y = Math.max(WorldBounds.MIN_SCAN_Y, iy - radius);
-             y <= Math.min(WorldBounds.MAX_Y, iy + radius); y++) {
+                     y <= Math.min(WorldBounds.MAX_Y, iy + radius); y++) {
                     try {
                         if (world.isAirBlock(x, y, z)) continue;
                         Block b = world.getBlock(x, y, z);

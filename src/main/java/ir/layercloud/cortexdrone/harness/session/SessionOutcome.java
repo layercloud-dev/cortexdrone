@@ -10,17 +10,29 @@ import java.util.Locale;
  * separately.</p>
  */
 public enum SessionOutcome {
-    /** The model produced a final answer that did not report a problem. */
+    /**
+     * The model produced a final answer that did not report a problem.
+     */
     SUCCESS("success", "success"),
-    /** The model finished but reported that the task could not be done. */
+    /**
+     * The model finished but reported that the task could not be done.
+     */
     FAILURE("failure", "failure"),
-    /** The player or the model explicitly cancelled the task. */
+    /**
+     * The player or the model explicitly cancelled the task.
+     */
     CANCELLED("cancelled", "cancelled"),
-    /** The task was replaced, despawned, or the server stopped mid-run. */
+    /**
+     * The task was replaced, despawned, or the server stopped mid-run.
+     */
     INTERRUPTED("interrupted", "interrupted"),
-    /** Turn/time budget or an empty model response ended the loop. */
+    /**
+     * Turn/time budget or an empty model response ended the loop.
+     */
     INCOMPLETE("incomplete", "incomplete"),
-    /** LLM/backend/internal exception ended the loop. */
+    /**
+     * LLM/backend/internal exception ended the loop.
+     */
     ERROR("error", "error");
 
     private static final String[] FAILURE_MARKERS = {
@@ -46,7 +58,9 @@ public enum SessionOutcome {
         return this.directory;
     }
 
-    /** Heuristic classification of a final model reply. */
+    /**
+     * Heuristic classification of a final model reply.
+     */
     public static SessionOutcome fromReply(String reply) {
         if (reply == null || reply.trim().isEmpty()) return INCOMPLETE;
         String lower = reply.toLowerCase(Locale.ROOT);

@@ -25,17 +25,22 @@ import net.minecraft.world.World;
  * has to reach the block, not pass through it.</p>
  */
 @UtilityClass
+@SuppressWarnings("unused")
 public final class BlockSight {
     public static final double REACH = 4.5D;
 
-    /** Vertical offset of the drone's interaction eye above its position. */
+    /**
+     * Vertical offset of the drone's interaction eye above its position.
+     */
     public static final double DRONE_EYE_HEIGHT = 0.1875D;
 
     private static final int[][] NEIGHBOURS = new int[][]{
             {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}
     };
 
-    /** Eye height for any entity; the drone's own box is 0.75 wide and 0.375 tall. */
+    /**
+     * Eye height for any entity; the drone's own box is 0.75 wide and 0.375 tall.
+     */
     public static double eyeY(Drone drone) {
         if (drone == null) return DRONE_EYE_HEIGHT;
         try {
@@ -45,7 +50,9 @@ public final class BlockSight {
         }
     }
 
-    /** Two passable voxels: the standoff body voxel and the one above it. */
+    /**
+     * Two passable voxels: the standoff body voxel and the one above it.
+     */
     public static boolean isOpenForDrone(World world, int x, int y, int z) {
         if (ItemClassifier.isDangerousLiquid(world.getBlock(x, y, z))
                 || ItemClassifier.isDangerousLiquid(world.getBlock(x, y + 1, z))) {
@@ -55,7 +62,9 @@ public final class BlockSight {
                 && ItemClassifier.isPassableVoxel(world, x, y + 1, z);
     }
 
-    /** A single visibility query for the server thread. */
+    /**
+     * A single visibility query for the server thread.
+     */
     public static Result check(World world, double eyeX, double eyeY, double eyeZ,
                                int x, int y, int z) {
         if (world == null || !world.blockExists(x, y, z)) {
@@ -91,7 +100,7 @@ public final class BlockSight {
      * @return {@code {x, y, z}} in drone coordinates, or {@code null}
      */
     public static double[] visibleStandoff(World world, double fromX, double fromY, double fromZ,
-                                            int x, int y, int z) {
+                                           int x, int y, int z) {
         if (world == null) return null;
         double[] best = null;
         double bestDistance = Double.MAX_VALUE;
@@ -280,7 +289,9 @@ public final class BlockSight {
                 + " at (" + position[0] + "," + position[1] + "," + position[2] + ")";
     }
 
-    /** Result of one line-of-sight query. */
+    /**
+     * Result of one line-of-sight query.
+     */
     @Getter
     public static final class Result {
         private final boolean visible;
@@ -305,7 +316,9 @@ public final class BlockSight {
 
     }
 
-    /** Minimal grid predicate so the DDA can be unit-tested without a World. */
+    /**
+     * Minimal grid predicate so the DDA can be unit-tested without a World.
+     */
     public interface VoxelPassability {
         boolean isPassable(int x, int y, int z);
     }

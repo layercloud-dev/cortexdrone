@@ -19,6 +19,7 @@ import org.mozilla.javascript.ScriptableObject;
  * a callable function, plus six generic helpers ({@code search}, {@code load},
  * {@code call}/{@code run}, {@code fn}, {@code names}).</p>
  */
+@SuppressWarnings("unused")
 final class SkillNamespaceBinder {
     private final ToolInvoker invoker;
     private final SkillLibrary defaultLibrary;
@@ -28,7 +29,9 @@ final class SkillNamespaceBinder {
         this.defaultLibrary = defaultLibrary;
     }
 
-    /** Installs {@code skills} into {@code scope}. */
+    /**
+     * Installs {@code skills} into {@code scope}.
+     */
     void bind(Context cx, Scriptable scope, final ToolContext context) {
         final SkillLibrary library = context != null && context.skills() != null
                 ? context.skills() : this.defaultLibrary;
@@ -79,7 +82,9 @@ final class SkillNamespaceBinder {
         ScriptableObject.putProperty(scope, "skills", skills);
     }
 
-    /** The {@code skill} tool with a fixed action, exposed as a JS function. */
+    /**
+     * The {@code skill} tool with a fixed action, exposed as a JS function.
+     */
     private BaseFunction skillToolCall(final String action, final ToolContext context) {
         return new BaseFunction() {
             @Override

@@ -16,15 +16,21 @@ import java.util.Locale;
  * between them. Both now come from here.</p>
  */
 final class SessionJson {
-    /** Bumped when the on-disk shape changes incompatibly. */
+    /**
+     * Bumped when the on-disk shape changes incompatibly.
+     */
     static final int SCHEMA = 1;
-    /** Prompt length kept in the index line. */
+    /**
+     * Prompt length kept in the index line.
+     */
     private static final int INDEX_PROMPT_CHARS = 240;
 
     private SessionJson() {
     }
 
-    /** The full per-session transcript. */
+    /**
+     * The full per-session transcript.
+     */
     static JsonObject transcript(SessionMarkdown.Snapshot run, SessionOutcome outcome,
                                  String reason, String topic, String finalReply) {
         JsonObject root = new JsonObject();
@@ -55,7 +61,9 @@ final class SessionJson {
         return root;
     }
 
-    /** The one-line index entry for a finished run. */
+    /**
+     * The one-line index entry for a finished run.
+     */
     static JsonObject index(SessionMarkdown.Snapshot run, SessionOutcome outcome,
                             String reason, String topic, String relativeFile) {
         JsonObject entry = new JsonObject();
@@ -71,7 +79,9 @@ final class SessionJson {
         return entry;
     }
 
-    /** Fields both shapes carry, so they cannot drift. */
+    /**
+     * Fields both shapes carry, so they cannot drift.
+     */
     private static void common(JsonObject target, SessionMarkdown.Snapshot run,
                                SessionOutcome outcome, String reason, String topic) {
         target.addProperty("schema", SCHEMA);
@@ -86,14 +96,18 @@ final class SessionJson {
         target.addProperty("world_actions", run.worldActions);
     }
 
-    /** ISO-8601 timestamp, or an empty string for "never". */
+    /**
+     * ISO-8601 timestamp, or an empty string for "never".
+     */
     static String iso(long timestamp) {
         if (timestamp <= 0) return "";
         return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.ROOT)
                 .format(new Date(timestamp));
     }
 
-    /** Collapses whitespace and truncates with an ellipsis. */
+    /**
+     * Collapses whitespace and truncates with an ellipsis.
+     */
     static String snippet(String value, int max) {
         if (value == null) return "";
         String clean = value.replace('\n', ' ').replace('\r', ' ')

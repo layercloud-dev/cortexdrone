@@ -23,7 +23,9 @@ final class ChunkPlanLog {
         this.logger = logger;
     }
 
-    /** Writes one ownership line when the cursor says it is due. */
+    /**
+     * Writes one ownership line when the cursor says it is due.
+     */
     void log(DroneController controller, DroneChunkCursor cursor,
              ForgeChunkManager.Ticket ticket, List<ChunkCoordIntPair> plan,
              int loadedNow, long now, boolean loadAllowed) {

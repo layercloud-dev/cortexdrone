@@ -14,15 +14,21 @@ import static org.junit.Assert.*;
  * The OC introspector must discover callbacks from live annotations and invoke
  * them by name, because the whole OC surface is reflection-driven.
  */
+@SuppressWarnings("unused")
 public class OcComponentIntrospectorTest {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(java.lang.annotation.ElementType.METHOD)
     public @interface FakeCallback {
         String value() default "";
+
         boolean direct() default false;
+
         boolean getter() default false;
+
         boolean setter() default false;
+
         int limit() default 0;
+
         String doc() default "";
     }
 
@@ -47,7 +53,9 @@ public class OcComponentIntrospectorTest {
         }
     }
 
-    /** A subclass override must win over the parent declaration. */
+    /**
+     * A subclass override must win over the parent declaration.
+     */
     public static class OverridingComponent extends FakeComponent {
     }
 

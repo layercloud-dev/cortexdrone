@@ -1,25 +1,25 @@
 package ir.layercloud.cortexdrone.harness.tools.view;
 
-import ir.layercloud.cortexdrone.service.visuals.VisualLimits;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.visuals.VisualsRequest;
 import ir.layercloud.cortexdrone.action.visuals.VisualsResult;
+import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
+import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
+import ir.layercloud.cortexdrone.service.visuals.VisualLimits;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
 /**
  * JSON translation boundary for the visuals actions. Live status lives in
- * {@link StateView}; skill memory lives in {@link SkillView}.
+ * {@link StateView}; skill memory is provided by the skill tools.
  */
 @RequiredArgsConstructor
 public final class VisualsView {
     private final VisualsManager service;
+
     public JsonObject handle(DroneController controller, EntityPlayerMP player,
                              String operation, JsonObject args) {
         VisualsResult result = this.service.handle(

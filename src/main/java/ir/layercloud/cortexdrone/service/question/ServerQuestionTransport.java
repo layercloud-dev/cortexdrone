@@ -16,7 +16,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
  * be a cross-thread call for no reason.</p>
  */
 public final class ServerQuestionTransport implements QuestionService.Transport {
-    /** Upper bound for a queued network/chat write. */
+    /**
+     * Upper bound for a queued network/chat write.
+     */
     private static final long MAIN_THREAD_TIMEOUT_MS = 5_000L;
 
     private final AIDroneManager manager;
@@ -65,7 +67,9 @@ public final class ServerQuestionTransport implements QuestionService.Transport 
         }
     }
 
-    /** A one-line chat version of the question. */
+    /**
+     * A one-line chat version of the question.
+     */
     static String chatLine(String question) {
         String text = TextSanitizer.chat(question, QuestionLimits.CHAT_QUESTION_CHARS);
         return "[CortexDrone] " + text + "  (type your answer in chat)";

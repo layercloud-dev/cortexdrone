@@ -8,17 +8,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * The waiter is the risky part of {@code ask_player}: it blocks an agent thread
  * while a player decides. These tests pin the answer matching, the chat
  * fallback, cancellation and the timeout without a client or a server.
  */
+@SuppressWarnings({"NonAtomicOperationOnVolatileField", "BusyWait"})
 public class QuestionServiceTest {
     private static final class FakeTransport implements QuestionService.Transport {
         private final List<QuestionRequestMessage> sent =

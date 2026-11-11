@@ -1,14 +1,9 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
-import ir.layercloud.cortexdrone.harness.tool.ToolTimeouts;
-import ir.layercloud.cortexdrone.DroneController;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.DroneController;
+import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -23,9 +18,13 @@ import java.util.List;
  * make this, and what am I missing"; none of them mutates anything.</p>
  */
 public final class RecipeQueryTools {
-    /** Default probe item used when the caller names nothing. */
+    /**
+     * Default probe item used when the caller names nothing.
+     */
     private static final String DEFAULT_MACHINE_FILTER = "plate_iron";
-    /** Default vanilla recipe filter. */
+    /**
+     * Default vanilla recipe filter.
+     */
     private static final String DEFAULT_VANILLA_FILTER = "chest";
 
     private final InventoryService inventoryService;
@@ -106,7 +105,9 @@ public final class RecipeQueryTools {
                 ctrl.drone, player, args, DEFAULT_MACHINE_FILTER);
     }
 
-    /** For the best recipe, report how much of each ingredient is reachable. */
+    /**
+     * For the best recipe, report how much of each ingredient is reachable.
+     */
     private JsonObject ingredients(DroneController ctrl, EntityPlayerMP player, JsonObject args) {
         int radius = InventoryToolSupport.radius(args, InventoryLimits.DEFAULT_RADIUS);
         JsonObject best = InventoryToolSupport.bestRecipe(this.inventoryService,
@@ -141,7 +142,9 @@ public final class RecipeQueryTools {
         return result;
     }
 
-    /** Best human-readable name for an ingredient entry. */
+    /**
+     * Best human-readable name for an ingredient entry.
+     */
     private static String probeName(JsonObject input) {
         if (input.has("displayName")) return input.get("displayName").getAsString();
         if (input.has("registryName")) return input.get("registryName").getAsString();

@@ -19,7 +19,9 @@ final class RecipeInputReader {
     private RecipeInputReader() {
     }
 
-    /** Reads every item and fluid input declared by {@code recipe}. */
+    /**
+     * Reads every item and fluid input declared by {@code recipe}.
+     */
     static void read(JsonObject recipe, MachineRecipeService.NormalizedRecipe out) {
         readArray(recipe, "inputItem", out);
         readArray(recipe, "inputs", out);
@@ -83,7 +85,9 @@ final class RecipeInputReader {
         }
     }
 
-    /** One key from the item-input vocabulary. */
+    /**
+     * One key from the item-input vocabulary.
+     */
     private static void readItemKey(JsonObject recipe, String key,
                                     MachineRecipeService.NormalizedRecipe out) {
         if (!recipe.has(key)) return;
@@ -137,7 +141,9 @@ final class RecipeInputReader {
         }
     }
 
-    /** Explicit item/fluid list keys. */
+    /**
+     * Explicit item/fluid list keys.
+     */
     private static void readTypedKey(JsonObject recipe, String key,
                                      MachineRecipeService.NormalizedRecipe out) {
         if (!recipe.has(key)) return;
@@ -172,7 +178,9 @@ final class RecipeInputReader {
         }
     }
 
-    /** A fluid list key holding either one entry or a list of entries. */
+    /**
+     * A fluid list key holding either one entry or a list of entries.
+     */
     static void readFluidArray(JsonObject recipe, String key,
                                MachineRecipeService.NormalizedRecipe out) {
         if (!recipe.has(key) || !recipe.get(key).isJsonArray()) return;
@@ -189,7 +197,9 @@ final class RecipeInputReader {
         }
     }
 
-    /** Bare tokens that mark an item-dict entry rather than a fluid name. */
+    /**
+     * Bare tokens that mark an item-dict entry rather than a fluid name.
+     */
     private static boolean isItemTypeToken(String token) {
         return "item".equals(token) || "dict".equals(token)
                 || "nbt".equals(token) || "dictframe".equals(token);

@@ -12,7 +12,9 @@ public final class WebIdentity {
     private WebIdentity() {
     }
 
-    /** The user-agent sent with every outbound request. */
+    /**
+     * The user-agent sent with every outbound request.
+     */
     public static String userAgent() {
         return "CortexDrone/" + ir.layercloud.cortexdrone.CortexDroneMod.VERSION
                 + " (Minecraft 1.7.10 AI drone)";

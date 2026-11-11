@@ -5,11 +5,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
 import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
-import org.mozilla.javascript.BaseFunction;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.JavaScriptException;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.ScriptableObject;
+import org.mozilla.javascript.*;
 
 /**
  * One tool exposed as a callable JavaScript function.
@@ -20,11 +16,17 @@ import org.mozilla.javascript.ScriptableObject;
  * time-sliced scan poll.</p>
  */
 final class DroneToolFunction extends BaseFunction {
-    /** How long a script waits for a time-sliced scan before giving up. */
+    /**
+     * How long a script waits for a time-sliced scan before giving up.
+     */
     static final long SCAN_POLL_BUDGET_MS = 45_000L;
-    /** Pause between scan polls. */
+    /**
+     * Pause between scan polls.
+     */
     private static final long SCAN_POLL_INTERVAL_MS = 200L;
-    /** Standoff retries before reporting the original result. */
+    /**
+     * Standoff retries before reporting the original result.
+     */
     private static final int REACH_RETRIES = 3;
 
     private final transient ToolInvoker invoker;
@@ -53,7 +55,9 @@ final class DroneToolFunction extends BaseFunction {
         return JsConvert.toJs(result, cx, scope);
     }
 
-    /** Invokes a tool and turns a failure envelope into a catchable JS error. */
+    /**
+     * Invokes a tool and turns a failure envelope into a catchable JS error.
+     */
     static JsonObject invokeChecked(Context cx, Scriptable scope, ToolInvoker invoker,
                                     ToolContext context, String name, JsonObject arguments) {
         JsBudget budget = JsEngine.currentBudget();
@@ -65,7 +69,9 @@ final class DroneToolFunction extends BaseFunction {
         return result;
     }
 
-    /** Moves to the returned standoff and retries the same operation. */
+    /**
+     * Moves to the returned standoff and retries the same operation.
+     */
     private JsonObject retryReach(Context cx, Scriptable scope, String name,
                                   JsonObject arguments, JsonObject result) {
         if (!result.has("needsMovement") || !result.get("needsMovement").getAsBoolean()
@@ -94,13 +100,16 @@ final class DroneToolFunction extends BaseFunction {
      * converted into a failure. Returning {@code ok:true, count:0} made
      * {@code mine_blocks} conclude "no ore here" while the scan was merely slow.</p>
      */
-    /** True when a result is a pending time-sliced job that the script should poll. */
+    /**
+     * True when a result is a pending time-sliced job that the script should poll.
+     */
     static boolean shouldAutoPoll(ToolSpec spec, JsonObject result) {
         if (spec == null || !spec.has(ToolCapability.TIME_SLICED)) return false;
         return result != null && result.has("job_id")
                 && result.has("pending") && result.get("pending").getAsBoolean();
     }
 
+    @SuppressWarnings("BusyWait")
     private JsonObject autoPollScan(Context cx, Scriptable scope, JsonObject result) {
         if (!shouldAutoPoll(this.spec, result)) {
             return result;

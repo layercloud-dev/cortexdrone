@@ -24,7 +24,9 @@ import net.minecraft.world.World;
  */
 @RequiredArgsConstructor
 public final class CombatAssessmentService {
-    /** The interaction action refuses an attack beyond this distance. */
+    /**
+     * The interaction action refuses an attack beyond this distance.
+     */
     public static final double ATTACK_REACH = 4.5;
 
     public CombatAssessment assess(Drone drone, int entityId, String itemFilter, Integer requestedSlot) {

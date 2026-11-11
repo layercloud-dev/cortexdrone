@@ -13,7 +13,9 @@ public final class DroneGeometry {
     private DroneGeometry() {
     }
 
-    /** Horizontal centre of a block cell. */
+    /**
+     * Horizontal centre of a block cell.
+     */
     public static final double CELL_CENTER = 0.5D;
 
     /**
@@ -34,7 +36,9 @@ public final class DroneGeometry {
      */
     public static final double AIM_OFFSET = 0.35D;
 
-    /** The aim point above block {@code (x, y, z)}. */
+    /**
+     * The aim point above block {@code (x, y, z)}.
+     */
     public static double aimX(int x) {
         return x + CELL_CENTER;
     }

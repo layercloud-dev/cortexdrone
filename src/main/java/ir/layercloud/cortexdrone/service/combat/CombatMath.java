@@ -14,9 +14,13 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public final class CombatMath {
-    /** Vanilla armor cap used by the damage formula. */
+    /**
+     * Vanilla armor cap used by the damage formula.
+     */
     public static final int ARMOR_CAP = 25;
-    /** The interaction action refuses an attack for this many ticks after a hit. */
+    /**
+     * The interaction action refuses an attack for this many ticks after a hit.
+     */
     public static final int ATTACK_COOLDOWN_TICKS = 4;
     public static final int TICK_MS = 50;
 
@@ -55,7 +59,9 @@ public final class CombatMath {
         return waitTicks * TICK_MS;
     }
 
-    /** Rough wall-clock estimate for the attacks, ignoring travel time. */
+    /**
+     * Rough wall-clock estimate for the attacks, ignoring travel time.
+     */
     public static double estimatedSeconds(int attacksToKill, int waitMs) {
         if (attacksToKill <= 0) return 0.0;
         long cadence = Math.max(TICK_MS, waitMs);

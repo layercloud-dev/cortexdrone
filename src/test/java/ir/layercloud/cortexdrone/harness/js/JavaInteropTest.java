@@ -13,7 +13,10 @@ import java.nio.file.Files;
 
 import static org.junit.Assert.*;
 
-/** Prove the Java interop surface works end to end. */
+/**
+ * Prove the Java interop surface works end to end.
+ */
+@SuppressWarnings("unused")
 public class JavaInteropTest {
     private static JsonObject run(ModConfig config, String code) throws Exception {
         ToolRegistry registry = new ToolRegistry();

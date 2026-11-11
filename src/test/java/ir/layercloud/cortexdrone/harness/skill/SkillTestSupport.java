@@ -1,18 +1,12 @@
 package ir.layercloud.cortexdrone.harness.skill;
 
-import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.harness.js.JsEngine;
-import ir.layercloud.cortexdrone.harness.tool.ScanJobs;
-import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
-import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
-import ir.layercloud.cortexdrone.harness.tool.ToolJson;
-import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSchema;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tool.*;
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -20,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Shared stub-tool harness for the behavioural skill tests.
@@ -30,7 +24,9 @@ import static org.junit.Assert.*;
  * suite.</p>
  */
 abstract class SkillTestSupport {
-    /** One recorded tool call: name plus its JSON arguments. */
+    /**
+     * One recorded tool call: name plus its JSON arguments.
+     */
     static final class Call {
         final String name;
         final JsonObject args;
@@ -78,7 +74,9 @@ abstract class SkillTestSupport {
             return result.getAsJsonObject("result");
         }
 
-        /** Runs the skill through its bound function name, not skills.call. */
+        /**
+         * Runs the skill through its bound function name, not skills.call.
+         */
         JsonObject runAsFunction(String skill, String paramsJson) {
             JsonObject result = this.engine.execute(null,
                     "return skills." + skill + "(" + paramsJson + ");", 30_000L);

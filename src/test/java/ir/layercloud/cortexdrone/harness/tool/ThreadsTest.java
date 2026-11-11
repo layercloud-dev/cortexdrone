@@ -2,9 +2,12 @@ package ir.layercloud.cortexdrone.harness.tool;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-/** One server-thread check for the whole harness. */
+/**
+ * One server-thread check for the whole harness.
+ */
 public class ThreadsTest {
     @Test
     public void namedServerThreadIsRecognised() {
@@ -25,7 +28,8 @@ public class ThreadsTest {
 
     @Test
     public void emptyThreadNameIsNeverTheServerThread() {
-        Thread thread = new Thread(() -> { });
+        Thread thread = new Thread(() -> {
+        });
         thread.setName("");
         assertFalse(Threads.isServerThread(thread));
     }

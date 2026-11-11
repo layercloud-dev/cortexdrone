@@ -13,15 +13,21 @@ import java.util.List;
  * unless there is no choice.</p>
  */
 final class ChatLines {
-    /** Longest chat line Minecraft renders comfortably. */
+    /**
+     * Longest chat line Minecraft renders comfortably.
+     */
     static final int MAX_LINE = 240;
-    /** Do not split before this column; prefer a word boundary past it. */
+    /**
+     * Do not split before this column; prefer a word boundary past it.
+     */
     private static final int MIN_SPLIT = 120;
 
     private ChatLines() {
     }
 
-    /** Splits a message into chat-sized lines, preserving word boundaries. */
+    /**
+     * Splits a message into chat-sized lines, preserving word boundaries.
+     */
     static List<String> split(String message) {
         List<String> lines = new ArrayList<>();
         if (message == null || message.isEmpty()) return lines;
@@ -37,13 +43,17 @@ final class ChatLines {
         return lines;
     }
 
-    /** Collapses whitespace and truncates with an ellipsis. */
+    /**
+     * Collapses whitespace and truncates with an ellipsis.
+     */
     static String limit(String text, int max) {
         String clean = TextSanitizer.chat(text);
         return clean.length() <= max ? clean : clean.substring(0, Math.max(0, max - 3)) + "...";
     }
 
-    /** A stable skill name derived from the prompt, unique for non-Latin text. */
+    /**
+     * A stable skill name derived from the prompt, unique for non-Latin text.
+     */
     static String skillName(String prompt) {
         if (prompt == null) return "task_workflow";
         String[] words = prompt.toLowerCase(java.util.Locale.ROOT)

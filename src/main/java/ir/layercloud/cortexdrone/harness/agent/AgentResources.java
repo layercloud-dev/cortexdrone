@@ -4,7 +4,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
-/** Loads packaged prompt resources with a safe empty fallback. */
+/**
+ * Loads packaged prompt resources with a safe empty fallback.
+ */
 public final class AgentResources {
     private AgentResources() {
     }

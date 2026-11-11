@@ -15,27 +15,39 @@ import java.util.function.ToLongFunction;
  * {@code 50}/{@code 20} caps. The algorithm and caps now live here.</p>
  */
 public final class RankedSearch {
-    /** Smallest number of results a store search returns. */
+    /**
+     * Smallest number of results a store search returns.
+     */
     public static final int MIN_RESULTS = 1;
-    /** Largest number of results a store search returns. */
+    /**
+     * Largest number of results a store search returns.
+     */
     public static final int MAX_RESULTS = 50;
-    /** Largest number of entries injected into task context. */
+    /**
+     * Largest number of entries injected into task context.
+     */
     public static final int MAX_CONTEXT = 20;
 
     private RankedSearch() {
     }
 
-    /** Scores one entry against the cleaned query and its tokens. */
+    /**
+     * Scores one entry against the cleaned query and its tokens.
+     */
     public interface Scorer<T> {
         double score(T entry, String query, List<String> tokens);
     }
 
-    /** Clamps a search result limit. */
+    /**
+     * Clamps a search result limit.
+     */
     public static int clampLimit(int limit) {
         return Math.max(1, Math.min(MAX_RESULTS, limit));
     }
 
-    /** Clamps a context-injection limit. */
+    /**
+     * Clamps a context-injection limit.
+     */
     public static int clampContext(int limit) {
         return Math.max(1, Math.min(MAX_CONTEXT, limit));
     }

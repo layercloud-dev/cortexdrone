@@ -21,6 +21,7 @@ import static org.junit.Assert.*;
  * in the middle of a task. These tests compile every body with Rhino and check
  * that the composition graph is sound.</p>
  */
+@SuppressWarnings("unused")
 public class BundledSkillSuiteTest {
     private static SkillLibrary library() throws Exception {
         File root = Files.createTempDirectory("cortexdrone-bundled").toFile();
@@ -45,7 +46,7 @@ public class BundledSkillSuiteTest {
         assertTrue(library.get("guard").getCode().contains("skills.call('guard_scan'"));
 
         com.google.gson.JsonObject loaded = library.toJsonArray(
-                java.util.Collections.singletonList(library.get("guard")), true)
+                        java.util.Collections.singletonList(library.get("guard")), true)
                 .get(0).getAsJsonObject();
         assertTrue("skill action=load must return the SKILL.md docs", loaded.has("docs"));
         assertTrue(loaded.get("docs").getAsString().contains("## Parameters"));
@@ -137,7 +138,7 @@ public class BundledSkillSuiteTest {
         assertTrue(library.get("hunt").getCode().contains("skills.call('attack_to_death'"));
 
         com.google.gson.JsonObject loaded = library.toJsonArray(
-                java.util.Collections.singletonList(library.get("guard")), true)
+                        java.util.Collections.singletonList(library.get("guard")), true)
                 .get(0).getAsJsonObject();
         assertTrue("skill action=load must return the SKILL.md docs", loaded.has("docs"));
         assertTrue(loaded.get("docs").getAsString().contains("## Parameters"));

@@ -290,6 +290,14 @@ public final class JsEngine {
         } else {
             message = cause.getClass().getSimpleName()
                     + (cause.getMessage() != null ? ": " + cause.getMessage() : "");
+            if (cause instanceof NoClassDefFoundError || cause instanceof LinkageError
+                    || message.contains("NoClassDefFoundError")) {
+                hint = "An optional mod is missing a class that a modded block/item references "
+                        + "(the live log shows the MineFactoryReloaded RedNet API). This is a broken "
+                        + "dependency, not a script bug. Do not iterate Block.blockRegistry or "
+                        + "Item.itemRegistry; use doc_lookup(query, mod_id), find_oredict or scan_blocks "
+                        + "to find the item instead.";
+            }
         }
         JsonObject result = ToolJson.error(code, message, hint, true);
         result.add("logs", ScriptGlobals.logsJson(logs));

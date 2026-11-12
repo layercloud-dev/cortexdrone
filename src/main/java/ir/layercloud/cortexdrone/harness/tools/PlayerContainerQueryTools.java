@@ -187,7 +187,17 @@ public final class PlayerContainerQueryTools {
         if (held != null && held.stackSize > 0) {
             result.add("heldItem", ItemClassifier.itemStackToJson(target.inventory.currentItem, held));
         }
-        result.add("items", InventoryToolSupport.itemsOf(target.inventory));
+        JsonArray items = InventoryToolSupport.itemsOf(target.inventory);
+        result.add("items", items);
+        // Compatibility alias: generated scripts repeatedly use `.slots` or
+        // `.inventory` here and then throw "Cannot call method filter of
+        // undefined". Point both at the same array.
+        result.add("slots", items);
+        result.add("inventory", items);
+        result.addProperty("itemCount", items.size());
+        result.addProperty("slotsTotal", target.inventory.getSizeInventory());
+        result.addProperty("slotsUsed", items.size());
+        result.addProperty("freeSlots", Math.max(0, target.inventory.getSizeInventory() - items.size()));
         result.addProperty("summary", InventoryService.formatInventorySummary(target.inventory));
         return result;
     }

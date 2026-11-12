@@ -188,6 +188,15 @@ Runtime compatibility notes:
 - **A player name is a valid entity filter.** `get_entities({filter:"MHProDev"})`
   matches the player by name; `filter:"player"` matches any player. Prefer the
   name when another player is nearby.
+- **Do not iterate the global registries.** `Block.blockRegistry` and
+  `Item.itemRegistry` contain blocks from every installed mod, and a broken
+  optional dependency (the live server has a missing MineFactoryReloaded RedNet
+  class) throws `NoClassDefFoundError` partway through. Use `doc_lookup(query,
+  mod_id)`, `find_oredict` or `scan_blocks` to find an item/block instead.
+  `Java.type` method/static names are mapped from MCP to SRG where the harness
+  knows them (`CraftingManager.getInstance`, `FurnaceRecipes.smelting`,
+  `Block.getBlockFromName`, `ItemStack.getDisplayName`, ...), but the tool
+  surface is always safer than raw reflection.
 - **Survival mining is a skill, not a break loop.** `skills.mineBlocks({filter,
   count, allow_dig:true})` flies to a standoff and tunnels to buried ore. A hand
   rolled `break_block` loop against scan results fails with `block_occluded`/

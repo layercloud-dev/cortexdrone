@@ -236,10 +236,22 @@ final class JavaInterop {
         return value;
     }
 
+    /**
+     * Static access for nested wrappers, whose own {@code unwrap()} is the
+     * no-argument {@link NativeJavaObject} method.
+     */
+    static Object unwrapValue(Object value) {
+        return unwrap(value);
+    }
+
     private static Class<?> unwrapClass(Object value) {
         if (value instanceof NativeJavaClass) return ((NativeJavaClass) value).getClassObject();
         Object raw = unwrap(value);
         return raw instanceof Class ? (Class<?>) raw : null;
+    }
+
+    static Class<?> unwrapClassValue(Object value) {
+        return unwrapClass(value);
     }
 
     /**
@@ -290,73 +302,12 @@ final class JavaInterop {
     private static final class InteropWrapFactory extends WrapFactory {
         @Override
         public Scriptable wrapAsJavaObject(Context cx, Scriptable scope, Object javaObject, Class<?> staticType) {
-            return new ClassExposingJavaObject(scope, javaObject, staticType);
+            return new McpJavaWrappers.ObjectWrapper(scope, javaObject, staticType);
         }
 
         @Override
         public Scriptable wrapJavaClass(Context cx, Scriptable scope, Class<?> javaClass) {
-            return new ClassExposingJavaClass(scope, javaClass);
-        }
-    }
-
-    /**
-     * A live Java object that also answers {@code .class}.
-     */
-    private static class ClassExposingJavaObject extends NativeJavaObject {
-        ClassExposingJavaObject(Scriptable scope, Object javaObject, Class<?> staticType) {
-            super(scope, javaObject, staticType);
-        }
-
-        @Override
-        public Object get(String name, Scriptable start) {
-            if ("class".equals(name)) {
-                Class<?> type = this.javaObject != null ? this.javaObject.getClass() : null;
-                Scriptable parent = getParentScope();
-                if (type != null && parent != null) {
-                    return new ClassExposingJavaObject(parent, type, Class.class);
-                }
-            }
-            return super.get(name, start);
-        }
-
-        @Override
-        public boolean has(String name, Scriptable start) {
-            return "class".equals(name) || super.has(name, start);
-        }
-    }
-
-    /**
-     * A class object that also answers {@code .class} and {@code Class} methods.
-     */
-    private static final class ClassExposingJavaClass extends NativeJavaClass {
-        ClassExposingJavaClass(Scriptable scope, Class<?> javaClass) {
-            super(scope, javaClass);
-        }
-
-        /**
-         * The wrapped class viewed as a {@code java.lang.Class} instance.
-         */
-        private Scriptable asClassInstance() {
-            Scriptable parent = getParentScope();
-            return parent == null ? null
-                    : new ClassExposingJavaObject(parent, getClassObject(), Class.class);
-        }
-
-        @Override
-        public Object get(String name, Scriptable start) {
-            if ("class".equals(name)) return asClassInstance();
-            Scriptable asClass = asClassInstance();
-            // Class objects only answer statics; fall through to java.lang.Class
-            // so getName()/getSimpleName()/getMethods() work on a type handle.
-            if (asClass != null && !super.has(name, start) && asClass.has(name, asClass)) {
-                return asClass.get(name, asClass);
-            }
-            return super.get(name, start);
-        }
-
-        @Override
-        public boolean has(String name, Scriptable start) {
-            return "class".equals(name) || super.has(name, start);
+            return new McpJavaWrappers.ClassWrapper(scope, javaClass);
         }
     }
 }

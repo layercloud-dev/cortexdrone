@@ -123,8 +123,17 @@ public final class SkillTools implements ToolProvider {
                 return error;
             }
             this.skills.recordUse(skill.getName());
+            JsonObject loaded = this.skills.toJsonArray(Collections.singletonList(skill), true)
+                    .get(0).getAsJsonObject();
             JsonObject result = ToolJson.ok();
-            result.add("skill", this.skills.toJsonArray(Collections.singletonList(skill), true).get(0));
+            result.add("skill", loaded);
+            // Compatibility aliases: scripts naturally write
+            // `skills.load(name).code` (the live log shows exactly that).
+            // Keep the canonical `skill` envelope and mirror the body at the
+            // top level so both shapes work.
+            for (String key : new String[]{"name", "description", "tags", "code", "docs"}) {
+                if (loaded.has(key)) result.add(key, loaded.get(key));
+            }
             List<String> missing = this.skills.missingRequires(skill.getName());
             result.addProperty("missing_requires_count", missing.size());
             result.add("missing_requires", new Gson().toJsonTree(missing));

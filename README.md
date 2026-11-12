@@ -346,7 +346,7 @@ The gateway must support OpenAI-style `tools` / `tool_calls`. No JSON-envelope f
 /drone link             link the nearest OpenComputers drone within 8 blocks
 /drone list             show active drones, owners, positions
 /drone status           show drone/agent status
-/drone despawn [name]   remove a drone
+/drone despawn [name]   remove a drone (players: their own; console/ops: any)
 /drone stop             cancel the running task
 ```
 

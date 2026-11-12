@@ -64,6 +64,30 @@ public class DespawnTargetsTest {
     }
 
     @Test
+    public void consoleSelectsTheOnlyDroneWhenNoNameIsGiven() {
+        List<DroneController> onlyAlice = Collections.singletonList(ALICE_DRONE);
+        assertSame(ALICE_DRONE, DespawnTargets.onlyController(onlyAlice));
+        assertSame(ALICE_DRONE, DespawnTargets.select("Server", DespawnTargets.OP_PERMISSION_LEVEL,
+                null, DespawnTargets.onlyController(onlyAlice), onlyAlice));
+    }
+
+    @Test
+    public void consoleMustNameTheDroneWhenThereAreSeveral() {
+        assertNull("two drones make a nameless despawn ambiguous",
+                DespawnTargets.onlyController(ALL));
+        assertSame(BOB_DRONE, DespawnTargets.select("Server", DespawnTargets.OP_PERMISSION_LEVEL,
+                "Bob-AI", null, ALL));
+    }
+
+    @Test
+    public void consoleWithNothingToDespawnSelectsNothing() {
+        assertNull(DespawnTargets.onlyController(Collections.<DroneController>emptyList()));
+        assertNull(DespawnTargets.onlyController(null));
+        assertNull(DespawnTargets.select("Server", DespawnTargets.OP_PERMISSION_LEVEL,
+                null, DespawnTargets.onlyController(null), null));
+    }
+
+    @Test
     public void ownershipComparisonIsCaseInsensitiveAndTrimmed() {
         assertTrue(DespawnTargets.owns(" alice ", ALICE_DRONE));
         assertFalse(DespawnTargets.owns("Alice", BOB_DRONE));

@@ -13,6 +13,11 @@ import java.util.Locale;
  * operator (permission level 2) may despawn any drone. Before this rule the
  * command matched <em>any</em> controller by name, so any player could destroy
  * another player's drone and receive its inventory at their own feet.</p>
+ *
+ * <p>Console and command blocks have no owning player, so {@link
+ * #onlyController(Collection)} stands in for "own drone": a nameless {@code
+ * /drone despawn} there resolves the single live drone and refuses when the
+ * choice would be ambiguous.</p>
  */
 public final class DespawnTargets {
     /**
@@ -41,6 +46,25 @@ public final class DespawnTargets {
         if (match == null) return null;
         if (isOperator(senderLevel) || owns(senderName, match)) return match;
         return null;
+    }
+
+    /**
+     * The only live controller, or {@code null} when there is none or more than
+     * one.
+     *
+     * <p>Used for a nameless {@code /drone despawn} from console or a command
+     * block, where there is no "own" drone: with exactly one drone the choice
+     * is unambiguous, otherwise the sender has to name one.</p>
+     */
+    public static DroneController onlyController(Collection<DroneController> controllers) {
+        if (controllers == null) return null;
+        DroneController found = null;
+        for (DroneController controller : controllers) {
+            if (controller == null) continue;
+            if (found != null) return null;
+            found = controller;
+        }
+        return found;
     }
 
     /**

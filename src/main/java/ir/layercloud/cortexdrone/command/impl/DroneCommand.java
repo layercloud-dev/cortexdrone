@@ -159,12 +159,15 @@ public class DroneCommand extends BaseCommand {
             case "config":
                 AdminCommands.config(sender, player, this.manager, args);
                 return;
+            case "despawn":
+                handleDespawn(sender, player, args);
+                return;
             default:
                 break;
         }
 
         if (player == null) {
-            CortexDroneMod.sendMsg(sender, "Use /drone list, /drone memory list, /drone debug tail, or /drone config from console.");
+            CortexDroneMod.sendMsg(sender, "Use /drone list, /drone despawn <name>, /drone memory list, /drone debug tail, or /drone config from console.");
             return;
         }
 
@@ -186,28 +189,6 @@ public class DroneCommand extends BaseCommand {
         }
 
         DroneController ctrl = this.manager.getPlayerDrone(player.getCommandSenderName());
-        if (sub.equals("despawn")) {
-            String nameArg = args.length >= 2 ? args[1] : null;
-            int level = playerLevel(player);
-            DroneController target = DespawnTargets.select(player.getCommandSenderName(), level,
-                    nameArg, ctrl, this.manager.controllers());
-            if (target == null) {
-                if (nameArg != null && !nameArg.trim().isEmpty()) {
-                    CortexDroneMod.sendMsg(player, EnumChatFormatting.RED
-                            + "[Drone] No drone named '" + nameArg + "' that you own.");
-                } else {
-                    CortexDroneMod.sendMsg(player, EnumChatFormatting.RED
-                            + "[Drone] You don't have an active AI drone.");
-                }
-                return;
-            }
-            ctrl = target;
-            String oldName = ctrl.name;
-            int dropped = this.manager.despawnDrone(ctrl, player);
-            CortexDroneMod.sendMsg(player, EnumChatFormatting.GREEN + "[Drone] Despawned '" + oldName + "' and dropped " + dropped + " item(s) at your feet.");
-            return;
-        }
-
         if (ctrl == null) {
             ctrl = this.manager.linkNearestDrone(player);
             if (ctrl == null) {
@@ -232,10 +213,44 @@ public class DroneCommand extends BaseCommand {
     }
 
     /**
-     * @see AdminCommands#playerLevel(EntityPlayerMP)
+     * {@code despawn [name]} — available to players, console and operators.
+     *
+     * <p>A player may only despawn a drone they own; console and operators may
+     * despawn any drone by name. Without a name a player despawns their own
+     * drone, and console despawns the only drone on the server (an ambiguous
+     * choice is refused rather than guessed). A player receives the drone's
+     * inventory at their feet; any other sender leaves it where the drone was,
+     * so a cleanup from console cannot silently delete items.</p>
      */
-    private static int playerLevel(EntityPlayerMP player) {
-        return AdminCommands.playerLevel(player);
+    private void handleDespawn(ICommandSender sender, EntityPlayerMP player, String[] args) {
+        String nameArg = args.length >= 2 ? joinArgs(args, 1).trim() : null;
+        if (nameArg != null && nameArg.isEmpty()) nameArg = null;
+        String senderName = player != null ? player.getCommandSenderName() : sender.getCommandSenderName();
+        int level = player != null
+                ? AdminCommands.playerLevel(player) : DespawnTargets.OP_PERMISSION_LEVEL;
+        DroneController own = player != null
+                ? this.manager.getPlayerDrone(senderName)
+                : DespawnTargets.onlyController(this.manager.controllers());
+        DroneController target = DespawnTargets.select(senderName, level, nameArg, own,
+                this.manager.controllers());
+        if (target == null) {
+            if (nameArg != null) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                        + "[Drone] No drone named '" + nameArg + "' that you may despawn.");
+            } else if (player == null) {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                        + "[Drone] No single active drone to despawn. Use /drone list, then /drone despawn <name>.");
+            } else {
+                CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                        + "[Drone] You don't have an active AI drone.");
+            }
+            return;
+        }
+        String oldName = target.name;
+        int dropped = this.manager.despawnDrone(target, player);
+        String where = player != null ? "at your feet" : "at the drone's last position";
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] Despawned '" + oldName
+                + "' and dropped " + dropped + " item(s) " + where + ".");
     }
 
     private void handleSkills(ICommandSender sender, String[] args) {

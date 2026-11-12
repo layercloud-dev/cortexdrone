@@ -38,7 +38,8 @@ for (var i = 0; i < list.length && engaged < maxTargets && attacks < maxAttacks
         result = skills.call('attack_to_death', {
             entity_id: mob.id,
             max_attacks: budget,
-            max_seconds: Math.max(3, Math.min(seconds, Math.round((deadline - Date.now()) / 1000)))
+            max_seconds: Math.max(3, Math.min(seconds, Math.round((deadline - Date.now()) / 1000))),
+            collect: cfg.collect === true
         });
     } catch (killError) {
         log('sweep kill failed for ' + mob.name + ': ' + killError.message);

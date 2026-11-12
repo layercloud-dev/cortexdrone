@@ -8,6 +8,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
+import ir.layercloud.cortexdrone.service.world.BlockPlacer;
 import ir.layercloud.cortexdrone.service.world.BlockSight;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
@@ -87,6 +88,10 @@ public final class BreakBlockAction implements Action<BlockContext> {
                     + x + "," + y + "," + z + " (world refused the change)"));
             return;
         }
+        // The aux effect sends particles on the client, but the block-state
+        // packet is skipped for chunks that are not light-populated; refresh
+        // guarantees the gap actually appears.
+        BlockPlacer.refresh(world, x, y, z, Blocks.air);
 
         IInventory inv = drone.mainInventory();
         for (ItemStack drop : drops) {

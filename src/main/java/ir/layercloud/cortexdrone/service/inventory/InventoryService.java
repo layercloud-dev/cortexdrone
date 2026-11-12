@@ -212,6 +212,7 @@ public class InventoryService {
         if (totalMoved > 0) {
             this.logger.log("INV", ctrl, "Withdrew " + totalMoved + " item(s) matching '"
                     + resolved + "' from a reachable container", "");
+            TransferAnimation.afterWithdraw(world, ctrl.drone, tiles.get(0), dst, resolved);
         }
         return totalMoved;
     }
@@ -310,6 +311,9 @@ public class InventoryService {
         }
         droneInv.markDirty();
         targetInv.markDirty();
+        if (totalDeposited > 0) {
+            TransferAnimation.afterDeposit(d.worldObj, d, te, targetInv);
+        }
 
         if (countInventoryItems(droneInv) > 0 && d.worldObj != null) {
             List<TileEntity> nearby = ContainerAccess.reachable(d.worldObj, d,
@@ -357,6 +361,14 @@ public class InventoryService {
 
     public int moveInventorySlot(IInventory srcInv, int srcSlot, String itemFilter, IInventory dstInv, int dstSlot, int maxCount, EntityPlayerMP syncPlayer) {
         return this.playerInventoryOps.moveInventorySlot(srcInv, srcSlot, itemFilter, dstInv, dstSlot, maxCount, syncPlayer);
+    }
+
+    /**
+     * @see GroundItems#suck(Drone, double, double, double, double, String)
+     */
+    public static int suckNearbyItems(Drone d, double x, double y, double z,
+                                      double radius, String filter) {
+        return GroundItems.suck(d, x, y, z, radius, filter);
     }
 
     /**

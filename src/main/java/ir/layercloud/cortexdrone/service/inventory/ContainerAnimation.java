@@ -21,9 +21,10 @@ import java.util.List;
  * turns into the lid animation and the {@code random.chestopen} sound. For every
  * other container it is the mod's own open hook.</p>
  *
- * <p>The drone manipulates slots directly, so without this the lid never moved
- * and nothing played — which looked like telekinesis. {@link #open} returns a
- * token that must be closed in a {@code finally} block.</p>
+ * <p>A {@link Token} closes through {@link ContainerCloser}, so the container
+ * stays open for {@link ContainerCloser#MIN_OPEN_TICKS} server ticks. Closing
+ * in the same tick produced no animation at all: both block events landed in
+ * one batch and the client only saw the final closed value.</p>
  */
 @UtilityClass
 @SuppressWarnings("unused")
@@ -98,7 +99,7 @@ public final class ContainerAnimation {
     }
 
     /**
-     * Opens a container, runs {@code body}, and always closes it again.
+     * Opens a container, runs {@code body}, and schedules the close.
      */
     public static <T> T withOpen(World world, Drone drone, TileEntity tile, Body<T> body) {
         Token token = open(world, drone, tile);
@@ -121,6 +122,7 @@ public final class ContainerAnimation {
      */
     public static final class Token {
         private final List<IInventory> opened;
+        private boolean closed;
 
         private Token(List<IInventory> opened) {
             this.opened = opened;
@@ -131,15 +133,14 @@ public final class ContainerAnimation {
         }
 
         /**
-         * Closes every container this token opened. Call from a {@code finally}.
+         * Schedules the close. Call from a {@code finally}; the actual
+         * {@code closeInventory()} happens a few ticks later so the lid and the
+         * latch sound are visible.
          */
         public void close() {
-            for (IInventory inventory : this.opened) {
-                try {
-                    inventory.closeInventory();
-                } catch (Throwable ignored) {
-                }
-            }
+            if (this.closed || this.opened.isEmpty()) return;
+            this.closed = true;
+            ContainerCloser.schedule(this.opened);
         }
     }
 }

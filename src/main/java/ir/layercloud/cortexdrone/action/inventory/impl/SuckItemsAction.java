@@ -28,13 +28,14 @@ public final class SuckItemsAction implements Action<InventoryContext> {
         double radius = request.getRadius() > 0
                 ? InventoryLimits.clampSuckRadius(request.getRadius())
                 : InventoryLimits.DEFAULT_SUCK_RADIUS;
-        int before = InventoryService.countInventoryItems(drone.mainInventory());
-        InventoryService.suckNearbyItems(drone, drone.posX, drone.posY, drone.posZ, radius);
+        String filter = request.getFilter() != null ? request.getFilter() : "all";
+        int pickedUp = InventoryService.suckNearbyItems(
+                drone, drone.posX, drone.posY, drone.posZ, radius, filter);
         int after = InventoryService.countInventoryItems(drone.mainInventory());
-        int pickedUp = Math.max(0, after - before);
         context.result(InventoryResult.success(
                 "pickedUp", pickedUp,
                 "totalItems", after,
-                "radius", radius));
+                "radius", radius,
+                "filter", filter));
     }
 }

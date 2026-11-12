@@ -21,8 +21,8 @@ public class LegitimacyGuardTest {
         String animation = read(MAIN + "service/inventory/ContainerAnimation.java");
         assertTrue("containers must be opened through IInventory",
                 animation.contains("inventory.openInventory()"));
-        assertTrue("containers must be closed again",
-                animation.contains("inventory.closeInventory()"));
+        String closer = read(MAIN + "service/inventory/ContainerCloser.java");
+        assertTrue("containers must be closed again", closer.contains("closeInventory()"));
     }
 
     @Test

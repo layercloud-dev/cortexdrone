@@ -16,6 +16,10 @@ var names = [];
 var blocked = [];
 var emptyScans = 0;
 var stalls = 0;
+var pickedUp = 0;
+var collect = cfg.collect !== false;
+var lootRadius = clamp(cfg.collect_radius || SKILL_LIMITS.lootVacuumRadius,
+    SKILL_LIMITS.lootVacuumMin, LIMITS.collectRadiusMax);
 
 while (kills < maxKills && Date.now() < deadline) {
     var found = drone.getEntities({radius: radius, filter: target});
@@ -57,6 +61,12 @@ while (kills < maxKills && Date.now() < deadline) {
         if (result.killed) {
             kills++;
             stalls = 0;
+            // Loot the kill now: meat/bones land where the mob died and the
+            // drone is already there.
+            if (collect) {
+                var loot = pickupNearbyLoot(lootRadius, {walk: false});
+                pickedUp += loot.pickedUp || 0;
+            }
         } else if (result.blocker && blocked.length < 4 && blocked.indexOf(result.blocker) < 0) {
             blocked.push(result.blocker);
         }
@@ -69,11 +79,10 @@ while (kills < maxKills && Date.now() < deadline) {
     }
 }
 
-if ((kills > 0 || attacks > 0) && cfg.collect !== false) {
-    try {
-        drone.suckItems({radius: 6});
-    } catch (pickupError) {
-    }
+if ((kills > 0 || attacks > 0) && collect) {
+    // Final sweep walks to drops that fell outside the post-kill vacuum.
+    var sweep = pickupNearbyLoot(lootRadius, {scanRadius: SKILL_LIMITS.lootWalkRadius});
+    pickedUp += sweep.pickedUp || 0;
 }
 
 return {
@@ -83,6 +92,7 @@ return {
     attacks: attacks,
     hunted: names,
     blocked: blocked,
+    pickedUp: pickedUp,
     remainingSeconds: Math.max(0, Math.round((deadline - Date.now()) / 1000)),
     hint: attacks > 0 ? '' : 'no reachable target; widen radius or move to a spawn area'
 };

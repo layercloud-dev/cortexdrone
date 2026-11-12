@@ -66,6 +66,7 @@ for (var step = 0; step < length; step++) {
 
 var mined = 0;
 var failed = 0;
+var pickedUp = 0;
 var stopped = '';
 var planned = Math.min(plan.length, maxBlocks);
 for (var i = 0; i < planned; i++) {
@@ -94,8 +95,13 @@ for (var i = 0; i < planned; i++) {
             x: target.x, y: target.y, z: target.z,
             max_wait_ms: 12000
         });
-        if (broke && broke.broken) mined++;
-        else failed++;
+        if (broke && broke.broken) {
+            mined++;
+            if (collect) {
+                var loot = pickupNearbyLoot(SKILL_LIMITS.lootVacuumRadius, {walk: false});
+                pickedUp += loot.pickedUp || 0;
+            }
+        } else failed++;
     } catch (digError) {
         failed++;
         log('strip skip ' + target.x + ',' + target.y + ',' + target.z + ': '
@@ -149,6 +155,7 @@ return {
     exit: exit,
     ore: ore,
     collected: collected && collected.collected,
+    pickedUp: pickedUp,
     stopped: stopped,
     hint: mined > 0 ? (stopped ? stopped + '; unload then continue' : '')
         : 'nothing was cleared; the start point may already be open or blocked'

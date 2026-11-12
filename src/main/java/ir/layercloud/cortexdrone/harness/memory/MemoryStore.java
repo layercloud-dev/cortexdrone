@@ -18,10 +18,11 @@ import java.util.logging.Logger;
 /**
  * Persistent player/agent memory.
  *
- * <p>Storage is {@code config/cortexdrone/memory.json}. The store keeps facts,
- * preferences and named locations. It never stores transient task progress; the
- * model decides what is worth remembering and the player can always forget an
- * entry.</p>
+ * <p>Storage is {@code <world>/cortexdrone/memory.json}: memory names places
+ * that exist inside one save, so it travels with that save and is dropped with
+ * it. The store keeps facts, preferences and named locations. It never stores
+ * transient task progress; the model decides what is worth remembering and the
+ * player can always forget an entry.</p>
  */
 public final class MemoryStore {
     private static final Logger LOG = Logger.getLogger("CortexDrone");
@@ -31,8 +32,8 @@ public final class MemoryStore {
     private final Map<String, MemoryEntry> entries = new LinkedHashMap<>();
     private long sequence;
 
-    public MemoryStore(File configRoot) {
-        this.storageFile = ModPaths.memoryFile(configRoot);
+    public MemoryStore(File worldRoot) {
+        this.storageFile = ModPaths.memoryFile(worldRoot);
         load();
     }
 

@@ -165,7 +165,18 @@ var SKILL_LIMITS = {
     branchSpacingMin: 2,
     branchSpacingMax: 24,
     branchLengthMax: 32,
-    surveyHeightMax: 24
+    surveyHeightMax: 24,
+    /* Loot pickup around the drone (bootstrap pickupNearbyLoot). */
+    lootVacuumRadius: 5,
+    lootVacuumMin: 2,
+    lootWalkRadius: 12,
+    lootClustersMax: 4,
+    /* Fallback valuation, mirroring LootValue's valuable words. */
+    lootValueWords: 'ore|ingot|gem|crystal|dust|nugget|diamond|emerald|lapis'
+        + '|redstone|coal|quartz|certus|copper|tin|lead|silver|nickel|gold|iron'
+        + '|uranium|thorium|plutonium|steel|titanium|tungsten|osmium|platinum'
+        + '|food|meat|beef|porkchop|chicken|mutton|fish|bread|apple|wheat'
+        + '|log|plank|wood'
 };
 
 /* Clamps a number into [min, max]. */
@@ -367,4 +378,73 @@ function countInInventory(inventory, filter) {
 //noinspection JSUnusedGlobalSymbols
 function key3(x, y, z) {
     return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
+}
+
+/*
+ * Loot pickup around the drone.
+ *
+ * Mining and hunting leave valuable drops next to worthless ones, and the drone
+ * has eight slots. {@code pickupNearbyLoot} vacuums only the interesting drops
+ * (suck_items filter 'valuable'), then optionally walks to valuable clusters
+ * that are outside vacuum range. It never throws: a failed pickup must not
+ * abort the mining or combat loop that called it.
+ *
+ * Returns {pickedUp, clusters, skipped, remaining}.
+ */
+function isValuableDrop(drop) {
+    if (!drop) return false;
+    if (drop.valuable === true) return true;
+    if (drop.valuable === false) return false;
+    // get_drops always sets `valuable`; this fallback keeps hand-built drop
+    // objects (tests, older results) usable.
+    return nameMatches(drop.name, drop.registryName || drop.item,
+        SKILL_LIMITS.lootValueWords, drop.oreDict);
+}
+
+function pickupNearbyLoot(radius, options) {
+    var opts = options || {};
+    var vacuum = clamp(radius || SKILL_LIMITS.lootVacuumRadius,
+        SKILL_LIMITS.lootVacuumMin, LIMITS.collectRadiusMax);
+    var result = {pickedUp: 0, clusters: 0, skipped: 0, remaining: 0};
+    try {
+        var vacuumed = drone.suckItems({radius: vacuum, filter: 'valuable'});
+        if (vacuumed && vacuumed.pickedUp) result.pickedUp += Number(vacuumed.pickedUp);
+    } catch (vacuumError) {
+        log('loot vacuum skipped: ' + vacuumError.message);
+    }
+    if (opts.walk === false) return result;
+
+    var scanRadius = clamp(opts.scanRadius || SKILL_LIMITS.lootWalkRadius,
+        vacuum, LIMITS.collectRadiusMax);
+    var maxClusters = clamp(opts.maxClusters || SKILL_LIMITS.lootClustersMax,
+        1, SKILL_LIMITS.clusterCap32);
+    var found = null;
+    try {
+        found = drone.getDrops({radius: scanRadius, filter: 'valuable'});
+    } catch (scanError) {
+        return result;
+    }
+    if (!found || !found.count) return result;
+
+    var list = found.drops || [];
+    var visited = {};
+    for (var i = 0; i < list.length && result.clusters < maxClusters; i++) {
+        var drop = list[i];
+        if (!isValuableDrop(drop)) continue;
+        // Anything inside the vacuum radius was already taken.
+        if (Number(drop.dist || 0) <= vacuum) continue;
+        var key = key3(drop.x, drop.z, 0);
+        if (visited[key]) continue;
+        visited[key] = true;
+        result.clusters++;
+        try {
+            drone.goto({x: drop.x, y: drop.y + 1, z: drop.z, allow_dig: false});
+            var taken = drone.suckItems({radius: vacuum, filter: 'valuable'});
+            if (taken && taken.pickedUp) result.pickedUp += Number(taken.pickedUp);
+        } catch (walkError) {
+            result.skipped++;
+        }
+    }
+    result.remaining = Math.max(0, found.count - result.pickedUp);
+    return result;
 }

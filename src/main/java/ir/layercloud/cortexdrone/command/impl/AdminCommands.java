@@ -9,7 +9,6 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
-import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumChatFormatting;
@@ -97,7 +96,10 @@ final class AdminCommands {
     }
 
     /**
-     * {@code config [<url|model|key|speed> <value>]}; operator only.
+     * {@code config [<key> <value>|reload|save|list|reset <key>]}; operator only.
+     *
+     * <p>Every field in {@code config.json} is editable: the key catalog is the
+     * only list of settings, so the command cannot lag behind the file.</p>
      */
     static void config(ICommandSender sender, EntityPlayerMP player, AIDroneManager manager, String[] args) {
         if (!isOperator(player, sender)) {
@@ -106,41 +108,86 @@ final class AdminCommands {
             return;
         }
         ModConfig config = manager.getConfig();
-        if (args.length < 3) {
-            printConfig(sender, config);
+        String action = args.length >= 2 ? args[1].toLowerCase() : "";
+        if ("reload".equals(action)) {
+            reload(sender, manager);
             return;
         }
-        String key = args[1].toLowerCase();
-        String value = args[2];
-        switch (key) {
-            case "url":
-                config.setApiUrl(value);
-                break;
-            case "model":
-                config.setModel(value);
-                break;
-            case "key":
-                config.setApiKey("clear".equalsIgnoreCase(value) ? "" : value);
-                break;
-            case "speed":
-                Double multiplier = parseMultiplier(value);
-                if (multiplier == null) {
-                    CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
-                            + "[Drone] Speed must be a number such as 1, 2.5 or 5.");
-                    return;
-                }
-                config.setDroneSpeedMultiplier(DroneSpeed.clampMultiplier(multiplier));
-                break;
-            default:
+        if ("save".equals(action)) {
+            manager.saveConfig();
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN
+                    + "[Drone] Saved the live config to config/cortexdrone/config.json.");
+            return;
+        }
+        if ("list".equals(action) || "keys".equals(action)) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "[Drone] Config keys: "
+                    + EnumChatFormatting.WHITE + ConfigCatalog.keys());
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY
+                    + "/drone config <key> <value> | <key> default | reload | save");
+            return;
+        }
+        boolean reset = "reset".equals(action);
+        String key = reset ? (args.length >= 3 ? args[2] : "") : action;
+        String value = reset ? "" : (args.length >= 3 ? joinFrom(args, 2) : "");
+        ConfigCatalog.Field field = ConfigCatalog.find(key);
+        if (field == null) {
+            if (args.length < 3) {
+                printConfig(sender, config);
+            } else {
                 CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
-                        + "Usage: /drone config <url|model|key|speed> <value>");
-                return;
+                        + "[Drone] Unknown config key '" + args[1] + "'. Use /drone config list.");
+            }
+            return;
+        }
+        if (!reset && args.length < 3) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "[Drone] " + field.key()
+                    + " = " + EnumChatFormatting.WHITE + field.display(config));
+            return;
+        }
+        if (reset || ConfigCatalog.isResetValue(value)) value = field.defaultValue();
+        String previous = field.display(config);
+        String applied;
+        try {
+            applied = field.apply(config, value);
+        } catch (IllegalArgumentException invalid) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED + "[Drone] " + field.key()
+                    + ": " + invalid.getMessage() + ".");
+            return;
         }
         manager.saveConfig();
-        String applied = "speed".equals(key)
-                ? config.getDroneSpeedMultiplier() + "x" : "saved";
-        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] Updated AI config '" + key
-                + "' (" + applied + ") and saved to config/cortexdrone/config.json.");
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN + "[Drone] " + field.key()
+                + ": " + EnumChatFormatting.WHITE + previous
+                + EnumChatFormatting.GREEN + " -> " + EnumChatFormatting.WHITE + applied
+                + EnumChatFormatting.GRAY + " " + field.bounds()
+                + " (saved to config/cortexdrone/config.json)");
+    }
+
+    /**
+     * Re-reads {@code config.json} and rebuilds the harness around it.
+     */
+    private static void reload(ICommandSender sender, AIDroneManager manager) {
+        manager.reloadConfig();
+        ModConfig config = manager.getConfig();
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GREEN
+                + "[Drone] Reloaded config/cortexdrone/config.json"
+                + EnumChatFormatting.GRAY + " (active task sessions were closed).");
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "[Drone] "
+                + EnumChatFormatting.YELLOW + "url=" + EnumChatFormatting.WHITE + config.getApiUrl()
+                + EnumChatFormatting.YELLOW + " model=" + EnumChatFormatting.WHITE + config.getModel()
+                + EnumChatFormatting.YELLOW + " key=" + EnumChatFormatting.WHITE + mask(config.getApiKey()));
+    }
+
+    /**
+     * Joins {@code args} from {@code start}, so a value containing spaces
+     * (a model id with a suffix, a URL query) is not truncated.
+     */
+    private static String joinFrom(String[] args, int start) {
+        StringBuilder out = new StringBuilder();
+        for (int i = start; i < args.length; i++) {
+            if (out.length() > 0) out.append(' ');
+            out.append(args[i]);
+        }
+        return out.toString();
     }
 
     /**
@@ -174,17 +221,37 @@ final class AdminCommands {
     }
 
     private static void printConfig(ICommandSender sender, ModConfig config) {
-        String masked = mask(config.getApiKey());
-        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "[Drone AI Config] "
-                + EnumChatFormatting.YELLOW + "URL: " + EnumChatFormatting.WHITE + config.getApiUrl()
-                + EnumChatFormatting.YELLOW + " | Model: " + EnumChatFormatting.WHITE + config.getModel()
-                + EnumChatFormatting.YELLOW + " | Key: " + EnumChatFormatting.WHITE + masked);
-        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "[Drone] Speed: "
-                + EnumChatFormatting.WHITE + config.getDroneSpeedMultiplier() + "x"
-                + EnumChatFormatting.GRAY + " (1 = normal, max "
-                + DroneSpeed.MAX_MULTIPLIER + "x)");
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD
+                + "=== CortexDrone config (config/cortexdrone/config.json) ===");
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "Gateway: "
+                + EnumChatFormatting.WHITE + "url=" + config.getApiUrl()
+                + EnumChatFormatting.YELLOW + " model=" + EnumChatFormatting.WHITE + config.getModel()
+                + EnumChatFormatting.YELLOW + " key=" + EnumChatFormatting.WHITE + mask(config.getApiKey()));
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "Harness: "
+                + EnumChatFormatting.WHITE + "maxTurns=" + config.getMaxTurns()
+                + EnumChatFormatting.YELLOW + " taskDeadlineSeconds=" + EnumChatFormatting.WHITE
+                + config.getTaskDeadlineSeconds()
+                + EnumChatFormatting.YELLOW + " maxTokens=" + EnumChatFormatting.WHITE + config.getMaxTokens()
+                + EnumChatFormatting.YELLOW + " temperature=" + EnumChatFormatting.WHITE
+                + ConfigCatalog.trimNumber(config.getTemperature()));
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "Context: "
+                + EnumChatFormatting.WHITE + "executeTimeoutMs=" + config.getExecuteTimeoutMs()
+                + EnumChatFormatting.YELLOW + " maxToolResultChars=" + EnumChatFormatting.WHITE
+                + config.getMaxToolResultChars()
+                + EnumChatFormatting.YELLOW + " maxContextChars=" + EnumChatFormatting.WHITE
+                + config.getMaxContextChars());
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.YELLOW + "Sandbox: "
+                + EnumChatFormatting.WHITE + "allowJavaReflection=" + config.isAllowJavaReflection()
+                + EnumChatFormatting.YELLOW + " webSearchEnabled=" + EnumChatFormatting.WHITE
+                + config.isWebSearchEnabled()
+                + EnumChatFormatting.YELLOW + " droneSpeedMultiplier=" + EnumChatFormatting.WHITE
+                + ConfigCatalog.trimNumber(config.getDroneSpeedMultiplier())
+                + EnumChatFormatting.YELLOW + " savedDrones=" + EnumChatFormatting.WHITE
+                + (config.getSavedDrones() == null ? 0 : config.getSavedDrones().size()));
         CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY
-                + "Usage: /drone config <url|model|key|speed> <value>");
+                + "/drone config <key> <value> | <key> default | reload | save | list");
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "Keys: "
+                + ConfigCatalog.keys());
     }
 
     /**
@@ -194,14 +261,6 @@ final class AdminCommands {
         if (secret == null || secret.isEmpty()) return "<not set>";
         if (secret.length() <= 6) return "***";
         return secret.substring(0, 4) + "..." + secret.substring(secret.length() - 2);
-    }
-
-    private static Double parseMultiplier(String value) {
-        try {
-            return Double.parseDouble(value);
-        } catch (NumberFormatException invalid) {
-            return null;
-        }
     }
 
     /**

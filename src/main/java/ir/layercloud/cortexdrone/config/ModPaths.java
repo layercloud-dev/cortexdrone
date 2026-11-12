@@ -6,13 +6,16 @@ import java.io.File;
  * Canonical file layout for the harness.
  *
  * <pre>
- * config/cortexdrone/
+ * config/cortexdrone/            harness state, survives a world reset
  *   config.json   LLM gateway, agent limits, saved drone bindings
  *   skills/       one directory per learned skill (SKILL.md + code.js)
- *   memory.json   player facts and named locations
  *   lessons/      one LESSON.md directory per learned rule
  *   sessions/     per-task transcripts grouped by outcome
  *   logs/         debug log
+ *
+ * world/cortexdrone/             world state, travels with the save
+ *   memory.json           player facts and named locations
+ *   protected-zones.json  player-owned no-break cylinders
  * </pre>
  */
 @SuppressWarnings("unused")
@@ -36,8 +39,23 @@ public final class ModPaths {
         return new File(root, "skills");
     }
 
+    /**
+     * World state root, inside the save so it moves with the world.
+     */
+    public static File worldRoot(File worldDirectory) {
+        File base = worldDirectory != null ? worldDirectory : new File("world");
+        return new File(base, "cortexdrone");
+    }
+
     public static File memoryFile(File root) {
         return new File(root, "memory.json");
+    }
+
+    /**
+     * Player-owned no-break cylinders, world-scoped.
+     */
+    public static File protectedZonesFile(File root) {
+        return new File(root, "protected-zones.json");
     }
 
     /**

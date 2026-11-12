@@ -29,10 +29,11 @@ second mining loop.
 - `count` - blocks to mine. Default 8.
 - `deliver_filter` - what to hand over. Default `all`.
 - `player` - optional delivery target.
+- `collect` - loot valuable drops while mining. Default `true`.
 
 ## Returns
 
-`{ ok, mined, blocks, delivered, delivery }`
+`{ ok, mined, pickedUp, blocks, delivered, delivery }`
 
 ## Notes
 

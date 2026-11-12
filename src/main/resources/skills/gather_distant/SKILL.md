@@ -34,8 +34,8 @@ Search far terrain, travel to the first hit, harvest, and return.
 
 ## Returns
 
-`{ ok, target, locatedAt, distance, biome, foundBlocks, mined, blocks,
-delivered, delivery, hint }`
+`{ ok, target, locatedAt, distance, biome, foundBlocks, mined, pickedUp, blocks,
+  delivered, delivery, hint }`
 
 ## Notes
 

@@ -64,8 +64,18 @@ public class ModConfigDefaultsTest {
     public void nullCollectionsAreRepaired() {
         ModConfig config = new ModConfig();
         config.setSavedDrones(null);
-        config.setProtectedZones(null);
         assertNotNull(config.sanitized().getSavedDrones());
-        assertNotNull(config.sanitized().getProtectedZones());
+    }
+
+    @Test
+    public void maxTurnsIsClampedIntoTheSupportedRange() {
+        assertEquals(ModConfig.MIN_MAX_TURNS, ModConfig.clampMaxTurns(-5));
+        assertEquals(ModConfig.MIN_MAX_TURNS, ModConfig.clampMaxTurns(0));
+        assertEquals(ModConfig.MAX_MAX_TURNS, ModConfig.clampMaxTurns(Integer.MAX_VALUE));
+        assertEquals(42, ModConfig.clampMaxTurns(42));
+
+        ModConfig config = new ModConfig();
+        config.setMaxTurns(9_999);
+        assertEquals(ModConfig.MAX_MAX_TURNS, config.sanitized().getMaxTurns());
     }
 }

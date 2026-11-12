@@ -33,7 +33,7 @@ Mine an exact volume, not a radius search.
 
 ## Returns
 
-`{ ok, anchor, filter, mined, failed, remaining, blocks, box, hint }`
+`{ ok, anchor, filter, mined, failed, pickedUp, remaining, blocks, box, hint }`
 
 ## Notes
 

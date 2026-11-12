@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
+import ir.layercloud.cortexdrone.service.world.BlockPlacer;
 import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
@@ -96,7 +97,9 @@ public final class RestoreBlocksAction implements Action<BlockContext> {
                 // The block is back; a missing tile is better than a hole.
             }
         }
-        world.markBlockForUpdate(x, y, z);
+        // A restored block in a partially loaded chunk is otherwise only
+        // visible after a rejoin; refresh pushes the change to every client.
+        BlockPlacer.refresh(world, x, y, z, block);
         return true;
     }
 

@@ -10,11 +10,13 @@ import ir.layercloud.cortexdrone.service.inventory.ContainerAccess;
 import ir.layercloud.cortexdrone.service.inventory.ContainerAnimation;
 import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.inventory.TransferAnimation;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityChest;
 import net.minecraft.world.World;
@@ -71,6 +73,11 @@ public final class WithdrawChestAction implements Action<InventoryContext> {
                 }
                 return taken;
             });
+            if (moved > 0) {
+                TransferAnimation.containerTransfer(world, drone,
+                        tile.xCoord, tile.yCoord, tile.zCoord,
+                        firstStack(drone.mainInventory()), true);
+            }
         } else {
             moved = this.inventoryService.withdrawMatchingFromNearbyChests(
                     world, controller, player, filter, count);
@@ -86,5 +93,14 @@ public final class WithdrawChestAction implements Action<InventoryContext> {
             }
         }
         context.result(InventoryResult.success("withdrawn", moved));
+    }
+
+    private static ItemStack firstStack(IInventory inv) {
+        if (inv == null) return null;
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
+            if (st != null && st.stackSize > 0 && st.getItem() != null) return st;
+        }
+        return null;
     }
 }

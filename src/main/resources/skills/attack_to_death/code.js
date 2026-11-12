@@ -134,11 +134,14 @@ while (attacks < maxAttacks && Date.now() < deadline) {
 }
 
 if (!killed && after <= 0) killed = true;
+var pickedUp = 0;
+// Looting a kill is part of the kill: the drone is standing over the corpse and
+// the drops are seconds from despawning. Off by default here only because the
+// caller (hunt/guard) owns the loot policy; pass collect:true to opt in.
 if (killed && cfg.collect === true) {
-    try {
-        drone.suckItems({radius: 6});
-    } catch (pickupError) {
-    }
+    var loot = pickupNearbyLoot(SKILL_LIMITS.lootVacuumRadius,
+        {scanRadius: SKILL_LIMITS.lootWalkRadius});
+    pickedUp = loot.pickedUp || 0;
 }
 return {
     ok: killed,
@@ -151,5 +154,6 @@ return {
     attacksToKill: plan.attacks_to_kill,
     damagePerHit: plan.damage_per_hit,
     seconds: Math.round((Date.now() - started) / 100) / 10,
+    pickedUp: pickedUp,
     blocker: killed ? '' : 'attack budget or time expired before the target died'
 };

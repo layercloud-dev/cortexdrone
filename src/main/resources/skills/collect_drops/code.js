@@ -21,7 +21,9 @@ for (var i = 0; i < list.length && clusters < maxClusters; i++) {
     clusters++;
     try {
         drone.goto({x: drop.x, y: drop.y + 1, z: drop.z, allow_dig: false});
-        drone.suckItems({radius: 4});
+        // Same filter on the vacuum: 'valuable' must not sweep junk that sat
+        // next to the ore.
+        drone.suckItems({radius: 4, filter: filter});
     } catch (pickupError) {
         log('pickup skipped at ' + key + ': ' + pickupError.message);
     }

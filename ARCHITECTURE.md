@@ -47,7 +47,8 @@ src/main/java/ir/layercloud/cortexdrone/
   service/                  read-only queries, scanning and planning
     inventory/              InventoryLimits, InventoryService, CraftingService,
                             FluidOpsService, ContainerSearchService,
-                            PlayerInventoryOps, ToolInspector
+                            PlayerInventoryOps, ToolInspector, ContainerAnimation,
+                            ContainerCloser, TransferAnimation
     machine/                machine recipe introspection and tile inspection
     navigation/             flight/dig path planning and physics
     world/                  block, ore, structure, entity and web lookup

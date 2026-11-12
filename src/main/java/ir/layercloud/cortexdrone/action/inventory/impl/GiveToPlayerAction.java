@@ -9,9 +9,12 @@ import ir.layercloud.cortexdrone.action.navigation.FlightController;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.inventory.TransferAnimation;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.inventory.IInventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
 /**
@@ -39,6 +42,7 @@ public final class GiveToPlayerAction implements Action<InventoryContext> {
         context.filter(filter);
         if (inReach(drone, player)) {
             int given = this.inventoryService.giveToPlayerInventory(controller, player, filter, count());
+            animateGive(drone, player, controller, given);
             context.movedCount(given);
             context.result(InventoryResult.success("transferred", given));
             return;
@@ -64,6 +68,7 @@ public final class GiveToPlayerAction implements Action<InventoryContext> {
         if (inReach(drone, player)) {
             String filter = context.filter() != null ? context.filter() : filter();
             int given = this.inventoryService.giveToPlayerInventory(controller, player, filter, count());
+            animateGive(drone, player, controller, given);
             context.movedCount(given);
             context.result(InventoryResult.success("transferred", given));
             context.complete();
@@ -84,6 +89,39 @@ public final class GiveToPlayerAction implements Action<InventoryContext> {
     private static boolean inReach(Drone drone, EntityPlayerMP player) {
         World world = drone.worldObj;
         return player.worldObj == world && drone.getDistanceToEntity(player) <= REACH;
+    }
+
+    /**
+     * Drone -> player trail, using the item the player just received.
+     */
+    private static void animateGive(Drone drone, EntityPlayerMP player,
+                                    DroneController controller, int moved) {
+        if (moved <= 0) return;
+        ItemStack sample = firstPlayerStack(player, controller);
+        TransferAnimation.move(drone.worldObj, drone,
+                drone.posX, drone.posY + 0.4D, drone.posZ,
+                player.posX, player.posY + 1.1D, player.posZ, sample);
+    }
+
+    private static ItemStack firstPlayerStack(EntityPlayerMP player, DroneController controller) {
+        if (player != null && player.inventory != null) {
+            for (int i = 0; i < player.inventory.getSizeInventory(); i++) {
+                ItemStack st = player.inventory.getStackInSlot(i);
+                if (st != null && st.stackSize > 0 && st.getItem() != null) return st;
+            }
+        }
+        return controller != null && controller.drone != null
+                ? firstDroneStack(controller.drone) : null;
+    }
+
+    private static ItemStack firstDroneStack(Drone drone) {
+        IInventory inv = drone.mainInventory();
+        if (inv == null) return null;
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
+            if (st != null && st.stackSize > 0 && st.getItem() != null) return st;
+        }
+        return null;
     }
 
     private String filter() {

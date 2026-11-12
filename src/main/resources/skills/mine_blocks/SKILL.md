@@ -34,16 +34,24 @@ exposed clusters, then falls back to a flat block scan.
 - `allow_dig` - allow navigation to tunnel to a buried target. Default `true`;
   set `false` for a strictly non-destructive pass.
 - `max_dig_blocks` - tunnel budget per target, 0..512. Default 96.
+- `collect` - vacuum valuable drops after every break and sweep once at the
+  end. Default `true`; set `false` to leave everything on the ground.
+- `collect_radius` - vacuum radius 2..16. Default 5.
 
 ## Returns
 
-`{ ok, filter, mined, blocks:[{x,y,z}], failed, remaining }`
+`{ ok, filter, mined, blocks:[{x,y,z}], failed, pickedUp, remaining }`
 
 ## Notes
 
 - Stops before breaking anything when the drone inventory is full.
+- Every break is followed by a short vacuum of **valuable** drops (ores,
+  ingots, gems, dusts, food, logs) so ore is not left behind while cobblestone
+  fills the slots. Junk stays on the ground; `pickupNearbyLoot` walks to a
+  valuable drop only when it fell outside vacuum range. `pickedUp` is the number
+  of items the loot pass absorbed.
 - Each target is approached at a safe standoff; if the target is buried, the
   standoff navigation tunnels the covering blocks and stops as soon as the
   target is visible and within reach. Unreachable targets count as `failed`,
   not an exception.
-- Run `collect_drops` afterwards if drops may have fallen.
+- Use `collect_drops` with `filter:'valuable'` for a wider sweep after the run.

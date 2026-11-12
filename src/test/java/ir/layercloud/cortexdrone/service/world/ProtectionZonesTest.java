@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.service.world;
 
+import ir.layercloud.cortexdrone.config.ModPaths;
 import org.junit.After;
 import org.junit.Test;
 
@@ -75,23 +76,30 @@ public class ProtectionZonesTest {
     }
 
     @Test
-    public void supplementalFileSurvivesAConfigRewrite() throws Exception {
-        File temp = File.createTempFile("cortexdrone-zones", ".json");
-        try {
-            Files.write(temp.toPath(),
-                    ("[{\"label\":\"base\",\"dimension\":0,\"x\":-301,\"y\":85,\"z\":502,"
-                            + "\"radius\":50,\"verticalRadius\":70}]")
-                            .getBytes(StandardCharsets.UTF_8));
-            ProtectionZones.configure(null);
-            int added = ProtectionZones.loadSupplemental(temp);
-            assertTrue("the supplemental zone must load", added == 1);
-            assertTrue(ProtectionZones.blocksBreaking(0, -301, 55, 502));
-            // Loading the same file twice must not duplicate the zone.
-            assertEquals(0, ProtectionZones.loadSupplemental(temp));
-        } finally {
-            //noinspection ResultOfMethodCallIgnored
-            temp.delete();
-        }
+    public void theWorldZoneFileIsTheOnlySource() throws Exception {
+        File world = Files.createTempDirectory("cortexdrone-world").toFile();
+        File file = ModPaths.protectedZonesFile(world);
+        Files.write(file.toPath(),
+                ("[{\"label\":\"base\",\"dimension\":0,\"x\":-301,\"y\":85,\"z\":502,"
+                        + "\"radius\":50,\"verticalRadius\":70}]")
+                        .getBytes(StandardCharsets.UTF_8));
+
+        ProtectionZones.configure(null);
+        assertEquals(1, ProtectionZones.load(file));
+        assertTrue(ProtectionZones.blocksBreaking(0, -301, 55, 502));
+
+        // An emptied world file must clear the previous set, not keep it.
+        Files.write(file.toPath(), "[]".getBytes(StandardCharsets.UTF_8));
+        assertEquals(0, ProtectionZones.load(file));
+        assertFalse(ProtectionZones.blocksBreaking(0, -301, 55, 502));
+    }
+
+    @Test
+    public void loadingAMissingWorldFileClearsZones() throws Exception {
+        File world = Files.createTempDirectory("cortexdrone-empty").toFile();
+        ProtectionZones.configure(Arrays.asList(base()));
+        assertEquals(0, ProtectionZones.load(ModPaths.protectedZonesFile(world)));
+        assertEquals(0, ProtectionZones.count());
     }
 
     @Test

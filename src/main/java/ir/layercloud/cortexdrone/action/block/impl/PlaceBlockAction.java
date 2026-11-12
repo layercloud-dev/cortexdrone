@@ -4,13 +4,16 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.block.BlockRequest;
 import ir.layercloud.cortexdrone.action.block.BlockResult;
+import ir.layercloud.cortexdrone.action.interact.InteractionSupport;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.world.BlockPlacer;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
@@ -61,14 +64,15 @@ public final class PlaceBlockAction implements Action<BlockContext> {
         if (block == null || block == Blocks.air) return false;
 
         int meta = metaOverride >= 0 ? metaOverride : item.getMetadata(stack.getItemDamage());
-        boolean placed = world.setBlock(x, y, z, block, meta, 3);
-        if (placed) {
-            world.playAuxSFX(2001, x, y, z, Block.getIdFromBlock(block) + (meta << 12));
-            inventory.decrStackSize(slot, 1);
-            inventory.markDirty();
-            this.logger.log("BUILD", controller,
-                    String.format("Placed %s at (%d,%d,%d)", block.getLocalizedName(), x, y, z), "");
-        }
-        return placed;
+        // Orient the fake player like the drone so stairs/logs/chests face the
+        // same way they would if the owner placed them by hand.
+        EntityPlayer fakePlayer = drone.player();
+        InteractionSupport.syncFakePlayerToDrone(fakePlayer, drone);
+        if (!BlockPlacer.place(world, fakePlayer, x, y, z, stack, block, meta, 1)) return false;
+        inventory.decrStackSize(slot, 1);
+        inventory.markDirty();
+        this.logger.log("BUILD", controller,
+                String.format("Placed %s at (%d,%d,%d)", block.getLocalizedName(), x, y, z), "");
+        return true;
     }
 }

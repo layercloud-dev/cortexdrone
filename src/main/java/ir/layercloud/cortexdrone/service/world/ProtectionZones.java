@@ -2,7 +2,6 @@ package ir.layercloud.cortexdrone.service.world;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import ir.layercloud.cortexdrone.CortexDroneMod;
 import net.minecraft.world.World;
 
 import java.io.File;
@@ -16,9 +15,9 @@ import java.util.List;
  * Process-wide registry of player-owned no-break volumes.
  *
  * <p>Navigation's automatic tunnelling and the model's explicit
- * {@code break_block} calls both consult this registry. The zones are loaded
- * from {@code config.json} at server start so the rule survives a restart and
- * is visible to the operator.</p>
+ * {@code break_block} calls both consult this registry. The zones live in the
+ * world save ({@code <world>/cortexdrone/protected-zones.json}) because a base
+ * only exists in one world; they are loaded at server start.</p>
  *
  * <p>The registry is intentionally static: {@code TunnelPlanner.safeToDig} and
  * {@code DigPathfinder.classify} are pure helpers called from the server tick
@@ -52,51 +51,33 @@ public final class ProtectionZones {
     }
 
     /**
-     * Loads zones from a standalone file and merges them with the active set.
+     * Replaces the active set with the zones in {@code file}.
      *
-     * <p>A separate file is not cosmetic: an older build of the mod rewrites
-     * {@code config.json} from its own in-memory model on shutdown and would
-     * silently drop a newly added field. Keeping the authoritative zones in
-     * {@code protected-zones.json} makes the rule survive a downgrade and a
-     * config rewrite.</p>
+     * <p>The world file is authoritative, so a missing or unreadable file means
+     * "no zones", not "keep the previous world's zones". This matters when a
+     * server switches saves without a restart.</p>
      *
-     * @return number of zones added
+     * @return number of zones loaded
      */
-    public static int loadSupplemental(File file) {
-        if (file == null || !file.isFile()) return 0;
+    public static int load(File file) {
+        List<ProtectedZone> loaded = read(file);
+        configure(loaded);
+        return zones.size();
+    }
+
+    /**
+     * Reads a zone list without touching the active set.
+     */
+    public static List<ProtectedZone> read(File file) {
+        if (file == null || !file.isFile()) return Collections.emptyList();
         try (FileReader reader = new FileReader(file)) {
             Type listType = new TypeToken<List<ProtectedZone>>() {
             }.getType();
             List<ProtectedZone> loaded = new Gson().fromJson(reader, listType);
-            if (loaded == null || loaded.isEmpty()) return 0;
-            List<ProtectedZone> merged = new ArrayList<>(zones);
-            int added = 0;
-            for (ProtectedZone zone : loaded) {
-                if (zone == null) continue;
-                zone.sanitized();
-                if (!contains(merged, zone)) {
-                    merged.add(zone);
-                    added++;
-                }
-            }
-            zones = Collections.unmodifiableList(merged);
-            return added;
+            return loaded == null ? Collections.<ProtectedZone>emptyList() : loaded;
         } catch (Exception ignored) {
-            return 0;
+            return Collections.emptyList();
         }
-    }
-
-    private static boolean contains(List<ProtectedZone> list, ProtectedZone candidate) {
-        for (ProtectedZone zone : list) {
-            if (zone.getDimension() == candidate.getDimension()
-                    && Math.abs(zone.getX() - candidate.getX()) < 0.5D
-                    && Math.abs(zone.getY() - candidate.getY()) < 0.5D
-                    && Math.abs(zone.getZ() - candidate.getZ()) < 0.5D
-                    && Math.abs(zone.getRadius() - candidate.getRadius()) < 0.5D) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public static int count() {

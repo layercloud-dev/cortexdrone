@@ -20,6 +20,7 @@ logs.sort(function (a, b) {
 
 var broken = 0;
 var failed = 0;
+var pickedUp = 0;
 var bases = {};
 for (var i = 0; i < logs.length; i++) {
     var log = logs[i];
@@ -28,8 +29,13 @@ for (var i = 0; i < logs.length; i++) {
     try {
         drone.goto({standoffOf: {x: log.x, y: log.y, z: log.z}, allow_dig: false});
         var broke = drone.breakBlock({x: log.x, y: log.y, z: log.z});
-        if (broke && broke.broken) broken++;
-        else failed++;
+        if (broke && broke.broken) {
+            broken++;
+            if (cfg.collect !== false) {
+                var loot = pickupNearbyLoot(SKILL_LIMITS.lootVacuumRadius, {walk: false});
+                pickedUp += loot.pickedUp || 0;
+            }
+        } else failed++;
     } catch (breakError) {
         failed++;
         log('log skip: ' + breakError.message);
@@ -67,6 +73,7 @@ return {
     ok: broken > 0,
     logs: broken,
     failed: failed,
+    pickedUp: pickedUp,
     saplingsPlanted: replanted,
     collected: collected && collected.collected,
     hint: broken > 0 ? '' : 'logs exist but were unreachable'

@@ -11,10 +11,12 @@ import ir.layercloud.cortexdrone.service.inventory.ContainerAccess;
 import ir.layercloud.cortexdrone.service.inventory.ContainerAnimation;
 import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.inventory.TransferAnimation;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
@@ -83,7 +85,47 @@ public final class MoveSlotAction implements Action<InventoryContext> {
         int moved = ContainerAnimation.withOpen(world, drone, animated, () ->
                 this.inventoryService.moveInventorySlot(src, request.getFromSlot(), itemFilter,
                         dst, request.getToSlot(), count, syncPlayer));
+        if (moved > 0) {
+            animate(world, drone, fromContainer, toContainer, sourceTile, targetTile, src, dst);
+        }
         context.result(InventoryResult.success("moved", moved));
+    }
+
+    /**
+     * Points the item trail the right way: container -> drone, drone ->
+     * container, or drone <-> player.
+     */
+    private static void animate(World world, Drone drone,
+                                boolean fromContainer, boolean toContainer,
+                                TileEntity sourceTile, TileEntity targetTile,
+                                IInventory src, IInventory dst) {
+        ItemStack sample = firstStack(dst);
+        if (sample == null) sample = firstStack(src);
+        if (sample == null) return;
+        if (sourceTile != null) {
+            TransferAnimation.containerTransfer(world, drone,
+                    sourceTile.xCoord, sourceTile.yCoord, sourceTile.zCoord, sample, true);
+            return;
+        }
+        if (targetTile != null) {
+            TransferAnimation.containerTransfer(world, drone,
+                    targetTile.xCoord, targetTile.yCoord, targetTile.zCoord, sample, false);
+            return;
+        }
+        if (fromContainer || toContainer) return;
+        // Drone <-> player: run the trail between the two positions.
+        TransferAnimation.move(world, drone,
+                drone.posX, drone.posY + 0.4D, drone.posZ,
+                drone.posX, drone.posY + 0.9D, drone.posZ, sample);
+    }
+
+    private static ItemStack firstStack(IInventory inv) {
+        if (inv == null) return null;
+        for (int i = 0; i < inv.getSizeInventory(); i++) {
+            ItemStack st = inv.getStackInSlot(i);
+            if (st != null && st.stackSize > 0 && st.getItem() != null) return st;
+        }
+        return null;
     }
 
     /**

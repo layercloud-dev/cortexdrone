@@ -102,14 +102,18 @@ public final class InventoryActionTools implements ToolProvider {
                     .build(),
             ToolSpec.builder("suck_items")
                     .description("Vacuum nearby dropped item entities into the drone inventory. radius is in "
-                            + "blocks; items that do not fit remain on the ground.")
+                            + "blocks; items that do not fit remain on the ground. filter 'valuable' takes only "
+                            + "drops worth keeping (ores, ingots, gems, dusts, food, logs), 'junk' takes only the "
+                            + "rest, and a name/tag narrows to one item.")
                     .parameters(ToolSchema.object()
                             .optionalNumber("radius", "Pickup radius in blocks, "
                                             + InventoryLimits.MIN_SUCK_RADIUS + ".."
                                             + InventoryLimits.MAX_SUCK_RADIUS + ".",
                                     InventoryLimits.MIN_SUCK_RADIUS,
                                     InventoryLimits.MAX_SUCK_RADIUS,
-                                    InventoryLimits.DEFAULT_SUCK_RADIUS))
+                                    InventoryLimits.DEFAULT_SUCK_RADIUS)
+                            .optionalString("filter", "all, valuable, junk, or an item name/registry/ore tag.",
+                                    "all"))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(ToolTimeouts.ACTION_MS)
                     .capabilities(ToolCapability.MUTATES_INVENTORY, ToolCapability.AWAITS_COMPLETION)

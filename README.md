@@ -270,7 +270,9 @@ The build gate enforces a **400-line ceiling per Java file** and exact package/d
 
 ## Configuration
 
-Configuration lives in `config/cortexdrone/config.json` (never inside the world save).
+Configuration lives in `config/cortexdrone/config.json` and survives a world reset.
+World state (memory, protected zones) lives inside the save under
+`world/cortexdrone/` and travels with it.
 
 ```jsonc
 {
@@ -299,15 +301,37 @@ Environment overrides are read at startup:
 | `CORTEXDRONE_MODEL` | Model id |
 | `CORTEXDRONE_API_KEY` | Bearer token |
 
-In game (operator only):
+In game (operator only). Every field in `config.json` is editable by its JSON
+name or a short alias:
 
 ```text
-/drone config
-/drone config url <url>
-/drone config model <model>
-/drone config key <key>
-/drone config speed <1..5>
+/drone config                          show every setting
+/drone config list                     list the keys and aliases
+/drone config <key>                    show one setting
+/drone config <key> <value>            set it and save
+/drone config <key> default            reset it to the compiled default
+/drone config reload                   re-read config.json and rebuild the harness
+/drone config save                     write the live values back to disk
 ```
+
+Keys (JSON name / chat alias):
+
+```text
+apiUrl/url            model             apiKey/key
+maxTurns/turns        taskDeadlineSeconds/deadline
+maxTokens/tokens      temperature/temp
+executeTimeoutMs/timeout
+maxToolResultChars/toolchars
+maxContextChars/contextchars
+allowJavaReflection/reflection
+webSearchEnabled/websearch
+droneSpeedMultiplier/speed
+savedDrones/drones (only 'clear')
+```
+
+Numeric values are clamped to the documented range and the applied value is
+reported; a non-numeric value is refused. `reload` closes any active task
+session (the harness is rebuilt around the file), so use it between tasks.
 
 The gateway must support OpenAI-style `tools` / `tool_calls`. No JSON-envelope fallback is implemented.
 
@@ -355,10 +379,8 @@ Messages that arrive while a task is running are **queued into the same generati
 ## Data layout
 
 ```text
-config/cortexdrone/
+config/cortexdrone/            harness state (survives a world reset)
   config.json               LLM gateway, limits, saved drone bindings
-  protected-zones.json      player-owned no-break cylinders (base, farm, ...)
-  memory.json               player facts, preferences and named locations
   skills/<name>/            learned skills (SKILL.md + code.js)
   skills-disabled/<name>/   retired learned skills (not loaded)
   lessons/<id>/             learned rules (LESSON.md)
@@ -371,15 +393,19 @@ config/cortexdrone/
     incomplete/
     error/
   logs/cortexdrone.log      debug log
+
+<world>/cortexdrone/          world state (travels with the save)
+  memory.json               player facts, preferences and named locations
+  protected-zones.json      player-owned no-break cylinders (base, farm, ...)
 ```
 
-`protected-zones.json` is deliberately separate from `config.json`: an older
-build rewrites the main config from its own model on shutdown and would drop a
-newly added field. The zone file is loaded in addition to any zones declared in
-`config.json`, so the no-break rule survives a downgrade. A zone is a vertical
+`memory.json` and `protected-zones.json` are world state: a named base only
+exists in one save, so both live inside `world/<save>/cortexdrone/` and are
+dropped with that save. Harness state (config, skills, lessons, sessions, logs)
+stays in `config/cortexdrone/` and is shared across worlds. A zone is a vertical
 cylinder (`x`, `y`, `z`, `radius`, `verticalRadius`, `dimension`): the
-horizontal radius bounds the footprint and the vertical radius covers the
-base shaft up to the surface. Automatic tunnelling treats it as a wall, and
+horizontal radius bounds the footprint and the vertical radius covers the base
+shaft up to the surface. Automatic tunnelling treats it as a wall, and
 `break_block` refuses unless the current request explicitly authorises
 modifying that place.
 
@@ -437,6 +463,8 @@ Design invariants:
 - **Time-sliced scans.** Large `scan_blocks` jobs return `pending:true` + `job_id`; `drone.scanBlocks` polls automatically.
 - **Reach and sight.** Blocks are interactable within 4.5 blocks and only when visible; `block_occluded` names the covering block.
 - **Protect property.** Automatic tunnelling never digs chests, furnaces, machines, or tile entities. `repair_trail` restores what navigation broke.
+- **Loot as you go.** Mining, digging, chopping and hunting skills vacuum **valuable** drops after every break/kill (`pickupNearbyLoot`, `suck_items` with `filter:'valuable'`) and walk to loot that fell outside vacuum range. Ore, ingots, gems, dusts, food and logs are kept; cobblestone, dirt, seeds, rotten flesh and other junk stay on the ground, so the eight drone slots hold what the trip was for. `get_drops` reports `valuable`/`junk` per drop.
+- **Visible feedback.** A container is opened through its real `IInventory` hook and closed ~10 ticks later, so the lid, latch sound and mod open effects play; items in transit leave an `iconcrack` trail between the container and the drone. Placing goes through `ItemBlock.placeBlockAt` (player hooks, correct facing) and every block change is pushed to clients, so builds appear immediately and keep their modded tile setup.
 - **Passenger safety.** A carried player is not cargo: climb first, cruise high, descend, and land only at a verified safe spot.
 - **Dig with a floor.** Shafts, staircases, tunnels, and quarries never remove the support block under the drone or player.
 - **Parameterized skills only.** The hardcode guard rejects player names, coordinates, entity ids, slots, and dimensions in generated code.

@@ -33,15 +33,20 @@ Never attacks players.
 - `max_kills` - stop after this many kills. Default 4.
 - `duration_s` - time budget 15..240 seconds. Default 120.
 - `max_attacks` - per-mob safety cap on swings, 1..200. Default 60.
-- `collect` - vacuum drops at the end. Default `true`.
+- `collect` - vacuum drops after each kill and sweep once at the end.
+  Default `true`.
+- `collect_radius` - vacuum radius 2..16. Default 5.
 
 ## Returns
 
-`{ ok, target, kills, attacks, hunted, blocked, remainingSeconds }`
+`{ ok, target, kills, attacks, hunted, blocked, pickedUp, remainingSeconds }`
 
 ## Notes
 
 - A target that moves out of reach is dropped and the next scan re-targets.
+- Every kill is looted immediately, so meat and useful mob drops are picked up
+  while the drone is already standing over the corpse; the final sweep walks to
+  anything that fell outside vacuum range. Junk drops stay on the ground.
 - `blocked` reports why a mob survived (damage fully absorbed, invulnerable),
   which is evidence that more swings would not help.
-- Pair with `collect_drops` for a larger pickup radius.
+- Pair with `collect_drops` (`filter:'valuable'`) for a larger pickup radius.

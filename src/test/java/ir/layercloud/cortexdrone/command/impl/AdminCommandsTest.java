@@ -2,7 +2,10 @@ package ir.layercloud.cortexdrone.command.impl;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * The admin subcommands must only reveal a masked secret.
@@ -31,5 +34,12 @@ public class AdminCommandsTest {
     public void consoleSendersCountAsOperators() {
         assertTrue("console has no player and must be allowed",
                 AdminCommands.isOperator(null, null));
+    }
+
+    @Test
+    public void unknownConfigKeysHaveNoField() {
+        assertNull(ConfigCatalog.find("nope"));
+        assertNull(ConfigCatalog.find(""));
+        assertNull(ConfigCatalog.find(null));
     }
 }

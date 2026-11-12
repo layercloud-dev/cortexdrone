@@ -45,7 +45,8 @@ var mined = skills.call('mine_blocks', {
     filter: target,
     radius: clamp(cfg.mine_radius || LIMITS.scanRadiusDefault, LIMITS.blockScanRadiusMin, LIMITS.smallScanRadiusMax),
     count: count,
-    veins: cfg.veins !== false
+    veins: cfg.veins !== false,
+    collect: cfg.collect !== false
 });
 
 var delivered = null;
@@ -65,6 +66,7 @@ return {
     biome: located.biome || null,
     foundBlocks: located.count || 0,
     mined: mined && mined.mined ? mined.mined : 0,
+    pickedUp: mined && mined.pickedUp ? mined.pickedUp : 0,
     blocks: mined && mined.blocks ? mined.blocks : [],
     delivered: delivered && delivered.given ? delivered.given : 0,
     delivery: delivered,

@@ -11,6 +11,7 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumChatFormatting;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -53,7 +54,12 @@ public class DroneCommand extends BaseCommand {
                 return getListOfStringsMatchingLastWord(args, "on", "off", "tail", "clear");
             }
             if (sub.equals("config")) {
-                return getListOfStringsMatchingLastWord(args, "url", "model", "key", "speed");
+                List<String> options = new ArrayList<>(ConfigCatalog.chatKeys());
+                options.add("list");
+                options.add("reload");
+                options.add("save");
+                return getListOfStringsMatchingLastWord(args,
+                        options.toArray(new String[0]));
             }
             if (sub.equals("memory")) {
                 return getListOfStringsMatchingLastWord(args,
@@ -70,6 +76,22 @@ public class DroneCommand extends BaseCommand {
             if (sub.equals("skills")) {
                 return getListOfStringsMatchingLastWord(args, "list", "search", "show");
             }
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("config")) {
+            ConfigCatalog.Field field = ConfigCatalog.find(args[1]);
+            if (field != null) {
+                if (field.kind() == ConfigCatalog.Kind.BOOLEAN) {
+                    return getListOfStringsMatchingLastWord(args, "true", "false");
+                }
+                if (field.kind() == ConfigCatalog.Kind.DRONE_LIST) {
+                    return getListOfStringsMatchingLastWord(args, "clear");
+                }
+                if (field.kind() == ConfigCatalog.Kind.TEXT
+                        || field.kind() == ConfigCatalog.Kind.SECRET) {
+                    return null;
+                }
+            }
+            return getListOfStringsMatchingLastWord(args, "default");
         }
         return null;
     }
@@ -90,7 +112,8 @@ public class DroneCommand extends BaseCommand {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== CortexDrone v"
                     + CortexDroneMod.VERSION + " (Tool Harness) Commands ===");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone spawn [name] | link | despawn [name] | stop | list | status");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear] | config");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone debug [on|off|tail|clear]");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone config [<key> <value>|reload|save|list]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone lesson [list|search <q>|forget <id|title>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone sessions [list [success|failure|...] [n]|stats|show <id>]");

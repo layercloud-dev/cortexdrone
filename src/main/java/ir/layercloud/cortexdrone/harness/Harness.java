@@ -15,6 +15,7 @@ import ir.layercloud.cortexdrone.harness.skill.SkillRefiner;
 import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tools.*;
 
+import java.io.File;
 import java.util.*;
 
 /**
@@ -46,7 +47,7 @@ public final class Harness {
         this.manager = manager;
         this.config = config;
         this.skills = skills;
-        this.memory = new MemoryStore(manager.getConfigRoot());
+        this.memory = new MemoryStore(memoryRoot(manager));
         this.lessons = new LessonStore(manager.getConfigRoot());
         this.journal = new SessionJournal(manager.getConfigRoot(), manager.getLogger());
         this.registry = new ToolRegistry();
@@ -91,6 +92,16 @@ public final class Harness {
         for (ToolProvider provider : harness.providers) provider.register(harness.registry);
         harness.registry.requireAllBound();
         return harness;
+    }
+
+    /**
+     * World state lives in the save. Before a world exists (or in a test) the
+     * save directory is unavailable, so memory falls back to the config root
+     * rather than failing to start.
+     */
+    private static File memoryRoot(AIDroneManager manager) {
+        File worldRoot = manager.getWorldRoot();
+        return worldRoot != null ? worldRoot : manager.getConfigRoot();
     }
 
     public AIDroneManager manager() {

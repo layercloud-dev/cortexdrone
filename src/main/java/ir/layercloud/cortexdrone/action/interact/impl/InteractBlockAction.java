@@ -8,6 +8,7 @@ import ir.layercloud.cortexdrone.action.interact.InteractionSupport;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.InteractionContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.world.BlockPlacer;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.RegistryIntrospector;
 import li.cil.oc.common.entity.Drone;
@@ -109,6 +110,7 @@ public final class InteractBlockAction implements Action<InteractionContext> {
         } else {
             world.setBlockToAir(x, y, z);
         }
+        BlockPlacer.refresh(world, x, y, z, net.minecraft.init.Blocks.air);
         world.playSoundEffect(x + 0.5, y + 0.5, z + 0.5, "game.neutral.swim", 0.6f, 1.0f);
 
         int inserted = InventoryService.insertIntoInventory(inv, filledStack);

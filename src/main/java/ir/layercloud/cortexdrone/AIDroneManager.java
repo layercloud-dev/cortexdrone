@@ -5,6 +5,7 @@ import ir.layercloud.cortexdrone.command.impl.DroneCommand;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.config.ModPaths;
+import ir.layercloud.cortexdrone.config.WorldDirectory;
 import ir.layercloud.cortexdrone.harness.Harness;
 import ir.layercloud.cortexdrone.harness.agent.AgentService;
 import ir.layercloud.cortexdrone.harness.agent.LoopTracer;
@@ -28,6 +29,8 @@ import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import ir.layercloud.cortexdrone.network.QuestionNetwork;
 import ir.layercloud.cortexdrone.oc.OcHardwareBridge;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.inventory.ContainerCloser;
+import ir.layercloud.cortexdrone.service.inventory.TransferAnimation;
 import ir.layercloud.cortexdrone.service.navigation.impl.BreadcrumbService;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.question.QuestionService;
@@ -53,6 +56,7 @@ public class AIDroneManager {
     private final CortexDroneMod mod;
     private File configRoot;
     private File configFile;
+    private File worldRoot;
     private ModConfig config = new ModConfig();
 
     private final DroneLogger logger = new DroneLogger();
@@ -135,8 +139,9 @@ public class AIDroneManager {
         ModPaths.ensure(this.configRoot);
         this.configFile = ModPaths.configFile(this.configRoot);
         this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
-        ProtectionZones.configure(this.config.getProtectedZones());
-        ProtectionZones.loadSupplemental(new File(this.configRoot, "protected-zones.json"));
+        File worldSave = WorldDirectory.resolve();
+        this.worldRoot = worldSave != null ? ModPaths.worldRoot(worldSave) : this.configRoot;
+        ProtectionZones.load(ModPaths.protectedZonesFile(this.worldRoot));
         this.chunkLoadingManager.attach();
         this.harness = Harness.create(this, this.config, new SkillLibrary(this.configRoot));
         this.logger.setDebugLogFile(ModPaths.logFile(this.configRoot));
@@ -144,6 +149,7 @@ public class AIDroneManager {
         this.logger.log("SYSTEM", null, "CortexDrone v" + CortexDroneMod.VERSION
                         + " (in-process tool harness) initialized",
                 "configDir=" + this.configRoot.getAbsolutePath()
+                        + " worldDir=" + (this.worldRoot != null ? this.worldRoot.getAbsolutePath() : "<none>")
                         + " tools=" + this.harness.registry().modelTools().size());
 
         event.registerServerCommand(new DroneCommand("drone", this));
@@ -168,8 +174,9 @@ public class AIDroneManager {
             this.harness.journal().closeActive(SessionOutcome.INTERRUPTED, "config_reload");
         }
         this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
-        ProtectionZones.configure(this.config.getProtectedZones());
-        ProtectionZones.loadSupplemental(new File(this.configRoot, "protected-zones.json"));
+        if (this.worldRoot != null) {
+            ProtectionZones.load(ModPaths.protectedZonesFile(this.worldRoot));
+        }
         if (this.harness != null) {
             this.harness = Harness.create(this, this.config,
                     new SkillLibrary(this.configRoot));
@@ -240,6 +247,11 @@ public class AIDroneManager {
 
     public void onServerTickEnd() {
         this.tickLoop.onTickEnd();
+        // Container lids close a few ticks after the transfer that opened them;
+        // opening and closing in one tick produced no visible animation.
+        ContainerCloser.tick();
+        // Item trails between containers and the drone.
+        TransferAnimation.tick();
     }
 
     /**

@@ -103,6 +103,7 @@ targets.sort(function (a, b) {
 
 var mined = [];
 var failed = 0;
+var pickedUp = 0;
 var planned = Math.min(targets.length, maxBlocks);
 for (var t = 0; t < planned; t++) {
     var state = drone.state();
@@ -128,8 +129,13 @@ for (var t = 0; t < planned; t++) {
             allow_dig: cfg.allow_dig === true, max_wait_ms: 10000
         });
         var broke = drone.breakBlock({x: target.x, y: target.y, z: target.z, max_wait_ms: 10000});
-        if (broke && broke.broken) mined.push({x: target.x, y: target.y, z: target.z, name: target.name});
-        else failed++;
+        if (broke && broke.broken) {
+            mined.push({x: target.x, y: target.y, z: target.z, name: target.name});
+            if (cfg.collect !== false) {
+                var loot = pickupNearbyLoot(SKILL_LIMITS.lootVacuumRadius, {walk: false});
+                pickedUp += loot.pickedUp || 0;
+            }
+        } else failed++;
     } catch (breakError) {
         failed++;
         log('mine_box skip ' + target.x + ',' + target.y + ',' + target.z + ': ' + breakError.message);
@@ -142,6 +148,7 @@ return {
     filter: filter,
     mined: mined.length,
     failed: failed,
+    pickedUp: pickedUp,
     remaining: Math.max(0, targets.length - mined.length),
     blocks: mined,
     box: {x1: x1, y1: y1, z1: z1, x2: x2, y2: y2, z2: z2},

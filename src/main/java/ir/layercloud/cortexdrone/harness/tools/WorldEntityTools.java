@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.LootValue;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.entity.EntityLivingBase;
@@ -55,12 +56,14 @@ public final class WorldEntityTools implements ToolProvider {
                                     MAX_ENTITY_RADIUS, ScanLimits.DEFAULT_ENTITY_RADIUS))
                     .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FAST_MS).build(),
             ToolSpec.builder("get_drops")
-                    .description("List nearby dropped item entities with item name/count and entity id. "
-                            + "Use filter to find a specific drop before suck_items.")
+                    .description("List nearby dropped item entities with item name/count, a value flag and entity "
+                            + "id. filter 'valuable' lists only drops worth keeping, 'junk' only the rest; any "
+                            + "other value is an item name/registry/ore tag. Use filter:'valuable' before "
+                            + "suck_items to collect loot without filling the drone with cobblestone.")
                     .parameters(ToolSchema.object()
                             .optionalInt("radius", "Search radius, " + ScanLimits.MIN_DROP_RADIUS + ".." + ScanLimits.MAX_DROP_RADIUS + ".", ScanLimits.MIN_DROP_RADIUS,
                                     MAX_DROP_RADIUS, ScanLimits.DEFAULT_DROP_RADIUS)
-                            .optionalString("filter", "Item name/registry/ore tag or 'all'.", "all"))
+                            .optionalString("filter", "all, valuable, junk, or an item name/registry/ore tag.", "all"))
                     .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FAST_MS).build()
     );
 
@@ -139,8 +142,6 @@ public final class WorldEntityTools implements ToolProvider {
                 Math.min(MAX_DROP_RADIUS, args.get("radius").getAsInt()))
                 : ScanLimits.DEFAULT_DROP_RADIUS;
         String filter = args.has("filter") ? args.get("filter").getAsString() : "all";
-        boolean matchAll = "all".equalsIgnoreCase(filter) || "any".equalsIgnoreCase(filter)
-                || "*".equals(filter);
         AxisAlignedBB box = AxisAlignedBB.getBoundingBox(
                 drone.posX - radius,
                 Math.max((double) WorldBounds.MIN_Y, drone.posY - DROP_VERTICAL_WINDOW), drone.posZ - radius,
@@ -148,6 +149,7 @@ public final class WorldEntityTools implements ToolProvider {
                 Math.min((double) WorldBounds.MAX_Y, drone.posY + DROP_VERTICAL_WINDOW), drone.posZ + radius);
         List<?> items = world.getEntitiesWithinAABB(EntityItem.class, box);
         JsonArray drops = new JsonArray();
+        int valuableCount = 0;
         if (items != null) {
             for (Object candidate : items) {
                 if (!(candidate instanceof EntityItem)) continue;
@@ -155,11 +157,12 @@ public final class WorldEntityTools implements ToolProvider {
                 if (item.isDead) continue;
                 ItemStack stack = item.getEntityItem();
                 if (stack == null || stack.stackSize <= 0 || stack.getItem() == null) continue;
-                if (!matchAll && !ItemClassifier.matchesBlockOrItemName(stack.getDisplayName(),
-                        ItemClassifier.getItemIdentifier(stack), stack.getItemDamage(), filter)) {
-                    continue;
-                }
+                if (!LootValue.matchesFilter(stack, filter)) continue;
+                boolean valuable = LootValue.isValuable(stack);
+                if (valuable) valuableCount++;
                 JsonObject entry = ItemClassifier.itemStackToJson(-1, stack);
+                entry.addProperty("valuable", valuable);
+                entry.addProperty("junk", !valuable);
                 entry.addProperty("entityId", item.getEntityId());
                 entry.addProperty("x", Math.round(item.posX * 10.0) / 10.0);
                 entry.addProperty("y", Math.round(item.posY * 10.0) / 10.0);
@@ -170,6 +173,7 @@ public final class WorldEntityTools implements ToolProvider {
         }
         JsonObject out = ToolJson.ok();
         out.addProperty("count", drops.size());
+        out.addProperty("valuableCount", valuableCount);
         out.add("drops", drops);
         return out;
     }

@@ -6,6 +6,7 @@ import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
+import ir.layercloud.cortexdrone.service.world.LootValue;
 
 import java.util.List;
 
@@ -16,6 +17,11 @@ import java.util.List;
  * entities, so they are kept together: pickup must account for a partial insert
  * (the stack stays on the ground with the remainder), and a drop must clear the
  * slot only after the entity exists.</p>
+ *
+ * <p>Pickup takes a filter. Mining leaves cobblestone in the same spot as ore,
+ * and the drone has eight slots, so {@code valuable} absorption is what makes
+ * "pick up the good drops" affordable. Everything not matching stays on the
+ * ground untouched.</p>
  */
 public final class GroundItems {
     /**
@@ -30,36 +36,47 @@ public final class GroundItems {
      * Absorbs nearby dropped items into the drone's inventory.
      */
     public static void suck(Drone drone, double x, double y, double z, double radius) {
-        if (drone == null) return;
+        suck(drone, x, y, z, radius, "all");
+    }
+
+    /**
+     * Absorbs nearby drops matching {@code filter} into the drone inventory.
+     *
+     * @param filter {@code all}, {@code valuable}, {@code junk} or a name/tag
+     * @return number of items absorbed
+     */
+    public static int suck(Drone drone, double x, double y, double z, double radius, String filter) {
+        if (drone == null) return 0;
         World world = drone.worldObj;
         IInventory inventory = drone.mainInventory();
-        if (world == null || inventory == null) return;
+        if (world == null || inventory == null) return 0;
 
         AxisAlignedBB box = AxisAlignedBB.getBoundingBox(
                 x - radius, y - radius, z - radius,
                 x + radius, y + radius, z + radius);
         List<?> entities = world.getEntitiesWithinAABB(EntityItem.class, box);
-        if (entities == null || entities.isEmpty()) return;
+        if (entities == null || entities.isEmpty()) return 0;
 
-        boolean pickedAny = false;
+        int picked = 0;
         for (Object candidate : entities) {
             if (!(candidate instanceof EntityItem)) continue;
             EntityItem entity = (EntityItem) candidate;
             if (entity.isDead) continue;
             ItemStack stack = entity.getEntityItem();
             if (stack == null || stack.stackSize <= 0) continue;
+            if (!LootValue.matchesFilter(stack, filter)) continue;
             int before = stack.stackSize;
             InventoryTransfers.insertIntoInventory(inventory, stack);
+            picked += before - Math.max(0, stack.stackSize);
             if (stack.stackSize <= 0) {
                 entity.setDead();
-                pickedAny = true;
             } else if (stack.stackSize != before) {
                 // A partial insert leaves the remainder on the ground.
                 entity.setEntityItemStack(stack);
-                pickedAny = true;
             }
         }
-        if (pickedAny) world.playSoundAtEntity(drone, PICKUP_SOUND, 0.25f, 1.6f);
+        if (picked > 0) world.playSoundAtEntity(drone, PICKUP_SOUND, 0.25f, 1.6f);
+        return picked;
     }
 
     /**

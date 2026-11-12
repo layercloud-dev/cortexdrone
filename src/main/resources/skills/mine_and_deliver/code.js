@@ -6,7 +6,9 @@ var mined = skills.call('mine_blocks', {
     radius: cfg.radius || LIMITS.scanRadiusDefault,
     count: cfg.count || 8,
     allow_dig: cfg.allow_dig !== false,
-    max_dig_blocks: cfg.max_dig_blocks || LIMITS.defaultDigBlocks
+    max_dig_blocks: cfg.max_dig_blocks || LIMITS.defaultDigBlocks,
+    collect: cfg.collect !== false,
+    collect_radius: cfg.collect_radius || SKILL_LIMITS.lootVacuumRadius
 });
 // A full drone is not a failed trip: deliver what was mined. The old version
 // returned early and lost the haul whenever the last slot filled.
@@ -21,6 +23,7 @@ var delivered = skills.call('deliver_items', {
 return {
     ok: !!(delivered && delivered.ok),
     mined: mined.mined,
+    pickedUp: mined.pickedUp || 0,
     blocks: mined.blocks,
     delivered: delivered && delivered.given,
     delivery: delivered

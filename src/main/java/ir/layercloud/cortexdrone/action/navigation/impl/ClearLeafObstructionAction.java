@@ -4,11 +4,13 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.Action;
 import ir.layercloud.cortexdrone.action.navigation.NavigateResult;
 import ir.layercloud.cortexdrone.context.impl.NavigationContext;
+import ir.layercloud.cortexdrone.service.world.BlockPlacer;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
@@ -57,6 +59,9 @@ public final class ClearLeafObstructionAction implements Action<NavigationContex
                     Block block = world.getBlock(x, y, z);
                     if (block != null && ItemClassifier.isLeafBlock(block)) {
                         world.setBlockToAir(x, y, z);
+                        // Leaves in a partially loaded chunk need an explicit
+                        // block update or the client keeps showing the canopy.
+                        BlockPlacer.refresh(world, x, y, z, Blocks.air);
                         cleared++;
                     }
                 }

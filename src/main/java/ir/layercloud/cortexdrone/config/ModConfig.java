@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
-import ir.layercloud.cortexdrone.service.world.ProtectedZone;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,9 +20,9 @@ import java.util.logging.Logger;
  * Persistent CortexDrone configuration.
  *
  * <p>Everything AI-related (gateway, agent limits, saved drones) lives in the
- * mod config directory ({@code config/cortexdrone/config.json}), never inside
- * the world save. World state stays in the world; harness state stays in the
- * config directory so it survives world resets.</p>
+ * mod config directory ({@code config/cortexdrone/config.json}) and survives a
+ * world reset. World state — memory and protected zones — lives inside the
+ * save instead; see {@link WorldDirectory} and {@link ModPaths}.</p>
  */
 @Getter
 @Setter
@@ -44,11 +43,20 @@ public class ModConfig {
     // against the compiled defaults.
     public static final int DEFAULT_MAX_TURNS = 60;
     /**
+     * Turn-count bounds for one task loop. A single turn is legal (one-shot
+     * tasks); an unbounded count would let a looping model burn the whole
+     * deadline, so the ceiling is generous but finite.
+     */
+    public static final int MIN_MAX_TURNS = 1;
+    public static final int MAX_MAX_TURNS = 500;
+    /**
      * Wall-clock budget for one generation. A "keep going until I say stop"
      * task is bounded by the turn count and by this budget; 8 minutes used to
      * cut an in-flight task mid-leg, so the default is 30 minutes.
      */
     public static final int DEFAULT_TASK_DEADLINE_SECONDS = 1800;
+    public static final int MIN_TASK_DEADLINE_SECONDS = 60;
+    public static final int MAX_TASK_DEADLINE_SECONDS = 24 * 60 * 60;
     /**
      * Completion budget for one assistant turn.
      *
@@ -58,10 +66,25 @@ public class ModConfig {
      * the task looked dead. Keep enough room for reasoning plus one call.</p>
      */
     public static final int DEFAULT_MAX_TOKENS = 8192;
+    public static final int MIN_MAX_TOKENS = 256;
+    public static final int MAX_MAX_TOKENS = 200_000;
     public static final double DEFAULT_TEMPERATURE = 0.2D;
+    public static final double MIN_TEMPERATURE = 0.0D;
+    public static final double MAX_TEMPERATURE = 2.0D;
     public static final int DEFAULT_EXECUTE_TIMEOUT_MS = 120_000;
+    public static final int MIN_EXECUTE_TIMEOUT_MS = 1_000;
+    public static final int MAX_EXECUTE_TIMEOUT_MS = 600_000;
     public static final int DEFAULT_MAX_TOOL_RESULT_CHARS = 8_000;
+    public static final int MIN_MAX_TOOL_RESULT_CHARS = 500;
+    public static final int MAX_MAX_TOOL_RESULT_CHARS = 200_000;
     public static final int DEFAULT_MAX_CONTEXT_CHARS = 96_000;
+    public static final int MIN_MAX_CONTEXT_CHARS = 4_000;
+    public static final int MAX_MAX_CONTEXT_CHARS = 2_000_000;
+    /**
+     * Default flight-speed multiplier. 1.0 is the original cruise speed; the
+     * tuned ceiling is {@link DroneSpeed#MAX_MULTIPLIER}.
+     */
+    public static final double DEFAULT_DRONE_SPEED_MULTIPLIER = 5.0D;
 
     // --- LLM gateway -------------------------------------------------------
     private String apiUrl = env("CORTEXDRONE_API_URL", DEFAULT_API_URL);
@@ -85,16 +108,7 @@ public class ModConfig {
      * 1.0 = the original speed; the defined ceiling is 5.0 (the default here).
      * Values outside 0.25..5.0 are clamped by {@code DroneSpeed}.
      */
-    private double droneSpeedMultiplier = 5.0D;
-
-    // --- no-break protection -----------------------------------------------
-    /**
-     * Player-owned volumes automatic tunnelling and explicit mining must never
-     * break. The live base is a chamber plus a vertical exit shaft, so a zone
-     * is a vertical cylinder rather than a sphere. Empty by default; operators
-     * add a zone (or the memory-derived base) here.
-     */
-    private List<ProtectedZone> protectedZones = new ArrayList<>();
+    private double droneSpeedMultiplier = DEFAULT_DRONE_SPEED_MULTIPLIER;
 
     // --- persisted drone bindings -----------------------------------------
     private List<SavedDroneInfo> savedDrones = new ArrayList<>();
@@ -121,6 +135,20 @@ public class ModConfig {
         return fallback;
     }
 
+    /**
+     * Clamps a turn budget into {@link #MIN_MAX_TURNS}..{@link #MAX_MAX_TURNS}.
+     *
+     * <p>Shared by the command and by {@link #sanitized()} so a hand-edited
+     * config and {@code /drone config turns} cannot diverge.</p>
+     */
+    public static int clampMaxTurns(int turns) {
+        return Math.max(MIN_MAX_TURNS, Math.min(MAX_MAX_TURNS, turns));
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
     public static ModConfig load(File file, Gson gson) {
         if (file == null || !file.exists()) return new ModConfig();
         try (FileReader reader = new FileReader(file)) {
@@ -145,24 +173,32 @@ public class ModConfig {
         }
         if (this.apiKey == null) this.apiKey = "";
         if (this.maxTurns <= 0) this.maxTurns = DEFAULT_MAX_TURNS;
+        this.maxTurns = clampMaxTurns(this.maxTurns);
         if (this.taskDeadlineSeconds <= 0) this.taskDeadlineSeconds = DEFAULT_TASK_DEADLINE_SECONDS;
+        this.taskDeadlineSeconds = clamp(this.taskDeadlineSeconds,
+                MIN_TASK_DEADLINE_SECONDS, MAX_TASK_DEADLINE_SECONDS);
         if (this.maxTokens <= 0) this.maxTokens = DEFAULT_MAX_TOKENS;
-        if (this.temperature < 0.0D || this.temperature > 2.0D) this.temperature = DEFAULT_TEMPERATURE;
+        this.maxTokens = clamp(this.maxTokens, MIN_MAX_TOKENS, MAX_MAX_TOKENS);
+        if (this.temperature < MIN_TEMPERATURE || this.temperature > MAX_TEMPERATURE) {
+            this.temperature = DEFAULT_TEMPERATURE;
+        }
         if (this.executeTimeoutMs <= 0) this.executeTimeoutMs = DEFAULT_EXECUTE_TIMEOUT_MS;
+        this.executeTimeoutMs = clamp(this.executeTimeoutMs,
+                MIN_EXECUTE_TIMEOUT_MS, MAX_EXECUTE_TIMEOUT_MS);
         if (this.maxToolResultChars <= 0) this.maxToolResultChars = DEFAULT_MAX_TOOL_RESULT_CHARS;
+        this.maxToolResultChars = clamp(this.maxToolResultChars,
+                MIN_MAX_TOOL_RESULT_CHARS, MAX_MAX_TOOL_RESULT_CHARS);
         if (this.maxContextChars <= 0) this.maxContextChars = DEFAULT_MAX_CONTEXT_CHARS;
+        this.maxContextChars = clamp(this.maxContextChars,
+                MIN_MAX_CONTEXT_CHARS, MAX_MAX_CONTEXT_CHARS);
         if (this.droneSpeedMultiplier <= 0.0D || Double.isNaN(this.droneSpeedMultiplier)) {
+            // An unreadable value must not silently become max speed.
             this.droneSpeedMultiplier = 1.0D;
         }
         this.droneSpeedMultiplier = Math.max(DroneSpeed.MIN_MULTIPLIER,
                 Math.min(DroneSpeed.MAX_MULTIPLIER,
                         this.droneSpeedMultiplier));
         if (this.savedDrones == null) this.savedDrones = new ArrayList<>();
-        if (this.protectedZones == null) this.protectedZones = new ArrayList<>();
-        this.protectedZones.removeIf(zone -> zone == null);
-        for (ProtectedZone zone : this.protectedZones) {
-            zone.sanitized();
-        }
         return this;
     }
 

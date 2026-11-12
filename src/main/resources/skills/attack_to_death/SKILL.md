@@ -33,11 +33,12 @@ landed hits and paces them.
 - `max_attacks` - hard safety cap, 1..200. Default 60.
 - `max_seconds` - wall-clock cap, 1..180. Default 60.
 - `collect` - vacuum drops at the end. Default `false` (hunt handles pickup).
+  When `true`, only valuable drops are collected nearby.
 
 ## Returns
 
 `{ ok, killed, entity_id, name, attacks, healthBefore, healthAfter,
-   attacksToKill, damagePerHit, seconds, blocker }`
+   attacksToKill, damagePerHit, seconds, pickedUp, blocker }`
 
 ## Notes
 

@@ -30,11 +30,13 @@ var layers = clamp(cfg.depth || cfg.layers || 3, 1, SKILL_LIMITS.clusterCap32);
 var filter = cfg.filter || 'all';
 var maxBlocks = clamp(cfg.max_blocks || 512, 1, SKILL_LIMITS.budget1024);
 var collectEvery = clamp(cfg.collect_every === undefined ? 3 : cfg.collect_every, 0, SKILL_LIMITS.smallMax16);
+var collect = cfg.collect !== false;
 var allowLiquid = cfg.allow_liquid === true;
 
 var mined = 0;
 var skipped = 0;
 var failed = 0;
+var pickedUp = 0;
 var layersDone = 0;
 var stopped = '';
 var layerY = topY;
@@ -107,8 +109,13 @@ for (var layer = 0; layer < layers; layer++) {
                 x: cell.x, y: layerY, z: cell.z,
                 max_wait_ms: 12000
             });
-            if (broke && broke.broken) mined++;
-            else failed++;
+            if (broke && broke.broken) {
+                mined++;
+                if (collect) {
+                    var loot = pickupNearbyLoot(SKILL_LIMITS.lootVacuumRadius, {walk: false});
+                    pickedUp += loot.pickedUp || 0;
+                }
+            } else failed++;
         } catch (digError) {
             failed++;
             log('quarry skip ' + cell.x + ',' + layerY + ',' + cell.z + ': ' + digError.message);
@@ -133,6 +140,7 @@ return {
     mined: mined,
     skipped: skipped,
     failed: failed,
+    pickedUp: pickedUp,
     layerY: layerY,
     pit: {x1: x1, z1: z1, x2: x2, z2: z2, topY: topY},
     stopped: stopped,

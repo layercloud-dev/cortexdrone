@@ -10,6 +10,13 @@ var useVeins = cfg.veins !== false;
 // breaks the blocks between the bot and the ore for exactly this reason.
 var allowDig = cfg.allow_dig !== false;
 var maxDigBlocks = clamp(cfg.max_dig_blocks || 96, LIMITS.minDigBlocks, LIMITS.maxDigBlocks);
+// Loot is part of mining: ore drops land next to cobblestone, and the drone
+// has few slots. Vacuum the valuable drops after every break instead of
+// leaving them behind.
+var collectLoot = cfg.collect !== false;
+var lootRadius = clamp(cfg.collect_radius || SKILL_LIMITS.lootVacuumRadius,
+    SKILL_LIMITS.lootVacuumMin, LIMITS.collectRadiusMax);
+var pickedUp = 0;
 var targets = [];
 
 if (useVeins) {
@@ -54,14 +61,14 @@ for (var t = 0; t < targets.length; t++) {
     var state = drone.state();
     if (state.slots === 0) {
         return {
-            ok: false, mined: mined.length, blocks: mined,
+            ok: false, mined: mined.length, blocks: mined, pickedUp: pickedUp,
             remaining: targets.length - t,
             note: 'the drone has no inventory slots; install an inventory upgrade first'
         };
     }
     if (state.isFull) {
         return {
-            ok: mined.length > 0, mined: mined.length, blocks: mined,
+            ok: mined.length > 0, mined: mined.length, blocks: mined, pickedUp: pickedUp,
             remaining: targets.length - t, note: 'drone inventory is full'
         };
     }
@@ -78,11 +85,23 @@ for (var t = 0; t < targets.length; t++) {
             continue;
         }
         var broke = drone.breakBlock({x: target.x, y: target.y, z: target.z});
-        if (broke && broke.broken) mined.push(target);
-        else failed++;
+        if (broke && broke.broken) {
+            mined.push(target);
+            if (collectLoot) {
+                var loot = pickupNearbyLoot(lootRadius, {walk: false});
+                pickedUp += loot.pickedUp || 0;
+            }
+        } else failed++;
     } catch (breakError) {
         failed++;
     }
+}
+
+if (collectLoot && mined.length) {
+    // One wider sweep at the end catches drops that fell out of vacuum range
+    // while the drone moved along the vein.
+    var sweep = pickupNearbyLoot(lootRadius, {scanRadius: SKILL_LIMITS.lootWalkRadius});
+    pickedUp += sweep.pickedUp || 0;
 }
 
 return {
@@ -91,6 +110,7 @@ return {
     mined: mined.length,
     blocks: mined,
     failed: failed,
+    pickedUp: pickedUp,
     remaining: Math.max(0, targets.length - mined.length),
     hint: mined.length ? '' : 'every target was unreachable; try a closer area or a wider scan'
 };

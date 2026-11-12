@@ -8,6 +8,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.context.impl.BlockContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
+import ir.layercloud.cortexdrone.service.world.BlockPlacer;
 import ir.layercloud.cortexdrone.service.world.BlockSight;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
@@ -108,17 +109,19 @@ public final class ReplaceBlockAction implements Action<BlockContext> {
                     + x + "," + y + "," + z));
             return;
         }
+        // The removal must reach clients too; a stale block left on the client
+        // hides the replacement placed immediately after it.
+        BlockPlacer.refresh(world, x, y, z, oldBlock);
 
-        if (!world.setBlock(x, y, z, newBlock, newMeta, 3)) {
+        if (!BlockPlacer.place(world, drone.player(), x, y, z, targetStack, newBlock, newMeta, 1)) {
             // Never leave a hole: restore the original block when placement fails.
             world.setBlock(x, y, z, oldBlock, oldMeta, 3);
-            world.playAuxSFX(2001, x, y, z, Block.getIdFromBlock(oldBlock) + (oldMeta << 12));
+            BlockPlacer.refresh(world, x, y, z, oldBlock);
             context.result(BlockResult.failure("Could not place the replacement at "
                     + x + "," + y + "," + z + "; the original block was restored."));
             return;
         }
 
-        world.playAuxSFX(2001, x, y, z, Block.getIdFromBlock(newBlock) + (newMeta << 12));
         inventory.decrStackSize(slot, 1);
         inventory.markDirty();
         for (ItemStack drop : drops) {

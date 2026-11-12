@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.config;
 
+import net.minecraft.server.MinecraftServer;
+
 import java.io.File;
 
 /**
@@ -49,7 +51,7 @@ public final class ConfigDirectory {
 
     private static File fromServer() {
         try {
-            net.minecraft.server.MinecraftServer server = net.minecraft.server.MinecraftServer.getServer();
+            MinecraftServer server = MinecraftServer.getServer();
             if (server == null) return null;
             File config = server.getFile("config");
             return config != null && config.isDirectory() ? config : null;

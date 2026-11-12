@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Chat-safe text shaping for agent replies.
@@ -56,7 +57,7 @@ final class ChatLines {
      */
     static String skillName(String prompt) {
         if (prompt == null) return "task_workflow";
-        String[] words = prompt.toLowerCase(java.util.Locale.ROOT)
+        String[] words = prompt.toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9 ]+", " ").trim().split("\\s+");
         StringBuilder name = new StringBuilder();
         for (int i = 0; i < words.length && i < 5; i++) {

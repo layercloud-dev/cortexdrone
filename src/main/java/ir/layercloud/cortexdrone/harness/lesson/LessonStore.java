@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.harness.lesson;
 
 import ir.layercloud.cortexdrone.config.ModPaths;
+import ir.layercloud.cortexdrone.harness.markdown.AtomicFiles;
 import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
 
@@ -165,7 +166,7 @@ public final class LessonStore {
     private void loadLesson(File dir) {
         File markdown = new File(dir, LessonMarkdown.FILE_NAME);
         if (!markdown.isFile()) return;
-        Lesson lesson = LessonMarkdown.read(ir.layercloud.cortexdrone.harness.markdown.AtomicFiles
+        Lesson lesson = LessonMarkdown.read(AtomicFiles
                 .readText(markdown));
         if (lesson == null) return;
         long stamp = markdown.lastModified();

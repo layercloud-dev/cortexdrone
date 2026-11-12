@@ -357,8 +357,10 @@ Messages that arrive while a task is running are **queued into the same generati
 ```text
 config/cortexdrone/
   config.json               LLM gateway, limits, saved drone bindings
+  protected-zones.json      player-owned no-break cylinders (base, farm, ...)
   memory.json               player facts, preferences and named locations
   skills/<name>/            learned skills (SKILL.md + code.js)
+  skills-disabled/<name>/   retired learned skills (not loaded)
   lessons/<id>/             learned rules (LESSON.md)
   sessions/
     index.jsonl             compact run index
@@ -370,6 +372,16 @@ config/cortexdrone/
     error/
   logs/cortexdrone.log      debug log
 ```
+
+`protected-zones.json` is deliberately separate from `config.json`: an older
+build rewrites the main config from its own model on shutdown and would drop a
+newly added field. The zone file is loaded in addition to any zones declared in
+`config.json`, so the no-break rule survives a downgrade. A zone is a vertical
+cylinder (`x`, `y`, `z`, `radius`, `verticalRadius`, `dimension`): the
+horizontal radius bounds the footprint and the vertical radius covers the
+base shaft up to the surface. Automatic tunnelling treats it as a wall, and
+`break_block` refuses unless the current request explicitly authorises
+modifying that place.
 
 Session outcomes are classified as `success`, `failure`, `cancelled`, `interrupted`, `incomplete`, or `error`. A dropped or replaced run is still written, never lost.
 

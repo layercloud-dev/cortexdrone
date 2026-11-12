@@ -4,7 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.config.ModPaths;
+import ir.layercloud.cortexdrone.harness.markdown.AtomicFiles;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -150,13 +152,13 @@ public final class SkillLibrary {
             object.addProperty("source", skill.getSource());
             JsonArray triggers = new JsonArray();
             if (skill.getTriggers() != null) {
-                for (String trigger : skill.getTriggers()) triggers.add(new com.google.gson.JsonPrimitive(trigger));
+                for (String trigger : skill.getTriggers()) triggers.add(new JsonPrimitive(trigger));
             }
             object.add("triggers", triggers);
             JsonArray requires = new JsonArray();
             if (skill.getRequires() != null) {
                 for (String dependency : skill.getRequires())
-                    requires.add(new com.google.gson.JsonPrimitive(dependency));
+                    requires.add(new JsonPrimitive(dependency));
             }
             object.add("requires", requires);
             if (includeCode) {
@@ -275,13 +277,13 @@ public final class SkillLibrary {
     }
 
     private static void writeFile(File target, String content) {
-        if (!ir.layercloud.cortexdrone.harness.markdown.AtomicFiles.writeText(target, content)) {
+        if (!AtomicFiles.writeText(target, content)) {
             LOG.warning("Could not write " + target.getAbsolutePath());
         }
     }
 
     private static void deleteRecursively(File file) {
-        if (!ir.layercloud.cortexdrone.harness.markdown.AtomicFiles.deleteRecursively(file)) {
+        if (!AtomicFiles.deleteRecursively(file)) {
             LOG.warning("Could not delete " + file.getAbsolutePath());
         }
     }
@@ -305,7 +307,7 @@ public final class SkillLibrary {
     }
 
     private static String readFile(File file) {
-        return ir.layercloud.cortexdrone.harness.markdown.AtomicFiles.readText(file);
+        return AtomicFiles.readText(file);
     }
 
     private static boolean safeFileName(String name) {

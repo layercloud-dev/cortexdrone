@@ -5,6 +5,7 @@ import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 
@@ -54,7 +55,7 @@ final class AiChunkRelease {
             World world = entry.getKey();
             if (!(world instanceof WorldServer)) continue;
             WorldServer server = (WorldServer) world;
-            for (ChunkCoordIntPair pair : new java.util.ArrayList<>(entry.getValue())) {
+            for (ChunkCoordIntPair pair : new ArrayList<>(entry.getValue())) {
                 if (isOwned(world, pair)) {
                     fullyReleased = false;
                     continue;
@@ -75,7 +76,7 @@ final class AiChunkRelease {
             World world = entry.getKey();
             if (!(world instanceof WorldServer)) continue;
             WorldServer server = (WorldServer) world;
-            for (ChunkCoordIntPair pair : new java.util.ArrayList<>(entry.getValue())) {
+            for (ChunkCoordIntPair pair : new ArrayList<>(entry.getValue())) {
                 if (isOwned(world, pair)) continue;
                 this.host.dropChunk(server, pair);
                 entry.getValue().remove(pair);

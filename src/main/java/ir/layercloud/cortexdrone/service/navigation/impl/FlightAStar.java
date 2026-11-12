@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
+import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import net.minecraft.block.Block;
 
 import java.util.*;
@@ -184,7 +185,7 @@ final class FlightAStar {
                                        int nx, int ny, int nz, double currentG) {
         AStarNode grandparent = current.parent;
         if (squaredDistance(grandparent, nx, ny, nz) > MAX_THETA_DIST_SQ) return -1.0D;
-        boolean clear = ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D
+        boolean clear = VoxelRaycaster3D
                 .isFatLineClear(voxels,
                         grandparent.x + DroneGeometry.CELL_CENTER,
                         grandparent.y + DroneGeometry.HOVER_OFFSET,

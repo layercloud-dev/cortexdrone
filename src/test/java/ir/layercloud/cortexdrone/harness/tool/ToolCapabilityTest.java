@@ -2,6 +2,8 @@ package ir.layercloud.cortexdrone.harness.tool;
 
 import org.junit.Test;
 
+import java.util.EnumSet;
+
 import static org.junit.Assert.*;
 
 /**
@@ -24,7 +26,7 @@ public class ToolCapabilityTest {
     @Test
     public void toolsDefaultToReadOnly() {
         ToolSpec readOnly = spec("probe");
-        assertEquals(java.util.EnumSet.of(ToolCapability.READ_ONLY), readOnly.getCapabilities());
+        assertEquals(EnumSet.of(ToolCapability.READ_ONLY), readOnly.getCapabilities());
         assertFalse(readOnly.mutatesAnything());
     }
 

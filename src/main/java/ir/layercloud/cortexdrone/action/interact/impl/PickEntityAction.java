@@ -40,6 +40,17 @@ public final class PickEntityAction implements Action<InteractionContext> {
                     "name", target.getCommandSenderName()));
             return;
         }
+        // A drone carries one passenger. Calling mountEntity on a second entity
+        // silently replaces the first, and the caller still gets picked:true for
+        // both. Refuse instead of losing the passenger it is already carrying.
+        if (drone.riddenByEntity != null && drone.riddenByEntity != target) {
+            context.result(InteractionResult.failure(
+                    "The drone is already carrying " + drone.riddenByEntity.getCommandSenderName()
+                            + "; unpick that rider first.", "picked", false,
+                    "ridingEntityId", drone.riddenByEntity.getEntityId(),
+                    "ridingEntityName", drone.riddenByEntity.getCommandSenderName()));
+            return;
+        }
 
         double distance = drone.getDistance(target.posX, target.posY, target.posZ);
         if (distance > 4.0) {
@@ -54,6 +65,20 @@ public final class PickEntityAction implements Action<InteractionContext> {
 
         context.targetEntity(id);
         target.mountEntity(drone);
+        // Verification: the live log shows pick returning ok:true and the very
+        // next unpick failing with "Entity is not riding this drone". A mount
+        // can be refused by the entity (player dismount, teleport, plugin
+        // guard), so success must be read back from the entity.
+        if (target.ridingEntity != drone) {
+            context.result(InteractionResult.failure(
+                    "Entity " + target.getCommandSenderName()
+                            + " did not stay mounted on the drone (the ride was refused).",
+                    "picked", false,
+                    "entityId", id,
+                    "hint", "Move closer, retry once, or ask the player to right-click the drone; "
+                            + "do not chain unpick after an unverified pick."));
+            return;
+        }
         context.result(InteractionResult.success(
                 "picked", true,
                 "entityId", id,

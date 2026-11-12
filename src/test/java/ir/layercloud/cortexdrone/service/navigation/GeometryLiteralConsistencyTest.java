@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
@@ -85,7 +86,7 @@ public class GeometryLiteralConsistencyTest {
      * collection index. Entity/player positions and facing rounding are not block
      * coordinates and are allowed to keep their own offsets.
      */
-    private static final java.util.regex.Pattern RAW_HALF_BLOCK = java.util.regex.Pattern.compile(
+    private static final Pattern RAW_HALF_BLOCK = Pattern.compile(
             ".*(xCoord|yCoord|zCoord|targetBlock\\[|standoff\\[|open\\[|candidate\\[|"
                     + "\\bptr\\.x|\\bptr\\.y|\\bptr\\.z|\\bcur\\.x|\\bcur\\.y|\\bcur\\.z|"
                     + "\\ba\\.xCoord|\\ba\\.yCoord|\\ba\\.zCoord|\\bb\\.xCoord|\\bb\\.yCoord|\\bb\\.zCoord|"

@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.BlockSight;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ProtectionZones;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import li.cil.oc.common.entity.Drone;
@@ -99,6 +100,12 @@ public final class TunnelPlanner {
                                     int x, int y, int z) {
         if (world == null || !world.blockExists(x, y, z)) return false;
         if (!WorldBounds.diggable(y)) return false;
+        // The player may have recorded a no-dig place (their base, a farm, a
+        // redstone build). Automatic navigation must never tunnel into it, even
+        // when the goal is inside: the caller has to use the open route.
+        if (ProtectionZones.blocksBreaking(world, x, y, z)) {
+            return false;
+        }
         if (!ItemClassifier.isMineableBlock(world, x, y, z)) return false;
         Block block = world.getBlock(x, y, z);
         if (block == null) return false;

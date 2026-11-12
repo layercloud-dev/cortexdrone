@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.manager.navigation.impl;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
+import ir.layercloud.cortexdrone.service.navigation.NavigationTuning;
 import ir.layercloud.cortexdrone.service.navigation.impl.TunnelPlanner;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.world.World;
@@ -79,6 +80,7 @@ final class NavigationTicker {
             return;
         }
         if (hasArrived(controller, session, state, drone)) return;
+        if (!noteSessionProgress(controller, session, state, drone)) return;
         if (session.leg != null) {
             this.host.tickLeg(controller, session);
             return;
@@ -120,6 +122,36 @@ final class NavigationTicker {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Fails a request that has not moved closer to its goal for a full minute
+     * and a half.
+     *
+     * <p>Per-leg watchdogs cannot see this: each detour is a fresh, short leg
+     * and each one is individually "reasonable". The clay task in the live log
+     * bounced between canopy detours for thirteen minutes. Ending it with a
+     * normal navigation failure returns control to the model, which can pick a
+     * different route instead of the harness spending the whole deadline.</p>
+     */
+    private boolean noteSessionProgress(DroneController controller, NavigationSession session,
+                                        NavigationState state, Drone drone) {
+        double distance = drone.getDistance(state.goalX, state.goalY, state.goalZ);
+        if (session.progressBestDistance == Double.MAX_VALUE) {
+            session.progressBestDistance = distance;
+        }
+        if (distance < session.progressBestDistance - NavigationTuning.NO_PROGRESS_EPSILON) {
+            session.progressBestDistance = distance;
+            session.noProgressTicks = 0;
+            return true;
+        }
+        session.noProgressTicks++;
+        if (session.noProgressTicks > NavigationTuning.NO_PROGRESS_LIMIT_TICKS
+                && distance > 3.0D) {
+            this.host.fail(controller, "Navigation timed out (no progress toward goal)");
+            return false;
+        }
+        return true;
     }
 
     /**

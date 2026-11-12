@@ -93,7 +93,14 @@ var LIMITS = {
     landingY: 250,        /* WorldBounds.MAX_LANDING_Y */
     defaultTransferCount: 512, /* InventoryLimits.DEFAULT_TRANSFER_COUNT */
     defaultDigBlocks: 128,     /* NavigationLimits.DEFAULT_DIG_BLOCKS */
-    maxCoordinate: 30000000    /* WorldBounds.MAX_COORDINATE */
+    maxCoordinate: 30000000,   /* WorldBounds.MAX_COORDINATE */
+    /* OC side ordinals, for select/drop: down=0 up=1 north=2 south=3 west=4 east=5 */
+    sideDown: 0,
+    sideUp: 1,
+    sideNorth: 2,
+    sideSouth: 3,
+    sideWest: 4,
+    sideEast: 5
 };
 
 /*
@@ -114,6 +121,8 @@ var SKILL_LIMITS = {
     smallLimitDefault: 32,
     largeLimitDefault: 48,
     smallCountCap: 64,
+    junkLimitDefault: 8,
+    junkLimitMax: 64,
     attackCap200: 200,
     budget256: 256,
     budget800: 800,

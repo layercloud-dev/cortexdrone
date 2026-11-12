@@ -9,9 +9,11 @@ import ir.layercloud.cortexdrone.action.visuals.VisualsState;
 import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
+import ir.layercloud.cortexdrone.manager.navigation.impl.NavigationStatus;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ProtectionZones;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.inventory.IInventory;
@@ -32,7 +34,7 @@ public final class StateView {
         Drone drone = controller.drone;
         DroneSession session = this.manager.getSessionManager().session(controller);
         NavigationState nav = this.manager.getNavigationManager().state(controller);
-        ir.layercloud.cortexdrone.manager.navigation.impl.NavigationStatus navigation =
+        NavigationStatus navigation =
                 this.manager.getNavigationManager().status(controller);
         VisualsState visuals = this.manager.getVisualsManager().state(controller);
 
@@ -49,6 +51,18 @@ public final class StateView {
         response.addProperty("x", drone.posX);
         response.addProperty("y", drone.posY);
         response.addProperty("z", drone.posZ);
+        // Compatibility alias: generated scripts frequently write s.position.x.
+        // The live log shows five separate "Cannot read property x from
+        // undefined" turns caused only by the missing alias. Keep x/y/z as the
+        // canonical flat fields and expose the object as well.
+        JsonObject position = new JsonObject();
+        position.addProperty("x", drone.posX);
+        position.addProperty("y", drone.posY);
+        position.addProperty("z", drone.posZ);
+        position.addProperty("dimension", drone.dimension);
+        response.add("position", position);
+        response.addProperty("dimension", drone.dimension);
+        response.addProperty("protectedZones", ProtectionZones.count());
 
         response.addProperty("activeTask", session.isActive());
         response.addProperty("taskPrompt", session.getPrompt());
@@ -89,7 +103,12 @@ public final class StateView {
                 if (stack != null && stack.stackSize > 0) {
                     usedSlots++;
                     totalItems += stack.stackSize;
-                    inventory.add(ItemClassifier.itemStackToJson(i, stack));
+                    JsonObject item = ItemClassifier.itemStackToJson(i, stack);
+                    // OpenComputers callbacks are 1-based. The live log shows
+                    // select(0) -> "invalid slot" and a learner having to
+                    // discover the offset by trial. Expose both explicitly.
+                    item.addProperty("ocSlot", i + 1);
+                    inventory.add(item);
                 }
             }
         }

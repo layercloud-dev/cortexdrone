@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.ModPaths;
+import ir.layercloud.cortexdrone.harness.markdown.AtomicFiles;
 import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
 
@@ -249,7 +250,7 @@ public final class MemoryStore {
             return;
         }
         String json = CortexDroneMod.GSON.toJson(new ArrayList<>(this.entries.values()));
-        if (!ir.layercloud.cortexdrone.harness.markdown.AtomicFiles.writeText(this.storageFile, json)) {
+        if (!AtomicFiles.writeText(this.storageFile, json)) {
             LOG.warning("Could not write memories to " + this.storageFile.getAbsolutePath());
         }
     }

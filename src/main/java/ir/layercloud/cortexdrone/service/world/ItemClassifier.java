@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockChest;
+import net.minecraft.block.BlockEnderChest;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -44,8 +46,8 @@ public final class ItemClassifier {
         if (b == null) return false;
         Material m = b.getMaterial();
         return m == Material.lava
-                || b == net.minecraft.init.Blocks.lava
-                || b == net.minecraft.init.Blocks.flowing_lava;
+                || b == Blocks.lava
+                || b == Blocks.flowing_lava;
     }
 
     public static boolean isReplaceableBlock(World world, int x, int y, int z) {
@@ -105,8 +107,8 @@ public final class ItemClassifier {
         if (isLiquidBlock(b)) return false;
         if (b.getBlockHardness(world, x, y, z) < 0.0f) return false;
         // A chest whose tile entity is not loaded yet is still a chest.
-        if (b instanceof net.minecraft.block.BlockChest
-                || b instanceof net.minecraft.block.BlockEnderChest) return false;
+        if (b instanceof BlockChest
+                || b instanceof BlockEnderChest) return false;
         return !isProtectedTileEntity(world, x, y, z);
     }
 

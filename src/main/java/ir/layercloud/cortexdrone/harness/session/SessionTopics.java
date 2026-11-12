@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.harness.session;
 
+import com.google.gson.JsonObject;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -46,7 +48,7 @@ public final class SessionTopics {
     /**
      * Classifies the topic, defaulting to {@code general}.
      */
-    public static String classify(String prompt, List<com.google.gson.JsonObject> transcript) {
+    public static String classify(String prompt, List<JsonObject> transcript) {
         String text = prompt != null ? prompt.toLowerCase(Locale.ROOT) : "";
         for (Rule rule : PROMPT_RULES) {
             if (rule.matches(text)) return rule.topic;

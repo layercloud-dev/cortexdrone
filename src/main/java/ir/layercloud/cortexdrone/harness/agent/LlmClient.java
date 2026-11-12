@@ -7,14 +7,18 @@ import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.config.PrivateHosts;
 
+import javax.net.ssl.SSLException;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
+import java.net.SocketException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Minimal OpenAI-compatible chat-completions client with native tool calling.
@@ -132,10 +136,10 @@ public final class LlmClient {
     static boolean isNetworkFailure(Throwable failure) {
         Throwable cause = failure;
         for (int depth = 0; cause != null && depth < 8; depth++) {
-            if (cause instanceof java.io.EOFException
-                    || cause instanceof java.net.SocketException
-                    || cause instanceof javax.net.ssl.SSLException
-                    || cause instanceof java.io.InterruptedIOException) {
+            if (cause instanceof EOFException
+                    || cause instanceof SocketException
+                    || cause instanceof SSLException
+                    || cause instanceof InterruptedIOException) {
                 return true;
             }
             cause = cause.getCause() == cause ? null : cause.getCause();
@@ -154,7 +158,7 @@ public final class LlmClient {
     static boolean isTokenBudgetRejection(GatewayException gateway) {
         if (gateway == null || gateway.httpCode() != 400) return false;
         String message = gateway.getMessage() != null
-                ? gateway.getMessage().toLowerCase(java.util.Locale.ROOT) : "";
+                ? gateway.getMessage().toLowerCase(Locale.ROOT) : "";
         return message.contains("max_tokens")
                 || message.contains("max tokens")
                 || message.contains("max_completion_tokens")
@@ -167,7 +171,7 @@ public final class LlmClient {
      * proxy path so corporate proxies still work.
      */
     static boolean isLocalGateway(String apiUrl) {
-        return ir.layercloud.cortexdrone.config.PrivateHosts.isPrivateUrl(apiUrl);
+        return PrivateHosts.isPrivateUrl(apiUrl);
     }
 
     private JsonObject request(DroneController ctrl, List<JsonObject> messages, JsonArray tools,

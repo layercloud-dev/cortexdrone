@@ -7,6 +7,8 @@ import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.harness.tools.view.BuildingView;
 import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ProtectedZone;
+import ir.layercloud.cortexdrone.service.world.ProtectionZones;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
@@ -32,7 +34,10 @@ public final class BlockTools implements ToolProvider {
                             .optionalInt("max_wait_ms", "Upper bound for the movement retry, "
                                             + NavigationLimits.MIN_WAIT_MS + ".." + NavigationLimits.MAX_WAIT_MS + ".",
                                     NavigationLimits.MIN_WAIT_MS, NavigationLimits.MAX_WAIT_MS,
-                                    NavigationLimits.DEFAULT_WAIT_MS))
+                                    NavigationLimits.DEFAULT_WAIT_MS)
+                            .optionalBoolean("confirm_zone_break", "Set true only when the player "
+                                    + "explicitly asked to modify a protected place (their base/farm). "
+                                    + "Otherwise break_block refuses protected-zone targets.", false))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
                     .capabilities(ToolCapability.MUTATES_WORLD)
@@ -120,6 +125,18 @@ public final class BlockTools implements ToolProvider {
         int y = args.get("y").getAsInt();
         int z = args.get("z").getAsInt();
         World world = controller.drone.worldObj;
+        if ("break_block".equals(method)
+                && !(args.has("confirm_zone_break") && args.get("confirm_zone_break").getAsBoolean())) {
+            ProtectedZone zone =
+                    ProtectionZones.zoneAt(world, x, y, z);
+            if (zone != null) {
+                return ToolJson.error("protected_zone", "Block (" + x + "," + y + "," + z
+                                + ") is inside '" + zone.getLabel() + "', which the player marked as "
+                                + "no-break.",
+                        "Mine at the agreed mining area, or pass confirm_zone_break:true only when "
+                                + "the current request explicitly asks to modify that protected place.", false);
+            }
+        }
         // Reach is distance AND line of sight: a block behind a wall is not
         // interactable even when its centre is within 4.5 blocks.
         JsonObject unreachable = ReachSupport.unreachable(controller, x, y, z,

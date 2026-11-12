@@ -1,10 +1,13 @@
 package ir.layercloud.cortexdrone.service.world;
 
 import com.google.gson.*;
+import ir.layercloud.cortexdrone.config.ConfigDirectory;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.machine.HbmDescriptor;
 import ir.layercloud.cortexdrone.service.web.WebLimits;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemFood;
 import net.minecraft.item.ItemStack;
@@ -20,6 +23,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,7 +75,7 @@ public class DocLookupService {
                             int colon = regName.indexOf(':');
                             io.addProperty("modId", colon > 0 ? regName.substring(0, colon) : "minecraft");
                             Block block = Block.getBlockFromItem(item);
-                            boolean isBlock = (block != null && block != net.minecraft.init.Blocks.air);
+                            boolean isBlock = (block != null && block != Blocks.air);
                             io.addProperty("isBlock", isBlock);
                             io.addProperty("isFood", item instanceof ItemFood);
                             io.addProperty("isTool", item instanceof ItemTool);
@@ -142,15 +147,15 @@ public class DocLookupService {
     }
 
     private static File resolveConfigDirectory() {
-        return ir.layercloud.cortexdrone.config.ConfigDirectory.resolve();
+        return ConfigDirectory.resolve();
     }
 
     /**
      * The documentation endpoints in reverse preference order.
      */
     private static String[] reversedDocEndpoints() {
-        java.util.List<String> endpoints =
-                ir.layercloud.cortexdrone.service.machine.HbmDescriptor.docEndpoints();
+        List<String> endpoints =
+                HbmDescriptor.docEndpoints();
         String[] reversed = new String[endpoints.size()];
         for (int i = 0; i < endpoints.size(); i++) {
             reversed[i] = endpoints.get(endpoints.size() - 1 - i);
@@ -166,7 +171,7 @@ public class DocLookupService {
 
         File configDir = resolveConfigDirectory();
         File hbmDir = new File(configDir,
-                ir.layercloud.cortexdrone.service.machine.HbmDescriptor.RECIPE_DIRECTORY);
+                HbmDescriptor.RECIPE_DIRECTORY);
         if (hbmDir.isDirectory()) {
             File[] files = hbmDir.listFiles();
             if (files != null) {
@@ -211,9 +216,9 @@ public class DocLookupService {
             return this.webDocCache.get(cacheKey);
         }
         String[] endpoints = (modId != null
-                && modId.toLowerCase(java.util.Locale.ROOT).contains(
-                ir.layercloud.cortexdrone.service.machine.HbmDescriptor.MOD_ID))
-                ? ir.layercloud.cortexdrone.service.machine.HbmDescriptor.docEndpoints().toArray(new String[0])
+                && modId.toLowerCase(Locale.ROOT).contains(
+                HbmDescriptor.MOD_ID))
+                ? HbmDescriptor.docEndpoints().toArray(new String[0])
                 : reversedDocEndpoints();
 
         for (String baseApi : endpoints) {
@@ -222,7 +227,7 @@ public class DocLookupService {
                         + URLEncoder.encode(query, "UTF-8") + "&utf8=1&format=json&srlimit=2";
                 HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
                 conn.setRequestMethod("GET");
-                conn.setRequestProperty("User-Agent", ir.layercloud.cortexdrone.service.world.WebIdentity.userAgent());
+                conn.setRequestProperty("User-Agent", WebIdentity.userAgent());
                 conn.setConnectTimeout(WebLimits.DOC_CONNECT_TIMEOUT_MS);
                 conn.setReadTimeout(WebLimits.DOC_READ_TIMEOUT_MS);
                 if (conn.getResponseCode() == 200) {

@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.manager.navigation.impl;
 
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
+import ir.layercloud.cortexdrone.service.world.BlockPosKey;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
@@ -25,6 +26,10 @@ final class DetourPlanner {
      */
     static double[] next(int[] attempt, Set<Long> rejected,
                          NavigationState state, Drone drone, World world) {
+        // Canopy stalls are handled by NavigationRecovery.tryCanopyEscape
+        // before this list is consulted. Keep the original goal-face order for
+        // ordinary walls and corners: it is the cheapest way around a normal
+        // obstruction, and the canopy case no longer reaches it repeatedly.
         double[][] candidates = new double[][]{
                 {state.goalX, state.goalY + 4.0D, state.goalZ},
                 {state.goalX, state.goalY + 8.0D, state.goalZ},
@@ -67,6 +72,6 @@ final class DetourPlanner {
     }
 
     private static long pack(int x, int y, int z) {
-        return ir.layercloud.cortexdrone.service.world.BlockPosKey.pack(x, y, z);
+        return BlockPosKey.pack(x, y, z);
     }
 }

@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.skill;
 
+import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.js.JsSource;
 import org.junit.Test;
 import org.mozilla.javascript.Context;
@@ -8,6 +9,8 @@ import org.mozilla.javascript.Scriptable;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -45,8 +48,8 @@ public class BundledSkillSuiteTest {
         }
         assertTrue(library.get("guard").getCode().contains("skills.call('guard_scan'"));
 
-        com.google.gson.JsonObject loaded = library.toJsonArray(
-                        java.util.Collections.singletonList(library.get("guard")), true)
+        JsonObject loaded = library.toJsonArray(
+                        Collections.singletonList(library.get("guard")), true)
                 .get(0).getAsJsonObject();
         assertTrue("skill action=load must return the SKILL.md docs", loaded.has("docs"));
         assertTrue(loaded.get("docs").getAsString().contains("## Parameters"));
@@ -58,8 +61,8 @@ public class BundledSkillSuiteTest {
         original.setName("round_trip");
         original.setDescription("A \"quoted\" description: with colon");
         original.setTags("one two");
-        original.setTriggers(java.util.Arrays.asList("do the thing", "again"));
-        original.setRequires(java.util.Collections.singletonList("mine_blocks"));
+        original.setTriggers(Arrays.asList("do the thing", "again"));
+        original.setRequires(Collections.singletonList("mine_blocks"));
         original.setVersion(4);
         original.setUses(7);
         original.setSource("refined");
@@ -137,8 +140,8 @@ public class BundledSkillSuiteTest {
         assertTrue(library.get("guard_scan").getCode().contains("skills.call('attack_to_death'"));
         assertTrue(library.get("hunt").getCode().contains("skills.call('attack_to_death'"));
 
-        com.google.gson.JsonObject loaded = library.toJsonArray(
-                        java.util.Collections.singletonList(library.get("guard")), true)
+        JsonObject loaded = library.toJsonArray(
+                        Collections.singletonList(library.get("guard")), true)
                 .get(0).getAsJsonObject();
         assertTrue("skill action=load must return the SKILL.md docs", loaded.has("docs"));
         assertTrue(loaded.get("docs").getAsString().contains("## Parameters"));
@@ -224,5 +227,21 @@ public class BundledSkillSuiteTest {
         assertEquals("smelt_items", library.search("smelt items in the furnace and wait", 3).get(0).getName());
         assertEquals("dig_staircase", library.search("dig a staircase down", 3).get(0).getName());
         assertEquals("build_nether_portal", library.search("build a nether portal", 3).get(0).getName());
+    }
+
+    @Test
+    public void searchMatchesThePhrasesFromTheLiveSessions() throws Exception {
+        SkillLibrary library = library();
+        // Exact prompts from config/cortexdrone/sessions that previously
+        // produced throwaway auto-skills instead of reaching the bundled
+        // capability.
+        assertEquals("return_to_player", library.search("come here", 3).get(0).getName());
+        assertEquals("deliver_items", library.search("come and give items to me, im in base", 3).get(0).getName());
+        assertEquals("hunt", library.search("we need food, go hunt", 3).get(0).getName());
+        assertEquals("chop_tree", library.search("go chop 2stack of jungle wood", 3).get(0).getName());
+        assertEquals("craft_items", library.search("now craft a iron sword", 3).get(0).getName());
+        assertEquals("light_area", library.search("place some torches on the floor", 3).get(0).getName());
+        assertTrue("mining prompts reach a mining skill",
+                library.search("go mine 5stack of iron ore", 3).get(0).getName().contains("mine"));
     }
 }

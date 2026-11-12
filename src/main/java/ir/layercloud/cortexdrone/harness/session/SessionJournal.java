@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 
 /**
  * Durable session journal: one file per agent task, grouped by outcome.
@@ -41,7 +42,7 @@ public final class SessionJournal {
      * Decides whether a tool call counts as a world action. Wired from the tool
      * registry so a new mutating tool is counted without editing a list here.
      */
-    private java.util.function.Predicate<String> worldAction = name -> false;
+    private Predicate<String> worldAction = name -> false;
 
     public SessionJournal(File configRoot, DroneLogger logger) {
         File root = configRoot != null ? configRoot : new File(ConfigDirectory.resolve(), "cortexdrone");
@@ -56,7 +57,7 @@ public final class SessionJournal {
     /**
      * Installs the capability-driven world-action predicate.
      */
-    public void setWorldActionPredicate(java.util.function.Predicate<String> predicate) {
+    public void setWorldActionPredicate(Predicate<String> predicate) {
         if (predicate != null) this.worldAction = predicate;
     }
 
@@ -161,7 +162,7 @@ public final class SessionJournal {
         private final double y;
         private final double z;
         private final String prompt;
-        private final java.util.function.Predicate<String> worldActionRule;
+        private final Predicate<String> worldActionRule;
         private final List<JsonObject> transcript = new ArrayList<>();
 
         private int turns;

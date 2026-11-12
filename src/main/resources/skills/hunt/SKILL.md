@@ -7,6 +7,10 @@ triggers:
   - "kill the zombies"
   - "clear the monsters"
   - "get me meat"
+  - "we need food"
+  - "go hunt"
+  - "i am hungry"
+  - "hunt for food"
 requires:
   - "attack_to_death"
 version: 2

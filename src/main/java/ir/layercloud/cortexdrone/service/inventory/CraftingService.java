@@ -18,6 +18,7 @@ import net.minecraftforge.oredict.ShapelessOreRecipe;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,7 +88,7 @@ public class CraftingService {
         this.recipeRankCache.put(key, new RecipeCacheEntry(capped));
         if (this.recipeRankCache.size() > 64) {
             // Bound growth under pathological filter churn; purge is approximate.
-            java.util.Iterator<String> it = this.recipeRankCache.keySet().iterator();
+            Iterator<String> it = this.recipeRankCache.keySet().iterator();
             for (int i = 0; i < 16 && it.hasNext(); i++) {
                 it.next();
                 it.remove();

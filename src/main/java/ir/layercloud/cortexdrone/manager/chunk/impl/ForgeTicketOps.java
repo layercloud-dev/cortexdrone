@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.manager.chunk.impl;
 
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import net.minecraft.world.ChunkCoordIntPair;
+import net.minecraft.world.World;
 import net.minecraftforge.common.ForgeChunkManager;
 
 import java.util.Collection;
@@ -46,7 +47,7 @@ final class ForgeTicketOps {
      * Requests an entity ticket bound to a drone, or {@code null} on failure.
      */
     ForgeChunkManager.Ticket requestEntityTicket(CortexDroneMod mod,
-                                                 net.minecraft.world.World world) {
+                                                 World world) {
         if (world == null) return null;
         try {
             ForgeChunkManager.Ticket ticket =

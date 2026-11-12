@@ -7,6 +7,8 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
+import java.util.List;
+
 /**
  * Pure player-view ownership rules used by the navigation chunk manager.
  *
@@ -36,7 +38,7 @@ public final class PlayerChunkOwnership {
      */
     public static boolean isWithinAnyPlayerView(World world, int chunkX, int chunkZ) {
         if (!(world instanceof WorldServer)) return false;
-        java.util.List<?> players = world.playerEntities;
+        List<?> players = world.playerEntities;
         if (players == null || players.isEmpty()) return false;
         int view = viewDistanceChunks();
         for (Object o : players) {

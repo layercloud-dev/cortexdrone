@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolAffinity;
 import ir.layercloud.cortexdrone.harness.tool.ToolCapability;
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
@@ -46,10 +47,10 @@ public class QuestionToolsTest {
     @Test
     public void optionsAndTimeoutsAdvertiseTheirBounds() {
         ToolSpec spec = spec();
-        com.google.gson.JsonObject properties =
+        JsonObject properties =
                 spec.getParameters().getAsJsonObject("properties");
 
-        com.google.gson.JsonObject timeout = properties.getAsJsonObject("timeout_ms");
+        JsonObject timeout = properties.getAsJsonObject("timeout_ms");
         assertEquals(QuestionLimits.MIN_TIMEOUT_MS, timeout.get("minimum").getAsInt());
         assertEquals(QuestionLimits.MAX_TIMEOUT_MS, timeout.get("maximum").getAsInt());
         assertEquals(QuestionLimits.DEFAULT_TIMEOUT_MS, timeout.get("default").getAsInt());

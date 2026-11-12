@@ -9,11 +9,13 @@ import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -143,7 +145,7 @@ public final class MachineTileInspector {
                 }
             }
         }
-        out.sort(java.util.Comparator.comparingDouble(
+        out.sort(Comparator.comparingDouble(
                 tile -> LoadedTiles.distanceSq(tile, x, y, z)));
         return out;
     }
@@ -167,13 +169,13 @@ public final class MachineTileInspector {
             o.addProperty("slotCount", inv.getSizeInventory());
             int used = 0;
             for (int i = 0; i < inv.getSizeInventory(); i++) {
-                net.minecraft.item.ItemStack st = inv.getStackInSlot(i);
+                ItemStack st = inv.getStackInSlot(i);
                 if (st != null && st.stackSize > 0) used++;
             }
             o.addProperty("usedSlots", used);
             JsonArray items = new JsonArray();
             for (int i = 0; i < inv.getSizeInventory(); i++) {
-                net.minecraft.item.ItemStack st = inv.getStackInSlot(i);
+                ItemStack st = inv.getStackInSlot(i);
                 if (st != null && st.stackSize > 0) items.add(ItemClassifier.itemStackToJson(i, st));
             }
             o.add("items", items);

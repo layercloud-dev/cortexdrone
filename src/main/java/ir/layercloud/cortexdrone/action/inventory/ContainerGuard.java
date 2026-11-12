@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.action.inventory;
 
+import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.service.inventory.ContainerAccess;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.inventory.IInventory;
@@ -62,8 +63,8 @@ public final class ContainerGuard {
                 : null;
     }
 
-    private static com.google.gson.JsonObject point(double[] xyz) {
-        com.google.gson.JsonObject point = new com.google.gson.JsonObject();
+    private static JsonObject point(double[] xyz) {
+        JsonObject point = new JsonObject();
         point.addProperty("x", round(xyz[0]));
         point.addProperty("y", round(xyz[1]));
         point.addProperty("z", round(xyz[2]));

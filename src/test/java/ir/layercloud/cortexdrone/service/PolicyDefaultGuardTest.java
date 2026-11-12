@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.service;
 
+import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
+import ir.layercloud.cortexdrone.service.world.ScanLimits;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -86,7 +88,7 @@ public class PolicyDefaultGuardTest {
     @Test
     public void theFurnaceRadiusHasOneOwner() {
         assertEquals("the two service owners must agree",
-                ir.layercloud.cortexdrone.service.world.ScanLimits.MAX_FURNACE_RADIUS,
-                ir.layercloud.cortexdrone.service.inventory.InventoryLimits.MAX_FURNACE_RADIUS);
+                ScanLimits.MAX_FURNACE_RADIUS,
+                InventoryLimits.MAX_FURNACE_RADIUS);
     }
 }

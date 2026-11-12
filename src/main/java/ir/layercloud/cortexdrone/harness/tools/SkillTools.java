@@ -1,8 +1,11 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
@@ -124,7 +127,7 @@ public final class SkillTools implements ToolProvider {
             result.add("skill", this.skills.toJsonArray(Collections.singletonList(skill), true).get(0));
             List<String> missing = this.skills.missingRequires(skill.getName());
             result.addProperty("missing_requires_count", missing.size());
-            result.add("missing_requires", new com.google.gson.Gson().toJsonTree(missing));
+            result.add("missing_requires", new Gson().toJsonTree(missing));
             return result;
         }
 
@@ -163,7 +166,7 @@ public final class SkillTools implements ToolProvider {
             JsonObject error = ToolJson.error("missing_requires",
                     "Skill '" + skill.getName() + "' needs " + missing + " which are not installed.",
                     "Load them from the bundled set or build the workflow with execute.", false);
-            error.add("missing_requires", new com.google.gson.Gson().toJsonTree(missing));
+            error.add("missing_requires", new Gson().toJsonTree(missing));
             return error;
         }
         JsonObject params = args.has("params") && args.get("params").isJsonObject()
@@ -179,10 +182,10 @@ public final class SkillTools implements ToolProvider {
     }
 
     private static String quote(String value) {
-        return new com.google.gson.JsonPrimitive(value != null ? value : "").toString();
+        return new JsonPrimitive(value != null ? value : "").toString();
     }
 
-    private JsonObject refine(ir.layercloud.cortexdrone.DroneController controller, JsonObject args) {
+    private JsonObject refine(DroneController controller, JsonObject args) {
         String task = args.has("task") ? args.get("task").getAsString() : "";
         String code = args.has("code") ? args.get("code").getAsString() : "";
         if (task.trim().isEmpty()) {

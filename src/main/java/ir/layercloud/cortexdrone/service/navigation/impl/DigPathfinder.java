@@ -2,9 +2,12 @@ package ir.layercloud.cortexdrone.service.navigation.impl;
 
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.ProtectionZones;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockFalling;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
@@ -139,6 +142,14 @@ public final class DigPathfinder {
                         int ny = cur.y + dy;
                         int nz = cur.z + dz;
                         if (!WorldBounds.diggable(ny)) continue;
+                        // A diagonal step that clips a solid corner is not a
+                        // route the 0.375-tall drone can fly. The flight A*
+                        // already checks this; the dig-aware search must too,
+                        // otherwise it reports "goal reached, no break needed"
+                        // for a corner it cannot fit through and recovery loops
+                        // on an impossible plan (live "digGoal=true
+                        // digFirst=none" tunnel exhaustion).
+                        if (!headCornersOpen(world, cur.x, cur.y, cur.z, dx, dy, dz)) continue;
                         long nKey = FlightPathfinder.packBlockPos(nx, ny, nz);
                         if (closed.contains(nKey)) continue;
                         Step step = classify(world, nx, ny, nz, rejected);
@@ -194,11 +205,38 @@ public final class DigPathfinder {
      * re-plans after every single block: this keeps each returned step
      * immediately executable instead of producing an unreachable plan.</p>
      */
-    private static Step classify(World world, int x, int y, int z, Set<Long> rejected) {
-        if (!world.blockExists(x, y, z)) return null;
+    /**
+     * Head-height corner clearance for a diagonal or triple step.
+     *
+     * <p>Only the head layer is checked: a solid destination foot is a block
+     * this search is allowed to break, but a solid head would need a second
+     * break in the same step, which the recovery loop deliberately avoids.</p>
+     */
+    private static boolean headCornersOpen(World world, int cx, int cy, int cz,
+                                           int dx, int dy, int dz) {
+        int manhattan = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
+        if (manhattan < 2) return true;
+        if (dx != 0 && !ItemClassifier.isPassableVoxel(world, cx + dx, cy + 1, cz)) return false;
+        if (dy != 0 && !ItemClassifier.isPassableVoxel(world, cx, cy + dy + 1, cz)) return false;
+        if (dz != 0 && !ItemClassifier.isPassableVoxel(world, cx, cy + 1, cz + dz)) return false;
+        if (manhattan == 3) {
+            if (!ItemClassifier.isPassableVoxel(world, cx + dx, cy + dy + 1, cz)) return false;
+            if (!ItemClassifier.isPassableVoxel(world, cx + dx, cy + 1, cz + dz)) return false;
+            if (!ItemClassifier.isPassableVoxel(world, cx, cy + dy + 1, cz + dz)) return false;
+        }
+        return true;
+    }
+
+    private static Step classify(World world, int x, int y, int z, Set<Long> rejected) {        if (!world.blockExists(x, y, z)) return null;
         if (!ItemClassifier.isPassableVoxel(world, x, y + 1, z)) return null;
         Block block = world.getBlock(x, y, z);
-        if (block == null || block == net.minecraft.init.Blocks.air) return new Step(1.0D, false);
+        if (block == null || block == Blocks.air) return new Step(1.0D, false);
+        // A protected place is a wall, not an expensive block: the dig-aware
+        // route must plan around it instead of proposing one break after
+        // another and draining the recovery budget.
+        if (ProtectionZones.blocksBreaking(world, x, y, z)) {
+            return null;
+        }
         if (ItemClassifier.isDangerousLiquid(block)) return new Step(LAVA_COST, false);
         if (ItemClassifier.isLiquidBlock(block)) return new Step(WATER_COST, false);
         if (!ItemClassifier.isMineableBlock(world, x, y, z)) return null;
@@ -207,7 +245,7 @@ public final class DigPathfinder {
             return null;
         }
         double cost = BREAK_BASE_COST + block.getBlockHardness(world, x, y, z) * 2.0D;
-        if (block instanceof net.minecraft.block.BlockFalling) cost += FALLING_COST;
+        if (block instanceof BlockFalling) cost += FALLING_COST;
         return new Step(cost, true);
     }
 

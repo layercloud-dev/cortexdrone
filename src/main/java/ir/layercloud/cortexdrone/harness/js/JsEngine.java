@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.harness.js;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
@@ -10,9 +11,15 @@ import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.code.CodeLimits;
 import org.mozilla.javascript.*;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * In-process JavaScript (and common TypeScript) execution on Mozilla Rhino.
@@ -211,7 +218,7 @@ public final class JsEngine {
                         ? Math.max(1_000L, context.config().getExecuteTimeoutMs()) : ToolTimeouts.ACTION_MS;
                 try {
                     return manager.callOnMainThread(
-                            (java.util.concurrent.Callable<Object>) () -> fn.call(inner, innerScope, innerScope, callArgs),
+                            (Callable<Object>) () -> fn.call(inner, innerScope, innerScope, callArgs),
                             timeout);
                 } catch (Exception e) {
                     throw Context.reportRuntimeError("main(fn) failed: " + e);
@@ -222,7 +229,7 @@ public final class JsEngine {
 
     private static boolean onServerThread() {
         Thread thread = Thread.currentThread();
-        return ir.layercloud.cortexdrone.harness.tool.Threads.isServerThread(thread);
+        return Threads.isServerThread(thread);
     }
 
     /**
@@ -242,7 +249,7 @@ public final class JsEngine {
                 Object toolResult = ScriptableObject.getProperty((Scriptable) value, "toolResult");
                 if (toolResult instanceof CharSequence) {
                     try {
-                        JsonElement parsed = new com.google.gson.JsonParser().parse(toolResult.toString());
+                        JsonElement parsed = new JsonParser().parse(toolResult.toString());
                         if (parsed != null && parsed.isJsonObject()) {
                             JsonObject result = parsed.getAsJsonObject();
                             Object tool = ScriptableObject.getProperty((Scriptable) value, "tool");
@@ -315,13 +322,13 @@ public final class JsEngine {
     }
 
     private static String loadBootstrap() {
-        try (java.io.InputStream stream = JsEngine.class.getResourceAsStream("/js/bootstrap.js")) {
+        try (InputStream stream = JsEngine.class.getResourceAsStream("/js/bootstrap.js")) {
             if (stream == null) return "";
-            java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             byte[] chunk = new byte[4096];
             int read;
             while ((read = stream.read(chunk)) >= 0) buffer.write(chunk, 0, read);
-            return new String(buffer.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+            return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
         } catch (Exception e) {
             return "";
         }
@@ -336,7 +343,7 @@ public final class JsEngine {
      * typo still reaches the intended tool instead of throwing.</p>
      */
     private static final class ToolNamespace extends ScriptableObject {
-        private final java.util.Map<String, Object> folded = new java.util.HashMap<>();
+        private final Map<String, Object> folded = new HashMap<>();
 
         @Override
         public String getClassName() {

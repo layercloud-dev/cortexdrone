@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone;
 import org.junit.Test;
 
 import java.util.Collection;
+import java.util.UUID;
 
 import static org.junit.Assert.*;
 
@@ -78,12 +79,12 @@ public class DroneRegistryTest {
     @Test
     public void despawnedEntitiesAreRemembered() {
         DroneRegistry registry = new DroneRegistry();
-        java.util.UUID entity = java.util.UUID.randomUUID();
+        UUID entity = UUID.randomUUID();
         assertFalse(registry.wasDespawned(entity));
         registry.markDespawned(entity);
         assertTrue("a despawned drone must not be re-adopted",
                 registry.wasDespawned(entity));
-        assertFalse(registry.wasDespawned(java.util.UUID.randomUUID()));
+        assertFalse(registry.wasDespawned(UUID.randomUUID()));
         registry.markDespawned(null);
         assertFalse(registry.wasDespawned(null));
     }

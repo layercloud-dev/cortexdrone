@@ -103,6 +103,18 @@ public final class ToolValidator {
             }
             case "object": {
                 if (value.isJsonObject()) return value;
+                // OpenComputers callbacks are positional. A model naturally
+                // writes args:[2] instead of {"1":2}; accepting the array as a
+                // 1-based argument table fixes that without weakening object
+                // schemas elsewhere (it only converts an array).
+                if (value.isJsonArray()) {
+                    JsonObject indexed = new JsonObject();
+                    JsonArray array = value.getAsJsonArray();
+                    for (int i = 0; i < array.size(); i++) {
+                        indexed.add(String.valueOf(i + 1), array.get(i));
+                    }
+                    return indexed;
+                }
                 if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
                     try {
                         JsonElement parsed = new JsonParser().parse(value.getAsString());

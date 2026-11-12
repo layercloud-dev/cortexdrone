@@ -119,14 +119,14 @@ public class SkillBoundsAgreementTest {
         for (Path file : files()) {
             for (String line : read(file).split("\n")) {
                 String code = line.trim();
-                java.util.regex.Matcher wait = java.util.regex.Pattern
+                Matcher wait = Pattern
                         .compile("max_wait_ms:\\s*(\\d+)").matcher(code);
                 if (wait.find()
                         && Integer.parseInt(wait.group(1)) == NavigationLimits.MAX_WAIT_MS
                         && !code.contains("LIMITS.maxWaitMs")) {
                     offenders.add(file + ": max_wait_ms -> LIMITS.maxWaitMs: " + code);
                 }
-                java.util.regex.Matcher dig = java.util.regex.Pattern
+                Matcher dig = Pattern
                         .compile("max_dig_blocks:\\s*(\\d+)").matcher(code);
                 if (dig.find()) {
                     int value = Integer.parseInt(dig.group(1));

@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.service.world;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -172,19 +173,19 @@ public final class SiteSurvey {
 
         JsonArray warnings = new JsonArray();
         if (slope > 3) {
-            warnings.add(new com.google.gson.JsonPrimitive("Ground slope is " + slope
+            warnings.add(new JsonPrimitive("Ground slope is " + slope
                     + " blocks; a foundation is required and the floor should sit at y=" + maxGround + "."));
         }
         if (liquidColumns > 0) {
-            warnings.add(new com.google.gson.JsonPrimitive(liquidColumns + " columns contain liquid; drain or bridge them before building."));
+            warnings.add(new JsonPrimitive(liquidColumns + " columns contain liquid; drain or bridge them before building."));
         }
         if (protectedColumns > 0) {
-            warnings.add(new com.google.gson.JsonPrimitive(protectedColumns
+            warnings.add(new JsonPrimitive(protectedColumns
                     + " columns contain a protected fixture (chest, machine or OpenComputers block); "
                     + "do not clear those blocks."));
         }
         if (treeColumns > 0) {
-            warnings.add(new com.google.gson.JsonPrimitive(treeColumns + " columns contain logs/leaves that must be cleared first."));
+            warnings.add(new JsonPrimitive(treeColumns + " columns contain logs/leaves that must be cleared first."));
         }
         out.add("warnings", warnings);
         return out;

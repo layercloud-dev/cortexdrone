@@ -7,6 +7,10 @@ triggers:
   - "get wood"
   - "fell that tree"
   - "gather logs"
+  - "go chop 2 stacks of jungle wood"
+  - "chop 2stack of jungle wood"
+  - "chop wood until full"
+  - "find a jungle and chop wood"
 requires:
   - "collect_drops"
 version: 1

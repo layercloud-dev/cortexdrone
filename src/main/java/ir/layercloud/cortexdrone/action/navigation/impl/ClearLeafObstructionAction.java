@@ -20,6 +20,11 @@ import net.minecraft.world.World;
  */
 @RequiredArgsConstructor
 public final class ClearLeafObstructionAction implements Action<NavigationContext> {
+    /**
+     * Upper bound on leaves removed in one stall pass.
+     */
+    private static final int MAX_CLEARED = 64;
+
     @Override
     public void execute(NavigationContext context) {
         DroneController controller = context.controller();
@@ -37,16 +42,22 @@ public final class ClearLeafObstructionAction implements Action<NavigationContex
         int bx = MathHelper.floor_double(drone.posX);
         int by = MathHelper.floor_double(drone.posY);
         int bz = MathHelper.floor_double(drone.posZ);
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
+        // Canopies are wider than the 3x3x3 body shell: a drone stalled in a
+        // forest cleared one leaf every ~20 s and spent 13 minutes in the same
+        // tree (live log 02:05-02:17). Clear the whole 5x3x5 canopy pocket in
+        // one pass, but only leaves/plants and only up to a small cap.
+        int cleared = 0;
+        for (int dx = -2; dx <= 2 && cleared < MAX_CLEARED; dx++) {
+            for (int dy = -1; dy <= 2 && cleared < MAX_CLEARED; dy++) {
+                for (int dz = -2; dz <= 2 && cleared < MAX_CLEARED; dz++) {
                     int x = bx + dx;
                     int y = by + dy;
                     int z = bz + dz;
                     if (!WorldBounds.inWorld(y) || world.isAirBlock(x, y, z)) continue;
                     Block block = world.getBlock(x, y, z);
-                    if (ItemClassifier.isLeafBlock(block)) {
+                    if (block != null && ItemClassifier.isLeafBlock(block)) {
                         world.setBlockToAir(x, y, z);
+                        cleared++;
                     }
                 }
             }

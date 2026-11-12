@@ -8,6 +8,10 @@ triggers:
   - "gather stone"
   - "tunnel to ore"
   - "break blocks"
+  - "go mine"
+  - "go bring ores"
+  - "mine 5 stacks of iron"
+  - "mine until full"
 requires: []
 version: 2
 uses: 0

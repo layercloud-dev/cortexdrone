@@ -4,6 +4,9 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import org.junit.Test;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -16,7 +19,7 @@ import static org.junit.Assert.assertTrue;
 public class FarmingSkillBehaviorTest extends SkillTestSupport {
     @Test
     public void plantingTillsThenSowsEveryColumn() throws Exception {
-        java.util.Set<String> tilledColumns = new java.util.HashSet<>();
+        Set<String> tilledColumns = new HashSet<>();
         Harness harness = new Harness(library(),
                 state("Wooden Hoe:|:minecraft:wooden_hoe:|:0:|:1",
                         "Wheat Seeds:|:minecraft:wheat_seeds:|:0:|:16"),

@@ -101,7 +101,7 @@ public final class ChunkLoadingManager implements ForgeChunkManager.LoadingCallb
             }
 
             @Override
-            public boolean isAnyDroneNear(net.minecraft.world.World world, ChunkCoordIntPair pair) {
+            public boolean isAnyDroneNear(World world, ChunkCoordIntPair pair) {
                 return ChunkLoadingManager.this.isAnyDroneNear(world, pair);
             }
 

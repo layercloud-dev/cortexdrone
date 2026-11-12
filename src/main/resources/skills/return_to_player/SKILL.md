@@ -5,28 +5,38 @@ tags: "return come back player escape cave underground tunnel navigate home"
 triggers:
   - "come back"
   - "return to me"
+  - "come here"
+  - "come to me"
+  - "come get me"
+  - "where are you"
   - "get out of the cave"
   - "fly back"
-requires: []
-version: 2
+requires:
+  - "escape_cave"
+version: 3
 uses: 0
 code: code.js
 ---
 
 # Return to player
 
-Navigate back to the owner (or a named player) using the self-recovering `goto`.
+Navigate back to the owner (or a named player) with the self-recovering `goto`.
+The route is evidence-driven: direct flight first, then the remembered base
+shaft/exit point when the player is underground, then a 2x2 escape shaft only
+when the drone is genuinely sealed in a cave far from the base. Automatic
+tunnelling and `break_block` refuse player-protected zones, so the base cannot
+be damaged by a rescue.
 
 ## Parameters
 
 - `player` - optional player name.
-- `allow_dig` - allow tunnelling out of caves. Default `false`.
+- `allow_dig` - allow tunnelling when no no-dig route exists. Default `false`.
+- `escape_cave` - open a 2x2 shaft when the drone is underground. Default `true`.
+- `max_wait_ms` - per-leg navigation budget. Defaults to the tool maximum.
 
 ## Returns
 
-`{ ok, arrived, player, position }`
-
-## Notes
-
-- Prefers a no-dig route; set `allow_dig:true` for enclosed caves.
-- On failure, returns the navigation error instead of guessing.
+`{ ok, arrived, player, position, attempts, route }` on success;
+`{ ok:false, arrived:false, error, hint, attempts }` on failure. `attempts`
+shows every leg tried and why it failed, so a caller can adapt instead of
+repeating the same goto.

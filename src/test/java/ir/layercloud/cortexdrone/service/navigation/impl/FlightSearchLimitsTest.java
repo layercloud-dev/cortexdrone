@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.service.navigation.impl;
 
+import ir.layercloud.cortexdrone.SourceTree;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
@@ -47,8 +48,8 @@ public class FlightSearchLimitsTest {
     @Test
     public void theSearchLimitsAreNotRedeclaredInTheOrchestrator() {
         // A structural guard, kept here so the two copies cannot come back.
-        String orchestrator = ir.layercloud.cortexdrone.SourceTree.require(
-                ir.layercloud.cortexdrone.SourceTree.MAIN
+        String orchestrator = SourceTree.require(
+                SourceTree.MAIN
                         + "service/navigation/impl/FlightPathfinder.java");
         assertFalse("the node cap belongs to FlightAStar",
                 orchestrator.contains("MAX_EXPANSIONS ="));

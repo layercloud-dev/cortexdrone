@@ -10,6 +10,7 @@ import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
+import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -39,6 +40,12 @@ public final class WorldBlockReadTools implements ToolProvider {
      * Block descriptors returned by a box read before the sample is truncated.
      */
     public static final int MAX_BOX_SAMPLE = 2500;
+    /**
+     * Largest box one read may cover. Without this, a 32x254x32 request is
+     * 260k block reads on the server thread and blows the tool budget; slices
+     * are cheap and keep the tick responsive.
+     */
+    public static final int MAX_BOX_VOLUME = 32_768;
 
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("get_block")
@@ -46,16 +53,18 @@ public final class WorldBlockReadTools implements ToolProvider {
                             + "light, passability, liquid and tile-entity/machine description when present.")
                     .parameters(ToolSchema.object()
                             .requiredInt("x", "Block X.").requiredInt("y", "Block Y.").requiredInt("z", "Block Z."))
-                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FASTEST_MS).build(),
+                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.READ_MS).build(),
             ToolSpec.builder("get_blocks_in_box")
-                    .description("Read every block in an inclusive box and return counts by type plus a "
-                            + "bounded sample. Use include_air=false to skip air. Large boxes are capped.")
+                    .description("Read every block in an inclusive box and return counts by type "
+                            + "(`countsByType`, also exposed as `counts`) plus a bounded `blocks` sample. "
+                            + "Use include_air=false to skip air. The sample is capped, so for a very large "
+                            + "box read it in slices; the counts are still complete for the whole box.")
                     .parameters(ToolSchema.object()
                             .requiredInt("x1", "First corner X.").requiredInt("y1", "First corner Y.")
                             .requiredInt("z1", "First corner Z.").requiredInt("x2", "Second corner X.")
                             .requiredInt("y2", "Second corner Y.").requiredInt("z2", "Second corner Z.")
                             .optionalBoolean("include_air", "Include air blocks in the sample.", false))
-                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FAST_MS).build(),
+                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.SURVEY_MS).build(),
             ToolSpec.builder("get_top_y")
                     .description("Surface height and surface block/biome at x/z. Uses the loaded world, so "
                             + "the column must be in a loaded chunk.")
@@ -66,10 +75,10 @@ public final class WorldBlockReadTools implements ToolProvider {
                             + "Use it to resolve 'this block', 'the block I'm looking at' or a schematic spot.")
                     .parameters(ToolSchema.object()
                             .optionalInt("max_dist", "Ray length in blocks, "
-                                            + ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MIN_DISTANCE
-                                            + ".." + ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MAX_DISTANCE + ".",
-                                    ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MIN_DISTANCE,
-                                    ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D.MAX_DISTANCE,
+                                            + VoxelRaycaster3D.MIN_DISTANCE
+                                            + ".." + VoxelRaycaster3D.MAX_DISTANCE + ".",
+                                    VoxelRaycaster3D.MIN_DISTANCE,
+                                    VoxelRaycaster3D.MAX_DISTANCE,
                                     DEFAULT_RAY_DISTANCE))
                     .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FASTEST_MS).build()
     );
@@ -128,10 +137,20 @@ public final class WorldBlockReadTools implements ToolProvider {
         int x1 = args.get("x1").getAsInt(), y1 = args.get("y1").getAsInt(), z1 = args.get("z1").getAsInt();
         int x2 = args.get("x2").getAsInt(), y2 = args.get("y2").getAsInt(), z2 = args.get("z2").getAsInt();
         boolean includeAir = args.has("includeAir") && args.get("includeAir").getAsBoolean();
-        int minX = Math.min(x1, x2), maxX = Math.min(minX + MAX_BOX_EDGE, Math.max(x1, x2));
+        int reqMinX = Math.min(x1, x2), reqMaxX = Math.max(x1, x2);
+        int reqMinZ = Math.min(z1, z2), reqMaxZ = Math.max(z1, z2);
+        int minX = reqMinX, maxX = Math.min(minX + MAX_BOX_EDGE, reqMaxX);
         int minY = Math.max(WorldBounds.MIN_Y, Math.min(y1, y2));
         int maxY = Math.min(WorldBounds.MAX_Y, Math.max(y1, y2));
-        int minZ = Math.min(z1, z2), maxZ = Math.min(minZ + MAX_BOX_EDGE, Math.max(z1, z2));
+        int minZ = reqMinZ, maxZ = Math.min(minZ + MAX_BOX_EDGE, reqMaxZ);
+        boolean truncated = minX != reqMinX || maxX != reqMaxX || minZ != reqMinZ || maxZ != reqMaxZ;
+        long volume = (long) (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
+        if (volume > MAX_BOX_VOLUME) {
+            return ToolJson.error("box_too_large", "Box covers " + volume
+                            + " blocks; the limit is " + MAX_BOX_VOLUME + ".",
+                    "Split it into slices (for example one y-layer or one wall at a time); "
+                            + "counts are complete for each slice.", true);
+        }
         for (int cx = (minX >> 4); cx <= (maxX >> 4); cx++) {
             for (int cz = (minZ >> 4); cz <= (maxZ >> 4); cz++) {
                 if (!ChunkAccess.isLoaded(world, cx, cz)) {
@@ -169,7 +188,15 @@ public final class WorldBlockReadTools implements ToolProvider {
         out.addProperty("totalVoxels", totalVoxels);
         out.addProperty("nonAirCount", nonAirCount);
         out.addProperty("count", nonAirCount);
+        out.addProperty("truncated", truncated);
+        if (truncated) {
+            out.addProperty("note", "The box edge is capped at " + MAX_BOX_EDGE
+                    + "; counts cover the returned x1..x2/z1..z2 range only. Read the rest in slices.");
+        }
         out.add("countsByType", countsJson);
+        // Generated scripts repeatedly looked for `counts`; expose the same
+        // object under both names instead of making the model re-read a schema.
+        out.add("counts", countsJson);
         out.add("blocks", blocks);
         return out;
     }

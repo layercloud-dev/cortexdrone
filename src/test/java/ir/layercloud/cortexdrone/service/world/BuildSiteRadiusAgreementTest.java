@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.service.world;
 
 import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
+import ir.layercloud.cortexdrone.harness.tools.WorldTools;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -21,7 +22,7 @@ public class BuildSiteRadiusAgreementTest {
      * The range the tool schema declares for {@code max_radius}.
      */
     private static int[] schemaRange() {
-        for (ToolSpec spec : ir.layercloud.cortexdrone.harness.tools.WorldTools.specs()) {
+        for (ToolSpec spec : WorldTools.specs()) {
             if (!"find_build_site".equals(spec.getName())) continue;
             return new int[]{
                     intProperty(spec, "max_radius", "minimum"),
@@ -106,7 +107,7 @@ public class BuildSiteRadiusAgreementTest {
     }
 
     private static ToolSpec spec(String name) {
-        for (ToolSpec candidate : ir.layercloud.cortexdrone.harness.tools.WorldTools.specs()) {
+        for (ToolSpec candidate : WorldTools.specs()) {
             if (name.equals(candidate.getName())) return candidate;
         }
         fail("no spec named " + name);

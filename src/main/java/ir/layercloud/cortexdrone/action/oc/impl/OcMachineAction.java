@@ -11,6 +11,7 @@ import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +69,7 @@ public final class OcMachineAction implements Action<OcContext> {
                     return;
             }
             context.result(OcResult.success(control, value,
-                    value == null ? null : java.util.Collections.singletonList(value),
+                    value == null ? null : Collections.singletonList(value),
                     "control", control));
         } catch (Throwable failure) {
             Throwable cause = failure.getCause() != null ? failure.getCause() : failure;
@@ -115,8 +116,8 @@ public final class OcMachineAction implements Action<OcContext> {
         try {
             Class<?> converters = Class.forName("scala.collection.JavaConverters$");
             Object module = converters.getField("MODULE$").get(null);
-            Object asScala = converters.getMethod("asScalaBufferConverter", java.util.List.class)
-                    .invoke(module, java.util.Collections.singletonList(table));
+            Object asScala = converters.getMethod("asScalaBufferConverter", List.class)
+                    .invoke(module, Collections.singletonList(table));
             Method asScalaMethod = asScala.getClass().getMethod("asScala");
             return asScalaMethod.invoke(asScala);
         } catch (Throwable ignored) {

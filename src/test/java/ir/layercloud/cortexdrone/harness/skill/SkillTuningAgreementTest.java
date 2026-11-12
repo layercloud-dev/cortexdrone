@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertTrue;
@@ -68,7 +69,7 @@ public class SkillTuningAgreementTest {
 
     @Test
     public void everyNumericClampBoundUsesTheTables() throws Exception {
-        java.util.regex.Pattern numeric = java.util.regex.Pattern.compile(
+        Pattern numeric = Pattern.compile(
                 "clamp\\([^,]+,\\s*\\d+\\s*,\\s*\\d+\\s*\\)");
         List<String> offenders = new ArrayList<>();
         for (Path file : files()) {
@@ -89,5 +90,15 @@ public class SkillTuningAgreementTest {
             if (read(file).contains("SKILL_LIMITS.")) users++;
         }
         assertTrue("the tuned skills must read SKILL_LIMITS", users > 0);
+    }
+
+    @Test
+    public void ocSideOrdinalsAreDeclaredInTheLimitTable() throws Exception {
+        String bootstrap = read(Paths.get("src/main/resources/js/bootstrap.js"));
+        assertTrue(bootstrap.contains("sideDown: 0"));
+        assertTrue(bootstrap.contains("sideEast: 5"));
+        // The drone's inventory callbacks are 1-based; the helper table must
+        // say so next to the ordinals or a script will use a list index.
+        assertTrue(bootstrap.contains("select/drop"));
     }
 }

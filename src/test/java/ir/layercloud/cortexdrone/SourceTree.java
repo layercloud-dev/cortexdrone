@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Arrays;
 
 /**
  * Reads production sources for the structural guard tests.
@@ -61,7 +62,7 @@ public final class SourceTree {
         }
         File[] children = file.listFiles();
         if (children == null) return;
-        java.util.Arrays.sort(children);
+        Arrays.sort(children);
         for (File child : children) collect(child, out);
     }
 }

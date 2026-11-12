@@ -6,6 +6,7 @@ import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.service.machine.MachineRecipeService;
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.LoadedTiles;
 import li.cil.oc.common.entity.Drone;
 import lombok.Getter;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -17,6 +18,7 @@ import net.minecraft.tileentity.TileEntityChest;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -106,7 +108,7 @@ public class InventoryService {
                                                   final double y, final double z, int radius) {
         // Only loaded tiles are readable; probing unloaded chunks would force
         // generation on the main thread for a container nobody can open.
-        return ir.layercloud.cortexdrone.service.world.LoadedTiles.near(world, x, y, z, radius,
+        return LoadedTiles.near(world, x, y, z, radius,
                 tile -> ItemClassifier.isStorageChestTile(world, tile), true);
     }
 
@@ -339,7 +341,7 @@ public class InventoryService {
         int moved = 0;
         for (int i = 0; i < source.getSizeInventory(); i++) {
             moved += InventoryTransfers.spreadStackAcross(source, i,
-                    java.util.Collections.singletonList(target));
+                    Collections.singletonList(target));
         }
         if (moved > 0) target.markDirty();
         return moved;

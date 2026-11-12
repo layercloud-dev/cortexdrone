@@ -10,7 +10,9 @@ import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
@@ -43,21 +45,21 @@ public final class PlayerContainerQueryTools {
                             + "Defaults to the task player; pass name for another online player.")
                     .parameters(ToolSchema.object()
                             .optionalString("name", "Player name; defaults to the task player."))
-                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FASTEST_MS).build(),
+                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.READ_MS).build(),
             ToolSpec.builder("get_player_inventory")
                     .description("Read a player's 36-slot inventory plus the held slot/item and a compact "
                             + "summary. Use it to check whether the player already has materials before "
                             + "taking them.")
                     .parameters(ToolSchema.object()
                             .optionalString("name", "Player name; defaults to the task player."))
-                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FASTEST_MS).build(),
+                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.READ_MS).build(),
             ToolSpec.builder("get_chest")
                     .description("Read one chest/container at x/y/z: block name, total/used/free slots and "
                             + "every item stack. Use it before withdrawing or depositing.")
                     .parameters(ToolSchema.object()
                             .requiredInt("x", "Container X.").requiredInt("y", "Container Y.")
                             .requiredInt("z", "Container Z."))
-                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FASTEST_MS).build(),
+                    .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.READ_MS).build(),
             ToolSpec.builder("scan_chests")
                     .description("Scan nearby chests/containers for items matching a filter and rank the "
                             + "containers. filter accepts an item name, registry name, ore tag or 'all'.")
@@ -195,13 +197,13 @@ public final class PlayerContainerQueryTools {
         int x = args.get("x").getAsInt();
         int y = args.get("y").getAsInt();
         int z = args.get("z").getAsInt();
-        net.minecraft.tileentity.TileEntity tile = world.getTileEntity(x, y, z);
-        if (!(tile instanceof net.minecraft.inventory.IInventory)) {
+        TileEntity tile = world.getTileEntity(x, y, z);
+        if (!(tile instanceof IInventory)) {
             return ToolJson.error("no_container",
                     "No inventory at (" + x + "," + y + "," + z + ")",
                     "Check the coordinates with get_block, or scan_chests to find containers.", true);
         }
-        net.minecraft.inventory.IInventory inventory = (net.minecraft.inventory.IInventory) tile;
+        IInventory inventory = (IInventory) tile;
         Block block = world.getBlock(x, y, z);
         JsonObject result = ToolJson.ok();
         result.addProperty("x", x);

@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.js;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -69,7 +70,7 @@ public final class JsSource {
      */
     static String rewriteSpreadCalls(String source) {
         String mask = TypeScriptEraser.maskLiterals(source);
-        java.util.regex.Matcher matcher = SPREAD_CALL.matcher(mask);
+        Matcher matcher = SPREAD_CALL.matcher(mask);
         StringBuilder out = new StringBuilder(source.length() + 32);
         int last = 0;
         while (matcher.find()) {

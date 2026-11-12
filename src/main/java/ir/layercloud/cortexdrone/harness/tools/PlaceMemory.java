@@ -4,8 +4,11 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.Harness;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
+import ir.layercloud.cortexdrone.service.inventory.ContainerAccess;
 import ir.layercloud.cortexdrone.service.navigation.Breadcrumb;
+import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import net.minecraft.block.Block;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
@@ -73,11 +76,11 @@ final class PlaceMemory {
     private static boolean recentDamage(ToolContext context, DroneController controller, World world) {
         try {
             if (context.manager() == null) return false;
-            java.util.List<ir.layercloud.cortexdrone.service.world.DamageJournal.Record> records =
+            List<DamageJournal.Record> records =
                     context.manager().getDamageJournal().pending(controller);
             if (records.isEmpty()) return false;
             long now = world.getTotalWorldTime();
-            for (ir.layercloud.cortexdrone.service.world.DamageJournal.Record record : records) {
+            for (DamageJournal.Record record : records) {
                 if (now - record.tick() <= 400L) return true;
             }
         } catch (Throwable ignored) {
@@ -86,7 +89,7 @@ final class PlaceMemory {
     }
 
     private static boolean isReachable(DroneController controller, World world, int x, int y, int z) {
-        return ir.layercloud.cortexdrone.service.inventory.ContainerAccess
+        return ContainerAccess
                 .check(world, controller.drone, x, y, z).isAccessible();
     }
 
@@ -110,7 +113,7 @@ final class PlaceMemory {
 
     private static String labelOf(World world, int x, int y, int z, String kind) {
         try {
-            net.minecraft.block.Block block = world.getBlock(x, y, z);
+            Block block = world.getBlock(x, y, z);
             String display = ItemClassifier.getBlockDisplayName(block, world.getBlockMetadata(x, y, z));
             return !display.isEmpty() ? display : kind;
         } catch (Throwable ignored) {

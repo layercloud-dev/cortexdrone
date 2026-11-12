@@ -10,6 +10,7 @@ import ir.layercloud.cortexdrone.harness.agent.LlmClient;
 import ir.layercloud.cortexdrone.harness.agent.LlmResponse;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -50,7 +51,7 @@ public final class SkillRefiner {
         this.lastRejection = null;
         List<SkillCodeGuard.Violation> sourceViolations = SkillCodeGuard.inspect(code);
         JsonObject compiled = compile(controller, requestedName, task, code, notes,
-                sourceViolations, java.util.Collections.<SkillCodeGuard.Violation>emptyList());
+                sourceViolations, Collections.<SkillCodeGuard.Violation>emptyList());
         if (compiled == null) return fallback(requestedName, task, code);
 
         List<SkillCodeGuard.Violation> violations =

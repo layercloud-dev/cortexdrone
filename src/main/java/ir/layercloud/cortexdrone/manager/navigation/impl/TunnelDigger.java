@@ -34,6 +34,13 @@ final class TunnelDigger {
      */
     boolean dig(DroneController controller, NavigationSession session,
                 NavigationState state, int[] target) {
+        // Every caller funnels through here. Enforce the per-request budget at
+        // this choke point: handleProgress can reach digPending from a finished
+        // standoff leg without passing through recover(), and the live log shows
+        // requests reporting dug=45/30 after the budget was already spent.
+        if (session != null && session.dug >= session.maxDigBlocks) {
+            return false;
+        }
         Drone drone = controller.drone;
         BlockResult result = this.manager.getBuildingManager().handle(
                 controller, CortexDroneMod.findPlayer(controller.ownerName), "break_block",

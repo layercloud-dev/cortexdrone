@@ -3,6 +3,8 @@ package ir.layercloud.cortexdrone.harness.lesson;
 import ir.layercloud.cortexdrone.harness.markdown.AtomicFiles;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Locale;
 
 /**
@@ -73,7 +75,7 @@ final class LessonFiles {
         if (this.lessonsDir == null) return new File[0];
         File[] found = this.lessonsDir.listFiles(File::isDirectory);
         if (found == null) return new File[0];
-        java.util.Arrays.sort(found, java.util.Comparator.comparing(File::getName));
+        Arrays.sort(found, Comparator.comparing(File::getName));
         return found;
     }
 

@@ -133,8 +133,8 @@ final class OreDictIndex {
     /**
      * The OreDictionary tags of a stack, lower-cased; empty when unregistered.
      */
-    static java.util.Set<String> tagsOf(ItemStack stack) {
-        java.util.Set<String> out = new java.util.HashSet<>();
+    static Set<String> tagsOf(ItemStack stack) {
+        Set<String> out = new HashSet<>();
         try {
             int[] ids = OreDictionary.getOreIDs(stack);
             for (int id : ids) {

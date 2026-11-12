@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.harness.agent;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 /**
  * One function call requested by the model.
@@ -30,7 +31,7 @@ public final class ToolCall {
 
     public JsonObject argumentsAsJson() {
         try {
-            JsonObject parsed = new com.google.gson.JsonParser().parse(this.arguments).getAsJsonObject();
+            JsonObject parsed = new JsonParser().parse(this.arguments).getAsJsonObject();
             return parsed != null ? parsed : new JsonObject();
         } catch (Exception e) {
             return null;

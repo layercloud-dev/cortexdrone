@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
+import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -11,6 +12,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Spawn, link and despawn lifecycle for AI drones.
@@ -99,7 +101,7 @@ final class DroneLifecycle {
         DroneController byInstance = this.collaborators.registry().findByControllerEntity(drone);
         if (byInstance != null) return byInstance;
         // Fall back to UUID: an entity may be reloaded as a new Java instance.
-        java.util.UUID uuid = drone.getUniqueID();
+        UUID uuid = drone.getUniqueID();
         if (uuid == null) return null;
         for (DroneController controller : this.collaborators.registry().all()) {
             if (uuid.equals(controller.entityUuid)) {
@@ -129,7 +131,7 @@ final class DroneLifecycle {
         World world = player.worldObj;
         Drone drone = new Drone(world);
         String requested = customName != null
-                ? ir.layercloud.cortexdrone.service.text.TextSanitizer.chat(customName) : "";
+                ? TextSanitizer.chat(customName) : "";
         String name = !requested.isEmpty()
                 ? requested
                 : player.getCommandSenderName() + DEFAULT_NAME_SUFFIX;

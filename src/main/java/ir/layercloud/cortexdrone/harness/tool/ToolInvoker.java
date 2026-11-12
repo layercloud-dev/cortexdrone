@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.harness.tool;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
@@ -186,6 +187,10 @@ public final class ToolInvoker {
             hint = "This call set allow_dig:false and the goal has no no-dig route. "
                     + "Retry with allow_dig:true (and max_dig_blocks above 0) or choose "
                     + "a destination reachable in open air.";
+        } else if (error != null && error.contains("no progress")) {
+            hint = "The drone stopped approaching the goal (canopy, sealed pocket or an "
+                    + "unreachable column). Do not repeat the same goto: move to open sky first "
+                    + "(or use the remembered shaft) and then retry, or pick a nearby waypoint.";
         } else {
             hint = "Automatic trail, tunnel and detour recovery were exhausted. "
                     + "Pick a nearer goal or a different destination; do not repeat "
@@ -301,7 +306,7 @@ public final class ToolInvoker {
     public static EntityPlayerMP resolvePlayer(ToolContext context, DroneController controller) {
         if (context != null && context.player() != null) return context.player();
         if (controller != null && controller.ownerName != null) {
-            return ir.layercloud.cortexdrone.CortexDroneMod.findPlayer(controller.ownerName);
+            return CortexDroneMod.findPlayer(controller.ownerName);
         }
         return null;
     }

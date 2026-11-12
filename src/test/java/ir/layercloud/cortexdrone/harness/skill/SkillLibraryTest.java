@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -48,7 +49,7 @@ public class SkillLibraryTest {
         File root = Files.createTempDirectory("cortexdrone-skills-persist").toFile();
         SkillLibrary library = new SkillLibrary(root);
         Skill saved = library.save("my_skill", "mine", "test mine", null,
-                java.util.Collections.singletonList("pickaxe"),
+                Collections.singletonList("pickaxe"),
                 "# My skill\n\nUse it for tests.\n", "return 1;", "saved");
         assertNotNull(saved);
 

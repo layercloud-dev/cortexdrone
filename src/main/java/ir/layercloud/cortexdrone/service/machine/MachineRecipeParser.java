@@ -4,8 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.experimental.UtilityClass;
+import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+
+import java.util.logging.Logger;
 
 /**
  * JSON schema parsing for HBM machine recipes. Moved verbatim from
@@ -37,7 +40,7 @@ final class MachineRecipeParser {
         } catch (RuntimeException malformed) {
             // A hand-edited or truncated recipe file must not abort the whole
             // config scan, but it must be visible: the caller reports the file.
-            java.util.logging.Logger.getLogger("CortexDrone").fine(
+            Logger.getLogger("CortexDrone").fine(
                     "Skipping malformed machine recipe in " + fileName + ": " + malformed);
             return null;
         }
@@ -286,9 +289,9 @@ final class MachineRecipeParser {
                 ItemStack st = new ItemStack(item, 1, meta);
                 return st.getDisplayName();
             }
-            Object blockObj = net.minecraft.block.Block.blockRegistry.getObject(reg);
-            if (blockObj instanceof net.minecraft.block.Block) {
-                net.minecraft.block.Block b = (net.minecraft.block.Block) blockObj;
+            Object blockObj = Block.blockRegistry.getObject(reg);
+            if (blockObj instanceof Block) {
+                Block b = (Block) blockObj;
                 Item item2 = Item.getItemFromBlock(b);
                 if (item2 != null) {
                     ItemStack st = new ItemStack(item2, 1, meta);

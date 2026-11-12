@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.harness.session;
 
 import com.google.gson.JsonObject;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -44,7 +45,7 @@ final class SessionMarkdown {
         int toolErrors;
         int worldActions;
         String prompt = "";
-        List<JsonObject> transcript = java.util.Collections.emptyList();
+        List<JsonObject> transcript = Collections.emptyList();
     }
 
     /**

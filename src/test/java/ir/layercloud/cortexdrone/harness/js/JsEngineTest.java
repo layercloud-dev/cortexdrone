@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Collections;
 
 import static org.junit.Assert.*;
 
@@ -112,7 +113,7 @@ public class JsEngineTest {
         assertNotNull(library.save("echo_upper", "upper", "", null, null,
                 "var r = drone.echo({ value: params.value }); return r.value + '!';", "test"));
         assertNotNull(library.save("echo_twice", "twice", "", null,
-                java.util.Collections.singletonList("echo_upper"),
+                Collections.singletonList("echo_upper"),
                 "var once = skills.call('echo_upper', { value: params.value });"
                         + "return once + once;", "test"));
 
@@ -183,7 +184,7 @@ public class JsEngineTest {
         assertNotNull(library.save("echo_upper", "upper", "", null, null,
                 "var r = drone.echo({ value: params.value }); return r.value + '!';", "test"));
         assertNotNull(library.save("echo_pair", "pair", "", null,
-                java.util.Collections.singletonList("echo_upper"),
+                Collections.singletonList("echo_upper"),
                 "var once = skills.echoUpper({ value: params.value });"
                         + "var twice = skills.call('echo_upper', { value: once });"
                         + "return once + '|' + twice;", "test"));

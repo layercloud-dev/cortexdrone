@@ -4,7 +4,9 @@ import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import org.mozilla.javascript.*;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -40,7 +42,7 @@ final class SkillNamespace extends ScriptableObject {
         RESERVED.add("has");
     }
 
-    private final java.util.Map<String, Object> folded = new java.util.HashMap<String, Object>();
+    private final Map<String, Object> folded = new HashMap<String, Object>();
 
     @Override
     public String getClassName() {

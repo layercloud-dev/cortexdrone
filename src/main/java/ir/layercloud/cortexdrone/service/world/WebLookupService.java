@@ -4,8 +4,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import ir.layercloud.cortexdrone.config.PrivateHosts;
+import ir.layercloud.cortexdrone.service.machine.HbmDescriptor;
 import ir.layercloud.cortexdrone.service.web.WebLimits;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -13,9 +17,11 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Small, dependency-free web lookup service used by the internet tools.
@@ -30,9 +36,9 @@ public final class WebLookupService {
      * Wiki hosts, kept next to the mod descriptor that supplies them.
      */
     private static final String HBM_HOST =
-            ir.layercloud.cortexdrone.service.machine.HbmDescriptor.HBM_WIKI_HOST;
+            HbmDescriptor.HBM_WIKI_HOST;
     private static final String VANILLA_HOST =
-            ir.layercloud.cortexdrone.service.machine.HbmDescriptor.VANILLA_WIKI_HOST;
+            HbmDescriptor.VANILLA_WIKI_HOST;
     private static final Pattern DDG_RESULT = Pattern.compile(
             "(?is)<a[^>]+class=\"result__a\"[^>]+href=\"([^\"]+)\"[^>]*>(.*?)</a>.*?"
                     + "(?:<a[^>]+class=\"result__snippet\"[^>]*>(.*?)</a>)?");
@@ -225,7 +231,7 @@ public final class WebLookupService {
         JsonObject json = new JsonParser().parse(get(url, "application/json")).getAsJsonObject();
         if (!json.has("query") || !json.getAsJsonObject("query").has("pages")) return "";
         JsonObject pages = json.getAsJsonObject("query").getAsJsonObject("pages");
-        for (java.util.Map.Entry<String, JsonElement> entry : pages.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : pages.entrySet()) {
             JsonObject page = entry.getValue().getAsJsonObject();
             if (page.has("extract")) return page.get("extract").getAsString();
         }
@@ -246,7 +252,7 @@ public final class WebLookupService {
         }
         try (InputStream stream = connection.getInputStream()) {
             byte[] buffer = new byte[8192];
-            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
             int read;
             int total = 0;
             while ((read = stream.read(buffer)) >= 0) {
@@ -270,10 +276,10 @@ public final class WebLookupService {
     static String decodeBody(byte[] body, String contentEncoding) {
         if (body == null) return "";
         if (contentEncoding != null
-                && contentEncoding.toLowerCase(java.util.Locale.ROOT).contains("gzip")) {
-            try (java.util.zip.GZIPInputStream gzip =
-                         new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(body))) {
-                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                && contentEncoding.toLowerCase(Locale.ROOT).contains("gzip")) {
+            try (GZIPInputStream gzip =
+                         new GZIPInputStream(new ByteArrayInputStream(body))) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
                 byte[] buffer = new byte[8192];
                 int read;
                 while ((read = gzip.read(buffer)) >= 0) out.write(buffer, 0, read);
@@ -333,7 +339,7 @@ public final class WebLookupService {
     }
 
     private static boolean isPrivateHost(String url) {
-        return ir.layercloud.cortexdrone.config.PrivateHosts.isPrivateUrl(url);
+        return PrivateHosts.isPrivateUrl(url);
     }
 
     private static JsonObject error(String code, String message) {

@@ -3,16 +3,24 @@ package ir.layercloud.cortexdrone.service.machine;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import li.cil.oc.common.entity.Drone;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
+import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Ranking, filtering, and ingredient-availability assessment for HBM
@@ -25,17 +33,17 @@ import java.util.List;
 final class MachineRecipeRanker {
 
     private static final long COUNT_CACHE_TTL_MS = 1000L;
-    private static final java.util.Map<String, java.util.Map<String, Integer>> COUNT_CACHE = new java.util.HashMap<>();
-    private static final java.util.Map<String, Long> COUNT_CACHE_EXPIRY = new java.util.HashMap<>();
+    private static final Map<String, Map<String, Integer>> COUNT_CACHE = new HashMap<>();
+    private static final Map<String, Long> COUNT_CACHE_EXPIRY = new HashMap<>();
 
-    static java.util.Map<String, Integer> countAllNearby(InventoryService inventoryService, World world,
-                                                         li.cil.oc.common.entity.Drone drone,
+    static Map<String, Integer> countAllNearby(InventoryService inventoryService, World world,
+                                                         Drone drone,
                                                          EntityPlayerMP player, int radius) {
         return countAllNearbyCached(inventoryService, world, drone, player, radius);
     }
 
-    private static java.util.Map<String, Integer> countAllNearbyCached(InventoryService inventoryService, World world,
-                                                                       li.cil.oc.common.entity.Drone drone,
+    private static Map<String, Integer> countAllNearbyCached(InventoryService inventoryService, World world,
+                                                                       Drone drone,
                                                                        EntityPlayerMP player, int radius) {
         // Cache the expensive nearby-inventory sweep for ~1s so the
         // getBestMachineRecipe loop (which re-assesses every ranked candidate
@@ -54,16 +62,16 @@ final class MachineRecipeRanker {
         }
         String key = dimId + "|" + droneX / 16 + "|" + droneZ / 16 + "|" + bucket + "|"
                 + (drone != null ? drone.getUniqueID() : (player != null ? player.getCommandSenderName() : "null"));
-        java.util.Map<String, Integer> hitCache = COUNT_CACHE.get(key);
+        Map<String, Integer> hitCache = COUNT_CACHE.get(key);
         Long expiry = COUNT_CACHE_EXPIRY.get(key);
         if (hitCache != null && expiry != null && expiry > now) {
-            return new java.util.LinkedHashMap<>(hitCache);
+            return new LinkedHashMap<>(hitCache);
         }
-        java.util.Map<String, Integer> totals = countAllNearbyUncached(inventoryService, world, drone, player, radius);
-        COUNT_CACHE.put(key, new java.util.LinkedHashMap<>(totals));
+        Map<String, Integer> totals = countAllNearbyUncached(inventoryService, world, drone, player, radius);
+        COUNT_CACHE.put(key, new LinkedHashMap<>(totals));
         COUNT_CACHE_EXPIRY.put(key, now + COUNT_CACHE_TTL_MS);
         if (COUNT_CACHE.size() > 16) {
-            java.util.Iterator<String> it = COUNT_CACHE_EXPIRY.keySet().iterator();
+            Iterator<String> it = COUNT_CACHE_EXPIRY.keySet().iterator();
             while (it.hasNext()) {
                 String k = it.next();
                 Long exp = COUNT_CACHE_EXPIRY.get(k);
@@ -80,10 +88,10 @@ final class MachineRecipeRanker {
         return totals;
     }
 
-    static java.util.Map<String, Integer> countAllNearbyUncached(InventoryService inventoryService, World world,
-                                                                 li.cil.oc.common.entity.Drone drone,
+    static Map<String, Integer> countAllNearbyUncached(InventoryService inventoryService, World world,
+                                                                 Drone drone,
                                                                  EntityPlayerMP player, int radius) {
-        java.util.Map<String, Integer> totals = new java.util.LinkedHashMap<>();
+        Map<String, Integer> totals = new LinkedHashMap<>();
         try {
             if (world == null) return totals;
             IInventory droneInv = findDroneInventory(world, drone);
@@ -104,8 +112,8 @@ final class MachineRecipeRanker {
             double cx = drone != null ? drone.posX : 0;
             double cy = drone != null ? drone.posY : 64;
             double cz = drone != null ? drone.posZ : 0;
-            List<net.minecraft.tileentity.TileEntity> tiles = inventoryService.findAllInventoryTiles(world, cx, cy, cz, radius);
-            for (net.minecraft.tileentity.TileEntity te : tiles) {
+            List<TileEntity> tiles = inventoryService.findAllInventoryTiles(world, cx, cy, cz, radius);
+            for (TileEntity te : tiles) {
                 if (!(te instanceof IInventory)) continue;
                 IInventory inv = (IInventory) te;
                 for (int i = 0; i < inv.getSizeInventory(); i++) {
@@ -119,7 +127,7 @@ final class MachineRecipeRanker {
         return totals;
     }
 
-    static void addToTotals(java.util.Map<String, Integer> totals, ItemStack st) {
+    static void addToTotals(Map<String, Integer> totals, ItemStack st) {
         String key = totalsKey(st);
         totals.put(key, (totals.getOrDefault(key, 0)) + st.stackSize);
         for (String tag : ItemClassifier.getOreDictNames(st)) {
@@ -146,8 +154,8 @@ final class MachineRecipeRanker {
 
     static BlockLike toBlockLike(ItemStack st) {
         try {
-            net.minecraft.block.Block b = net.minecraft.block.Block.getBlockFromItem(st.getItem());
-            if (b == null || b == net.minecraft.init.Blocks.air) return null;
+            Block b = Block.getBlockFromItem(st.getItem());
+            if (b == null || b == Blocks.air) return null;
             return new BlockLike(b, st.getItemDamage());
         } catch (Throwable ignored) {
             return null;
@@ -156,14 +164,14 @@ final class MachineRecipeRanker {
 
     @Value
     private static class BlockLike {
-        net.minecraft.block.Block block;
+        Block block;
         int meta;
     }
 
-    static IInventory findDroneInventory(World world, li.cil.oc.common.entity.Drone drone) {
+    static IInventory findDroneInventory(World world, Drone drone) {
         if (drone == null) return null;
         try {
-            net.minecraft.inventory.IInventory inv = drone.mainInventory();
+            IInventory inv = drone.mainInventory();
             return inv;
         } catch (Throwable ignored) {
             return null;
@@ -172,10 +180,10 @@ final class MachineRecipeRanker {
 
     static MachineRecipeService.Availability assess(InventoryService inventoryService,
                                                     MachineRecipeService.NormalizedRecipe r,
-                                                    World world, li.cil.oc.common.entity.Drone drone,
+                                                    World world, Drone drone,
                                                     EntityPlayerMP player, int radius) {
         MachineRecipeService.Availability av = new MachineRecipeService.Availability();
-        java.util.Map<String, Integer> totals = countAllNearby(inventoryService, world, drone, player, radius);
+        Map<String, Integer> totals = countAllNearby(inventoryService, world, drone, player, radius);
         int needed = 0;
         int have = 0;
         int miss = 0;
@@ -193,7 +201,7 @@ final class MachineRecipeRanker {
                 if (totals.containsKey(key)) {
                     got = totals.get(key);
                 } else {
-                    for (java.util.Map.Entry<String, Integer> e : totals.entrySet()) {
+                    for (Map.Entry<String, Integer> e : totals.entrySet()) {
                         if (e.getKey().startsWith(reg.toLowerCase()) && e.getKey().endsWith(":" + meta)) {
                             got = Math.max(got, e.getValue());
                         }

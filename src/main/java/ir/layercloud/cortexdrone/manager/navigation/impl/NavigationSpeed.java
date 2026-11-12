@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.manager.navigation.impl;
 
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
 import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 
 /**
@@ -33,7 +34,7 @@ final class NavigationSpeed {
     /**
      * Multiplier stored on a new session: request first, then config.
      */
-    static double requested(ir.layercloud.cortexdrone.manager.navigation.NavigationRequest request,
+    static double requested(NavigationRequest request,
                             ModConfig config) {
         return DroneSpeed.clampMultiplier(request.getSpeedMultiplier() > 0.0
                 ? request.getSpeedMultiplier() : DroneSpeed.configured(config));

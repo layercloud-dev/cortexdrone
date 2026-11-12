@@ -42,10 +42,10 @@ public class WorldScanner {
     private final DroneLogger logger;
     private final ModConfig config;
 
-    private final java.util.Map<Long, java.util.Map<String, int[]>> nearbyResourceCache =
-            new java.util.HashMap<>();
-    private final java.util.Map<Long, Long> nearbyResourceExpiry =
-            new java.util.HashMap<>();
+    private final Map<Long, Map<String, int[]>> nearbyResourceCache =
+            new HashMap<>();
+    private final Map<Long, Long> nearbyResourceExpiry =
+            new HashMap<>();
 
     public JsonObject scanRoom3D(World world, int startX, int startY, int startZ, int maxRadius) {
         return RoomScanner.scanRoom3D(world, startX, startY, startZ, maxRadius);
@@ -196,7 +196,7 @@ public class WorldScanner {
             this.nearbyResourceExpiry.put(cacheKey, System.currentTimeMillis() + NEARBY_RESOURCES_TTL_MS);
             if (this.nearbyResourceCache.size() > 64) {
                 long now = System.currentTimeMillis();
-                java.util.Iterator<Long> it = this.nearbyResourceExpiry.keySet().iterator();
+                Iterator<Long> it = this.nearbyResourceExpiry.keySet().iterator();
                 while (it.hasNext()) {
                     Long k = it.next();
                     Long exp = this.nearbyResourceExpiry.get(k);

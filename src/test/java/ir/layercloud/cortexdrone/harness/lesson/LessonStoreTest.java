@@ -4,6 +4,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -16,7 +18,7 @@ public class LessonStoreTest {
 
         Lesson lesson = store.add("mining", "keep floor when digging down",
                 "Drone fell while mining down -> breaking the block below removes support -> keep a floor block below the drone.",
-                java.util.Collections.singletonList("fall"), "failure", false, "test");
+                Collections.singletonList("fall"), "failure", false, "test");
         assertNotNull(lesson);
         assertEquals("mining", lesson.getScope());
         assertEquals("failure", lesson.getOutcome());
@@ -68,7 +70,7 @@ public class LessonStoreTest {
         File root = Files.createTempDirectory("cortexdrone-lessons-dir").toFile();
         LessonStore store = new LessonStore(root);
         Lesson lesson = store.add("mining", "keep the floor",
-                "Symptom -> cause -> rule.", java.util.Collections.singletonList("fall"),
+                "Symptom -> cause -> rule.", Collections.singletonList("fall"),
                 "failure", true, "test");
         assertNotNull(lesson);
         assertNotNull(lesson.getPath());
@@ -125,7 +127,7 @@ public class LessonStoreTest {
         original.setTitle("keep a floor");
         original.setBody("Symptom -> cause -> rule.\nSecond line.");
         original.setOutcome("failure");
-        original.setTags(java.util.Arrays.asList("fall", "support"));
+        original.setTags(Arrays.asList("fall", "support"));
         original.setPinned(true);
         original.setUses(3);
         original.setSource("test");

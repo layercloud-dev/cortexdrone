@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.harness.tool;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 
@@ -65,7 +66,7 @@ public final class ToolSpec {
         JsonObject properties = this.parameters.getAsJsonObject("properties");
         List<String> order = new ArrayList<>();
         if (properties == null) return order;
-        for (java.util.Map.Entry<String, com.google.gson.JsonElement> entry : properties.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : properties.entrySet()) {
             order.add(entry.getKey());
         }
         return Collections.unmodifiableList(order);

@@ -122,7 +122,7 @@ public final class BreadcrumbService {
             List<Breadcrumb> waypoints = waypointsTo(history, index);
             if (waypoints.isEmpty()) continue;
             double trailCost = pathLength(currentX, currentY, currentZ, waypoints);
-            double pointToTarget = distance(point.getX() + DroneGeometry.CELL_CENTER, point.getY() + ir.layercloud.cortexdrone.service.navigation.DroneGeometry.HOVER_OFFSET,
+            double pointToTarget = distance(point.getX() + DroneGeometry.CELL_CENTER, point.getY() + DroneGeometry.HOVER_OFFSET,
                     point.getZ() + DroneGeometry.CELL_CENTER, targetX, targetY, targetZ);
             double progress = currentToTarget - pointToTarget;
 
@@ -157,7 +157,7 @@ public final class BreadcrumbService {
     private static double progressOf(double currentToTarget, TrailPlan plan,
                                      double targetX, double targetY, double targetZ) {
         Breadcrumb endpoint = plan.getEndpoint();
-        double pointToTarget = distance(endpoint.getX() + DroneGeometry.CELL_CENTER, endpoint.getY() + ir.layercloud.cortexdrone.service.navigation.DroneGeometry.HOVER_OFFSET,
+        double pointToTarget = distance(endpoint.getX() + DroneGeometry.CELL_CENTER, endpoint.getY() + DroneGeometry.HOVER_OFFSET,
                 endpoint.getZ() + DroneGeometry.CELL_CENTER, targetX, targetY, targetZ);
         return currentToTarget - pointToTarget;
     }
@@ -178,7 +178,7 @@ public final class BreadcrumbService {
         double pz = sz;
         for (Breadcrumb point : waypoints) {
             double x = point.getX() + DroneGeometry.CELL_CENTER;
-            double y = point.getY() + ir.layercloud.cortexdrone.service.navigation.DroneGeometry.HOVER_OFFSET;
+            double y = point.getY() + DroneGeometry.HOVER_OFFSET;
             double z = point.getZ() + DroneGeometry.CELL_CENTER;
             length += Math.sqrt((x - px) * (x - px) + (y - py) * (y - py) + (z - pz) * (z - pz));
             px = x;
@@ -247,7 +247,7 @@ public final class BreadcrumbService {
         private static boolean clear(World world, Breadcrumb point,
                                      double targetX, double targetY, double targetZ) {
             return VoxelRaycaster3D.isFatLineClear(world,
-                    point.getX() + DroneGeometry.CELL_CENTER, point.getY() + ir.layercloud.cortexdrone.service.navigation.DroneGeometry.HOVER_OFFSET, point.getZ() + DroneGeometry.CELL_CENTER,
+                    point.getX() + DroneGeometry.CELL_CENTER, point.getY() + DroneGeometry.HOVER_OFFSET, point.getZ() + DroneGeometry.CELL_CENTER,
                     targetX, targetY, targetZ);
         }
     }

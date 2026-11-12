@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.service.inventory;
 
+import ir.layercloud.cortexdrone.service.world.ScanLimits;
+
 /**
  * Radius and result bounds for read-only inventory tools.
  *
@@ -23,7 +25,7 @@ public final class InventoryLimits {
      * Largest accepted radius for a furnace scan; the scan policy owns it.
      */
     public static final int MAX_FURNACE_RADIUS =
-            ir.layercloud.cortexdrone.service.world.ScanLimits.MAX_FURNACE_RADIUS;
+            ScanLimits.MAX_FURNACE_RADIUS;
     /**
      * Default search radius.
      */

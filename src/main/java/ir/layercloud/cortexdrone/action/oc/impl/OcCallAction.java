@@ -68,11 +68,22 @@ public final class OcCallAction implements Action<OcContext> {
                     "direct", declared.direct()));
         } catch (Throwable failure) {
             Throwable cause = failure.getCause() != null ? failure.getCause() : failure;
+            String message = cause.getMessage() != null ? cause.getMessage() : "";
+            String hint = "method";
+            if ("invalid side".equalsIgnoreCase(message) || "unsupported side".equalsIgnoreCase(message)) {
+                hint = "Pass a side integer 0..5 (down=0, up=1, north=2, south=3, west=4, east=5) "
+                        + "or a side name such as \"down\". The drone's drop signature is drop(side, count); "
+                        + "select(slot) first for inventory slots.";
+            } else if ("invalid slot".equalsIgnoreCase(message)) {
+                hint = "Inventory slots are 1-based: select(1) is the first slot. state.inventory "
+                        + "entries expose ocSlot for exactly this.";
+            }
             context.result(OcResult.failure(
                     "OpenComputers callback '" + method + "' failed: "
                             + cause.getClass().getSimpleName()
-                            + (cause.getMessage() != null ? ": " + cause.getMessage() : ""),
-                    "method", method));
+                            + (message.isEmpty() ? "" : ": " + message),
+                    "method", method,
+                    "hint", hint));
         }
     }
 

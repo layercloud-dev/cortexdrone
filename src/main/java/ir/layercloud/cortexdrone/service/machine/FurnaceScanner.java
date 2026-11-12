@@ -8,6 +8,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -40,7 +41,7 @@ public final class FurnaceScanner {
                 }
             }
         }
-        tiles.sort(java.util.Comparator.comparingDouble(
+        tiles.sort(Comparator.comparingDouble(
                 tile -> LoadedTiles.distanceSq(tile, x, y, z)));
         return tiles;
     }

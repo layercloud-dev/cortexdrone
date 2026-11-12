@@ -10,7 +10,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The append-only {@code index.jsonl} beside the session transcripts.
@@ -87,8 +89,8 @@ final class SessionIndex {
     /**
      * One counter per known outcome, in enum order.
      */
-    java.util.Map<String, Integer> counts() {
-        java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+    Map<String, Integer> counts() {
+        Map<String, Integer> counts = new LinkedHashMap<>();
         for (SessionOutcome outcome : SessionOutcome.values()) counts.put(outcome.id(), 0);
         for (JsonObject entry : read()) {
             String outcome = outcomeOf(entry);

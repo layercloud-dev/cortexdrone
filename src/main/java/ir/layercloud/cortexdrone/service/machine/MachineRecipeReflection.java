@@ -5,6 +5,8 @@ import lombok.experimental.UtilityClass;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,7 +22,7 @@ final class MachineRecipeReflection {
         List<MachineRecipeService.NormalizedRecipe> out = new ArrayList<>();
         try {
             Class<?> anvil = Class.forName(HbmDescriptor.recipeClasses().get(0));
-            java.lang.reflect.Method getCons = anvil.getMethod("getConstruction");
+            Method getCons = anvil.getMethod("getConstruction");
             List<?> cons = (List<?>) getCons.invoke(null);
             if (cons != null) {
                 int ctorIndex = 0;
@@ -34,7 +36,7 @@ final class MachineRecipeReflection {
             // holds 1-input plate smithing but never the 2-input hot/mold pairs.
             // Discovered by class name (AnvilSmithingHotRecipe etc.), not hardcoded lists.
             try {
-                java.lang.reflect.Method getSm = anvil.getMethod("getSmithing");
+                Method getSm = anvil.getMethod("getSmithing");
                 List<?> smith = (List<?>) getSm.invoke(null);
                 if (smith != null) {
                     for (Object recipe : smith) {
@@ -50,13 +52,13 @@ final class MachineRecipeReflection {
             // kind via the same alias map as JSON files, no static recipe list.
             try {
                 Class<?> serCls = Class.forName(HbmDescriptor.recipeClasses().get(1));
-                java.lang.reflect.Field handlersF = serCls.getField("recipeHandlers");
+                Field handlersF = serCls.getField("recipeHandlers");
                 List<?> handlers = (List<?>) handlersF.get(null);
                 if (handlers != null) {
                     for (Object handler : handlers) {
                         if (handler == null) continue;
                         try {
-                            java.lang.reflect.Field ordF = handler.getClass().getField("recipeOrderedList");
+                            Field ordF = handler.getClass().getField("recipeOrderedList");
                             ordF.setAccessible(true);
                             Object ordVal = ordF.get(handler);
                             if (!(ordVal instanceof List)) continue;
@@ -93,9 +95,9 @@ final class MachineRecipeReflection {
     private static void addGeneric(List<MachineRecipeService.NormalizedRecipe> out, String className, String machine) {
         try {
             Class<?> cls = Class.forName(className);
-            java.lang.reflect.Field inst = cls.getField("INSTANCE");
+            Field inst = cls.getField("INSTANCE");
             Object instObj = inst.get(null);
-            java.lang.reflect.Field ord = instObj.getClass().getField("recipeOrderedList");
+            Field ord = instObj.getClass().getField("recipeOrderedList");
             List<?> ordList = (List<?>) ord.get(instObj);
             if (ordList != null) {
                 for (Object genRecipe : ordList) {
@@ -150,7 +152,7 @@ final class MachineRecipeReflection {
             boolean hot = cls.contains("Hot");
             MachineRecipeService.NormalizedRecipe r = new MachineRecipeService.NormalizedRecipe();
             r.machine = "anvil";
-            java.lang.reflect.Field tierF = recipe.getClass().getField("tier");
+            Field tierF = recipe.getClass().getField("tier");
             r.tierLower = tierF.getInt(recipe);
             r.tierUpper = -1;
             if (hot) {
@@ -169,11 +171,11 @@ final class MachineRecipeReflection {
                 r.overlay = "SMITHING";
                 r.displayName = "smithing";
             }
-            java.lang.reflect.Field outF = recipe.getClass().getDeclaredField("output");
+            Field outF = recipe.getClass().getDeclaredField("output");
             outF.setAccessible(true);
             ItemStack outSt = (ItemStack) outF.get(recipe);
-            java.lang.reflect.Field leftF = recipe.getClass().getDeclaredField("left");
-            java.lang.reflect.Field rightF = recipe.getClass().getDeclaredField("right");
+            Field leftF = recipe.getClass().getDeclaredField("left");
+            Field rightF = recipe.getClass().getDeclaredField("right");
             leftF.setAccessible(true);
             rightF.setAccessible(true);
             Object left = leftF.get(recipe);
@@ -204,7 +206,7 @@ final class MachineRecipeReflection {
         try {
             MachineRecipeService.NormalizedRecipe r = new MachineRecipeService.NormalizedRecipe();
             r.machine = machine;
-            java.lang.reflect.Field nameF = genRecipe.getClass().getDeclaredField("name");
+            Field nameF = genRecipe.getClass().getDeclaredField("name");
             nameF.setAccessible(true);
             r.name = (String) nameF.get(genRecipe);
             String nw = (String) genRecipe.getClass().getField("nameWrapper").get(genRecipe);
@@ -312,7 +314,7 @@ final class MachineRecipeReflection {
                         if (cand.getItem() == null) continue;
                         float ch = 1.0f;
                         try {
-                            java.lang.reflect.Field cf = o.getClass().getField("chance");
+                            Field cf = o.getClass().getField("chance");
                             ch = cf.getFloat(o);
                         } catch (Throwable ignored) {
                         }

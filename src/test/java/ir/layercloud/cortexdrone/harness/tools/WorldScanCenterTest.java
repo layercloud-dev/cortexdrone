@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
 import com.google.gson.JsonObject;
+import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -14,7 +15,7 @@ import static org.junit.Assert.*;
  */
 public class WorldScanCenterTest {
     private static JsonObject schema(String tool) {
-        for (ir.layercloud.cortexdrone.harness.tool.ToolSpec spec : WorldTools.specs()) {
+        for (ToolSpec spec : WorldTools.specs()) {
             if (spec.getName().equals(tool)) return spec.getParameters();
         }
         return null;
@@ -58,7 +59,7 @@ public class WorldScanCenterTest {
     @Test
     public void findDistantSearchesOutwardFromTheDrone() {
         String description = null;
-        for (ir.layercloud.cortexdrone.harness.tool.ToolSpec spec : WorldTools.specs()) {
+        for (ToolSpec spec : WorldTools.specs()) {
             if (spec.getName().equals("find_distant")) description = spec.getDescription();
         }
         assertNotNull(description);

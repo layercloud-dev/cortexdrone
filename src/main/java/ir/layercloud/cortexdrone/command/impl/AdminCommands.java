@@ -1,11 +1,13 @@
 package ir.layercloud.cortexdrone.command.impl;
 
+import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DebugEntry;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.harness.tool.ToolContext;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 import net.minecraft.command.ICommandSender;
@@ -155,8 +157,8 @@ final class AdminCommands {
         final EntityPlayerMP sender = player;
         final String script = code;
         CortexDroneMod.AGENT_POOL.submit(() -> {
-            final com.google.gson.JsonObject result = manager.getJsEngine().execute(
-                    new ir.layercloud.cortexdrone.harness.tool.ToolContext(
+            final JsonObject result = manager.getJsEngine().execute(
+                    new ToolContext(
                             manager.getHarness(), controller, sender, 0),
                     script, manager.getConfig().getExecuteTimeoutMs());
             manager.getMod().queueMain(

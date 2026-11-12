@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.config;
 
+import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -52,17 +53,19 @@ public class ModConfigDefaultsTest {
         ModConfig config = new ModConfig();
         config.setDroneSpeedMultiplier(1000.0D);
         assertTrue(config.sanitized().getDroneSpeedMultiplier()
-                <= ir.layercloud.cortexdrone.service.navigation.DroneSpeed.MAX_MULTIPLIER);
+                <= DroneSpeed.MAX_MULTIPLIER);
 
         config.setDroneSpeedMultiplier(0.0001D);
         assertTrue(config.sanitized().getDroneSpeedMultiplier()
-                >= ir.layercloud.cortexdrone.service.navigation.DroneSpeed.MIN_MULTIPLIER);
+                >= DroneSpeed.MIN_MULTIPLIER);
     }
 
     @Test
     public void nullCollectionsAreRepaired() {
         ModConfig config = new ModConfig();
         config.setSavedDrones(null);
+        config.setProtectedZones(null);
         assertNotNull(config.sanitized().getSavedDrones());
+        assertNotNull(config.sanitized().getProtectedZones());
     }
 }

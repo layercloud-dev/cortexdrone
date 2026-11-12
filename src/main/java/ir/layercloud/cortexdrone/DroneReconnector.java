@@ -1,6 +1,8 @@
 package ir.layercloud.cortexdrone;
 
+import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
+import ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.WorldServer;
@@ -36,9 +38,9 @@ final class DroneReconnector {
 
         ModConfig config();
 
-        ir.layercloud.cortexdrone.config.DroneLogger logger();
+        DroneLogger logger();
 
-        ir.layercloud.cortexdrone.manager.visuals.impl.VisualsManager visualsManager();
+        VisualsManager visualsManager();
 
         /**
          * Applies the saved aura/LED state and restores the aura action.

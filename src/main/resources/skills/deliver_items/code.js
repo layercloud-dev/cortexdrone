@@ -19,9 +19,19 @@ if (!player || player.ok === false) {
     return {ok: false, error: 'player is offline or unavailable'};
 }
 
-var moved = drone.goto({x: player.blockX, y: player.blockY + 2, z: player.blockZ, allow_dig: false});
+var moved = drone.goto({x: player.blockX, y: player.blockY + 2, z: player.blockZ,
+    allow_dig: cfg.allow_dig === true});
 if (!moved || moved.arrived === false) {
-    return {ok: false, error: 'could not reach the player', navigation: moved};
+    // A player inside a covered base cannot be reached by a straight line.
+    // Reuse the shared route resolver (remembered shaft -> escape -> honest
+    // failure) instead of repeating the same failing goto.
+    var reached = skills.call('return_to_player', {
+        player: playerName,
+        allow_dig: cfg.allow_dig === true
+    });
+    if (!reached || reached.ok === false) {
+        return {ok: false, error: 'could not reach the player', navigation: moved, route: reached};
+    }
 }
 
 var given = drone.giveToPlayer({filter: filter, count: count, player: playerName});

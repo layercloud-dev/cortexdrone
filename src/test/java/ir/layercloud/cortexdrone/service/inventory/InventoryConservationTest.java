@@ -5,6 +5,7 @@ import net.minecraft.item.ItemStack;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -56,7 +57,7 @@ public class InventoryConservationTest {
         source.prefill(0, stack(20));
         FakeInventory target = new FakeInventory(1);
 
-        int moved = InventoryTransfers.spreadStackAcross(source, 0, java.util.Collections.singletonList(target));
+        int moved = InventoryTransfers.spreadStackAcross(source, 0, Collections.singletonList(target));
 
         assertEquals(20, moved);
         assertNull("the moved slot must be cleared", source.getStackInSlot(0));
@@ -70,7 +71,7 @@ public class InventoryConservationTest {
         FakeInventory full = new FakeInventory(1);
         full.prefill(0, stack(64));
 
-        int moved = InventoryTransfers.spreadStackAcross(source, 0, java.util.Collections.singletonList(full));
+        int moved = InventoryTransfers.spreadStackAcross(source, 0, Collections.singletonList(full));
 
         assertEquals(0, moved);
         assertEquals(64, source.totalItems());
@@ -79,7 +80,7 @@ public class InventoryConservationTest {
     @Test
     public void negativeOrEmptySourceIsIgnored() {
         FakeInventory source = new FakeInventory(1);
-        assertEquals(0, InventoryTransfers.spreadStackAcross(source, 0, java.util.Collections.<FakeInventory>emptyList()));
+        assertEquals(0, InventoryTransfers.spreadStackAcross(source, 0, Collections.<FakeInventory>emptyList()));
         assertEquals(0, InventoryTransfers.spreadStackAcross(source, 0, null));
         assertEquals(0, InventoryTransfers.spreadStackAcross(null, 0, null));
     }

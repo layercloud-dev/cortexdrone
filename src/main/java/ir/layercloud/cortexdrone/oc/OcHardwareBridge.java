@@ -1,8 +1,12 @@
 package ir.layercloud.cortexdrone.oc;
 
 import ir.layercloud.cortexdrone.oc.impl.InertMachineArchitecture;
+import li.cil.oc.api.Network;
+import li.cil.oc.api.network.Component;
 import li.cil.oc.api.network.Connector;
+import li.cil.oc.api.network.Node;
 import li.cil.oc.common.entity.Drone;
+import li.cil.oc.server.machine.Machine;
 import scala.Enumeration;
 import scala.collection.mutable.Stack;
 
@@ -21,7 +25,7 @@ public class OcHardwareBridge {
 
     public OcHardwareBridge() {
         try {
-            this.remainingPauseField = li.cil.oc.server.machine.Machine.class.getDeclaredField("remainingPause");
+            this.remainingPauseField = Machine.class.getDeclaredField("remainingPause");
             this.remainingPauseField.setAccessible(true);
         } catch (Throwable ignored) {
         }
@@ -59,10 +63,10 @@ public class OcHardwareBridge {
     public boolean ensureMachineRunningState(Drone drone) {
         if (drone == null) return false;
         try {
-            li.cil.oc.api.network.Node node = drone.node();
+            Node node = drone.node();
             if (node != null) {
                 if (node.network() == null) {
-                    li.cil.oc.api.Network.joinNewNetwork(node);
+                    Network.joinNewNetwork(node);
                 }
                 if (node instanceof Connector) {
                     Connector conn = (Connector) node;
@@ -76,8 +80,8 @@ public class OcHardwareBridge {
             drone.globalBuffer_$eq(drone.globalBufferSize());
 
             Object machineObj = this.droneMachineField != null ? this.droneMachineField.get(drone) : null;
-            if (machineObj instanceof li.cil.oc.server.machine.Machine) {
-                li.cil.oc.server.machine.Machine m = (li.cil.oc.server.machine.Machine) machineObj;
+            if (machineObj instanceof Machine) {
+                Machine m = (Machine) machineObj;
                 m.maxComponents_$eq(64);
                 // A paused ghost machine never boots an EEPROM, so OC's chunk-save path
                 // (Machine.save -> architecture.save) would otherwise throw NPE every save.
@@ -90,7 +94,7 @@ public class OcHardwareBridge {
                 }
                 if (m.node() != null) {
                     if (m.node().network() == null) {
-                        li.cil.oc.api.Network.joinNewNetwork(m.node());
+                        Network.joinNewNetwork(m.node());
                     }
                     m.node().setLocalBufferSize(100000.0);
                     m.node().changeBuffer(100000.0);
@@ -114,8 +118,8 @@ public class OcHardwareBridge {
             if (drone.control() == null && !drone.worldObj.isRemote
                     && this.componentNodeField != null && this.droneControlField != null) {
                 Object compProxy = Proxy.newProxyInstance(
-                        li.cil.oc.api.network.Component.class.getClassLoader(),
-                        new Class<?>[]{li.cil.oc.api.network.Component.class},
+                        Component.class.getClassLoader(),
+                        new Class<?>[]{Component.class},
                         (proxy, method, args) -> {
                             String name = method.getName();
                             switch (name) {

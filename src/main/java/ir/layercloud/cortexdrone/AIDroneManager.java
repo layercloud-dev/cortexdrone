@@ -15,6 +15,7 @@ import ir.layercloud.cortexdrone.harness.session.SessionOutcome;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.task.TaskCoordinator;
 import ir.layercloud.cortexdrone.harness.tool.MainThreadCall;
+import ir.layercloud.cortexdrone.harness.tool.Threads;
 import ir.layercloud.cortexdrone.manager.ActionRegistry;
 import ir.layercloud.cortexdrone.manager.TickManager;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
@@ -34,6 +35,7 @@ import ir.layercloud.cortexdrone.service.question.ServerQuestionTransport;
 import ir.layercloud.cortexdrone.service.text.TextSanitizer;
 import ir.layercloud.cortexdrone.service.world.DamageJournal;
 import ir.layercloud.cortexdrone.service.world.DocLookupService;
+import ir.layercloud.cortexdrone.service.world.ProtectionZones;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import li.cil.oc.common.entity.Drone;
 import lombok.Getter;
@@ -42,6 +44,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraftforge.event.ServerChatEvent;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.concurrent.Callable;
 
 @Getter
@@ -132,6 +135,8 @@ public class AIDroneManager {
         ModPaths.ensure(this.configRoot);
         this.configFile = ModPaths.configFile(this.configRoot);
         this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
+        ProtectionZones.configure(this.config.getProtectedZones());
+        ProtectionZones.loadSupplemental(new File(this.configRoot, "protected-zones.json"));
         this.chunkLoadingManager.attach();
         this.harness = Harness.create(this, this.config, new SkillLibrary(this.configRoot));
         this.logger.setDebugLogFile(ModPaths.logFile(this.configRoot));
@@ -163,6 +168,8 @@ public class AIDroneManager {
             this.harness.journal().closeActive(SessionOutcome.INTERRUPTED, "config_reload");
         }
         this.config = ModConfig.load(this.configFile, CortexDroneMod.GSON);
+        ProtectionZones.configure(this.config.getProtectedZones());
+        ProtectionZones.loadSupplemental(new File(this.configRoot, "protected-zones.json"));
         if (this.harness != null) {
             this.harness = Harness.create(this, this.config,
                     new SkillLibrary(this.configRoot));
@@ -184,7 +191,7 @@ public class AIDroneManager {
     }
 
     public <T> T callOnMainThread(final Callable<T> callable, long timeoutMs) throws Exception {
-        if (ir.layercloud.cortexdrone.harness.tool.Threads.isServerThread()) {
+        if (Threads.isServerThread()) {
             return callable.call();
         }
         MainThreadCall.Result<T> result = MainThreadCall.call(this.mod::queueMain, callable, timeoutMs);
@@ -272,7 +279,7 @@ public class AIDroneManager {
     /**
      * Read-only view of every live controller.
      */
-    public java.util.Collection<DroneController> controllers() {
+    public Collection<DroneController> controllers() {
         return this.registry.all();
     }
 

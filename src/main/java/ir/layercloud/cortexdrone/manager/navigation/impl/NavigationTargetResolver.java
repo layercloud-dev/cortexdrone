@@ -68,7 +68,7 @@ final class NavigationTargetResolver {
             if (!ItemClassifier.isPassableVoxel(world, bx, by, bz)) {
                 int[] open = FlightPathfinder.findNearestPassableVoxel(world, bx, by, bz, 3);
                 if (open != null) {
-                    return new NavigationTarget(open[0] + DroneGeometry.CELL_CENTER, open[1] + ir.layercloud.cortexdrone.service.navigation.DroneGeometry.HOVER_OFFSET,
+                    return new NavigationTarget(open[0] + DroneGeometry.CELL_CENTER, open[1] + DroneGeometry.HOVER_OFFSET,
                             open[2] + DroneGeometry.CELL_CENTER, false);
                 }
             }

@@ -8,6 +8,7 @@ import ir.layercloud.cortexdrone.service.world.BuildSiteFinder;
 import ir.layercloud.cortexdrone.service.world.SiteSurvey;
 import ir.layercloud.cortexdrone.service.world.StructureArchitect;
 import ir.layercloud.cortexdrone.service.world.StructurePlan;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.MathHelper;
@@ -27,31 +28,31 @@ public final class WorldBuildPlanTools implements ToolProvider {
     /**
      * Smallest footprint edge for a survey or a planned structure.
      */
-    public static final int MIN_PLAN_SIDE = ir.layercloud.cortexdrone.service.world.WorldBounds.MIN_PLAN_SIDE;
+    public static final int MIN_PLAN_SIDE = WorldBounds.MIN_PLAN_SIDE;
     /**
      * Largest footprint edge for a survey or a planned structure.
      */
-    public static final int MAX_SITE_SIDE = ir.layercloud.cortexdrone.service.world.WorldBounds.MAX_SITE_SIDE;
+    public static final int MAX_SITE_SIDE = WorldBounds.MAX_SITE_SIDE;
     /**
      * Largest footprint the blueprint planner will generate.
      */
-    public static final int MAX_PLAN_SIDE = ir.layercloud.cortexdrone.service.world.WorldBounds.MAX_PLAN_SIDE;
+    public static final int MAX_PLAN_SIDE = WorldBounds.MAX_PLAN_SIDE;
     /**
      * Shortest wall the blueprint planner will generate.
      */
-    public static final int MIN_PLAN_HEIGHT = ir.layercloud.cortexdrone.service.world.WorldBounds.MIN_PLAN_HEIGHT;
+    public static final int MIN_PLAN_HEIGHT = WorldBounds.MIN_PLAN_HEIGHT;
     /**
      * Tallest wall the blueprint planner will generate.
      */
-    public static final int MAX_PLAN_HEIGHT = ir.layercloud.cortexdrone.service.world.WorldBounds.MAX_PLAN_HEIGHT;
+    public static final int MAX_PLAN_HEIGHT = WorldBounds.MAX_PLAN_HEIGHT;
     /**
      * Smallest headroom a site survey will check.
      */
-    public static final int MIN_SURVEY_HEIGHT = ir.layercloud.cortexdrone.service.world.WorldBounds.MIN_SURVEY_HEIGHT;
+    public static final int MIN_SURVEY_HEIGHT = WorldBounds.MIN_SURVEY_HEIGHT;
     /**
      * Largest headroom a site survey will check.
      */
-    public static final int MAX_SURVEY_HEIGHT = ir.layercloud.cortexdrone.service.world.WorldBounds.MAX_SURVEY_HEIGHT;
+    public static final int MAX_SURVEY_HEIGHT = WorldBounds.MAX_SURVEY_HEIGHT;
 
     private final AIDroneManager manager;
     private final StructureArchitect structureArchitect = new StructureArchitect();

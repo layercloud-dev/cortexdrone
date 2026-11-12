@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.agent;
 
+import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.lesson.Lesson;
@@ -53,7 +54,7 @@ public final class ContextRenderer {
             out.append("- held: ").append(held != null && held.stackSize > 0
                     ? held.getDisplayName() + " x" + held.stackSize : "empty").append('\n');
             try {
-                com.google.gson.JsonObject look = WorldScanner.raycastPlayerLook(player.worldObj, player, 40.0D);
+                JsonObject look = WorldScanner.raycastPlayerLook(player.worldObj, player, 40.0D);
                 if (look != null && look.has("x") && look.has("y") && look.has("z")) {
                     out.append("- crosshair block: ").append(look.get("x").getAsInt()).append(", ")
                             .append(look.get("y").getAsInt()).append(", ")

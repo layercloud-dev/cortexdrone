@@ -2,6 +2,10 @@ package ir.layercloud.cortexdrone.harness.agent;
 
 import org.junit.Test;
 
+import java.io.EOFException;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -42,9 +46,9 @@ public class LlmClientTokenBudgetTest {
     public void aDroppedConnectionIsRetryable() {
         assertTrue(LlmClient.isNetworkFailure(new IllegalStateException(
                 "Could not read the gateway response",
-                new java.net.SocketException("Unexpected end of file from server"))));
-        assertTrue(LlmClient.isNetworkFailure(new java.io.EOFException("closed")));
-        assertTrue(LlmClient.isNetworkFailure(new java.net.SocketTimeoutException("read timed out")));
+                new SocketException("Unexpected end of file from server"))));
+        assertTrue(LlmClient.isNetworkFailure(new EOFException("closed")));
+        assertTrue(LlmClient.isNetworkFailure(new SocketTimeoutException("read timed out")));
         assertFalse(LlmClient.isNetworkFailure(new IllegalArgumentException("bad key")));
     }
 }

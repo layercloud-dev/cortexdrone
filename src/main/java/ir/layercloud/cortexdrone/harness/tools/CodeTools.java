@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.harness.tools;
 
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.AIDroneManager;
+import ir.layercloud.cortexdrone.harness.agent.LoopTracer;
 import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.code.CodeLimits;
 
@@ -58,10 +59,10 @@ public final class CodeTools implements ToolProvider {
                     ? arguments.get("timeout_ms").getAsLong()
                     : this.manager.getConfig().getExecuteTimeoutMs();
             this.manager.getLogger().log("CODEMODE", context.controller(), "execute started",
-                    ir.layercloud.cortexdrone.harness.agent.LoopTracer.snippet(code, 600));
+                    LoopTracer.snippet(code, 600));
             JsonObject result = context.js().execute(context, code, timeout);
             this.manager.getLogger().log("CODEMODE", context.controller(), "execute finished",
-                    ir.layercloud.cortexdrone.harness.agent.LoopTracer.snippet(result.toString(), 900));
+                    LoopTracer.snippet(result.toString(), 900));
             return result;
         });
     }

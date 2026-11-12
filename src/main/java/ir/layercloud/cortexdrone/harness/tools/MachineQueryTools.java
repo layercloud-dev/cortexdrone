@@ -8,6 +8,7 @@ import ir.layercloud.cortexdrone.service.inventory.InventoryService;
 import ir.layercloud.cortexdrone.service.machine.FurnaceScanner;
 import ir.layercloud.cortexdrone.service.machine.MachineTileInspector;
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
+import li.cil.oc.common.entity.Drone;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
@@ -38,7 +39,7 @@ public final class MachineQueryTools {
                     .parameters(ToolSchema.object()
                             .optionalInt("radius", "Search radius, " + InventoryLimits.MIN_RADIUS + ".." + InventoryLimits.MAX_FURNACE_RADIUS + ".",
                                     InventoryLimits.MIN_RADIUS, InventoryLimits.MAX_FURNACE_RADIUS,
-                                    ir.layercloud.cortexdrone.harness.tool.ScanLimits.DEFAULT_FURNACE_RADIUS))
+                                    ScanLimits.DEFAULT_FURNACE_RADIUS))
                     .affinity(ToolAffinity.MAIN).timeoutMs(ToolTimeouts.FAST_MS).build(),
             ToolSpec.builder("scan_machines")
                     .description("Scan nearby machine tiles and describe each one: kind, power/fluid status, "
@@ -62,9 +63,9 @@ public final class MachineQueryTools {
     }
 
     private static JsonObject furnaces(DroneController ctrl, JsonObject args) {
-        li.cil.oc.common.entity.Drone drone = ctrl.drone;
+        Drone drone = ctrl.drone;
         int radius = InventoryToolSupport.furnaceRadius(args,
-                ir.layercloud.cortexdrone.harness.tool.ScanLimits.DEFAULT_FURNACE_RADIUS);
+                ScanLimits.DEFAULT_FURNACE_RADIUS);
         List<TileEntity> tiles = FurnaceScanner.findAllFurnaceTiles(
                 drone.worldObj, drone.posX, drone.posY, drone.posZ, radius);
         JsonArray furnaces = new JsonArray();
@@ -91,7 +92,7 @@ public final class MachineQueryTools {
     }
 
     private static JsonObject machines(DroneController ctrl, JsonObject args) {
-        li.cil.oc.common.entity.Drone drone = ctrl.drone;
+        Drone drone = ctrl.drone;
         int radius = InventoryToolSupport.radius(args, InventoryLimits.DEFAULT_RADIUS);
         String machine = InventoryToolSupport.machine(args);
         String wanted = MachineTileInspector.normalizeMachineAlias(machine);

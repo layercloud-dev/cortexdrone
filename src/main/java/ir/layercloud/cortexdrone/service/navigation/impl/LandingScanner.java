@@ -5,6 +5,7 @@ import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockFalling;
 import net.minecraft.block.material.Material;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
@@ -356,7 +357,7 @@ public final class LandingScanner {
 
         @Override
         public boolean isFallingBlock(int x, int y, int z) {
-            return world.getBlock(x, y, z) instanceof net.minecraft.block.BlockFalling;
+            return world.getBlock(x, y, z) instanceof BlockFalling;
         }
 
         @Override

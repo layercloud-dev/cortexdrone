@@ -64,7 +64,7 @@ final class RecipeInputReader {
         }
     }
 
-    private static boolean isDuplicate(java.util.List<JsonObject> existing, JsonObject candidate) {
+    private static boolean isDuplicate(List<JsonObject> existing, JsonObject candidate) {
         if (!candidate.has("dict")) return false;
         String dict = candidate.get("dict").getAsString();
         int amount = candidate.has("amount") ? candidate.get("amount").getAsInt() : 0;

@@ -9,6 +9,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -83,7 +85,7 @@ public class OcCodeModeTest {
 
     @Test
     public void realOcSpecsAreInTheModelCatalog() {
-        java.util.Set<String> names = new java.util.HashSet<>();
+        Set<String> names = new HashSet<>();
         for (ToolSpec spec : ToolCatalog.standard()) names.add(spec.getName());
         assertTrue(names.contains("oc_state"));
         assertTrue(names.contains("oc_methods"));

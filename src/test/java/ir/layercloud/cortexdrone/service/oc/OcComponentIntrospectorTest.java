@@ -2,10 +2,12 @@ package ir.layercloud.cortexdrone.service.oc;
 
 import org.junit.Test;
 
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -17,7 +19,7 @@ import static org.junit.Assert.*;
 @SuppressWarnings("unused")
 public class OcComponentIntrospectorTest {
     @Retention(RetentionPolicy.RUNTIME)
-    @Target(java.lang.annotation.ElementType.METHOD)
+    @Target(ElementType.METHOD)
     public @interface FakeCallback {
         String value() default "";
 
@@ -81,7 +83,7 @@ public class OcComponentIntrospectorTest {
     public void ocMethodSortsAndFiltersByNameAndDoc() {
         OcMethod move = new OcMethod("move", "Move the drone.", false, false, false, 0, "Fake");
         OcMethod detect = new OcMethod("detect", "Detect a block.", true, false, false, 0, "Fake");
-        List<OcMethod> sorted = OcMethod.sorted(java.util.Arrays.asList(move, detect));
+        List<OcMethod> sorted = OcMethod.sorted(Arrays.asList(move, detect));
         assertEquals("detect", sorted.get(0).name());
         assertEquals("move", sorted.get(1).name());
 

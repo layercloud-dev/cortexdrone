@@ -173,12 +173,30 @@ tasks.register('deploy') {
         // atomic move swaps the directory entry and leaves the old inode
         // readable by the running server, so the next restart loads the new jar.
         def tempJar = new File(targetDir, outJar.name + '.tmp')
+        // If the target is already byte-identical, do not fight the running
+        // server for the file handle. This keeps `gradlew build` idempotent on
+        // Windows and avoids touching a jar the server is currently reading.
+        if (targetJar.isFile() && Files.mismatch(outJar.toPath(), targetJar.toPath()) == -1L) {
+            println "Already deployed ${targetJar}"
+            return
+        }
         Files.copy(outJar.toPath(), tempJar.toPath(), StandardCopyOption.REPLACE_EXISTING)
         try {
             Files.move(tempJar.toPath(), targetJar.toPath(),
                     StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
         } catch (AtomicMoveNotSupportedException ignored) {
-            Files.move(tempJar.toPath(), targetJar.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            Files.copy(outJar.toPath(), targetJar.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        } catch (java.nio.file.FileSystemException locked) {
+            // Windows keeps the running server's jar open. A rename fails, but
+            // the JVM opens jars with FILE_SHARE_WRITE, so a direct copy still
+            // replaces the bytes; the running server keeps its own handle and
+            // the next restart loads the new jar. Falling back here means
+            // `gradlew build` no longer fails on a live server.
+            Files.copy(outJar.toPath(), targetJar.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            println "Jar was locked by a running server; copied in place (restart to load it)."
+        } finally {
+            //noinspection ResultOfMethodCallIgnored
+            tempJar.delete()
         }
 
         // Retire older versions after the new jar is in place. Deleting a file

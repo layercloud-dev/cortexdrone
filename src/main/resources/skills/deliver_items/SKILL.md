@@ -7,8 +7,11 @@ triggers:
   - "bring it back to me"
   - "hand over the loot"
   - "deliver the haul"
-requires: []
-version: 2
+  - "come and give items to me"
+  - "drop it to the base chests"
+requires:
+  - "return_to_player"
+version: 3
 uses: 0
 code: code.js
 ---

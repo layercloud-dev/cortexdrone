@@ -28,22 +28,89 @@ public final class DronePhysicsService {
     private static final int MAX_SUBSTEPS = 16;
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {
+        return describeNearestObstruction(world, x, y, z, Double.NaN, Double.NaN, Double.NaN);
+    }
+
+    /**
+     * Direction-aware obstruction description.
+     *
+     * <p>The old version returned the first solid block in a -1..1 scan, which
+     * is usually the floor or a block <em>behind</em> the drone. The live log is
+     * full of STUCK lines blaming Stone two blocks behind the drone while the
+     * actual obstruction was a leaf in front. This version checks the body and
+     * head first, then scores neighbouring blocks by how close they are to the
+     * commanded waypoint direction.</p>
+     *
+     * @param tx waypoint X, or NaN when no direction is known
+     */
+    public static String describeNearestObstruction(World world, double x, double y, double z,
+                                                    double tx, double ty, double tz) {
+        if (world == null) return "none";
         int bx = MathHelper.floor_double(x);
         int by = MathHelper.floor_double(y);
         int bz = MathHelper.floor_double(z);
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    if (!ItemClassifier.isPassableVoxel(world, bx + dx, by + dy, bz + dz)) {
-                        Block b = world.getBlock(bx + dx, by + dy, bz + dz);
-                        if (b != null) {
-                            return b.getLocalizedName() + "@(" + (bx + dx) + "," + (by + dy) + "," + (bz + dz) + ")";
-                        }
+
+        if (!ItemClassifier.isPassableVoxel(world, bx, by, bz)) {
+            Block body = world.getBlock(bx, by, bz);
+            if (body != null) {
+                return describe(body, bx, by, bz, "body");
+            }
+        }
+        if (!ItemClassifier.isPassableVoxel(world, bx, by + 1, bz)) {
+            Block head = world.getBlock(bx, by + 1, bz);
+            if (head != null) {
+                return describe(head, bx, by + 1, bz, "head");
+            }
+        }
+
+        boolean directed = !Double.isNaN(tx) && !Double.isNaN(ty) && !Double.isNaN(tz);
+        double dx = directed ? tx - x : 0.0D;
+        double dy = directed ? ty - y : 0.0D;
+        double dz = directed ? tz - z : 0.0D;
+        double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        Block best = null;
+        int bestX = 0;
+        int bestY = 0;
+        int bestZ = 0;
+        String bestRole = "";
+        double bestScore = Double.MAX_VALUE;
+        for (int ox = -1; ox <= 1; ox++) {
+            for (int oy = -1; oy <= 1; oy++) {
+                for (int oz = -1; oz <= 1; oz++) {
+                    if (ox == 0 && oy == 0 && oz == 0) continue;
+                    int gx = bx + ox;
+                    int gy = by + oy;
+                    int gz = bz + oz;
+                    if (!world.blockExists(gx, gy, gz)) continue;
+                    if (ItemClassifier.isPassableVoxel(world, gx, gy, gz)) continue;
+                    Block block = world.getBlock(gx, gy, gz);
+                    if (block == null) continue;
+                    double score = Math.sqrt(ox * ox + oy * oy + oz * oz);
+                    double dot = 0.0D;
+                    if (directed && length > 0.001D) {
+                        dot = (ox * dx + oy * dy + oz * dz) / length;
+                        // A block behind the drone is not the obstruction.
+                        if (dot < -0.25D) continue;
+                        score -= 0.45D * dot;
+                    }
+                    if (score < bestScore) {
+                        bestScore = score;
+                        best = block;
+                        bestX = gx;
+                        bestY = gy;
+                        bestZ = gz;
+                        bestRole = oy == 0 ? "side" : (oy > 0 ? "above" : "below");
                     }
                 }
             }
         }
-        return "none";
+        if (best == null) return "none";
+        return describe(best, bestX, bestY, bestZ, bestRole);
+    }
+
+    private static String describe(Block block, int x, int y, int z, String role) {
+        return block.getLocalizedName() + "@(" + x + "," + y + "," + z + ")[" + role + "]";
     }
 
     /**

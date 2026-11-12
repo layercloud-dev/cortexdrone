@@ -8,6 +8,9 @@ triggers:
   - "craft a pickaxe"
   - "make planks from logs"
   - "craft me 32 torches"
+  - "craft an iron sword"
+  - "craft an iron pickaxe"
+  - "craft enough torches to light the room"
 requires:
   - "withdraw_items"
 version: 1

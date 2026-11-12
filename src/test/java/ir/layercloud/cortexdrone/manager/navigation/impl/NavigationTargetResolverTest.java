@@ -1,6 +1,7 @@
 package ir.layercloud.cortexdrone.manager.navigation.impl;
 
 import ir.layercloud.cortexdrone.manager.navigation.NavigationRequest;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -77,7 +78,7 @@ public class NavigationTargetResolverTest {
      */
     private static final class WorldBoundsStub {
         static boolean diggable(int y) {
-            return ir.layercloud.cortexdrone.service.world.WorldBounds.diggable(y);
+            return WorldBounds.diggable(y);
         }
     }
 }

@@ -93,7 +93,10 @@ public final class VisualsTools implements ToolProvider {
                     .parameters(ToolSchema.object()
                             .requiredString("message", "Chat text (keep under 240 characters)."))
                     .affinity(ToolAffinity.MAIN)
-                    .timeoutMs(ToolTimeouts.READ_MS)
+                    // Presentation is not worth a spurious timeout while the
+                    // server thread is busy with a scan: the chat hook is
+                    // cheap, but the queue in front of it is not.
+                    .timeoutMs(ToolTimeouts.MAIN_MS)
                     .capabilities(ToolCapability.PRESENTATION)
                     .build(),
             ToolSpec.builder("set_status_text")

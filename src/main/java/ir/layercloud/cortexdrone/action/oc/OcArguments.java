@@ -1,9 +1,13 @@
 package ir.layercloud.cortexdrone.action.oc;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -33,7 +37,7 @@ public final class OcArguments {
     public Object proxy() {
         Class<?> type = type();
         if (type == null) return null;
-        return java.lang.reflect.Proxy.newProxyInstance(
+        return Proxy.newProxyInstance(
                 type.getClassLoader(), new Class<?>[]{type},
                 (proxy, method, args) -> dispatch(proxy, method, args));
     }
@@ -46,7 +50,7 @@ public final class OcArguments {
         }
     }
 
-    private Object dispatch(Object proxy, java.lang.reflect.Method method, Object[] args) {
+    private Object dispatch(Object proxy, Method method, Object[] args) {
         String name = method.getName();
         if ("equals".equals(name)) return proxy == (args != null && args.length > 0 ? args[0] : null);
         if ("hashCode".equals(name)) return System.identityHashCode(proxy);
@@ -87,21 +91,55 @@ public final class OcArguments {
         if ("Integer".equals(kind)) return value instanceof Number
                 ? ((Number) value).intValue() : parseInt(value, fallback);
         if ("Long".equals(kind)) return value instanceof Number
-                ? ((Number) value).longValue() : (long) parseInt(value, fallback);
-        if ("Double".equals(kind)) return value instanceof Number
+                ? ((Number) value).longValue() : (long) parseInt(value, fallback);        if ("Double".equals(kind)) return value instanceof Number
                 ? ((Number) value).doubleValue() : parseDouble(value, fallback);
         if ("String".equals(kind)) return String.valueOf(value);
         if ("ByteArray".equals(kind)) return value instanceof byte[]
-                ? value : String.valueOf(value).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                ? value : String.valueOf(value).getBytes(StandardCharsets.UTF_8);
         if ("Table".equals(kind)) return value instanceof Map ? value : new LinkedHashMap<String, Object>();
         return value;
     }
 
     private static Object parseInt(Object value, Object fallback) {
+        Integer side = sideOrdinal(value);
+        if (side != null) return side;
         try {
             return Integer.parseInt(String.valueOf(value).trim());
         } catch (Throwable ignored) {
             return fallback;
+        }
+    }
+
+    /**
+     * ForgeDirection ordinals, so {@code drop("down", 64)} works instead of
+     * throwing "invalid side". The live log shows the model guessing both
+     * {@code drop(count, side)} and the string form; accepting the documented
+     * side names removes that failure mode without changing OC semantics.
+     */
+    static Integer sideOrdinal(Object value) {
+        if (!(value instanceof CharSequence)) return null;
+        String side = value.toString().trim().toLowerCase(Locale.ROOT);
+        switch (side) {
+            case "down":
+            case "-y":
+                return 0;
+            case "up":
+            case "+y":
+                return 1;
+            case "north":
+            case "-z":
+                return 2;
+            case "south":
+            case "+z":
+                return 3;
+            case "west":
+            case "-x":
+                return 4;
+            case "east":
+            case "+x":
+                return 5;
+            default:
+                return null;
         }
     }
 

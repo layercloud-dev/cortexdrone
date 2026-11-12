@@ -5,6 +5,7 @@ import lombok.experimental.UtilityClass;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.tileentity.TileEntityChest;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
@@ -76,14 +77,14 @@ public final class ContainerAnimation {
         } catch (Throwable ignored) {
         }
         // A double chest has two lids; vanilla opens both halves.
-        if (tile instanceof net.minecraft.tileentity.TileEntityChest) {
-            net.minecraft.tileentity.TileEntityChest chest =
-                    (net.minecraft.tileentity.TileEntityChest) tile;
+        if (tile instanceof TileEntityChest) {
+            TileEntityChest chest =
+                    (TileEntityChest) tile;
             try {
                 chest.checkForAdjacentChests();
             } catch (Throwable ignored) {
             }
-            for (net.minecraft.tileentity.TileEntityChest half : new net.minecraft.tileentity.TileEntityChest[]{
+            for (TileEntityChest half : new TileEntityChest[]{
                     chest.adjacentChestZNeg, chest.adjacentChestXPos,
                     chest.adjacentChestXNeg, chest.adjacentChestZPos}) {
                 if (half == null) continue;

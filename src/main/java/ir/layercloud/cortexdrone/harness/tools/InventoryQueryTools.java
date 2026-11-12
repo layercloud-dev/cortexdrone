@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness.tools;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.DroneController;
@@ -75,7 +76,7 @@ public final class InventoryQueryTools implements ToolProvider {
         if (result == null || !result.has("ok") || !result.get("ok").getAsBoolean()) return;
         if (context == null || context.controller() == null
                 || context.controller().drone == null || context.controller().drone.worldObj == null) return;
-        com.google.gson.JsonArray entries = result.has("machines")
+        JsonArray entries = result.has("machines")
                 ? result.getAsJsonArray("machines")
                 : (result.has("furnaces") ? result.getAsJsonArray("furnaces") : null);
         if (entries == null || entries.size() == 0) return;
@@ -86,7 +87,7 @@ public final class InventoryQueryTools implements ToolProvider {
         PlaceMemory.rememberTile(context, context.controller(), world, reachable.get(0));
     }
 
-    private static List<TileEntity> tilesFrom(World world, com.google.gson.JsonArray entries) {
+    private static List<TileEntity> tilesFrom(World world, JsonArray entries) {
         List<TileEntity> tiles = new ArrayList<>();
         for (JsonElement element : entries) {
             if (element == null || !element.isJsonObject()) continue;

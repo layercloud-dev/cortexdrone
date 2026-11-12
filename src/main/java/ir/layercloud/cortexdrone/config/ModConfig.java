@@ -3,6 +3,8 @@ package ir.layercloud.cortexdrone.config;
 import com.google.gson.Gson;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.visuals.VisualsState;
+import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
+import ir.layercloud.cortexdrone.service.world.ProtectedZone;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -85,6 +87,15 @@ public class ModConfig {
      */
     private double droneSpeedMultiplier = 5.0D;
 
+    // --- no-break protection -----------------------------------------------
+    /**
+     * Player-owned volumes automatic tunnelling and explicit mining must never
+     * break. The live base is a chamber plus a vertical exit shaft, so a zone
+     * is a vertical cylinder rather than a sphere. Empty by default; operators
+     * add a zone (or the memory-derived base) here.
+     */
+    private List<ProtectedZone> protectedZones = new ArrayList<>();
+
     // --- persisted drone bindings -----------------------------------------
     private List<SavedDroneInfo> savedDrones = new ArrayList<>();
 
@@ -143,10 +154,15 @@ public class ModConfig {
         if (this.droneSpeedMultiplier <= 0.0D || Double.isNaN(this.droneSpeedMultiplier)) {
             this.droneSpeedMultiplier = 1.0D;
         }
-        this.droneSpeedMultiplier = Math.max(ir.layercloud.cortexdrone.service.navigation.DroneSpeed.MIN_MULTIPLIER,
-                Math.min(ir.layercloud.cortexdrone.service.navigation.DroneSpeed.MAX_MULTIPLIER,
+        this.droneSpeedMultiplier = Math.max(DroneSpeed.MIN_MULTIPLIER,
+                Math.min(DroneSpeed.MAX_MULTIPLIER,
                         this.droneSpeedMultiplier));
         if (this.savedDrones == null) this.savedDrones = new ArrayList<>();
+        if (this.protectedZones == null) this.protectedZones = new ArrayList<>();
+        this.protectedZones.removeIf(zone -> zone == null);
+        for (ProtectedZone zone : this.protectedZones) {
+            zone.sanitized();
+        }
         return this;
     }
 

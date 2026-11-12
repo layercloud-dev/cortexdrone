@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone;
 
+import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
@@ -268,6 +269,6 @@ public class NavigationRegressionTest {
         assertTrue("the default dig budget must come from the policy owner",
                 view.contains("NavigationLimits.DEFAULT_DIG_BLOCKS"));
         assertTrue("the default dig budget must cover a long route",
-                ir.layercloud.cortexdrone.service.navigation.NavigationLimits.DEFAULT_DIG_BLOCKS >= 64);
+                NavigationLimits.DEFAULT_DIG_BLOCKS >= 64);
     }
 }

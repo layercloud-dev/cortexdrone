@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.harness.skill;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import org.junit.Test;
 
@@ -80,7 +81,7 @@ public class CraftingSkillBehaviorTest extends SkillTestSupport {
             recipe.addProperty("output", "Furnace");
             recipe.addProperty("outputCount", 1);
             JsonArray ingredients = new JsonArray();
-            for (int i = 0; i < 8; i++) ingredients.add(new com.google.gson.JsonPrimitive("Cobblestone"));
+            for (int i = 0; i < 8; i++) ingredients.add(new JsonPrimitive("Cobblestone"));
             recipe.add("ingredients", ingredients);
             list.add(recipe);
             recipes.add("recipes", list);

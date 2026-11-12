@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import ir.layercloud.cortexdrone.config.ConfigDirectory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -62,6 +63,6 @@ public final class HbmRecipeFileHook implements MachineRecipeHook {
     }
 
     private static File resolveConfigDirectory() {
-        return ir.layercloud.cortexdrone.config.ConfigDirectory.resolve();
+        return ConfigDirectory.resolve();
     }
 }

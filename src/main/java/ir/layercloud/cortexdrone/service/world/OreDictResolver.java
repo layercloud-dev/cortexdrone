@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.service.world;
 
+import com.google.gson.JsonObject;
 import lombok.experimental.UtilityClass;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -228,9 +229,9 @@ public final class OreDictResolver {
 
     /** JSON description of tags and their registered stacks, for {@code doc_lookup}. */
     /**
-     * @see OreDictDescribe#tagsAndItems(String, int, java.util.List)
+     * @see OreDictDescribe#tagsAndItems(String, int, List)
      */
-    public static com.google.gson.JsonObject describeTagQuery(String rawFilter, int limit) {
+    public static JsonObject describeTagQuery(String rawFilter, int limit) {
         return OreDictDescribe.tagsAndItems(normalizeRaw(rawFilter), limit, resolveTagQuery(rawFilter));
     }
 

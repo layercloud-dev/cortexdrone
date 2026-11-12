@@ -27,7 +27,7 @@ public final class WorldScanTools implements ToolProvider {
     /**
      * Clamp for a synchronous filter scan.
      */
-    public static final int MAX_SCAN_RADIUS = ir.layercloud.cortexdrone.harness.tool.ScanLimits.MAX_RADIUS;
+    public static final int MAX_SCAN_RADIUS = ScanLimits.MAX_RADIUS;
     /**
      * Clamp for a connected-vein scan.
      */
@@ -39,20 +39,20 @@ public final class WorldScanTools implements ToolProvider {
     /**
      * Result limit for a filter scan.
      */
-    public static final int MAX_SCAN_RESULTS = ir.layercloud.cortexdrone.harness.tool.ScanLimits.MAX_RESULTS;
+    public static final int MAX_SCAN_RESULTS = ScanLimits.MAX_RESULTS;
     /**
      * Room scan radius bounds.
      */
     public static final int MAX_ROOM_RADIUS = RoomScanner.MAX_RADIUS;
     /**
-     * @see ir.layercloud.cortexdrone.harness.tool.ScanLimits#DEFAULT_RADIUS
+     * @see ScanLimits#DEFAULT_RADIUS
      */
     private static final int DEFAULT_RADIUS =
-            ir.layercloud.cortexdrone.harness.tool.ScanLimits.DEFAULT_RADIUS;
+            ScanLimits.DEFAULT_RADIUS;
     /**
-     * @see ir.layercloud.cortexdrone.harness.tool.ScanLimits#DEFAULT_RESULTS
+     * @see ScanLimits#DEFAULT_RESULTS
      */
-    private static final int DEFAULT_RESULTS = ir.layercloud.cortexdrone.harness.tool.ScanLimits.DEFAULT_RESULTS;
+    private static final int DEFAULT_RESULTS = ScanLimits.DEFAULT_RESULTS;
     /**
      * Ore-dictionary tag cache key separator.
      */

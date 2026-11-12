@@ -36,6 +36,22 @@ public class ToolValidatorTest {
     }
 
     @Test
+    public void positionalArraysAreAcceptedForObjectArguments() {
+        ToolSpec spec = ToolSpec.builder("probe_object")
+                .description("probe")
+                .parameters(ToolSchema.object()
+                        .optionalObject("args", "Positional arguments."))
+                .affinity(ToolAffinity.ASYNC)
+                .build();
+        JsonObject args = new JsonObject();
+        com.google.gson.JsonArray values = new com.google.gson.JsonArray();
+        values.add(new com.google.gson.JsonPrimitive(2));
+        args.add("args", values);
+        assertNull("an array is a valid positional argument table", ToolValidator.validate(spec, args));
+        assertEquals(2, args.getAsJsonObject("args").get("1").getAsInt());
+    }
+
+    @Test
     public void invalidEnumIsRejectedWithAllowedValues() {
         JsonObject args = new JsonObject();
         args.addProperty("x", 1);

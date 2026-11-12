@@ -7,6 +7,9 @@ triggers:
   - "place torches"
   - "make it safe at night"
   - "stop mobs spawning"
+  - "place some torches"
+  - "light the room"
+  - "place torches on the floor"
 requires: []
 version: 1
 uses: 0

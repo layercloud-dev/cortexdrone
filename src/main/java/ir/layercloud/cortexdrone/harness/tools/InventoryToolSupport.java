@@ -5,8 +5,12 @@ import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import li.cil.oc.common.entity.Drone;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.world.World;
 
 import java.util.List;
 
@@ -74,13 +78,13 @@ final class InventoryToolSupport {
     /**
      * Item summaries for one inventory.
      */
-    static JsonArray itemsOf(net.minecraft.inventory.IInventory inventory) {
+    static JsonArray itemsOf(IInventory inventory) {
         JsonArray items = new JsonArray();
         if (inventory == null) return items;
         for (int i = 0; i < inventory.getSizeInventory(); i++) {
             ItemStack stack = inventory.getStackInSlot(i);
             if (stack != null && stack.stackSize > 0) {
-                items.add(ir.layercloud.cortexdrone.service.world.ItemClassifier.itemStackToJson(i, stack));
+                items.add(ItemClassifier.itemStackToJson(i, stack));
             }
         }
         return items;
@@ -89,8 +93,8 @@ final class InventoryToolSupport {
     /**
      * Machine recipe box resolution used by both recipe tools.
      */
-    static JsonObject bestRecipe(InventoryService service, net.minecraft.world.World world,
-                                 li.cil.oc.common.entity.Drone drone, EntityPlayerMP player,
+    static JsonObject bestRecipe(InventoryService service, World world,
+                                 Drone drone, EntityPlayerMP player,
                                  JsonObject args, String defaultFilter) {
         String filter = firstString(args, defaultFilter, "filter", "target", "item");
         return service.getMachineRecipeService().getBestMachineRecipe(
@@ -100,9 +104,9 @@ final class InventoryToolSupport {
     /**
      * Total items in a list of inventories, for summaries.
      */
-    static int totalItems(List<? extends net.minecraft.inventory.IInventory> inventories) {
+    static int totalItems(List<? extends IInventory> inventories) {
         int total = 0;
-        for (net.minecraft.inventory.IInventory inventory : inventories) {
+        for (IInventory inventory : inventories) {
             total += InventoryService.countInventoryItems(inventory);
         }
         return total;

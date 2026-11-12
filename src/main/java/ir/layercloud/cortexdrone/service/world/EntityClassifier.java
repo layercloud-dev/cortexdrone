@@ -63,8 +63,18 @@ public final class EntityClassifier {
                 if (entity instanceof EntityPlayer) return true;
                 continue;
             }
-            // Players only match explicit player clauses.
-            if (entity instanceof EntityPlayer) continue;
+            // A player name is a legitimate filter too. The live log shows
+            // get_entities({filter:"MHProDev"}) returning 0 while the player
+            // stood 3 blocks away, forcing every script to use filter:"player"
+            // and match the name itself. Accept the name here.
+            if (entity instanceof EntityPlayer) {
+                String playerName = entity.getCommandSenderName();
+                if (playerName != null
+                        && playerName.toLowerCase(Locale.ROOT).contains(clause)) {
+                    return true;
+                }
+                continue;
+            }
             if (isHostileClause(clause) && isHostile(entity)) return true;
             String singular = LexicalItemMatcher.singularize(clause);
             if (combined.contains(clause) || combined.contains(singular)

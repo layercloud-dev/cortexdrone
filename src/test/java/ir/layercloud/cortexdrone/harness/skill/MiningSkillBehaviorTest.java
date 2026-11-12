@@ -5,7 +5,9 @@ import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -83,7 +85,7 @@ public class MiningSkillBehaviorTest extends SkillTestSupport {
         JsonObject result = harness.run("escape_cave", "{x:0,z:0}");
         assertTrue("the shaft should complete: " + result, result.get("ok").getAsBoolean());
 
-        java.util.Set<String> columns = new java.util.HashSet<>();
+        Set<String> columns = new HashSet<>();
         for (Call call : harness.calls) {
             if (!"break_block".equals(call.name)) continue;
             columns.add(call.args.get("x").getAsInt() + "," + call.args.get("z").getAsInt());

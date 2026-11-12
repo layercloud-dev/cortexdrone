@@ -86,7 +86,9 @@ Use them directly; never describe a tool call in prose and never emit a JSON
 - **OpenComputers** — `oc_state` and `oc_methods` read the live machine and
   callback surface; `oc_call` invokes any OC component callback by name and
   `oc_machine` runs start/stop/pause/signal. Call `oc_methods` first instead of
-  guessing a callback or its argument order.
+  guessing a callback or its argument order. Inventory callbacks (`select`,
+  `count`, `drop`) are **1-based**; `state.inventory` now includes `ocSlot` for
+  each entry, so use `it.ocSlot` rather than the list index.
 - **Knowledge** — `doc_lookup`, `wiki_lookup`, `web_search`, `web_fetch`,
   `get_recipes`, `get_machine_recipes`, `get_machine_recipe`,
   `machine_ingredients`, `scan_machines`, `scan_furnaces`.
@@ -107,8 +109,10 @@ There is **no Node.js process, no temp file and no RPC hop**.
 - Write `return <value>` to return data. Keep returned data small and relevant.
 - `drone.camelCase(args)` and `drone.snake_case(args)` both work, and each
   method also accepts positional arguments in schema order.
-- `drone.state()` returns live state. `drone.breakBlock({ x, y, z })` performs
-  one physical operation and resolves only when it is done.
+- `drone.state()` returns live state. Coordinates are available both as flat
+  `x`/`y`/`z` and as `position.x`/`position.y`/`position.z`; use either form.
+  `drone.breakBlock({ x, y, z })` performs one physical operation and resolves
+  only when it is done.
 - `ctx` exposes `{droneId, droneName, owner, player, loopId, toolCount}`.
 - `log(...)` / `console.log(...)` collect output; it is returned in `logs`.
 - `sleep(ms)` is capped at 10 seconds. Do not use it for polling; tools already
@@ -177,6 +181,17 @@ Runtime compatibility notes:
     - Long trips are fine, but they take real time. Give `goto` a generous
       `max_wait_ms` (for example 180000 for >500 blocks) and report progress
       instead of retrying the same call.
+- **Read a box in slices.** `get_blocks_in_box` returns `countsByType` (also
+  exposed as `counts`) and a capped `blocks` sample. A box above ~32k blocks is
+  refused with `box_too_large`; split it by Y layer or wall instead of asking
+  for the whole room at once.
+- **A player name is a valid entity filter.** `get_entities({filter:"MHProDev"})`
+  matches the player by name; `filter:"player"` matches any player. Prefer the
+  name when another player is nearby.
+- **Survival mining is a skill, not a break loop.** `skills.mineBlocks({filter,
+  count, allow_dig:true})` flies to a standoff and tunnels to buried ore. A hand
+  rolled `break_block` loop against scan results fails with `block_occluded`/
+  `out_of_reach` hundreds of times and makes no progress.
 - `scan_blocks` is the advanced search: `shape` (`cube`, `sphere`, `cylinder`,
   `shell`), `radius`, `min_y`/`max_y`, `limit` (up to 2000), `include_air`, and
   explicit `x`/`y`/`z`. Use `shell` to find surface ores or cave walls, `sphere`
@@ -413,6 +428,9 @@ Never store player secrets or one-off task progress.
   `break_block` calls after a navigation error and do not repeat the same
   `goto`; only pick another destination or ask the player when the drone truly
   cannot reach the area.
+  A route that stops approaching its goal for about 90 seconds fails with
+  `no progress toward goal`; that is the signal to move to open sky, use the
+  remembered shaft, or pick a nearer waypoint — never to repeat the same goto.
 - **Flight speed is a multiplier, capped at 5x.** The drone cruises at the
   configured multiplier (`droneSpeedMultiplier`, default 5.0; 1.0 = the old
   tuned speed, ceiling 5.0). Do not assume a trip is slow: a 500-block hop
@@ -441,6 +459,11 @@ Never store player secrets or one-off task progress.
   for that, except for this escape shaft, which is mandatory for survival.
 - **Containers and machines are never dug.** Automatic tunnelling treats every
   tile entity as property, even an empty one.
+- **Protected places are enforced.** A named base/farm may have a no-break
+  cylinder loaded from `protected-zones.json`. `goto` will not tunnel into it,
+  `dig`-aware routes treat it as a wall, and `break_block` refuses it unless the
+  current request explicitly authorises modifying that place (`confirm_zone_break`).
+  Mine at the agreed mining area instead of the base; the refusal names the zone.
 - **If you had to tunnel, close it.** Navigation journals every block it
   breaks. When the job is done, call `repair_trail` to put those blocks back
   (state and tile entities are restored; occupied slots are skipped).

@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.harness.js;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
@@ -72,7 +73,7 @@ final class SkillNamespaceBinder {
                 if (library != null) {
                     for (Skill skill : library.all()) {
                         if (skill != null && skill.getName() != null) {
-                            names.add(new com.google.gson.JsonPrimitive(skill.getName()));
+                            names.add(new JsonPrimitive(skill.getName()));
                         }
                     }
                 }

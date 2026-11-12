@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.service.machine;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Data descriptor for the HBM mod integration.
@@ -117,7 +118,7 @@ public final class HbmDescriptor {
      */
     public static boolean ownsRegistryName(String registryName) {
         return registryName != null
-                && registryName.toLowerCase(java.util.Locale.ROOT).startsWith(MOD_ID + ":");
+                && registryName.toLowerCase(Locale.ROOT).startsWith(MOD_ID + ":");
     }
 
     /**
@@ -125,6 +126,6 @@ public final class HbmDescriptor {
      */
     public static boolean isOwnClass(String className) {
         return className != null
-                && className.toLowerCase(java.util.Locale.ROOT).startsWith("com.hbm.");
+                && className.toLowerCase(Locale.ROOT).startsWith("com.hbm.");
     }
 }

@@ -26,12 +26,12 @@ import java.util.Map;
 public final class VeinScanner {
     /** Ring-search radius bounds for a vein scan. */
     /**
-     * @see ir.layercloud.cortexdrone.service.world.ScanLimits#MIN_VEIN_RADIUS
+     * @see ScanLimits#MIN_VEIN_RADIUS
      */
     public static final int MIN_RADIUS =
             ScanLimits.MIN_VEIN_RADIUS;
     /**
-     * @see ir.layercloud.cortexdrone.service.world.ScanLimits#MAX_VEIN_RADIUS
+     * @see ScanLimits#MAX_VEIN_RADIUS
      */
     public static final int MAX_RADIUS =
             ScanLimits.MAX_VEIN_RADIUS;

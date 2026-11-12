@@ -48,8 +48,15 @@ public final class UnpickEntityAction implements Action<InteractionContext> {
         Entity rider = request.hasEntity() ? world.getEntityByID(request.getEntityId())
                 : drone.riddenByEntity;
         if (rider == null || rider.ridingEntity != drone) {
-            context.result(InteractionResult.failure(
-                    "Entity is not riding this drone", "unpicked", false));
+            // Unpicking is idempotent: if the entity is already off, the desired
+            // state is reached. The old code returned a hard failure here, and
+            // the live log shows a script aborting its whole carry loop after a
+            // pick that failed silently. Report the fact instead of an error.
+            context.result(InteractionResult.success(
+                    "unpicked", true,
+                    "alreadyDismounted", true,
+                    "entityId", request.hasEntity() ? request.getEntityId() : -1,
+                    "note", "the entity was not riding this drone; no action was needed"));
             return;
         }
 

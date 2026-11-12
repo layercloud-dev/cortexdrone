@@ -8,6 +8,7 @@ triggers:
   - "come with me"
   - "follow the player"
   - "don't hide behind me"
+  - "stay with me"
 requires: []
 version: 1
 uses: 0

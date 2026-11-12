@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
+import ir.layercloud.cortexdrone.service.world.BlockPosKey;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.raytrace.ChunkCacheContext;
 import ir.layercloud.cortexdrone.service.world.raytrace.VoxelRaycaster3D;
@@ -32,7 +33,7 @@ public class FlightPathfinder {
     }
 
     public static long packBlockPos(int x, int y, int z) {
-        return ir.layercloud.cortexdrone.service.world.BlockPosKey.pack(x, y, z);
+        return BlockPosKey.pack(x, y, z);
     }
 
     public static void setDroneFlightTarget(Drone d, double tx, double ty, double tz, float accel) {
@@ -131,7 +132,7 @@ public class FlightPathfinder {
                 goalY = openGoal[1];
                 goalZ = openGoal[2];
                 gx = goalX + DroneGeometry.CELL_CENTER;
-                gy = goalY + ir.layercloud.cortexdrone.service.navigation.DroneGeometry.HOVER_OFFSET;
+                gy = goalY + DroneGeometry.HOVER_OFFSET;
                 gz = goalZ + DroneGeometry.CELL_CENTER;
             }
         }
@@ -195,6 +196,11 @@ public class FlightPathfinder {
 
     public static String describeNearestObstruction(World world, double x, double y, double z) {
         return DronePhysicsService.describeNearestObstruction(world, x, y, z);
+    }
+
+    public static String describeNearestObstruction(World world, double x, double y, double z,
+                                                    double tx, double ty, double tz) {
+        return DronePhysicsService.describeNearestObstruction(world, x, y, z, tx, ty, tz);
     }
 
     public static void runServerSidePhysicsStep(Drone d, double maxVelOverride) {

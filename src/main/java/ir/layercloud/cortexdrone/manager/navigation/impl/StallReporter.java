@@ -38,7 +38,8 @@ final class StallReporter {
         state.stuckTicks++;
         if (state.stuckTicks != 18 && state.stuckTicks % 30 != 0) return;
         state.lastStuckReason = FlightPathfinder.describeNearestObstruction(
-                world, drone.posX, drone.posY, drone.posZ);
+                world, drone.posX, drone.posY, drone.posZ,
+                drone.targetX(), drone.targetY(), drone.targetZ());
         String stuckKey = controller.id + "|" + state.lastStuckReason
                 + "|" + (drone.posX * 4) + "," + (drone.posY * 4) + "," + (drone.posZ * 4)
                 + "->" + (int) ((double) drone.targetX() * 4) + ","
@@ -117,7 +118,10 @@ final class StallReporter {
                         .append(')');
             }
         }
-        detail.append(" stuck=").append(state.lastStuckReason);
+        detail.append(" stuck=").append(FlightPathfinder.describeNearestObstruction(
+                world, drone.posX, drone.posY, drone.posZ,
+                drone.targetX(), drone.targetY(), drone.targetZ()))
+                .append(" lastStuck=").append(state.lastStuckReason);
         detail.append(" nearby=");
         appendNearby(detail, world, bx, by, bz);
         detail.append(" guess=").append(guess(world, bx, by, bz));

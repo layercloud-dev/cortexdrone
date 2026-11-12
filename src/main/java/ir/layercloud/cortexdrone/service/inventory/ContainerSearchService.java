@@ -2,10 +2,12 @@ package ir.layercloud.cortexdrone.service.inventory;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.OreDictResolver;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -55,7 +57,7 @@ public class ContainerSearchService {
         EntityPlayerMP owner = player != null ? player : CortexDroneMod.findPlayer(ctrl.ownerName);
         String query = ItemClassifier.resolveHeldFilter(owner, rawQuery != null ? rawQuery.trim() : "all");
         boolean matchAll = query.isEmpty() || query.equalsIgnoreCase("all") || query.equalsIgnoreCase("any") || query.equals("*");
-        int r = ir.layercloud.cortexdrone.service.inventory.InventoryLimits.clampRadius(radius);
+        int r = InventoryLimits.clampRadius(radius);
 
         List<TileEntity> tiles = this.inventoryService.findAllInventoryTiles(world, d.posX, d.posY, d.posZ, r);
         if (owner != null && owner.worldObj == world) {
@@ -164,9 +166,9 @@ public class ContainerSearchService {
 
         res.addProperty("query", query);
         res.addProperty("found", grandTotalMatching > 0);
-        com.google.gson.JsonArray resolvedTags = new com.google.gson.JsonArray();
-        for (String tag : ir.layercloud.cortexdrone.service.world.OreDictResolver.resolveTagQuery(query)) {
-            resolvedTags.add(new com.google.gson.JsonPrimitive(tag));
+        JsonArray resolvedTags = new JsonArray();
+        for (String tag : OreDictResolver.resolveTagQuery(query)) {
+            resolvedTags.add(new JsonPrimitive(tag));
         }
         if (resolvedTags.size() > 0) {
             res.add("oreDictTags", resolvedTags);

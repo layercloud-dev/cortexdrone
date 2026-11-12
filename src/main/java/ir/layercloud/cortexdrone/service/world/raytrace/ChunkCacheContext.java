@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.service.world.raytrace;
 
+import ir.layercloud.cortexdrone.service.world.BlockPosKey;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.WorldBounds;
@@ -7,6 +8,8 @@ import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+
+import java.util.HashMap;
 
 /**
  * Baritone-style ChunkCacheContext (BSI) for fast chunk-local block and passability lookups during 3D A*.
@@ -19,8 +22,8 @@ public class ChunkCacheContext {
     private final Chunk[][] chunks;
     private final boolean[][] resolved;
     // Memoized passability lookups: A*/Theta* revisits the same voxel hundreds of times.
-    private final java.util.HashMap<Long, Boolean> passableCache = new java.util.HashMap<>(512);
-    private final java.util.HashMap<Long, Block> blockCache = new java.util.HashMap<>(512);
+    private final HashMap<Long, Boolean> passableCache = new HashMap<>(512);
+    private final HashMap<Long, Block> blockCache = new HashMap<>(512);
 
     public ChunkCacheContext(World world, int centerX, int centerZ, int chunkRadius) {
         this.world = world;
@@ -52,7 +55,7 @@ public class ChunkCacheContext {
     }
 
     static long pack(int x, int y, int z) {
-        return ir.layercloud.cortexdrone.service.world.BlockPosKey.pack(x, y, z);
+        return BlockPosKey.pack(x, y, z);
     }
 
     public Block getBlock(int x, int y, int z) {

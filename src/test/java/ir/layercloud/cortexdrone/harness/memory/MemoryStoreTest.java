@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -67,7 +68,7 @@ public class MemoryStoreTest {
         File root = Files.createTempDirectory("cortexdrone-memory-persist").toFile();
         MemoryStore store = new MemoryStore(root);
         store.remember("location", "north mine", "diamond mine", true,
-                -200, 30, 400, 0, java.util.Collections.singletonList("diamond"), true, "test");
+                -200, 30, 400, 0, Collections.singletonList("diamond"), true, "test");
         assertEquals(1, new MemoryStore(root).count());
 
         assertTrue(store.forget("north mine"));

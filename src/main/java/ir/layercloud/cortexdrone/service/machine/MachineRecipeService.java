@@ -3,6 +3,7 @@ package ir.layercloud.cortexdrone.service.machine;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
+import li.cil.oc.common.entity.Drone;
 import lombok.Data;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
@@ -112,7 +113,7 @@ public class MachineRecipeService {
         return res;
     }
 
-    public JsonObject getBestMachineRecipe(World world, li.cil.oc.common.entity.Drone drone,
+    public JsonObject getBestMachineRecipe(World world, Drone drone,
                                            EntityPlayerMP player, String targetFilter,
                                            String machineFilter, int radius) {
         JsonObject res = new JsonObject();

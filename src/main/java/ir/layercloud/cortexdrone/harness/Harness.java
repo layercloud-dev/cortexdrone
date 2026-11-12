@@ -1,5 +1,6 @@
 package ir.layercloud.cortexdrone.harness;
 
+import com.google.gson.JsonElement;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.harness.agent.AgentService;
@@ -8,6 +9,7 @@ import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
 import ir.layercloud.cortexdrone.harness.session.SessionJournal;
+import ir.layercloud.cortexdrone.harness.session.SessionManager;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.skill.SkillRefiner;
 import ir.layercloud.cortexdrone.harness.tool.*;
@@ -139,7 +141,7 @@ public final class Harness {
         return this.agent;
     }
 
-    public ir.layercloud.cortexdrone.harness.session.SessionManager sessions() {
+    public SessionManager sessions() {
         return this.manager.getSessionManager();
     }
 
@@ -155,7 +157,7 @@ public final class Harness {
         for (ToolSpec spec : this.registry.modelTools()) {
             Set<String> required = new HashSet<>();
             if (spec.getParameters().has("required")) {
-                for (com.google.gson.JsonElement element : spec.getParameters().getAsJsonArray("required")) {
+                for (JsonElement element : spec.getParameters().getAsJsonArray("required")) {
                     required.add(element.getAsString());
                 }
             }

@@ -20,7 +20,7 @@ public final class DroneRegistry {
     private final AtomicInteger nextId = new AtomicInteger(1);
     private final Map<Integer, DroneController> byId = new ConcurrentHashMap<>();
     private final Map<String, DroneController> byOwner = new ConcurrentHashMap<>();
-    private final Set<UUID> despawned = Collections.synchronizedSet(new java.util.HashSet<>());
+    private final Set<UUID> despawned = Collections.synchronizedSet(new HashSet<>());
 
     /**
      * Every live controller, in no particular order.

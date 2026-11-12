@@ -4,10 +4,15 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
+import ir.layercloud.cortexdrone.service.navigation.DroneGeometry;
 import ir.layercloud.cortexdrone.service.navigation.NavigationState;
+import ir.layercloud.cortexdrone.service.navigation.NavigationTuning;
 import ir.layercloud.cortexdrone.service.navigation.impl.FlightPathfinder;
 import ir.layercloud.cortexdrone.service.navigation.impl.TunnelPlanner;
+import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.WorldBounds;
 import li.cil.oc.common.entity.Drone;
+import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
@@ -104,6 +109,15 @@ final class NavigationRecovery {
             return;
         }
 
+        // A forest canopy is not a cave: the drone is above the terrain it
+        // wants, but leaves surround it. Goal-based detours all aim back down
+        // through the tree, so climb out of the canopy first. This is the
+        // pattern that kept the live clay task in one tree for 13 minutes.
+        if (session.failedRecoveries >= NavigationTuning.CANOPY_ESCAPE_MIN_FAILURES
+                && tryCanopyEscape(controller, session, state, world, drone)) {
+            return;
+        }
+
         if (session.allowDig && (session.dug > 0
                 || session.failedRecoveries >= MAX_INSTANT_FAILURES)) {
             if (TunnelRecovery.circling(this.logger, controller, session)) {
@@ -143,7 +157,7 @@ final class NavigationRecovery {
         }
         // Detours were already tried above; only now clear the obstruction
         // or take a vertical step toward the goal.
-        if (this.tryTunnel(controller, session, state, world, drone)) return;
+        if (this.tryTunnel(controller, session, state, world, drone, true)) return;
         // Nothing to mine: a flooded pocket or an open drop still lets the
         // drone fly. Without this step a submerged drone failed with
         // "no tunnel direction found".
@@ -162,11 +176,12 @@ final class NavigationRecovery {
      */
     private boolean resumeOpenTunnel(DroneController controller, NavigationSession session,
                                      NavigationState state, World world) {
-        return tryTunnel(controller, session, state, world, controller.drone);
+        return tryTunnel(controller, session, state, world, controller.drone, false);
     }
 
     private boolean tryTunnel(DroneController controller, NavigationSession session,
-                              NavigationState state, World world, Drone drone) {
+                              NavigationState state, World world, Drone drone,
+                              boolean reportExhaustion) {
         EntityPlayerMP player = CortexDroneMod.findPlayer(controller.ownerName);
         for (int attempt = 0; attempt < TUNNEL_ATTEMPTS; attempt++) {
             int[] target = TunnelRecovery.nextTarget(state, session, world, drone, player);
@@ -175,8 +190,56 @@ final class NavigationRecovery {
             session.rejectedDigs.add(FlightPathfinder.packBlockPos(
                     target[0], target[1], target[2]));
         }
-        this.stallReporter.tunnelDiagnostics(controller, state, session, world, drone);
+        // Report once per recovery. The old flow logged the same exhaustion
+        // twice in the same tick because resumeOpenTunnel and the final
+        // escalation both ran tryTunnel().
+        if (reportExhaustion) {
+            this.stallReporter.tunnelDiagnostics(controller, state, session, world, drone);
+        }
         return false;
+    }
+
+    /**
+     * Flies above a nearby forest canopy when detours keep stalling inside it.
+     *
+     * <p>Validation is deliberately strict: the column from the drone to the
+     * local height must contain only air, leaves or replaceable plants. A solid
+     * stone column means the drone is in a cave and climbing is not the fix; the
+     * normal tunnel/detour escalation handles that.</p>
+     */
+    private boolean tryCanopyEscape(DroneController controller, NavigationSession session,
+                                    NavigationState state, World world, Drone drone) {
+        if (world == null || drone == null) return false;
+        int bx = (int) Math.floor(drone.posX);
+        int by = (int) Math.floor(drone.posY);
+        int bz = (int) Math.floor(drone.posZ);
+        if (!world.blockExists(bx, by, bz)) return false;
+        if (world.canBlockSeeTheSky(bx, by, bz)) return false;
+
+        int top = world.getHeightValue(bx, bz);
+        if (top <= by + 1 || top - by > NavigationTuning.CANOPY_SCAN_HEIGHT) return false;
+        for (int y = by + 1; y <= top + 1; y++) {
+            if (!world.blockExists(bx, y, bz)) return false;
+            if (world.isAirBlock(bx, y, bz)) continue;
+            Block block = world.getBlock(bx, y, bz);
+            if (block == null) return false;
+            if (ItemClassifier.isLeafBlock(block)) continue;
+            if (block.getMaterial() != null && block.getMaterial().isReplaceable()) continue;
+            return false;
+        }
+
+        double targetY = WorldBounds.clampFlightY(top + NavigationTuning.CANOPY_CLEARANCE);
+        if (targetY <= drone.posY + 1.0D) return false;
+        long key = FlightPathfinder.packBlockPos(bx, (int) targetY, bz);
+        if (!session.rejectedDetours.add(key)) return false;
+
+        session.reason = "canopy-escape";
+        this.logger.log("NAV", controller, "Climbing above canopy",
+                String.format("from=(%d,%d,%d) localTop=%d targetY=%.1f",
+                        bx, by, bz, top, targetY));
+        this.host.startLeg(controller, session, bx + DroneGeometry.CELL_CENTER, targetY,
+                bz + DroneGeometry.CELL_CENTER, "Canopy escape");
+        return true;
     }
 
     /**
@@ -220,6 +283,11 @@ final class NavigationRecovery {
         if (target == null) {
             session.phase = NavigationSession.Phase.PLAN;
             session.replanCooldown = 1;
+            return;
+        }
+        if (session.dug >= session.maxDigBlocks) {
+            this.host.fail(controller, "Navigation timed out (dig budget "
+                    + session.maxDigBlocks + " exhausted)");
             return;
         }
         this.digger.dig(controller, session, state, target);

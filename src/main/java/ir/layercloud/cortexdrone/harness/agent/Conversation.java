@@ -2,12 +2,14 @@ package ir.layercloud.cortexdrone.harness.agent;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Bounded conversation log for one task.
@@ -191,7 +193,7 @@ public final class Conversation {
     }
 
     private JsonElement bound(JsonElement element, int depth) {
-        if (element == null || element.isJsonNull()) return com.google.gson.JsonNull.INSTANCE;
+        if (element == null || element.isJsonNull()) return JsonNull.INSTANCE;
         if (element.isJsonPrimitive()) {
             if (element.getAsJsonPrimitive().isString()) {
                 String text = element.getAsString();
@@ -217,7 +219,7 @@ public final class Conversation {
         if (depth > 6) return new JsonPrimitive("[...]");
         JsonObject object = element.getAsJsonObject();
         JsonObject bounded = new JsonObject();
-        for (java.util.Map.Entry<String, JsonElement> entry : object.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             bounded.add(entry.getKey(), bound(entry.getValue(), depth + 1));
         }
         return bounded;

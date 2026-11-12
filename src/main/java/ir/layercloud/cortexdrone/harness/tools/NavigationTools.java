@@ -6,6 +6,7 @@ import ir.layercloud.cortexdrone.harness.tools.view.BreadcrumbView;
 import ir.layercloud.cortexdrone.harness.tools.view.LandingView;
 import ir.layercloud.cortexdrone.harness.tools.view.NavigationView;
 import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
+import ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner;
 
 import java.util.Arrays;
 import java.util.List;
@@ -87,10 +88,10 @@ public final class NavigationTools implements ToolProvider {
             ToolSpec.builder("find_safe_landing")
                     .description("Read-only landing check. Returns whether a passenger can be set down "
                             + "safely at/around a point: solid floor, a clear "
-                            + ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MAX_SAFE_DROP
+                            + LandingScanner.MAX_SAFE_DROP
                             + "-block pocket, no water or lava, no tree canopy, no falling block overhead, "
                             + "and at most a "
-                            + ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MAX_SAFE_DROP
+                            + LandingScanner.MAX_SAFE_DROP
                             + "-block drop. "
                             + "Use it before unpick_entity, and always after a goto that carries a player: "
                             + "never dismount over a mountain slope, a tree, a roof or a cave void. The "
@@ -101,11 +102,11 @@ public final class NavigationTools implements ToolProvider {
                             .optionalInt("y", "Reference Y; defaults to the drone's Y.")
                             .optionalInt("z", "Centre Z; defaults to the drone.")
                             .optionalInt("radius", "Horizontal search radius, "
-                                            + ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MIN_RADIUS
-                                            + ".." + ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MAX_RADIUS + ".",
-                                    ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MIN_RADIUS,
-                                    ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.MAX_RADIUS,
-                                    ir.layercloud.cortexdrone.service.navigation.impl.LandingScanner.DEFAULT_RADIUS)
+                                            + LandingScanner.MIN_RADIUS
+                                            + ".." + LandingScanner.MAX_RADIUS + ".",
+                                    LandingScanner.MIN_RADIUS,
+                                    LandingScanner.MAX_RADIUS,
+                                    LandingScanner.DEFAULT_RADIUS)
                             .optionalBoolean("covered_ok", "Also accept a covered pocket such as a cave "
                                     + "floor. Default false: a carried passenger is only flown into open "
                                     + "sky, because entering a cave crushes them.", false))

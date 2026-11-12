@@ -8,6 +8,9 @@ triggers:
   - "take me to"
   - "give me a ride"
   - "pick me up and move me"
+  - "move me to"
+  - "move me down where i am looking"
+  - "come pick me up"
 requires: []
 version: 3
 uses: 0

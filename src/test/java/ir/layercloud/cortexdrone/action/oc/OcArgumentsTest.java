@@ -65,6 +65,18 @@ public class OcArgumentsTest {
     }
 
     @Test
+    public void sideNamesMapToForgeDirectionOrdinals() {
+        assertEquals(Integer.valueOf(0), OcArguments.sideOrdinal("down"));
+        assertEquals(Integer.valueOf(1), OcArguments.sideOrdinal("up"));
+        assertEquals(Integer.valueOf(2), OcArguments.sideOrdinal("north"));
+        assertEquals(Integer.valueOf(3), OcArguments.sideOrdinal("south"));
+        assertEquals(Integer.valueOf(4), OcArguments.sideOrdinal("west"));
+        assertEquals(Integer.valueOf(5), OcArguments.sideOrdinal("east"));
+        assertNull(OcArguments.sideOrdinal("sideways"));
+        assertNull(OcArguments.sideOrdinal(2));
+    }
+
+    @Test
     public void nestedMapsSurviveConstruction() {
         Map<String, Object> nested = new LinkedHashMap<>();
         nested.put("1", "a");

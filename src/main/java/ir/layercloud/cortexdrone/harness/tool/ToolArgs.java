@@ -4,6 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.experimental.UtilityClass;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+
 /**
  * Small, null-safe JSON accessors used by service request boundaries.
  * Actions never see {@link JsonObject}.
@@ -50,12 +53,12 @@ public final class ToolArgs {
     public static JsonObject aliasesForSchema(JsonObject args, JsonObject parameters) {
         JsonObject copy = new JsonObject();
         if (args == null) return copy;
-        for (java.util.Map.Entry<String, JsonElement> entry : args.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : args.entrySet()) {
             copy.add(entry.getKey(), entry.getValue());
         }
         if (parameters == null || !parameters.has("properties")) return copy;
         for (String key : parameters.getAsJsonObject("properties").entrySet().stream()
-                .map(java.util.Map.Entry::getKey).collect(java.util.stream.Collectors.toList())) {
+                .map(Map.Entry::getKey).collect(Collectors.toList())) {
             if (copy.has(key)) continue;
             String camel = camelCase(key);
             if (copy.has(camel)) copy.add(key, copy.get(camel));
@@ -86,10 +89,10 @@ public final class ToolArgs {
     public static JsonObject camelAliases(JsonObject args) {
         if (args == null) return new JsonObject();
         JsonObject copy = new JsonObject();
-        for (java.util.Map.Entry<String, JsonElement> entry : args.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : args.entrySet()) {
             copy.add(entry.getKey(), entry.getValue());
         }
-        for (java.util.Map.Entry<String, JsonElement> entry : args.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : args.entrySet()) {
             String key = entry.getKey();
             int underscore = key.indexOf('_');
             if (underscore < 0) continue;

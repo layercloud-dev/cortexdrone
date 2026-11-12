@@ -6,6 +6,7 @@ import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import org.mozilla.javascript.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Converts between Rhino values and Gson trees. JavaScript never sees Java
@@ -45,13 +46,13 @@ final class JsConvert {
     static Object toJs(JsonElement element, Context cx, Scriptable scope) {
         if (element == null || element.isJsonNull()) return null;
         if (element.isJsonPrimitive()) {
-            com.google.gson.JsonPrimitive primitive = element.getAsJsonPrimitive();
+            JsonPrimitive primitive = element.getAsJsonPrimitive();
             if (primitive.isBoolean()) return primitive.getAsBoolean();
             if (primitive.isNumber()) return primitive.getAsDouble();
             return primitive.getAsString();
         }
         if (element.isJsonArray()) {
-            com.google.gson.JsonArray array = element.getAsJsonArray();
+            JsonArray array = element.getAsJsonArray();
             Object[] values = new Object[array.size()];
             for (int i = 0; i < array.size(); i++) {
                 values[i] = toJs(array.get(i), cx, scope);
@@ -60,7 +61,7 @@ final class JsConvert {
         }
         JsonObject object = element.getAsJsonObject();
         Scriptable nativeObject = cx.newObject(scope);
-        for (java.util.Map.Entry<String, JsonElement> entry : object.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             ScriptableObject.putProperty(nativeObject, entry.getKey(), toJs(entry.getValue(), cx, scope));
         }
         return nativeObject;

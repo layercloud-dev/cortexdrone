@@ -300,7 +300,7 @@ public final class MachineAliases {
      * Every canonical kind the alias table can produce.
      */
     public static List<String> canonicalKinds() {
-        List<String> kinds = new ArrayList<>(new java.util.LinkedHashSet<>(EXACT.values()));
+        List<String> kinds = new ArrayList<>(new LinkedHashSet<>(EXACT.values()));
         kinds.sort(String::compareTo);
         return kinds;
     }
@@ -312,7 +312,7 @@ public final class MachineAliases {
      * discovery by alias cannot drift apart.</p>
      */
     public static String[] registryTokens() {
-        java.util.Set<String> tokens = new java.util.LinkedHashSet<>();
+        Set<String> tokens = new LinkedHashSet<>();
         for (String spelling : EXACT.keySet()) {
             if (spelling.length() >= 4) tokens.add(spelling);
         }

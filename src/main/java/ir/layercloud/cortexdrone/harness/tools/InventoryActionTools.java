@@ -117,7 +117,10 @@ public final class InventoryActionTools implements ToolProvider {
             ToolSpec.builder("craft")
                     .description("Craft a vanilla crafting-table recipe from the DRONE inventory only. "
                             + "Missing ingredients fail the call; pull/gather them first. count is the number of "
-                            + "result items requested (the action crafts as many complete recipes as possible).")
+                            + "result items requested (the action crafts as many complete recipes as possible). "
+                            + "A generic filter such as 'planks' can match several wood types; if the craft fails "
+                            + "with missing ingredients, pass the exact result (e.g. 'birch_planks') that matches "
+                            + "the log you hold.")
                     .parameters(ToolSchema.object()
                             .optionalString("filter", "Result item name/registry/ore tag.", "planks")
                             .optionalInt("count", "Number of result items wanted.", 1, InventoryLimits.MAX_TRANSFER_COUNT, 1))

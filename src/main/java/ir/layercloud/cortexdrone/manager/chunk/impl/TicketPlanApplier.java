@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.manager.chunk.PlayerChunkOwnership;
 import ir.layercloud.cortexdrone.service.world.ChunkAccess;
 import net.minecraft.world.ChunkCoordIntPair;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.ForgeChunkManager;
 
@@ -45,7 +46,7 @@ final class TicketPlanApplier {
         /**
          * True when a drone other than this one is near the chunk.
          */
-        boolean isAnyDroneNear(net.minecraft.world.World world, ChunkCoordIntPair pair);
+        boolean isAnyDroneNear(World world, ChunkCoordIntPair pair);
 
         /**
          * Loads one chunk, recording it as AI-loaded.
@@ -183,7 +184,7 @@ final class TicketPlanApplier {
     /**
      * A chunk inside a player's view, or near another drone, is not ours to touch.
      */
-    private boolean isProtected(net.minecraft.world.World world, ChunkCoordIntPair pair) {
+    private boolean isProtected(World world, ChunkCoordIntPair pair) {
         return PlayerChunkOwnership.isWithinAnyPlayerView(world, pair.chunkXPos, pair.chunkZPos)
                 || this.host.isAnyDroneNear(world, pair);
     }

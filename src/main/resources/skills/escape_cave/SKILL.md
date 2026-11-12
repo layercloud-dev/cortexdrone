@@ -8,7 +8,10 @@ triggers:
   - "dig out"
   - "i am stuck in a cave"
   - "escape the cave"
-requires: []
+  - "tunnel up first"
+  - "get out of the mining cave"
+requires:
+  - "collect_drops"
 version: 1
 uses: 0
 code: code.js

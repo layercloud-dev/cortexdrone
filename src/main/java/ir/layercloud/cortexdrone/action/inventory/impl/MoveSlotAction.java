@@ -7,6 +7,7 @@ import ir.layercloud.cortexdrone.action.inventory.ContainerGuard;
 import ir.layercloud.cortexdrone.action.inventory.InventoryRequest;
 import ir.layercloud.cortexdrone.action.inventory.InventoryResult;
 import ir.layercloud.cortexdrone.context.impl.InventoryContext;
+import ir.layercloud.cortexdrone.service.inventory.ContainerAccess;
 import ir.layercloud.cortexdrone.service.inventory.ContainerAnimation;
 import ir.layercloud.cortexdrone.service.inventory.InventoryLimits;
 import ir.layercloud.cortexdrone.service.inventory.InventoryService;
@@ -16,6 +17,8 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
+
+import java.util.List;
 
 /**
  * Single-use inventory action: move items between drone, player and containers.
@@ -87,7 +90,7 @@ public final class MoveSlotAction implements Action<InventoryContext> {
      * Nearest container in reach, used when the caller did not name one.
      */
     private TileEntity nearestReachableSource(World world, Drone drone) {
-        java.util.List<TileEntity> tiles = this.reachableContainers(world, drone);
+        List<TileEntity> tiles = this.reachableContainers(world, drone);
         return tiles.isEmpty() ? null : tiles.get(0);
     }
 
@@ -103,8 +106,8 @@ public final class MoveSlotAction implements Action<InventoryContext> {
         return null;
     }
 
-    private java.util.List<TileEntity> reachableContainers(World world, Drone drone) {
-        return ir.layercloud.cortexdrone.service.inventory.ContainerAccess.reachable(
+    private List<TileEntity> reachableContainers(World world, Drone drone) {
+        return ContainerAccess.reachable(
                 world, drone,
                 this.inventoryService.findAllInventoryTiles(
                         world, drone.posX, drone.posY, drone.posZ, 24));

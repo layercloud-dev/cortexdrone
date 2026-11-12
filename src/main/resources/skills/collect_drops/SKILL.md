@@ -6,6 +6,7 @@ triggers:
   - "pick up the drops"
   - "collect the loot"
   - "gather the items on the ground"
+  - "gather dropped items"
 requires: []
 version: 2
 uses: 0

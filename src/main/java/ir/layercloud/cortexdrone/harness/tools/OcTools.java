@@ -3,6 +3,8 @@ package ir.layercloud.cortexdrone.harness.tools;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.oc.OcRequest;
@@ -16,7 +18,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The full OpenComputers component API, exposed as tools.
@@ -58,7 +62,10 @@ public final class OcTools implements ToolProvider {
                             + "getOffset, getVelocity, detect, compare, drop, suck, select, count, space, "
                             + "transferTo, tankLevel, drain, fill, getStatusText, setLightColor, place, use. "
                             + "Arguments are positional and match the OC Lua call order. Returns the OC "
-                            + "return tuple.")
+                            + "return tuple. Inventory callbacks are 1-based: select(1) is the first slot, "
+                            + "and state.inventory entries carry ocSlot for exactly this. The drone's "
+                            + "drop(side, count) takes side 0..5 first and count second; select the slot "
+                            + "with select(slot) before calling drop.")
                     .parameters(ToolSchema.object()
                             .requiredString("method", "Callback name, for example 'detect' or 'move'.")
                             .optionalObject("args", "Positional arguments as {\"1\":..,\"2\":..} or a list.")
@@ -170,7 +177,7 @@ public final class OcTools implements ToolProvider {
             return values;
         }
         List<String> keys = new ArrayList<>();
-        for (java.util.Map.Entry<String, JsonElement> entry : object.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             keys.add(entry.getKey());
         }
         keys.sort(OcTools::byIndex);
@@ -190,7 +197,7 @@ public final class OcTools implements ToolProvider {
         List<Object> values = new ArrayList<>();
         if (raw == null || raw.trim().isEmpty()) return values;
         try {
-            JsonElement parsed = new com.google.gson.JsonParser().parse(raw);
+            JsonElement parsed = new JsonParser().parse(raw);
             if (parsed != null && parsed.isJsonArray()) {
                 for (JsonElement element : parsed.getAsJsonArray()) values.add(decode(element));
             } else if (parsed != null) {
@@ -207,7 +214,7 @@ public final class OcTools implements ToolProvider {
     private static Object decode(JsonElement element) {
         if (element == null || element.isJsonNull()) return null;
         if (element.isJsonPrimitive()) {
-            com.google.gson.JsonPrimitive primitive = element.getAsJsonPrimitive();
+            JsonPrimitive primitive = element.getAsJsonPrimitive();
             if (primitive.isBoolean()) return primitive.getAsBoolean();
             if (primitive.isNumber()) return primitive.getAsDouble();
             return primitive.getAsString();
@@ -218,8 +225,8 @@ public final class OcTools implements ToolProvider {
             return values;
         }
         JsonObject object = element.getAsJsonObject();
-        java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
-        for (java.util.Map.Entry<String, JsonElement> entry : object.entrySet()) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             map.put(entry.getKey(), decode(entry.getValue()));
         }
         return map;

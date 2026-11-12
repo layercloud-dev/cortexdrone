@@ -31,6 +31,14 @@ public class NavigationSession {
     int replanCooldown;
     volatile String reason = "planning";
 
+    /**
+     * Session-level progress watchdog. {@link #bestDistance} only resets the
+     * recovery budget when a leg finishes; this counter runs every tick so a
+     * chain of detours that never approaches the goal cannot run for minutes.
+     */
+    int noProgressTicks;
+    double progressBestDistance = Double.MAX_VALUE;
+
     // Automatic recovery: navigation resolves route failures itself.
     int recoveries;
     int failedRecoveries;

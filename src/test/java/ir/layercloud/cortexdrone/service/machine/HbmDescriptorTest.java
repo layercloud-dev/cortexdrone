@@ -64,7 +64,7 @@ public class HbmDescriptorTest {
 
     @Test
     public void fallbackHandlersNameAClassAndAKind() {
-        java.util.List<String[]> handlers = HbmDescriptor.fallbackHandlers();
+        List<String[]> handlers = HbmDescriptor.fallbackHandlers();
         assertFalse(handlers.isEmpty());
         for (String[] handler : handlers) {
             assertEquals(2, handler.length);

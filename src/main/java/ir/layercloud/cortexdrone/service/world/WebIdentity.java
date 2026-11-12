@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.service.world;
 
+import ir.layercloud.cortexdrone.CortexDroneMod;
+
 /**
  * Identity of the mod when calling external web services.
  *
@@ -16,7 +18,7 @@ public final class WebIdentity {
      * The user-agent sent with every outbound request.
      */
     public static String userAgent() {
-        return "CortexDrone/" + ir.layercloud.cortexdrone.CortexDroneMod.VERSION
+        return "CortexDrone/" + CortexDroneMod.VERSION
                 + " (Minecraft 1.7.10 AI drone)";
     }
 }

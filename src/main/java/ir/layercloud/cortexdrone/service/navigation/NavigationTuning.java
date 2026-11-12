@@ -110,4 +110,29 @@ public final class NavigationTuning {
      * Body height above the feet used by the passability check.
      */
     public static final int BODY_HEIGHT = 1;
+
+    /**
+     * Session-level progress watchdog. A leg watchdog stops one wedged leg; a
+     * long run of legs that never gets closer to the goal used to burn the
+     * entire 96-recovery budget (the clay task spent 13 minutes cycling
+     * detours in a forest). This is the outer guard: 90 seconds without
+     * approaching the goal ends the request honestly.
+     */
+    public static final int NO_PROGRESS_LIMIT_TICKS = 1800;
+    /**
+     * Distance improvement that resets the session-level watchdog, in blocks.
+     */
+    public static final double NO_PROGRESS_EPSILON = 0.75D;
+    /**
+     * Failed legs before recovery tries a climb above the local canopy.
+     */
+    public static final int CANOPY_ESCAPE_MIN_FAILURES = 2;
+    /**
+     * A drone this close under the local terrain top is in a canopy, not a cave.
+     */
+    public static final int CANOPY_SCAN_HEIGHT = 24;
+    /**
+     * Extra height above the canopy for the climb-out leg.
+     */
+    public static final double CANOPY_CLEARANCE = 5.0D;
 }

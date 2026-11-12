@@ -7,6 +7,8 @@ triggers:
   - "gather ore and return"
   - "come back with iron"
   - "mine ore for me"
+  - "go mine and bring ores"
+  - "don't come back until you are full"
 requires:
   - "mine_blocks"
   - "deliver_items"

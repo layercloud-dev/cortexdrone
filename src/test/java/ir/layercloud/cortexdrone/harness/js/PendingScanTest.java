@@ -36,7 +36,7 @@ public class PendingScanTest {
                 .description("Start a scan.")
                 .parameters(ToolSchema.object().optionalInt("radius", "Radius.", 1, 64, 24))
                 .affinity(ToolAffinity.ASYNC)
-                .capability(ir.layercloud.cortexdrone.harness.tool.ToolCapability.TIME_SLICED)
+                .capability(ToolCapability.TIME_SLICED)
                 .build());
         registry.declare(ToolSpec.builder("poll_scan")
                 .description("Poll a scan.")
@@ -46,7 +46,7 @@ public class PendingScanTest {
 
         assertTrue("the fixture must declare the time-sliced capability",
                 registry.spec("scan_blocks").has(
-                        ir.layercloud.cortexdrone.harness.tool.ToolCapability.TIME_SLICED));
+                        ToolCapability.TIME_SLICED));
 
         AtomicInteger polls = new AtomicInteger();
         registry.bind("scan_blocks", "test", (context, args) -> {

@@ -1,5 +1,7 @@
 package ir.layercloud.cortexdrone.harness.memory;
 
+import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -171,7 +173,7 @@ public final class MemoryCapture {
 
     public static List<String> tags(String message) {
         List<String> tags = new ArrayList<>();
-        for (String token : ir.layercloud.cortexdrone.service.world.LexicalItemMatcher.tokenize(message)) {
+        for (String token : LexicalItemMatcher.tokenize(message)) {
             if (token.length() >= 3 && !tags.contains(token) && tags.size() < 12) tags.add(token);
         }
         return tags;

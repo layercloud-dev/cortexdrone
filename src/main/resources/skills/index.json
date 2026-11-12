@@ -4,6 +4,7 @@
   "mine_and_deliver",
   "gather_distant",
   "deliver_items",
+  "drop_junk",
   "collect_drops",
   "store_items",
   "withdraw_items",

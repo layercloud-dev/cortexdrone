@@ -95,4 +95,19 @@ public class JsErrorHintTest {
         JsonObject result = run("var x = ;");
         assertEquals("js_syntax", result.get("code").getAsString());
     }
+
+    @Test
+    public void anAbstractConstructibleFailureExplainsTheNoArgConstructor() {
+        // Live shape: `Class.forName("com.hbm.items.ItemInventory")` is abstract;
+        // `getDeclaredConstructor().newInstance()` threw bare InstantiationException
+        // with the generic "fix the JavaScript" hint.
+        String hint = JsHints.forMessage("InstantiationException");
+        assertTrue(hint, hint.contains("no-arg constructor") || hint.contains("abstract"));
+        assertTrue("the advice must point at a working alternative: " + hint,
+                hint.contains("get_chest") || hint.contains("getDeclaredConstructor"));
+
+        String access = JsHints.forMessage(
+                "java.lang.IllegalAccessException: Class ... can not access a member");
+        assertTrue(access, access.contains("setAccessible"));
+    }
 }

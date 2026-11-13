@@ -21,8 +21,7 @@ final class JsHints {
      * Advice for a failure message, or {@code null} for a generic script error.
      */
     static String forMessage(String message) {
-        String text = message != null ? message : "";
-        if (text.contains("NoClassDefFoundError") || text.contains("LinkageError")) {
+        String text = message != null ? message : "";        if (text.contains("NoClassDefFoundError") || text.contains("LinkageError")) {
             return "An optional mod is missing a class that a modded block/item references. "
                     + "This is a broken dependency, not a script bug. Do not iterate "
                     + "Block.blockRegistry or Item.itemRegistry; use doc_lookup(query, mod_id), "
@@ -53,6 +52,16 @@ final class JsHints {
             return "Two Java overloads matched the JS argument types. Pass the exact type: "
                     + "String(value) for a String parameter, or an int/double literal instead of "
                     + "an object.";
+        }
+        if (text.contains("InstantiationException")) {
+            return "The class cannot be instantiated with no arguments (it is abstract, an "
+                    + "interface, or has no no-arg constructor). For a mod inventory like an HBM "
+                    + "crate, prefer get_chest/withdraw_chest or take_from_player; otherwise pass "
+                    + "the constructor argument types: C.getDeclaredConstructor(ArgClass, ...).";
+        }
+        if (text.contains("IllegalAccessException")) {
+            return "The constructor or method is not accessible. Call setAccessible(true) on the "
+                    + "java.lang.reflect.Constructor/Method/Field before invoking it.";
         }
         return null;
     }

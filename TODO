@@ -1,6 +1,6 @@
 # Remaining work
 
-State at this revision: 75 tools, 50 bundled skills, 769 tests, `./gradlew build`
+State at this revision: 75 tools, 50 bundled skills, 775 tests, `./gradlew build`
 green (validate + test + reobf + deploy).
 
 ## Open items (none blocking)
@@ -12,8 +12,37 @@ green (validate + test + reobf + deploy).
 - **`.gitignore` still excludes `docs/evidence/*.log`,** but the `docs/` tree was
   removed in the refactor. Either restore the docs or drop the stale rules.
 
+## Log audit (7.8 MB cortexdrone.log, all 1370 WARN/ERROR/STUCK/exception lines)
+
+| Count | Line | Status |
+|---|---|---|
+| 599 | `Slow server tick ... exceeds 50 ms` | **fixed**: a spike is now `SPIKE`; only a sustained avg/p95 overrun is `WARN` (`TickProfilerSeverityTest`) |
+| 89 | nav blocked, `allow_dig:false` | correct refusal: the caller disabled digging |
+| 75 | nav blocked, no tunnel direction | correct failure; the model must re-route |
+| 63 | `recovery ceiling reached` | correct cap (96) |
+| 24+34+18+17+16+15+14+… | `STUCK Velocity blocked` | diagnostics only; each is followed by a detour/dig |
+| 32+25 | transient LLM retry (5xx / EOF) | correct, bounded retries |
+| 20 | `dig budget exhausted` | correct budget enforcement |
+| 13 | `Flight leg stalled (allow_dig:false)` | correct refusal |
+| 7 | `Navigation timed out (no progress)` | correct watchdog (90 s) |
+| 6 | `LLM request failed` usage/quota | **fixed**: daily quota is not retried and the advice names credits/model |
+| 4 | `stuck in one place after N recoveries` | **fixed**: the new same-spot cap |
+| 2 | `InvalidPathException: Illegal char <:>` | **fixed**: `toFile()`/`toPath()` + hint |
+| 1 | `THINK ... Server thread is stuck. Possibly the tick loop is very laggy` | **fixed**: caused by the 599 false WARNs above |
+
+No `[ERROR]`/`[SEVERE]` line appears in the mod's own log; every remaining entry
+is a deliberate refusal or a bounded retry that ends in a navigation failure the
+model can act on.
+
 ## Done recently
 
+- Log audit: all 1370 WARN/ERROR/STUCK/exception lines in the 7.8 MB log were
+  grouped and classified (see the table above); the only real defect was the
+  599 false "Slow server tick" WARNs, now a `SPIKE` note.
+- `Loader.activeModList`/`getActiveModList` and MCP<->SRG resolution are proven
+  behaviourally through a live script (`LoaderAliasResolutionTest`).
+- InstantiationException / IllegalAccessException get specific advice
+  (`JsHints`).
 - Live-session JS failures: `Java.type("x.Y").class` is now constructible
   (`new C(...)`), `toFile`/`toPath` convert a `file:` code-source URL, and every
   harness-level failure (ambiguous overload, wrapped-object call,

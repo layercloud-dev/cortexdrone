@@ -73,9 +73,20 @@ public final class TickProfiler {
             if (nowWall - this.lastWarnWallMs >= this.warnCooldownMs) {
                 this.lastWarnWallMs = nowWall;
                 if (this.logger != null) {
-                    this.logger.log("WARN", null,
-                            String.format("Slow server tick: %.1f ms exceeds %.1f ms budget (tick=%d)",
-                                    durationMs, this.warnThresholdMs, tickCounter),
+                    // A single spike is not server lag. The live log had 599
+                    // "Slow server tick ... exceeds 50 ms budget" lines whose own
+                    // stats were avgMs=15.2 / p95Ms=18.8, and the model spent
+                    // turns believing "the server thread is stuck". Only a
+                    // sustained p95/avg overrun is a WARN; a lone spike is a
+                    // SPIKE note that says so.
+                    boolean sustained = getAvgMs() > this.warnThresholdMs
+                            || getP95Ms() > this.warnThresholdMs;
+                    this.logger.log(sustained ? "WARN" : "SPIKE", null,
+                            sustained
+                                    ? String.format("Slow server ticks: avg %.1f ms / p95 %.1f ms exceeds the %.1f ms budget (tick=%d)",
+                                    getAvgMs(), getP95Ms(), this.warnThresholdMs, tickCounter)
+                                    : String.format("Single slow tick: %.1f ms, average is still %.1f ms (tick=%d)",
+                                    durationMs, getAvgMs(), tickCounter),
                             String.format("avgMs=%.1f p95Ms=%.1f maxMs=%.1f samples=%d over=%d",
                                     getAvgMs(), getP95Ms(), getMaxMs(), getSampleCount(), this.overThresholdCount.get()));
                 }

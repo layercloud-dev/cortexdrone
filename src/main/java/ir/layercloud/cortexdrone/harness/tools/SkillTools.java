@@ -7,6 +7,7 @@ import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.js.JsEngine;
+import ir.layercloud.cortexdrone.harness.markdown.WriteStatus;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.skill.SkillRefiner;
@@ -234,6 +235,13 @@ public final class SkillTools implements ToolProvider {
         String notes = args.has("notes") ? args.get("notes").getAsString() : "";
         Skill skill = this.refiner.refine(controller, name, task, code, notes);
         if (skill == null) {
+            String reason = WriteStatus.takeFailure();
+            if (reason != null) {
+                return ToolJson.error("skill_not_persisted",
+                        "The skill was not saved: " + reason + ".",
+                        "Check that config/cortexdrone/skills is writable and has free space, then "
+                                + "retry skill_refine. The in-memory library was rolled back.", true);
+            }
             String hint = this.refiner.lastRejection();
             if (hint == null || hint.trim().isEmpty()) {
                 hint = "Check that the code is non-empty and the LLM gateway is reachable, then retry. "

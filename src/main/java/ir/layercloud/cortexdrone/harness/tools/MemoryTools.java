@@ -7,6 +7,7 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
 import ir.layercloud.cortexdrone.harness.memory.MemoryStore;
+import ir.layercloud.cortexdrone.harness.markdown.WriteStatus;
 import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -113,6 +114,13 @@ public final class MemoryTools implements ToolProvider {
             MemoryEntry entry = this.memory.remember(kind, name, text, hasPosition,
                     x, y, z, dimension, tags, pinned, source);
             if (entry == null) {
+                String reason = WriteStatus.takeFailure();
+                if (reason != null) {
+                    return ToolJson.error("memory_not_persisted",
+                            "Memory was not saved: " + reason + ".",
+                            "Check that the world save directory is writable and has free space, then retry. "
+                                    + "The entry was rolled back, so nothing has to be undone.", true);
+                }
                 return ToolJson.error("memory_failed", "Memory was empty.", "Provide text or a name.", true);
             }
             JsonObject result = ToolJson.ok();

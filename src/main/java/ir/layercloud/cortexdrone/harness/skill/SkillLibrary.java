@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import ir.layercloud.cortexdrone.config.ModPaths;
 import ir.layercloud.cortexdrone.harness.markdown.AtomicFiles;
+import ir.layercloud.cortexdrone.harness.markdown.WriteStatus;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -99,8 +100,17 @@ public final class SkillLibrary {
         skill.setCode(code.trim());
         skill.setSource(source != null ? source : "saved");
         skill.touch();
-        this.skills.put(key, skill);
-        persist(skill);
+        Skill previous = this.skills.put(key, skill);
+        if (!persist(skill)) {
+            // Do not report a skill the disk refused: restore the previous
+            // in-memory version (or drop the new one) and let the caller error.
+            if (previous != null) {
+                this.skills.put(key, previous);
+            } else {
+                this.skills.remove(key);
+            }
+            return null;
+        }
         return skill;
     }
 
@@ -309,20 +319,25 @@ public final class SkillLibrary {
     // Persistence
     // ------------------------------------------------------------------
 
-    private void persist(Skill skill) {
+    private boolean persist(Skill skill) {
+        WriteStatus.clear();
         File dir = new File(this.skillsDir, skill.getName());
         if (!dir.isDirectory() && !dir.mkdirs()) {
             LOG.warning("Could not create skill directory " + dir.getAbsolutePath());
-            return;
+            WriteStatus.failed(WriteStatus.reason("skill '" + skill.getName() + "'", dir.getAbsolutePath()));
+            return false;
         }
-        writeFile(new File(dir, SkillMarkdown.FILE_NAME), SkillMarkdown.write(skill));
-        writeFile(new File(dir, SkillMarkdown.DEFAULT_CODE_FILE), skill.getCode());
+        if (!writeFile(new File(dir, SkillMarkdown.FILE_NAME), SkillMarkdown.write(skill))) {
+            return false;
+        }
+        return writeFile(new File(dir, SkillMarkdown.DEFAULT_CODE_FILE), skill.getCode());
     }
 
-    private static void writeFile(File target, String content) {
-        if (!AtomicFiles.writeText(target, content)) {
-            LOG.warning("Could not write " + target.getAbsolutePath());
-        }
+    private static boolean writeFile(File target, String content) {
+        if (AtomicFiles.writeText(target, content)) return true;
+        LOG.warning("Could not write " + target.getAbsolutePath());
+        WriteStatus.failed(WriteStatus.reason("skill file", target.getAbsolutePath()));
+        return false;
     }
 
     private static boolean ensureDirectory(File directory) {

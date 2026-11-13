@@ -6,6 +6,7 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.harness.lesson.Lesson;
 import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
+import ir.layercloud.cortexdrone.harness.markdown.WriteStatus;
 import ir.layercloud.cortexdrone.harness.tool.*;
 import ir.layercloud.cortexdrone.service.search.RankedSearch;
 
@@ -88,6 +89,13 @@ public final class LessonTools implements ToolProvider {
             List<String> tags = splitTags(args.has("tags") ? args.get("tags").getAsString() : "");
             Lesson lesson = this.lessons.add(scope, title, body, tags, outcome, pinned, "agent");
             if (lesson == null) {
+                String reason = WriteStatus.takeFailure();
+                if (reason != null) {
+                    return ToolJson.error("lesson_not_persisted",
+                            "Lesson was not saved: " + reason + ".",
+                            "Check that config/cortexdrone/lessons is writable and has free space, "
+                                    + "then retry. The entry was rolled back.", true);
+                }
                 return ToolJson.error("lesson_failed", "Lesson was empty.",
                         "Provide a title and a short rule.", true);
             }
@@ -102,6 +110,12 @@ public final class LessonTools implements ToolProvider {
                     : (args.has("title") ? args.get("title").getAsString() : "");
             boolean removed = this.lessons.forget(key);
             if (!removed) {
+                String reason = WriteStatus.takeFailure();
+                if (reason != null) {
+                    return ToolJson.error("lesson_not_persisted",
+                            "Lesson was not removed: " + reason + ".",
+                            "The lesson is still on disk. Fix write access and retry.", true);
+                }
                 return ToolJson.error("lesson_not_found", "No lesson matched '" + key + "'.",
                         "Use action=list to see stored lesson ids and titles.", true);
             }

@@ -1,14 +1,10 @@
 # Remaining work
 
-State at this revision: 75 tools, 50 bundled skills, 747 tests, `./gradlew build`
+State at this revision: 75 tools, 50 bundled skills, 753 tests, `./gradlew build`
 green (validate + test + reobf + deploy).
 
 ## Open items (none blocking)
 
-- **Persistence failures still report success.** `MemoryStore`, `LessonStore` and
-  `SkillLibrary` log a warning when the atomic write fails (disk full, read-only
-  directory, Windows file lock) but the tool envelope still says saved. Return a
-  `*_not_persisted` error so the model can retry instead of trusting memory.
 - **`SessionOutcome.fromReply` is still a heuristic.** It no longer counts
   bare "failed"/"missing", but a reply that reports a problem in a confident
   sentence can still be filed as success. Prefer an explicit outcome signal
@@ -22,6 +18,10 @@ green (validate + test + reobf + deploy).
 
 ## Done recently
 
+- Persistence honesty: a store whose write fails returns null and a
+  `*_not_persisted` tool error instead of `saved:true`, and rolls the in-memory
+  map back (`WriteStatus`, `StorePersistenceFailureTest`).
+- The jar ships `pack.mcmeta` (FML logged a substituted dummy pack every start).
 - Live-log fixes: navigation gives up after 8 recoveries from one place
   (it repeated `dug=0/32 recov=4 detours=12` at one block for 20 minutes),
   MCP<->SRG aliasing is bidirectional, gateway errors name the setting that

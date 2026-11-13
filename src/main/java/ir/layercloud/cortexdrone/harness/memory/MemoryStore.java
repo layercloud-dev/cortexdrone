@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.config.ModPaths;
 import ir.layercloud.cortexdrone.harness.markdown.AtomicFiles;
+import ir.layercloud.cortexdrone.harness.markdown.WriteStatus;
 import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
 
@@ -72,7 +73,12 @@ public final class MemoryStore {
         entry.touch();
         this.entries.put(entry.getId(), entry);
         enforceLimit();
-        save();
+        if (!save()) {
+            // The in-memory map must not claim an entry the disk refused: the
+            // next start would silently drop it and the caller was told "saved".
+            this.entries.remove(entry.getId());
+            return null;
+        }
         return entry;
     }
 
@@ -132,17 +138,25 @@ public final class MemoryStore {
         MemoryEntry direct = this.entries.get(key);
         if (direct != null) {
             this.entries.remove(key);
-            save();
+            // Put it back when the disk refuses: a forget that did not reach the
+            // file would reappear on the next start, so it must not report true.
+            if (!save()) {
+                this.entries.put(direct.getId(), direct);
+                return false;
+            }
             return true;
         }
         String name = normalizeName(key);
-        List<String> remove = new ArrayList<>();
+        List<MemoryEntry> removed = new ArrayList<>();
         for (MemoryEntry entry : this.entries.values()) {
-            if (entry.getName().equals(name)) remove.add(entry.getId());
+            if (entry.getName().equals(name)) removed.add(entry);
         }
-        for (String id : remove) this.entries.remove(id);
-        if (!remove.isEmpty()) save();
-        return !remove.isEmpty();
+        for (MemoryEntry entry : removed) this.entries.remove(entry.getId());
+        if (!removed.isEmpty() && !save()) {
+            for (MemoryEntry entry : removed) this.entries.put(entry.getId(), entry);
+            return false;
+        }
+        return !removed.isEmpty();
     }
 
     public synchronized int count() {
@@ -245,17 +259,25 @@ public final class MemoryStore {
         }
     }
 
-    private synchronized void save() {
-        if (this.storageFile == null) return;
+    private synchronized boolean save() {
+        WriteStatus.clear();
+        if (this.storageFile == null) {
+            WriteStatus.failed(WriteStatus.reason("memory", "<no world directory>"));
+            return false;
+        }
         File parent = this.storageFile.getParentFile();
         if (parent != null && !parent.exists() && !parent.mkdirs()) {
             LOG.warning("Could not create memory directory " + parent.getAbsolutePath());
-            return;
+            WriteStatus.failed(WriteStatus.reason("memory", this.storageFile.getAbsolutePath()));
+            return false;
         }
         String json = CortexDroneMod.GSON.toJson(new ArrayList<>(this.entries.values()));
         if (!AtomicFiles.writeText(this.storageFile, json)) {
             LOG.warning("Could not write memories to " + this.storageFile.getAbsolutePath());
+            WriteStatus.failed(WriteStatus.reason("memory", this.storageFile.getAbsolutePath()));
+            return false;
         }
+        return true;
     }
 
     private static String normalizeKind(String kind, String text, boolean hasPosition) {

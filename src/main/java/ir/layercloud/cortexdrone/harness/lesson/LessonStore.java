@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.harness.lesson;
 
 import ir.layercloud.cortexdrone.config.ModPaths;
 import ir.layercloud.cortexdrone.harness.markdown.AtomicFiles;
+import ir.layercloud.cortexdrone.harness.markdown.WriteStatus;
 import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
 
@@ -79,7 +80,15 @@ public final class LessonStore {
         lesson.touch();
         this.entries.put(lesson.getId(), lesson);
         enforceLimit();
-        persist(lesson);
+        if (!persist(lesson)) {
+            // Roll back so a failed write is not reported as a stored lesson.
+            if (lesson.getVersion() > 1) {
+                lesson.setVersion(lesson.getVersion() - 1);
+            } else {
+                this.entries.remove(lesson.getId());
+            }
+            return null;
+        }
         return lesson;
     }
 
@@ -121,19 +130,25 @@ public final class LessonStore {
         String key = idOrTitle.trim();
         Lesson direct = this.entries.remove(key);
         if (direct != null) {
-            deleteLesson(direct);
-            return true;
+            if (deleteLesson(direct)) return true;
+            // The directory is still there; keep the in-memory entry truthful.
+            this.entries.put(direct.getId(), direct);
+            return false;
         }
         String title = normalizeTitle(key);
-        List<String> remove = new ArrayList<>();
+        List<Lesson> removed = new ArrayList<>();
         for (Lesson lesson : this.entries.values()) {
-            if (lesson.getTitle().equals(title)) remove.add(lesson.getId());
+            if (lesson.getTitle().equals(title)) removed.add(lesson);
         }
-        for (String id : remove) {
-            Lesson lesson = this.entries.remove(id);
-            if (lesson != null) deleteLesson(lesson);
+        boolean allDeleted = true;
+        for (Lesson lesson : removed) {
+            this.entries.remove(lesson.getId());
+            if (!deleteLesson(lesson)) {
+                this.entries.put(lesson.getId(), lesson);
+                allDeleted = false;
+            }
         }
-        return !remove.isEmpty();
+        return !removed.isEmpty() && allDeleted;
     }
 
     public synchronized int count() {
@@ -187,16 +202,21 @@ public final class LessonStore {
         this.entries.put(lesson.getId(), lesson);
     }
 
-    private void persist(Lesson lesson) {
-        if (!this.files.persist(lesson)) {
-            LOG.warning("Could not persist lesson " + lesson.getTitle());
-        }
+    private boolean persist(Lesson lesson) {
+        if (this.files.persist(lesson)) return true;
+        LOG.warning("Could not persist lesson " + lesson.getTitle());
+        WriteStatus.failed(WriteStatus.reason("lesson '" + lesson.getTitle() + "'",
+                lesson.getPath() != null ? lesson.getPath() : lessonsDir.getAbsolutePath()));
+        return false;
     }
 
-    private void deleteLesson(Lesson lesson) {
-        if (!this.files.delete(lesson)) {
-            LOG.warning("Could not delete lesson " + (lesson != null ? lesson.getTitle() : "?"));
-        }
+    private boolean deleteLesson(Lesson lesson) {
+        if (this.files.delete(lesson)) return true;
+        LOG.warning("Could not delete lesson " + (lesson != null ? lesson.getTitle() : "?"));
+        WriteStatus.failed(WriteStatus.reason("lesson '" + (lesson != null ? lesson.getTitle() : "?") + "'",
+                lesson != null && lesson.getPath() != null
+                        ? lesson.getPath() : lessonsDir.getAbsolutePath()));
+        return false;
     }
 
 

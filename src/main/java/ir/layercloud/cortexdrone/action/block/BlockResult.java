@@ -21,6 +21,8 @@ public class BlockResult {
     int x;
     int y;
     int z;
+    int brokenCount;
+    java.util.List<String> blocks;
 
     public static BlockResult failure(String error) {
         return builder().ok(false).error(error).build();
@@ -31,6 +33,25 @@ public class BlockResult {
                 .ok(true)
                 .broken(true)
                 .block(block)
+                .brokenCount(1)
+                .blocks(java.util.Collections.singletonList(block))
+                .x(x)
+                .y(y)
+                .z(z)
+                .build();
+    }
+
+    /**
+     * A vein break: several blocks gone, with the count and per-block names.
+     */
+    public static BlockResult vein(String block, int x, int y, int z,
+                                   int brokenCount, java.util.List<String> blocks) {
+        return builder()
+                .ok(true)
+                .broken(true)
+                .block(block)
+                .brokenCount(brokenCount)
+                .blocks(blocks)
                 .x(x)
                 .y(y)
                 .z(z)

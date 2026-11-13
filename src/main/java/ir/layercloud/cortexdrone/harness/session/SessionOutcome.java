@@ -36,10 +36,10 @@ public enum SessionOutcome {
     ERROR("error", "error");
 
     private static final String[] FAILURE_MARKERS = {
-            "couldn't", "could not", "can't", "cannot", "unable to", "failed", "failure",
-            "blocked by", "impossible", "not possible", "no route", "not enough",
-            "missing", "denied", "not found", "gave up", "no safe",
-            "no access", "no room"
+            "couldn't", "could not", "can't", "cannot", "unable to",
+            "failed to", "blocked by", "impossible", "not possible", "no route",
+            "not enough", "gave up", "no safe", "no access", "no room", "denied",
+            "not found"
     };
 
     private final String id;
@@ -60,6 +60,11 @@ public enum SessionOutcome {
 
     /**
      * Heuristic classification of a final model reply.
+     *
+     * <p>Only failure phrasing counts. Bare nouns such as "failed attempts" or
+     * "missing" also appear in successful reports ("a few failed attempts, then
+     * 60 ore mined"), and the live journal filed exactly such a successful
+     * mining run under {@code failures/}.</p>
      */
     public static SessionOutcome fromReply(String reply) {
         if (reply == null || reply.trim().isEmpty()) return INCOMPLETE;

@@ -10,7 +10,6 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.util.EnumChatFormatting;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.Reader;
 import java.util.List;
 import java.util.Map;
@@ -160,7 +159,8 @@ public final class SessionCommands {
 
     private static JsonObject readJson(File file) {
         if (file == null || !file.isFile()) return null;
-        try (Reader reader = new FileReader(file)) {
+        try (Reader reader = new java.io.InputStreamReader(
+                new java.io.FileInputStream(file), java.nio.charset.StandardCharsets.UTF_8)) {
             JsonElement parsed = new JsonParser().parse(reader);
             return parsed != null && parsed.isJsonObject() ? parsed.getAsJsonObject() : null;
         } catch (Exception ignored) {

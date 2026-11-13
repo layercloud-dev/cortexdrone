@@ -11,6 +11,8 @@ import ir.layercloud.cortexdrone.service.inventory.ToolInspector;
 import ir.layercloud.cortexdrone.service.world.BlockPlacer;
 import ir.layercloud.cortexdrone.service.world.BlockSight;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
+import ir.layercloud.cortexdrone.service.world.VeinBlocks;
+import ir.layercloud.cortexdrone.service.world.VeinLimits;
 import li.cil.oc.common.entity.Drone;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.block.Block;
@@ -79,6 +81,10 @@ public final class BreakBlockAction implements Action<BlockContext> {
         }
         int meta = world.getBlockMetadata(x, y, z);
         String name = ItemClassifier.getBlockDisplayName(block, meta);
+        if (this.request.isVein()) {
+            breakVein(context, controller, drone, world, x, y, z, name);
+            return;
+        }
         int fortune = ToolInspector.getBestFortuneLevel(drone.mainInventory());
         List<ItemStack> drops = computeDrops(world, block, x, y, z, meta, fortune);
 
@@ -94,6 +100,78 @@ public final class BreakBlockAction implements Action<BlockContext> {
         BlockPlacer.refresh(world, x, y, z, Blocks.air);
 
         IInventory inv = drone.mainInventory();
+        giveDrops(world, drone, inv, drops);
+        this.logger.log("MINE", controller,
+                String.format("Broke %s at (%d,%d,%d)", name, x, y, z), "");
+        context.result(BlockResult.broken(name, x, y, z));
+    }
+
+    /**
+     * Breaks the connected cluster of the target block.
+     *
+     * <p>The plan is computed once on the server thread. Every block in it has
+     * already passed the same mineable check as a single break; each one is then
+     * broken through the same path (drops, inventory, refresh) and counted. A
+     * block that the world refuses is skipped and reported through
+     * {@code refused}, so a partial vein is never described as complete.</p>
+     *
+     * <p>Reach and line of sight are checked for the target only: the drone
+     * cannot see every voxel inside a cluster from one standoff, and the radius
+     * plus the target check is what keeps a vein break physical.</p>
+     */
+    private void breakVein(BlockContext context, DroneController controller, Drone drone,
+                           World world, int x, int y, int z, String name) {
+        List<int[]> plan = VeinBlocks.plan(world, x, y, z,
+                this.request.getVeinRadius(), this.request.getVeinBlocks());
+        int fortune = ToolInspector.getBestFortuneLevel(drone.mainInventory());
+        IInventory inv = drone.mainInventory();
+        List<String> broken = new ArrayList<>();
+        int refused = 0;
+
+        for (int[] point : plan) {
+            int bx = point[0];
+            int by = point[1];
+            int bz = point[2];
+            if (!ItemClassifier.isMineableBlock(world, bx, by, bz)) {
+                refused++;
+                continue;
+            }
+            Block current = world.getBlock(bx, by, bz);
+            if (current == null || current == Blocks.air) {
+                refused++;
+                continue;
+            }
+            int currentMeta = world.getBlockMetadata(bx, by, bz);
+            List<ItemStack> drops = computeDrops(world, current, bx, by, bz, currentMeta, fortune);
+            world.playAuxSFX(2001, bx, by, bz,
+                    Block.getIdFromBlock(current) + (currentMeta << 12));
+            if (!world.setBlockToAir(bx, by, bz)) {
+                refused++;
+                continue;
+            }
+            BlockPlacer.refresh(world, bx, by, bz, Blocks.air);
+            giveDrops(world, drone, inv, drops);
+            broken.add(ItemClassifier.getBlockDisplayName(current, currentMeta));
+        }
+
+        if (broken.isEmpty()) {
+            context.result(BlockResult.failure("Cannot break the vein at "
+                    + x + "," + y + "," + z + " (no block in the cluster could be removed)"));
+            return;
+        }
+        this.logger.log("MINE", controller,
+                String.format("Broke %s vein: %d block(s) at (%d,%d,%d)", name,
+                        broken.size(), x, y, z),
+                "radius=" + this.request.getVeinRadius()
+                        + " cap=" + this.request.getVeinBlocks()
+                        + " refused=" + refused);
+        context.result(BlockResult.vein(name, x, y, z, broken.size(), broken));
+    }
+
+    /**
+     * Inserts drops into the drone inventory, leaving the overflow on the floor.
+     */
+    private static void giveDrops(World world, Drone drone, IInventory inv, List<ItemStack> drops) {
         for (ItemStack drop : drops) {
             if (drop == null || drop.stackSize <= 0) continue;
             ItemStack copy = drop.copy();
@@ -104,9 +182,6 @@ public final class BreakBlockAction implements Action<BlockContext> {
                 world.spawnEntityInWorld(leftover);
             }
         }
-        this.logger.log("MINE", controller,
-                String.format("Broke %s at (%d,%d,%d)", name, x, y, z), "");
-        context.result(BlockResult.broken(name, x, y, z));
     }
 
     private static Method resolveGetDropsMethod() {

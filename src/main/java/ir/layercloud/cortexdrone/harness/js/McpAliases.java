@@ -49,6 +49,13 @@ final class McpAliases {
                 "getItemDamage", "func_77960_j");
         method("net.minecraft.item.crafting.IRecipe", "getRecipeOutput", "func_77571_b");
 
+        // Server singleton. The live log shows the opposite direction failing:
+        // a script wrote `MinecraftServer.func_71276_C()` on an MCP-named
+        // deployment and got "Cannot find function func_71276_C". Resolution is
+        // bidirectional, so this one pair makes both spellings work.
+        method("net.minecraft.server.MinecraftServer", "getServer", "func_71276_C");
+        method("cpw.mods.fml.common.Loader", "activeModList", "getActiveModList");
+
         // net.minecraft.util registries (live scripts iterate the block registry)
         method("net.minecraft.util.RegistrySimple",
                 "getKeys", "func_148742_b",
@@ -68,13 +75,19 @@ final class McpAliases {
 
     private static void method(String owner, String... pairs) {
         for (int i = 0; i + 1 < pairs.length; i += 2) {
+            // Both directions. A production server is SRG-named, but a dev
+            // world (and some forks) are MCP-named; the live log shows a script
+            // calling func_71276_C() on an MCP deployment. One table now serves
+            // both without guessing an overload.
             METHODS.put(owner + "#" + pairs[i], pairs[i + 1]);
+            METHODS.putIfAbsent(owner + "#" + pairs[i + 1], pairs[i]);
         }
     }
 
     private static void field(String owner, String... pairs) {
         for (int i = 0; i + 1 < pairs.length; i += 2) {
             FIELDS.put(owner + "#" + pairs[i], pairs[i + 1]);
+            FIELDS.putIfAbsent(owner + "#" + pairs[i + 1], pairs[i]);
         }
     }
 

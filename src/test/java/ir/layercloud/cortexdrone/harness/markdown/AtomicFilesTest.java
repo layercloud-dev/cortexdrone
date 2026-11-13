@@ -73,4 +73,48 @@ public class AtomicFilesTest {
         assertTrue(AtomicFiles.writeText(target, null));
         assertEquals("", AtomicFiles.readText(target));
     }
+
+    @Test
+    public void nonAsciiTextRoundTripsAsUtf8() throws Exception {
+        File target = new File(tempDir(), "skill.md");
+        String text = "# پایگاه من\n\nسلام — ünïcode ✅\n";
+        assertTrue(AtomicFiles.writeText(target, text));
+
+        byte[] raw = Files.readAllBytes(target.toPath());
+        assertEquals("the file must be UTF-8 on disk",
+                text, new String(raw, StandardCharsets.UTF_8));
+        assertEquals("reading back must not depend on the platform charset",
+                text, AtomicFiles.readText(target));
+    }
+
+    @Test
+    public void concurrentWritersNeverSpliceThePayload() throws Exception {
+        File dir = tempDir();
+        File target = new File(dir, "memory.json");
+        final String[] payloads = new String[4];
+        for (int i = 0; i < payloads.length; i++) {
+            StringBuilder builder = new StringBuilder("payload-" + i + ":");
+            for (int n = 0; n < 400; n++) builder.append(i);
+            payloads[i] = builder.toString();
+        }
+
+        Thread[] writers = new Thread[payloads.length];
+        for (int i = 0; i < writers.length; i++) {
+            final String payload = payloads[i];
+            writers[i] = new Thread(() -> {
+                for (int n = 0; n < 25; n++) AtomicFiles.writeText(target, payload);
+            });
+            writers[i].start();
+        }
+        for (Thread writer : writers) writer.join();
+
+        String actual = AtomicFiles.readText(target);
+        boolean exact = false;
+        for (String payload : payloads) exact |= payload.equals(actual);
+        assertTrue("the file must hold one complete payload, not a splice", exact);
+
+        File[] leftovers = dir.listFiles((parent, name) -> name.endsWith(".tmp"));
+        assertNotNull(leftovers);
+        assertEquals("no temp file may survive a completed write", 0, leftovers.length);
+    }
 }

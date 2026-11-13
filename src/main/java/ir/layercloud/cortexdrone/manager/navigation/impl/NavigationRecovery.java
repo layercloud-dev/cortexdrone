@@ -42,6 +42,15 @@ final class NavigationRecovery {
      */
     static final int MAX_RECOVERIES = 96;
     /**
+     * Recoveries allowed from one place before the session is failed.
+     *
+     * <p>A real obstacle needs a couple of attempts; ten is already generous.
+     * Without this cap the live log repeated {@code recov=4 detours=12} from the
+     * same block every three seconds until the twenty-minute task budget ran
+     * out, because each short detour reset the per-leg counters.</p>
+     */
+    static final int MAX_SAME_SPOT_RECOVERIES = 8;
+    /**
      * Consecutive instant failures before digging is preferred over detours.
      */
     static final int MAX_INSTANT_FAILURES = 2;
@@ -98,6 +107,12 @@ final class NavigationRecovery {
         session.recoveries++;
         if (session.recoveries > MAX_RECOVERIES) {
             this.host.fail(controller, reason + " (recovery ceiling reached)");
+            return;
+        }
+        if (session.noteRecoverySpot(drone.posX, drone.posY, drone.posZ,
+                MAX_SAME_SPOT_RECOVERIES)) {
+            this.host.fail(controller, reason + " (stuck in one place after "
+                    + session.sameSpotRecoveries + " recovery attempts)");
             return;
         }
 

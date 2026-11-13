@@ -40,10 +40,14 @@ public final class SkillLibrary {
     private static final int MAX_DOCS_CHARS = 4_000;
 
     private final File skillsDir;
+    private final File disabledDir;
     private final Map<String, Skill> skills = new LinkedHashMap<>();
+    private final SkillRetirement retirement;
 
     public SkillLibrary(File configRoot) {
         this.skillsDir = ModPaths.skillsDir(configRoot);
+        this.disabledDir = ModPaths.disabledSkillsDir(configRoot);
+        this.retirement = new SkillRetirement(this.skillsDir, this.disabledDir);
         loadBundled();
         loadLearned();
     }
@@ -121,15 +125,52 @@ public final class SkillLibrary {
         boolean hadOverride = dir.isDirectory();
         deleteRecursively(dir);
         // Removing a learned override should reveal the bundled skill again.
-        if (hadOverride) loadBundledByName(key);
+        // Only reload when a bundled skill with that name actually exists;
+        // otherwise deleting a learned-only skill logged a misleading
+        // "bundled skill has no SKILL.md" warning on every delete.
+        if (hadOverride && bundledResource(key) != null) loadBundledByName(key);
         return true;
+    }
+
+    /**
+     * Retires a learned skill without destroying it: its directory is moved to
+     * {@code skills-disabled/} and the bundled skill (when one exists with the
+     * same name) becomes active again.
+     *
+     * @return false when the name is a bundled skill or no learned directory exists
+     */
+    public synchronized boolean disable(String name) {
+        String key = normalize(name);
+        if (!this.retirement.retire(key)) return false;
+        this.skills.remove(key);
+        if (bundledResource(key) != null) loadBundledByName(key);
+        return true;
+    }
+
+    /**
+     * Returns a retired learned skill to the active library.
+     *
+     * @return false when no disabled directory exists for that name
+     */
+    public synchronized boolean enable(String name) {
+        String key = normalize(name);
+        File restored = this.retirement.restore(key);
+        if (restored == null) return false;
+        loadLearnedSkill(restored);
+        return this.skills.containsKey(key);
+    }
+
+    /**
+     * Names of retired skills, sorted. Diagnostics only.
+     */
+    public synchronized List<String> disabledNames() {
+        return this.retirement.names();
     }
 
     /**
      * Names that are missing from the library but required by the given skill.
      */
-    public synchronized List<String> missingRequires(String name) {
-        List<String> missing = new ArrayList<>();
+    public synchronized List<String> missingRequires(String name) {        List<String> missing = new ArrayList<>();
         Skill skill = this.skills.get(normalize(name));
         if (skill == null || skill.getRequires() == null) return missing;
         for (String dependency : skill.getRequires()) {
@@ -240,11 +281,13 @@ public final class SkillLibrary {
         String meta = readFile(markdown);
         Skill skill = SkillMarkdown.read(meta, null);
         if (skill == null) return;
-        if (skill.getName() == null || skill.getName().trim().isEmpty()) {
-            skill.setName(normalize(dir.getName()));
-        } else {
-            skill.setName(normalize(skill.getName()));
-        }
+        // The directory is authoritative for a learned skill: persist(), disable
+        // and delete all address it by name, so a frontmatter name that differs
+        // from the directory (hand-edited, or a decorated title) used to create a
+        // duplicate directory on the next recordUse/refine and made disable fail.
+        String fromDirectory = normalize(dir.getName());
+        String declared = skill.getName() != null ? normalize(skill.getName()) : "";
+        skill.setName(fromDirectory.isEmpty() ? declared : fromDirectory);
         String codeName = skill.getCodeFile() != null ? skill.getCodeFile().trim() : "";
         if (codeName.isEmpty()) codeName = SkillMarkdown.DEFAULT_CODE_FILE;
         File codeFile = new File(dir, safeFileName(codeName) ? codeName : SkillMarkdown.DEFAULT_CODE_FILE);
@@ -282,6 +325,10 @@ public final class SkillLibrary {
         }
     }
 
+    private static boolean ensureDirectory(File directory) {
+        return directory != null && (directory.isDirectory() || directory.mkdirs());
+    }
+
     private static void deleteRecursively(File file) {
         if (!AtomicFiles.deleteRecursively(file)) {
             LOG.warning("Could not delete " + file.getAbsolutePath());
@@ -294,8 +341,7 @@ public final class SkillLibrary {
 
     private static String readResource(String path) {
         InputStream stream = SkillLibrary.class.getResourceAsStream(path);
-        if (stream == null) return null;
-        try (InputStream in = stream) {
+        if (stream == null) return null;        try (InputStream in = stream) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] chunk = new byte[4096];
             int read;
@@ -308,6 +354,14 @@ public final class SkillLibrary {
 
     private static String readFile(File file) {
         return AtomicFiles.readText(file);
+    }
+
+    /**
+     * The bundled SKILL.md resource for a normalized name, or {@code null}.
+     */
+    private static java.net.URL bundledResource(String key) {
+        if (key == null || key.isEmpty()) return null;
+        return SkillLibrary.class.getResource("/skills/" + key + "/" + SkillMarkdown.FILE_NAME);
     }
 
     private static boolean safeFileName(String name) {

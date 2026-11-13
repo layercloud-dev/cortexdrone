@@ -171,6 +171,19 @@ var SKILL_LIMITS = {
     lootVacuumMin: 2,
     lootWalkRadius: 12,
     lootClustersMax: 4,
+    /* Aerial TNT strike (tnt_drop tool, tnt_strike skill). */
+    tntCountMin: 1,
+    tntCountDefault: 1,
+    tntCountMax: 8,
+    tntFuseMin: 10,
+    tntFuseDefault: 60,
+    tntFuseMax: 200,
+    tntSpreadMax: 3,
+    tntRequestMin: 4,
+    tntSafeDistance: 9,
+    tntBlastRadius: 4,
+    tntEscapeMargin: 5,
+    sleepCapMs: 10000,
     /* Fallback valuation, mirroring LootValue's valuable words. */
     lootValueWords: 'ore|ingot|gem|crystal|dust|nugget|diamond|emerald|lapis'
         + '|redstone|coal|quartz|certus|copper|tin|lead|silver|nickel|gold|iron'

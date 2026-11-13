@@ -77,6 +77,7 @@ public final class Harness {
                 new LessonTools(manager, lessons),
                 new VisualsTools(manager),
                 new QuestionTools(manager),
+                new OrdnanceTools(manager),
                 new WorldTools(manager, manager.getWorldScanner()),
                 new OreDictTools(),
                 new SkillTools(manager, skills, refiner),

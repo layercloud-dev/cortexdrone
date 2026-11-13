@@ -39,6 +39,46 @@ public class NavigationSession {
     int noProgressTicks;
     double progressBestDistance = Double.MAX_VALUE;
 
+    /**
+     * Where the last recovery escalation started, and how many times in a row a
+     * recovery began within a few blocks of it.
+     *
+     * <p>The live log shows the same spot (a flooded pocket with ladders and a
+     * torch) escalating forever: {@code dug=0/32 recov=4 detours=12} repeated
+     * every three seconds for twenty minutes, because tiny detour movements kept
+     * resetting the per-leg progress counters. A chain of recoveries from one
+     * place is not progress, so it is capped explicitly.</p>
+     */
+    double lastRecoveryX = Double.NaN;
+    double lastRecoveryY = Double.NaN;
+    double lastRecoveryZ = Double.NaN;
+    int sameSpotRecoveries;
+
+    /**
+     * Records this recovery's position and reports whether the session has now
+     * escalated from the same spot too many times.
+     *
+     * @param maxRepeats consecutive recoveries allowed from one place
+     */
+    boolean noteRecoverySpot(double x, double y, double z, int maxRepeats) {
+        if (Double.isNaN(this.lastRecoveryX)
+                || Math.sqrt(square(x - this.lastRecoveryX)
+                + square(y - this.lastRecoveryY)
+                + square(z - this.lastRecoveryZ)) > 3.0D) {
+            this.lastRecoveryX = x;
+            this.lastRecoveryY = y;
+            this.lastRecoveryZ = z;
+            this.sameSpotRecoveries = 1;
+            return false;
+        }
+        this.sameSpotRecoveries++;
+        return this.sameSpotRecoveries > maxRepeats;
+    }
+
+    private static double square(double value) {
+        return value * value;
+    }
+
     // Automatic recovery: navigation resolves route failures itself.
     int recoveries;
     int failedRecoveries;

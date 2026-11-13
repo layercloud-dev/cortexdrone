@@ -12,6 +12,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import ir.layercloud.cortexdrone.network.DroneMapSync;
 import ir.layercloud.cortexdrone.network.QuestionNetwork;
+import ir.layercloud.cortexdrone.harness.tool.Threads;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -57,6 +58,7 @@ public class CortexDroneMod {
     });
 
     private final List<Runnable> mainThreadTasks = Collections.synchronizedList(new ArrayList<>());
+    private static volatile CortexDroneMod instance;
     private AIDroneManager aiDroneManager = null;
     private final DroneMapSync mapSync = new DroneMapSync();
     private Method authCheckMethod = null;
@@ -64,6 +66,7 @@ public class CortexDroneMod {
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
+        instance = this;
         MinecraftForge.EVENT_BUS.register(this);
         FMLCommonHandler.instance().bus().register(this);
         DroneMapSync.register();
@@ -187,6 +190,25 @@ public class CortexDroneMod {
 
     public void queueMain(Runnable r) {
         this.mainThreadTasks.add(r);
+    }
+
+    /**
+     * Queues work on the server thread from anywhere, or runs it inline when the
+     * caller already owns that thread (or the mod has not initialized yet).
+     *
+     * <p>Used by components that have no manager reference, such as the debug
+     * logger's live chat mirror. Pushing chat onto the tick queue matters: a
+     * player's network handler is not thread-safe, and log calls arrive from
+     * agent threads.</p>
+     */
+    public static void queueMainTask(Runnable task) {
+        if (task == null) return;
+        CortexDroneMod mod = instance;
+        if (mod == null || Threads.isServerThread()) {
+            task.run();
+            return;
+        }
+        mod.queueMain(task);
     }
 
     public static String normKey(String s) {

@@ -54,4 +54,19 @@ public class McpAliasesTest {
         assertNull(McpAliases.method(null, "getInstance"));
         assertNull(McpAliases.field(Block.class, "definitelyNotAField"));
     }
+
+    @Test
+    public void mappingWorksInBothDirections() {
+        // The live log had `Cannot find function func_71276_C` on a dev-named
+        // world: a script wrote the SRG spelling. Both must resolve.
+        assertEquals("func_71276_C",
+                McpAliases.method(net.minecraft.server.MinecraftServer.class, "getServer"));
+        assertEquals("getServer",
+                McpAliases.method(net.minecraft.server.MinecraftServer.class, "func_71276_C"));
+
+        assertEquals("func_77594_a", McpAliases.method(CraftingManager.class, "getInstance"));
+        assertEquals("getInstance", McpAliases.method(CraftingManager.class, "func_77594_a"));
+        assertEquals("blockRegistry", McpAliases.field(Block.class, "field_149771_c"));
+        assertEquals("field_149771_c", McpAliases.field(Block.class, "blockRegistry"));
+    }
 }

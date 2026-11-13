@@ -74,7 +74,8 @@ public class DroneCommand extends BaseCommand {
                         "interrupted", "incomplete", "error");
             }
             if (sub.equals("skills")) {
-                return getListOfStringsMatchingLastWord(args, "list", "search", "show");
+                return getListOfStringsMatchingLastWord(args,
+                        "list", "search", "show", "disable", "enable", "disabled");
             }
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("config")) {
@@ -117,7 +118,7 @@ public class DroneCommand extends BaseCommand {
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone lesson [list|search <q>|forget <id|title>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone sessions [list [success|failure|...] [n]|stats|show <id>]");
-            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone skills [list [n]|search <q>|show <name>]");
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "/drone skills [list [n]|search <q>|show <name>|disabled|disable|enable <name>]");
             CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA + "@drone <message>" + EnumChatFormatting.GRAY
                     + " - the drone's AI decides: task, status, note, change or cancel");
             return;

@@ -27,6 +27,7 @@ public final class ToolCatalog {
         specs.addAll(InventoryQueryTools.specs());
         specs.addAll(VisualsTools.specs());
         specs.addAll(QuestionTools.specs());
+        specs.addAll(OrdnanceTools.specs());
         specs.addAll(WorldTools.specs());
         specs.addAll(OreDictTools.specs());
         specs.addAll(MemoryTools.specs());

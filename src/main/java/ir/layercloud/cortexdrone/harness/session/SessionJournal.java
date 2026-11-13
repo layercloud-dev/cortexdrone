@@ -378,6 +378,7 @@ public final class SessionJournal {
             snapshot.turns = this.turns;
             snapshot.toolCalls = this.toolCalls;
             snapshot.toolErrors = this.toolErrors;
+            snapshot.worldActions = this.worldActions;
             snapshot.prompt = this.prompt;
             snapshot.transcript = new ArrayList<>(this.transcript);
             return snapshot;

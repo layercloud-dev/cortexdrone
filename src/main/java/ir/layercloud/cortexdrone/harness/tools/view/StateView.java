@@ -65,7 +65,10 @@ public final class StateView {
         response.addProperty("protectedZones", ProtectionZones.count());
 
         response.addProperty("activeTask", session.isActive());
-        response.addProperty("taskPrompt", session.getPrompt());
+        // A rider turns every flight change into a passenger-safety problem, and
+        // ordnance refuses while anyone is mounted. Report both facts.
+        response.addProperty("ridingEntity", drone.riddenByEntity != null
+                ? drone.riddenByEntity.getCommandSenderName() : "");        response.addProperty("taskPrompt", session.getPrompt());
         response.addProperty("taskSummary", session.getSummary());
         response.addProperty("taskAgeMs", session.getAgeMs());
         JsonArray notes = new JsonArray();

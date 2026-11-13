@@ -4,6 +4,7 @@ import ir.layercloud.cortexdrone.CortexDroneMod;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumChatFormatting;
 
 import java.util.List;
@@ -54,7 +55,56 @@ public final class SkillCommands {
             show(sender, library, args);
             return;
         }
+        if ("disable".equals(action) || "enable".equals(action)) {
+            toggle(sender, library, action, args);
+            return;
+        }
+        if ("disabled".equals(action) || "retired".equals(action)) {
+            disabled(sender, library);
+            return;
+        }
         list(sender, library, action, args);
+    }
+
+    /**
+     * {@code skills disable|enable <name>} — operator only, because the skill
+     * library is global to the server.
+     */
+    private static void toggle(ICommandSender sender, SkillLibrary library, String action, String[] args) {
+        EntityPlayerMP player = sender instanceof EntityPlayerMP ? (EntityPlayerMP) sender : null;
+        if (!AdminCommands.isOperator(player, sender)) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                    + "[Drone] Only server operators can " + action + " a stored skill.");
+            return;
+        }
+        String name = args.length >= 3 ? SessionCommands.join(args, 2) : "";
+        if (name.trim().isEmpty()) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.RED
+                    + "Usage: /drone skills " + action + " <name>");
+            return;
+        }
+        boolean disabling = "disable".equals(action);
+        boolean changed = disabling ? library.disable(name) : library.enable(name);
+        CortexDroneMod.sendMsg(sender, changed
+                ? EnumChatFormatting.GREEN + "[Drone] Skill '" + SkillLibrary.normalize(name)
+                        + "' " + (disabling ? "retired to skills-disabled/." : "enabled again.")
+                : EnumChatFormatting.RED + "[Drone] Could not " + action + " '" + name
+                        + "'. " + (disabling
+                        ? "Only a learned skill directory can be disabled."
+                        : "Only a directory in skills-disabled/ can be enabled."));
+    }
+
+    private static void disabled(ICommandSender sender, SkillLibrary library) {
+        List<String> names = library.disabledNames();
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.GOLD + "=== Retired skills ("
+                + names.size() + ") ===");
+        if (names.isEmpty()) {
+            CortexDroneMod.sendMsg(sender, EnumChatFormatting.GRAY + "None.");
+            return;
+        }
+        CortexDroneMod.sendMsg(sender, EnumChatFormatting.AQUA
+                + String.join(", ", names) + EnumChatFormatting.GRAY
+                + "  (/drone skills enable <name>)");
     }
 
     private static void show(ICommandSender sender, SkillLibrary library, String[] args) {

@@ -99,11 +99,72 @@ public class SessionJournalTest {
     }
 
     @Test
+    public void worldActionsAreCountedInEveryView() throws Exception {
+        File root = Files.createTempDirectory("cortexdrone-sessions-world-actions").toFile();
+        SessionJournal journal = journal(root);
+        journal.setWorldActionPredicate(name -> "place_block".equals(name) || "break_block".equals(name));
+        SessionJournal.SessionRun run = begin(journal, "build a small wall");
+        run.tool(1, "state", "{}", true, "{}");
+        run.tool(1, "place_block", "{\"block\":\"stone\"}", true, "{\"ok\":true}");
+        run.tool(2, "break_block", "{}", false, "{\"ok\":false}");
+        run.tool(2, "place_block", "{}", true, "{\"ok\":true}");
+        run.finish(SessionOutcome.SUCCESS, "final_answer", "Placed two blocks.");
+
+        // The index line, the transcript and the Markdown view all carry it.
+        JsonObject entry = journal.recent(5, null).get(0);
+        assertEquals("two successful world actions must be counted", 2,
+                entry.get("world_actions").getAsInt());
+
+        File json = new File(root, "sessions/success/"
+                + entry.get("file").getAsString().replace("success/", ""));
+        String transcript = new String(Files.readAllBytes(json.toPath()), "UTF-8");
+        assertTrue(transcript, transcript.contains("\"world_actions\": 2"));
+
+        File markdown = new File(json.getAbsolutePath().replaceFirst("\\.json$", ".md"));
+        String md = new String(Files.readAllBytes(markdown.toPath()), "UTF-8");
+        assertTrue(md, md.contains("- world actions: 2"));
+    }
+
+    @Test
+    public void nonAsciiPromptSurvivesTheIndexAndTranscript() throws Exception {
+        File root = Files.createTempDirectory("cortexdrone-sessions-utf8").toFile();
+        SessionJournal journal = journal(root);
+        String prompt = "سلام، ۲۰ آهن معدن کن و برگرد — ünïcode";
+        SessionJournal.SessionRun run = begin(journal, prompt);
+        run.finish(SessionOutcome.SUCCESS, "final_answer", "تمام شد.");
+
+        JsonObject entry = journal.recent(5, null).get(0);
+        assertEquals("the index line must be read back as UTF-8",
+                prompt, entry.get("prompt").getAsString());
+
+        File json = journal.fileFor(entry);
+        assertNotNull(json);
+        String transcript = new String(Files.readAllBytes(json.toPath()), "UTF-8");
+        assertTrue(transcript, transcript.contains(prompt));
+    }
+
+    @Test
     public void replyClassificationSeparatesSuccessFromFailure() {
         assertEquals(SessionOutcome.SUCCESS,
                 SessionOutcome.fromReply("Done, placed 10 blocks and returned home."));
         assertEquals(SessionOutcome.FAILURE,
                 SessionOutcome.fromReply("I couldn't reach the farm; no safe route was found."));
         assertEquals(SessionOutcome.INCOMPLETE, SessionOutcome.fromReply("   "));
+    }
+
+    @Test
+    public void aSuccessfulReportThatMentionsFailedAttemptsIsStillASuccess() {
+        // Live evidence: session 20261113-072743-d5-l8 was filed under
+        // failures/ although the drone mined 60 ore; its reply said "plus a few
+        // failed attempts" and hit the bare `failed` substring.
+        String reply = "I flew to the mine area, mined ores and returned to the stash chest. "
+                + "Mined 60 ore blocks (plus a few failed attempts). "
+                + "No free inventory slots remain.";
+        assertEquals(SessionOutcome.SUCCESS, SessionOutcome.fromReply(reply));
+
+        assertEquals(SessionOutcome.SUCCESS,
+                SessionOutcome.fromReply("Done — nothing is missing from the chest."));
+        assertEquals(SessionOutcome.FAILURE,
+                SessionOutcome.fromReply("I failed to place the last block: no room."));
     }
 }

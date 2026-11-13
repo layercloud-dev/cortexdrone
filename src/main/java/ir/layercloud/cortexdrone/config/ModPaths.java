@@ -40,6 +40,14 @@ public final class ModPaths {
     }
 
     /**
+     * Retired learned skills. A directory moved here is kept on disk but is not
+     * loaded into the library, so it can be edited or re-enabled later.
+     */
+    public static File disabledSkillsDir(File root) {
+        return new File(root, "skills-disabled");
+    }
+
+    /**
      * World state root, inside the save so it moves with the world.
      */
     public static File worldRoot(File worldDirectory) {

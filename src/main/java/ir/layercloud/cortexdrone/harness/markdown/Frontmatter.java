@@ -90,6 +90,12 @@ public final class Frontmatter {
             return new Document(values, lists, "");
         }
         String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+        // Windows Notepad saves UTF-8 with a BOM. trim() does not remove U+FEFF,
+        // so the first line became "\uFEFF---" and the whole YAML block was
+        // treated as the Markdown body: name/tags/triggers were lost.
+        if (!normalized.isEmpty() && normalized.charAt(0) == '\uFEFF') {
+            normalized = normalized.substring(1);
+        }
         String[] lines = normalized.split("\n", -1);
 
         int cursor = 0;

@@ -7,8 +7,6 @@ import com.google.gson.JsonParser;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,7 +36,9 @@ final class SessionIndex {
         if (entry == null) return;
         File parent = this.indexFile.getParentFile();
         if (parent != null && !parent.isDirectory() && !parent.mkdirs()) return;
-        try (FileWriter writer = new FileWriter(this.indexFile, true)) {
+        try (java.io.Writer writer = new java.io.OutputStreamWriter(
+                new java.io.FileOutputStream(this.indexFile, true),
+                java.nio.charset.StandardCharsets.UTF_8)) {
             writer.write(COMPACT.toJson(entry));
             writer.write('\n');
         } catch (Exception ignored) {
@@ -52,7 +52,9 @@ final class SessionIndex {
     synchronized List<JsonObject> read() {
         List<JsonObject> entries = new ArrayList<>();
         if (!this.indexFile.isFile()) return entries;
-        try (BufferedReader reader = new BufferedReader(new FileReader(this.indexFile))) {
+        try (BufferedReader reader = new BufferedReader(new java.io.InputStreamReader(
+                new java.io.FileInputStream(this.indexFile),
+                java.nio.charset.StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 String clean = line.trim();

@@ -5,7 +5,6 @@ import ir.layercloud.cortexdrone.AIDroneManager;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.DroneLogger;
 import ir.layercloud.cortexdrone.config.ModConfig;
-import ir.layercloud.cortexdrone.harness.js.JsEngine;
 import ir.layercloud.cortexdrone.harness.lesson.Lesson;
 import ir.layercloud.cortexdrone.harness.lesson.LessonStore;
 import ir.layercloud.cortexdrone.harness.memory.MemoryEntry;
@@ -14,12 +13,10 @@ import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.session.SessionJournal;
 import ir.layercloud.cortexdrone.harness.session.SessionOutcome;
 import ir.layercloud.cortexdrone.harness.skill.Skill;
-import ir.layercloud.cortexdrone.harness.skill.SkillCodeGuard;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import ir.layercloud.cortexdrone.harness.tool.ToolContext;
 import ir.layercloud.cortexdrone.harness.tool.ToolInvoker;
 import ir.layercloud.cortexdrone.harness.tool.ToolRegistry;
-import ir.layercloud.cortexdrone.harness.tool.ToolSpec;
 import ir.layercloud.cortexdrone.service.world.WorldScanner;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -53,6 +50,7 @@ public final class AgentService {
     private final LessonStore lessons;
     private final SessionJournal journal;
     private final ModConfig config;
+    private final SkillAutoSave autoSave;
 
     public AgentService(AIDroneManager manager, DroneLogger logger, WorldScanner worldScanner,
                         LlmClient llm, ToolInvoker invoker, ToolRegistry registry,
@@ -69,6 +67,7 @@ public final class AgentService {
         this.lessons = lessons;
         this.journal = journal;
         this.config = config;
+        this.autoSave = new SkillAutoSave(registry, skills, logger);
     }
 
     public String buildContext(EntityPlayerMP player, DroneController controller,
@@ -192,10 +191,13 @@ public final class AgentService {
                         // ending and losing it.
                         continue;
                     }
-                    maybeAutoSaveSkill(controller, userPrompt, lastWorkflowScript, refinedSkill);
                     SessionOutcome outcome = SessionOutcome.fromReply(response.content());
                     if (outcome == SessionOutcome.SUCCESS && run != null && run.allToolsFailed()) {
                         outcome = SessionOutcome.FAILURE;
+                    }
+                    if (outcome == SessionOutcome.SUCCESS) {
+                        // Only a run that succeeded is a reusable workflow.
+                        this.autoSave.maybeSave(controller, userPrompt, lastWorkflowScript, refinedSkill);
                     }
                     finishRun(run, outcome, "final_answer", response.content());
                     speak(player, controller, response.content());
@@ -229,7 +231,7 @@ public final class AgentService {
                         run.tool(turn, call.name(), arguments.toString(), ok, result.toString());
                         if ("cancel".equals(call.name())) run.cancelRequested("model_cancel");
                     }
-                    if ("skill_refine".equals(call.name())) refinedSkill = true;
+                    if ("skill_refine".equals(call.name()) && ok) refinedSkill = true;
                     if ("execute".equals(call.name()) && ok && arguments.has("code")) {
                         String code = arguments.get("code").getAsString();
                         if (code != null && code.trim().length() >= 200) lastWorkflowScript = code;
@@ -316,50 +318,6 @@ public final class AgentService {
         finishRun(run, outcome, reason, null);
     }
 
-    /**
-     * Safety net for the "learn after success" rule: when a successful script
-     * performed real work but the model skipped {@code skill_refine}, save the
-     * exact code as a skill anyway. The model still owns the good description;
-     * this only guarantees that a working workflow is not thrown away. Scripts
-     * that embed instance-specific literals are skipped: a hardcoded recording
-     * is not a reusable skill.
-     */
-    private void maybeAutoSaveSkill(DroneController controller, String prompt,
-                                    String code, boolean refined) {
-        if (refined || code == null || code.trim().length() < 200) return;
-        if (!performsWorldAction(code)) return;
-        List<SkillCodeGuard.Violation> violations = SkillCodeGuard.inspect(code);
-        if (!violations.isEmpty()) {
-            this.logger.log("SKILL", controller,
-                    "Auto-save skipped: script contains instance-specific literals",
-                    SkillCodeGuard.describe(violations));
-            return;
-        }
-        String name = ChatLines.skillName(prompt);
-        Skill skill = this.skills.save(name, ChatLines.limit(prompt, 220), "auto",
-                java.util.Collections.singletonList(ChatLines.limit(prompt, 120)), code, "auto");
-        if (skill == null) return;
-        this.logger.log("SKILL", controller, "Auto-saved skill '" + skill.getName() + "' v"
-                        + skill.getVersion(),
-                "model did not call skill_refine; script kept verbatim");
-    }
-
-    /**
-     * True when the script calls a tool that changes the world or an inventory.
-     *
-     * <p>Derived from the tool registry's declared capabilities, so a newly
-     * registered mutating tool is recognised without editing a name list here.
-     * The JS method name is the camelCase form of the tool name.</p>
-     */
-    private boolean performsWorldAction(String code) {
-        if (code == null) return false;
-        for (ToolSpec spec : this.registry.specs()) {
-            if (!spec.mutatesAnything()) continue;
-            String jsName = JsEngine.camelCase(spec.getName());
-            if (!jsName.isEmpty() && code.contains(jsName)) return true;
-        }
-        return false;
-    }
 
     private static boolean isOk(JsonObject result) {
         return result != null && (!result.has("ok") || result.get("ok").getAsBoolean());

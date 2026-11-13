@@ -130,6 +130,18 @@ public class SkillCodeGuardTest {
     }
 
     @Test
+    public void legitimateCoordinateSizedVariablesAreNotRejected() {
+        String sizes = "var chunkX = 0; var chunkZ = 0; var sizeX = 7; var sizeZ = 7;";
+        assertTrue(SkillCodeGuard.describe(SkillCodeGuard.inspect(sizes)),
+                SkillCodeGuard.isClean(sizes));
+        String heights = "var maxY = 255; var minY = 4; var indexY = 0;";
+        assertTrue("a build height is not a position",
+                SkillCodeGuard.isClean(heights));
+        assertFalse("a named base coordinate is still instance data",
+                SkillCodeGuard.isClean("var baseY = 64;"));
+    }
+
+    @Test
     public void everyBundledSkillIsParameterized() throws Exception {
         File root = Files.createTempDirectory("cortexdrone-guard-bundled").toFile();
         SkillLibrary library = new SkillLibrary(root);

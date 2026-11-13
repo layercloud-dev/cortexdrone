@@ -9,7 +9,6 @@ import ir.layercloud.cortexdrone.service.search.RankedSearch;
 import ir.layercloud.cortexdrone.service.world.LexicalItemMatcher;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.Reader;
 import java.util.*;
 import java.util.logging.Level;
@@ -118,10 +117,11 @@ public final class MemoryStore {
     public synchronized List<MemoryEntry> forContext(String query, int limit) {
         int max = RankedSearch.clampContext(limit);
         List<MemoryEntry> out = new ArrayList<>(search(query, null, max));
+        if (out.size() >= max) return out;
         for (MemoryEntry entry : this.entries.values()) {
+            if (out.size() >= max) break;
             if (!entry.isPinned() || out.contains(entry)) continue;
             out.add(entry);
-            if (out.size() >= max) break;
         }
         return out;
     }
@@ -220,7 +220,9 @@ public final class MemoryStore {
 
     private synchronized void load() {
         if (this.storageFile == null || !this.storageFile.isFile()) return;
-        try (Reader reader = new FileReader(this.storageFile)) {
+        try (Reader reader = new java.io.InputStreamReader(
+                new java.io.FileInputStream(this.storageFile),
+                java.nio.charset.StandardCharsets.UTF_8)) {
             JsonElement parsed = new JsonParser().parse(reader);
             if (parsed == null || !parsed.isJsonArray()) return;
             for (JsonElement element : parsed.getAsJsonArray()) {

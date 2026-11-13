@@ -201,9 +201,12 @@ public final class SkillCodeGuard {
         }
         Matcher suffixed = SUFFIXED_COORD.matcher(source);
         while (suffixed.find()) {
+            String identifier = suffixed.group(1);
+            String axis = suffixed.group(2);
+            double value = number(suffixed.group(3));
+            if (!isSuspiciousSuffixedCoordinate(identifier, axis, value)) continue;
             add(violations, Kind.POSITION, source, suffixed.start(1),
-                    trim(suffixed.group(1)) + trim(suffixed.group(2)) + ": "
-                            + trim(suffixed.group(3)));
+                    trim(identifier) + trim(axis) + ": " + trim(suffixed.group(3)));
         }
 
         Matcher entity = ENTITY_ID.matcher(source);
@@ -282,6 +285,25 @@ public final class SkillCodeGuard {
         }
         // A bare Y is too ambiguous to judge outside a full position object.
         return false;
+    }
+
+    /**
+     * A variable whose name ends in X/Y/Z is only a position when the value is
+     * world-scale and, for Y, the name reads like a place.
+     *
+     * <p>Without this, {@code var chunkX = 0}, {@code var maxY = 255} and
+     * {@code var sizeZ = 7} were rejected as "hardcoded world coordinates", so
+     * a valid parameterized workflow could not be saved at all.</p>
+     */
+    private static boolean isSuspiciousSuffixedCoordinate(String identifier, String axis,
+                                                          double value) {
+        String lower = identifier.toLowerCase(Locale.ROOT);
+        if (Math.abs(value) < 64.0D) return false;
+        if ("Y".equalsIgnoreCase(axis)) {
+            return lower.matches(".*(?:base|home|spawn|pos|position|target|dest|chest"
+                    + "|site|center|centre|mid|mine|farm|waypoint|shaft|portal|outpost).*");
+        }
+        return true;
     }
 
     private static void add(List<Violation> out, Kind kind, String source,

@@ -9,6 +9,7 @@ import ir.layercloud.cortexdrone.service.navigation.NavigationLimits;
 import ir.layercloud.cortexdrone.service.world.ItemClassifier;
 import ir.layercloud.cortexdrone.service.world.ProtectedZone;
 import ir.layercloud.cortexdrone.service.world.ProtectionZones;
+import ir.layercloud.cortexdrone.service.world.VeinLimits;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 
@@ -22,11 +23,14 @@ import java.util.List;
 public final class BlockTools implements ToolProvider {
     private static final List<ToolSpec> SPECS = Arrays.asList(
             ToolSpec.builder("break_block")
-                    .description("Break exactly one block at x/y/z with the drone's held tool. No filter, "
-                            + "count, neighbour propagation or queue. Drops go to the drone inventory when "
-                            + "there is room. If the drone is out of reach the result contains "
-                            + "needs_movement + standoff; move there and retry. If the block is protected or "
-                            + "not mineable the result says so.")
+                    .description("Break a block at x/y/z with the drone's held tool. By default exactly one "
+                            + "block is broken. Set vein=true to break the connected cluster of the same "
+                            + "block+metadata around it (one ore vein, one log tree trunk), bounded by "
+                            + "vein_radius and max_vein_blocks. All vein blocks must pass the same reach, "
+                            + "protection and mineability rules; the result reports broken_count and the "
+                            + "blocks actually removed. Drops go to the drone inventory when there is room. "
+                            + "If the drone is out of reach the result contains needs_movement + standoff; "
+                            + "move there and retry.")
                     .parameters(ToolSchema.object()
                             .requiredInt("x", "Block X coordinate.")
                             .requiredInt("y", "Block Y coordinate.")
@@ -37,7 +41,15 @@ public final class BlockTools implements ToolProvider {
                                     NavigationLimits.DEFAULT_WAIT_MS)
                             .optionalBoolean("confirm_zone_break", "Set true only when the player "
                                     + "explicitly asked to modify a protected place (their base/farm). "
-                                    + "Otherwise break_block refuses protected-zone targets.", false))
+                                    + "Otherwise break_block refuses protected-zone targets.", false)
+                            .optionalBoolean("vein", "Break the connected cluster of the same block and "
+                                    + "metadata, not just the target block.", false)
+                            .optionalInt("vein_radius", "Vein search radius in blocks, "
+                                            + VeinLimits.MIN_RADIUS + ".." + VeinLimits.MAX_RADIUS + ".",
+                                    VeinLimits.MIN_RADIUS, VeinLimits.MAX_RADIUS, VeinLimits.DEFAULT_RADIUS)
+                            .optionalInt("max_vein_blocks", "Hard cap on blocks broken in vein mode, "
+                                            + VeinLimits.MIN_BLOCKS + ".." + VeinLimits.MAX_BLOCKS + ".",
+                                    VeinLimits.MIN_BLOCKS, VeinLimits.MAX_BLOCKS, VeinLimits.DEFAULT_BLOCKS))
                     .affinity(ToolAffinity.MAIN)
                     .timeoutMs(ToolTimeouts.BLOCK_ACTION_MS)
                     .capabilities(ToolCapability.MUTATES_WORLD)
@@ -127,12 +139,16 @@ public final class BlockTools implements ToolProvider {
         World world = controller.drone.worldObj;
         if ("break_block".equals(method)
                 && !(args.has("confirm_zone_break") && args.get("confirm_zone_break").getAsBoolean())) {
-            ProtectedZone zone =
-                    ProtectionZones.zoneAt(world, x, y, z);
+            // Vein mode must not become a way around the no-dig rule: refuse the
+            // whole call when any block in the planned cluster sits in a zone.
+            ProtectedZone zone = ProtectionZones.zoneAt(world, x, y, z);
+            if (zone == null && isVein(args)) {
+                zone = veinZone(world, args, x, y, z);
+            }
             if (zone != null) {
                 return ToolJson.error("protected_zone", "Block (" + x + "," + y + "," + z
-                                + ") is inside '" + zone.getLabel() + "', which the player marked as "
-                                + "no-break.",
+                                + ") or its vein is inside '" + zone.getLabel() + "', which the player "
+                                + "marked as no-break.",
                         "Mine at the agreed mining area, or pass confirm_zone_break:true only when "
                                 + "the current request explicitly asks to modify that protected place.", false);
             }
@@ -157,5 +173,29 @@ public final class BlockTools implements ToolProvider {
                     + ") is already occupied.", "Choose a replaceable target position.", true);
         }
         return this.building.handle(controller, player, method, args);
+    }
+
+    private static boolean isVein(JsonObject args) {
+        return args != null && args.has("vein") && !args.get("vein").isJsonNull()
+                && args.get("vein").getAsBoolean();
+    }
+
+    /**
+     * The first protected zone hit by the planned vein, or {@code null}.
+     */
+    private static ProtectedZone veinZone(World world, JsonObject args, int x, int y, int z) {
+        int radius = VeinLimits.DEFAULT_RADIUS;
+        int cap = VeinLimits.DEFAULT_BLOCKS;
+        if (args.has("vein_radius") && !args.get("vein_radius").isJsonNull()) {
+            radius = VeinLimits.clampRadius(args.get("vein_radius").getAsInt());
+        }
+        if (args.has("max_vein_blocks") && !args.get("max_vein_blocks").isJsonNull()) {
+            cap = VeinLimits.clampBlocks(args.get("max_vein_blocks").getAsInt());
+        }
+        for (int[] point : ir.layercloud.cortexdrone.service.world.VeinBlocks.plan(
+                world, x, y, z, radius, cap)) {            ProtectedZone zone = ProtectionZones.zoneAt(world, point[0], point[1], point[2]);
+            if (zone != null) return zone;
+        }
+        return null;
     }
 }

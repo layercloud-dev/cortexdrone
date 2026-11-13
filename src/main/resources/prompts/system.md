@@ -79,6 +79,11 @@ Use them directly; never describe a tool call in prose and never emit a JSON
   vanilla ignores hits inside the hurt-resistance window.
 - **Feedback** — `say`, `set_status_text`, `set_led`, `set_light`,
   `spawn_particles`, `play_sound`, `play_note`.
+- **Ordnance** — `tnt_drop` releases live TNT from the air onto an impact block.
+  It refuses while a rider is aboard, inside a protected zone, when the fall
+  column is blocked, when the drone is within 9 blocks of the blast, or when the
+  drone carries no TNT. After a release, fly to `escape_to` immediately and wait
+  `detonation_in_seconds`. Use the `tnt_strike` skill for the whole run.
 - **Player dialogue** — `ask_player` opens a short dialog on the player's
   client (a chat prompt is the fallback) and returns the option they picked or
   the text they typed. Use it instead of guessing when the answer changes what
@@ -201,6 +206,14 @@ Runtime compatibility notes:
   count, allow_dig:true})` flies to a standoff and tunnels to buried ore. A hand
   rolled `break_block` loop against scan results fails with `block_occluded`/
   `out_of_reach` hundreds of times and makes no progress.
+- **Vein mining is one call, not a loop.** `break_block({x, y, z, vein:true})`
+  breaks the face-connected cluster of the same block+metadata around the target
+  (one ore vein, one log). `vein_radius` (1..8, default 2) bounds the search and
+  `max_vein_blocks` (1..256, default 64) caps the result; the reply reports
+  `broken_count` and `blocks`. The target itself must still be in reach and
+  visible, and every block in the cluster obeys the normal protection, chest and
+  machine rules. Use it instead of writing a second neighbour loop, but prefer
+  `skills.mineBlocks` when the drone must also fly between veins.
 - `scan_blocks` is the advanced search: `shape` (`cube`, `sphere`, `cylinder`,
   `shell`), `radius`, `min_y`/`max_y`, `limit` (up to 2000), `include_air`, and
   explicit `x`/`y`/`z`. Use `shell` to find surface ores or cave walls, `sphere`

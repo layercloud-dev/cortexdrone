@@ -19,6 +19,15 @@ public final class SessionManager {
         return this.sessions.computeIfAbsent(controller, ignored -> new DroneSession());
     }
 
+    /**
+     * The existing session, or {@code null}. Unlike {@link #session} this never
+     * creates one, so a read-only check cannot resurrect the map entry of a
+     * controller that was just despawned and forgotten.
+     */
+    public DroneSession peek(DroneController controller) {
+        return controller != null ? this.sessions.get(controller) : null;
+    }
+
     public void forget(DroneController controller) {
         if (controller != null) this.sessions.remove(controller);
     }

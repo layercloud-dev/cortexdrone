@@ -69,6 +69,7 @@ final class SessionMarkdown {
         out.append("- duration: ").append(Math.max(0L, run.endedAt - run.startedAt)).append(" ms\n");
         out.append("- turns/tools/errors: ").append(run.turns).append(" / ")
                 .append(run.toolCalls).append(" / ").append(run.toolErrors).append('\n');
+        out.append("- world actions: ").append(run.worldActions).append('\n');
         out.append('\n').append("## Prompt\n\n").append(run.prompt).append('\n');
         transcript(out, run.transcript);
         return out.toString();

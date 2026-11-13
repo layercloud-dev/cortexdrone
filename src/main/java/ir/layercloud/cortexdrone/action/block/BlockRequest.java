@@ -14,4 +14,16 @@ public class BlockRequest {
     int z;
     String filter;
     int meta;
+    /**
+     * Break the connected blocks of the same kind, not just the target.
+     */
+    boolean vein;
+    /**
+     * Search radius for vein mode, clamped by {@code VeinLimits}.
+     */
+    int veinRadius;
+    /**
+     * Hard cap on blocks broken in vein mode, clamped by {@code VeinLimits}.
+     */
+    int veinBlocks;
 }

@@ -47,5 +47,6 @@
   "dig_staircase",
   "dig_shaft",
   "strip_mine",
-  "quarry"
+  "quarry",
+  "tnt_strike"
 ]

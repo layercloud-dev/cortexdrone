@@ -38,4 +38,19 @@ public class MemoryCaptureTest {
         assertEquals("bring torches", MemoryCapture.canonicalText("remember to bring torches"));
         assertEquals("this is my base", MemoryCapture.canonicalText("remember this is my base"));
     }
+
+    @Test
+    public void hereIsAWordNotASubstringOfEverywhereElse() {
+        // "where"/"there"/"somewhere" must not turn a fact into a location that
+        // pins the player's current position.
+        assertFalse(MemoryCapture.isLocation("remember where I died"));
+        assertFalse(MemoryCapture.isLocation("remember the spare pickaxes are over there"));
+        assertFalse(MemoryCapture.isLocation("remember there are spiders somewhere nearby"));
+        assertFalse(MemoryCapture.isLocation("remember this sphere is dangerous"));
+
+        assertTrue("a standalone 'here' still means this position",
+                MemoryCapture.isLocation("remember this ore vein is here"));
+        assertTrue(MemoryCapture.isLocation("remember here"));
+        assertTrue(MemoryCapture.isLocation("save this location"));
+    }
 }

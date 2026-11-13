@@ -30,7 +30,13 @@ public final class SkillRefiner {
     private final LlmClient llm;
     private final SkillLibrary library;
     private final DroneLogger logger;
-    private volatile String lastRejection;
+    /**
+     * Per-call rejection reason. It used to be one volatile field shared by the
+     * whole server, so two drones refining at once could read each other's
+     * rejection text. The tool reads it on the same thread immediately after the
+     * call.
+     */
+    private final ThreadLocal<String> lastRejection = new ThreadLocal<>();
 
     public SkillRefiner(LlmClient llm, SkillLibrary library, DroneLogger logger) {
         this.llm = llm;
@@ -39,16 +45,18 @@ public final class SkillRefiner {
     }
 
     /**
-     * Why the last refine attempt was refused, or null when it succeeded.
+     * Why the last refine attempt on this thread was refused, or null.
      */
     public String lastRejection() {
-        return this.lastRejection;
+        String value = this.lastRejection.get();
+        this.lastRejection.remove();
+        return value;
     }
 
     public Skill refine(DroneController controller, String requestedName, String task,
                         String code, String notes) {
         if (code == null || code.trim().isEmpty()) return null;
-        this.lastRejection = null;
+        this.lastRejection.remove();
         List<SkillCodeGuard.Violation> sourceViolations = SkillCodeGuard.inspect(code);
         JsonObject compiled = compile(controller, requestedName, task, code, notes,
                 sourceViolations, Collections.<SkillCodeGuard.Violation>emptyList());
@@ -68,9 +76,9 @@ public final class SkillRefiner {
             }
         }
         if (!violations.isEmpty()) {
-            this.lastRejection = "Rejected a skill with instance-specific literals: "
+            this.lastRejection.set("Rejected a skill with instance-specific literals: "
                     + SkillCodeGuard.describe(violations)
-                    + ". Read these values from params or live player/drone state instead.";
+                    + ". Read these values from params or live player/drone state instead.");
             this.logger.log("SKILL", controller, "Refused to save hardcoded skill",
                     SkillCodeGuard.describe(violations));
             return null;
@@ -133,8 +141,8 @@ public final class SkillRefiner {
         String compiledCode = codeOf(compiled, code);
         List<SkillCodeGuard.Violation> violations = SkillCodeGuard.inspect(compiledCode);
         if (!violations.isEmpty()) {
-            this.lastRejection = "Refused to save a skill with instance-specific literals: "
-                    + SkillCodeGuard.describe(violations);
+            this.lastRejection.set("Refused to save a skill with instance-specific literals: "
+                    + SkillCodeGuard.describe(violations));
             this.logger.log("SKILL", null, "Refused to save hardcoded compiled code",
                     SkillCodeGuard.describe(violations));
             return null;
@@ -151,9 +159,9 @@ public final class SkillRefiner {
     private Skill fallback(String requestedName, String task, String code) {
         List<SkillCodeGuard.Violation> violations = SkillCodeGuard.inspect(code);
         if (!violations.isEmpty()) {
-            this.lastRejection = "The working code contains instance-specific literals ("
+            this.lastRejection.set("The working code contains instance-specific literals ("
                     + SkillCodeGuard.describe(violations)
-                    + "). Parameterize them before saving the skill.";
+                    + "). Parameterize them before saving the skill.");
             this.logger.log("SKILL", null, "Refused to save hardcoded fallback skill",
                     SkillCodeGuard.describe(violations));
             return null;

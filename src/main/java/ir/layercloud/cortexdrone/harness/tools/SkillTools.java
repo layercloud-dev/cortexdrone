@@ -37,9 +37,12 @@ public final class SkillTools implements ToolProvider {
                             + "description, tags and trigger phrases with BM25; action=load returns the full "
                             + "code, its parameters and the skills it requires; action=list shows recently "
                             + "updated skills. Search before writing a workflow from scratch, then run it with "
-                            + "skill_run or adapt the loaded code to the current task.")
+                            + "skill_run or adapt the loaded code to the current task. action=disable retires a "
+                            + "learned skill into skills-disabled/ (kept on disk, not loaded); action=enable "
+                            + "brings it back. Bundled skills cannot be disabled.")
                     .parameters(ToolSchema.object()
-                            .optionalEnum("action", "Operation to perform.", "search", "search", "list", "load")
+                            .optionalEnum("action", "Operation to perform.", "search", "search", "list", "load",
+                                    "disable", "enable")
                             .optionalString("name", "Skill name (required for action=load).")
                             .optionalString("query", "Natural-language query (action=search).")
                             .optionalInt("limit", "Maximum results, " + MIN_SEARCH_LIMIT + ".."
@@ -137,6 +140,28 @@ public final class SkillTools implements ToolProvider {
             List<String> missing = this.skills.missingRequires(skill.getName());
             result.addProperty("missing_requires_count", missing.size());
             result.add("missing_requires", new Gson().toJsonTree(missing));
+            return result;
+        }
+
+        if ("disable".equalsIgnoreCase(action) || "enable".equalsIgnoreCase(action)) {
+            String name = args.has("name") ? args.get("name").getAsString() : "";
+            if (name.trim().isEmpty()) {
+                return ToolJson.error("invalid_arguments", "skill " + action + " requires 'name'.",
+                        "Pass the exact skill name shown by action=list.", true);
+            }
+            boolean disabling = "disable".equalsIgnoreCase(action);
+            boolean changed = disabling ? this.skills.disable(name) : this.skills.enable(name);
+            if (!changed) {
+                return ToolJson.error("skill_" + action + "_failed",
+                        "Could not " + action + " '" + name + "'.",
+                        disabling
+                                ? "Only a learned skill with a directory under skills/ can be disabled."
+                                : "Only a directory currently under skills-disabled/ can be enabled.",
+                        true);
+            }
+            JsonObject result = ToolJson.ok();
+            result.addProperty(disabling ? "disabled" : "enabled", true);
+            result.addProperty("name", SkillLibrary.normalize(name));
             return result;
         }
 

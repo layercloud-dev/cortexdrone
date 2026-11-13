@@ -5,6 +5,7 @@ import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.config.ModConfig;
 import ir.layercloud.cortexdrone.harness.Harness;
 import ir.layercloud.cortexdrone.harness.js.JsEngine;
+import ir.layercloud.cortexdrone.harness.session.DroneSession;
 import ir.layercloud.cortexdrone.harness.skill.SkillLibrary;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -73,6 +74,9 @@ public final class ToolContext {
         if (this.controller == null || this.harness == null) return false;
         if (this.controller.drone == null || this.controller.drone.isDead) return true;
         if (this.loopId <= 0) return false;
-        return this.harness.sessions().session(this.controller).isLoopCancelled(this.loopId);
+        // peek(), not session(): this check runs on every tool call and must not
+        // recreate a session map entry for a drone that was just despawned.
+        DroneSession session = this.harness.sessions().peek(this.controller);
+        return session != null && session.isLoopCancelled(this.loopId);
     }
 }

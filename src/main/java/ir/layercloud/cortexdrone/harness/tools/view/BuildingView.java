@@ -7,6 +7,7 @@ import ir.layercloud.cortexdrone.action.block.BlockResult;
 import ir.layercloud.cortexdrone.harness.tool.ToolArgs;
 import ir.layercloud.cortexdrone.harness.tool.ToolJson;
 import ir.layercloud.cortexdrone.manager.building.impl.BuildingManager;
+import ir.layercloud.cortexdrone.service.world.VeinLimits;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.entity.player.EntityPlayerMP;
 
@@ -47,6 +48,11 @@ public final class BuildingView {
                     .x(args.get("x").getAsInt())
                     .y(args.get("y").getAsInt())
                     .z(args.get("z").getAsInt())
+                    .vein(ToolArgs.bool(args, "vein", false))
+                    .veinRadius(ToolArgs.clampedInt(args, "vein_radius",
+                            VeinLimits.DEFAULT_RADIUS, VeinLimits.MIN_RADIUS, VeinLimits.MAX_RADIUS))
+                    .veinBlocks(ToolArgs.clampedInt(args, "max_vein_blocks",
+                            VeinLimits.DEFAULT_BLOCKS, VeinLimits.MIN_BLOCKS, VeinLimits.MAX_BLOCKS))
                     .build();
         }
 
@@ -58,6 +64,12 @@ public final class BuildingView {
         response.add("target", ToolJson.point(result.getX(), result.getY(), result.getZ()));
         if ("break_block".equals(operation)) {
             response.addProperty("broken", result.isBroken());
+            response.addProperty("broken_count", Math.max(1, result.getBrokenCount()));
+            if (request.isVein() && result.getBlocks() != null) {
+                com.google.gson.JsonArray blocks = new com.google.gson.JsonArray();
+                for (String broken : result.getBlocks()) blocks.add(new com.google.gson.JsonPrimitive(broken));
+                response.add("blocks", blocks);
+            }
         } else if ("replace_block".equals(operation)) {
             response.addProperty("replaced", result.isReplaced());
             response.addProperty("alreadyMatching", result.isAlready());

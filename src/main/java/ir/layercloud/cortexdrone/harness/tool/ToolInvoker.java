@@ -234,7 +234,6 @@ public final class ToolInvoker {
             Thread.currentThread().interrupt();
         }
     }
-
     private JsonObject execute(Tool tool, ToolContext context, JsonObject args) {
         try {
             JsonObject result = tool.getHandler().handle(context, args);

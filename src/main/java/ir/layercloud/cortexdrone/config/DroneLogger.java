@@ -12,7 +12,6 @@ import net.minecraft.util.EnumChatFormatting;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
@@ -27,6 +26,11 @@ public class DroneLogger {
     private static final long DEBUG_LOG_ROTATION_CHECK_MS = 3500L;
     private static final int MAX_LOG_FLUSH_BYTES = 64 * 1024;
     private final StringBuilder pendingLogText = new StringBuilder(8192);
+    /**
+     * Serializes the batched file write against {@link #clearDebugLog()}.
+     */
+    private final Object logFileLock = new Object();
+    private long logGeneration = 0L;
     private long lastLogRotationCheckMs = 0L;
     private boolean logFlushScheduled = false;
 
@@ -55,15 +59,19 @@ public class DroneLogger {
         }
 
         if (!this.subscribers.isEmpty()) {
-            String chatLine = EnumChatFormatting.DARK_GRAY + "[DroneDebug:" + category + "] "
+            final String chatLine = EnumChatFormatting.DARK_GRAY + "[DroneDebug:" + category + "] "
                     + EnumChatFormatting.AQUA + (ctrl != null ? ctrl.name : "Sys") + ": "
                     + EnumChatFormatting.GRAY + truncateForChat(message)
                     + (details != null && !details.isEmpty() ? EnumChatFormatting.DARK_GRAY + " (" + truncateForChat(details) + ")" : "");
-            for (String subPlayer : this.subscribers) {
-                EntityPlayerMP p = CortexDroneMod.findPlayer(subPlayer);
-                if (p != null) {
-                    CortexDroneMod.sendMsg(p, chatLine);
-                }
+            for (final String subPlayer : this.subscribers) {
+                // Log lines arrive from agent threads; a chat message must be
+                // sent from the server thread or the network handler races.
+                CortexDroneMod.queueMainTask(() -> {
+                    EntityPlayerMP p = CortexDroneMod.findPlayer(subPlayer);
+                    if (p != null) {
+                        CortexDroneMod.sendMsg(p, chatLine);
+                    }
+                });
             }
         }
 
@@ -106,6 +114,7 @@ public class DroneLogger {
     private void flushPendingLog() {
         pauseForFlush(600L);
         String snapshot;
+        long generation;
         synchronized (this.pendingLogText) {
             this.logFlushScheduled = false;
             if (this.pendingLogText.length() == 0) {
@@ -113,18 +122,27 @@ public class DroneLogger {
             }
             snapshot = this.pendingLogText.toString();
             this.pendingLogText.setLength(0);
+            generation = this.logGeneration;
         }
         File f = this.debugLogFile;
         if (f == null) return;
         // Coalesce+bound: old code opened a FileWriter per log line; under STUCK
         // spam that is thousands of opens + threads. Now one append per flush.
-        maybeRotateDebugLog(f);
-        try (FileWriter fw = new FileWriter(f, true)) {
-            String capped = snapshot.length() > MAX_LOG_FLUSH_BYTES
-                    ? snapshot.substring(0, MAX_LOG_FLUSH_BYTES) + "\n...[log flush truncated +" + (snapshot.length() - MAX_LOG_FLUSH_BYTES) + " chars]\n"
-                    : snapshot;
-            fw.write(capped);
-        } catch (Exception ignored) {
+        String capped = snapshot.length() > MAX_LOG_FLUSH_BYTES
+                ? snapshot.substring(0, MAX_LOG_FLUSH_BYTES) + "\n...[log flush truncated +" + (snapshot.length() - MAX_LOG_FLUSH_BYTES) + " chars]\n"
+                : snapshot;
+        // The write, a rotation and a concurrent `debug clear` share one lock,
+        // so a clear can never be followed by an older snapshot reappearing.
+        synchronized (this.logFileLock) {
+            if (generation == this.logGeneration) {
+                maybeRotateDebugLog(f);
+                try (java.io.Writer fw = new java.io.OutputStreamWriter(
+                        new java.io.FileOutputStream(f, true),
+                        java.nio.charset.StandardCharsets.UTF_8)) {
+                    fw.write(capped);
+                } catch (Exception ignored) {
+                }
+            }
         }
         synchronized (this.pendingLogText) {
             // If more lines arrived while writing, schedule another coalesced flush.
@@ -144,11 +162,15 @@ public class DroneLogger {
         try {
             if (f.length() > MAX_DEBUG_LOG_BYTES) {
                 File old = new File(f.getAbsolutePath() + ".1");
-                if (old.exists() && !old.delete()) {
-                    return;
-                }
-                if (!f.renameTo(old)) {
-                    LOG.warning("Could not rotate debug log " + f.getAbsolutePath());
+                // Replace the old archive atomically. The previous delete-then-
+                // rename lost the only retained history when the rename failed
+                // (Windows file lock, antivirus, permissions).
+                try {
+                    java.nio.file.Files.move(f.toPath(), old.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                } catch (Exception moveFailure) {
+                    LOG.warning("Could not rotate debug log " + f.getAbsolutePath()
+                            + ": " + moveFailure);
                 }
             }
         } catch (Exception ignored) {
@@ -183,8 +205,9 @@ public class DroneLogger {
         synchronized (this.debugLog) {
             snap = new ArrayList<>(this.debugLog);
         }
-        int start = Math.max(0, snap.size() - maxCount);
-        return snap.subList(start, snap.size());
+        int want = Math.max(0, maxCount);
+        int start = Math.max(0, snap.size() - want);
+        return new ArrayList<>(snap.subList(start, snap.size()));
     }
 
     public JsonArray toDebugJsonArray(int maxCount) {
@@ -240,11 +263,20 @@ public class DroneLogger {
         synchronized (this.debugLog) {
             this.debugLog.clear();
         }
+        // Also drop lines that were buffered for the next batched flush:
+        // otherwise `/drone debug clear` repopulated the file a moment later
+        // with everything logged before the clear.
+        synchronized (this.pendingLogText) {
+            this.pendingLogText.setLength(0);
+            this.logGeneration++;
+        }
         File f = this.debugLogFile;
-        if (f != null && f.exists()) {
-            try (FileOutputStream fos = new FileOutputStream(f, false)) {
-                fos.write(new byte[0]);
-            } catch (Exception ignored) {
+        synchronized (this.logFileLock) {
+            if (f != null && f.exists()) {
+                try (FileOutputStream fos = new FileOutputStream(f, false)) {
+                    fos.write(new byte[0]);
+                } catch (Exception ignored) {
+                }
             }
         }
     }

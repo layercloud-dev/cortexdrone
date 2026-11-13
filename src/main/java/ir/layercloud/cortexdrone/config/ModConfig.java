@@ -3,14 +3,13 @@ package ir.layercloud.cortexdrone.config;
 import com.google.gson.Gson;
 import ir.layercloud.cortexdrone.DroneController;
 import ir.layercloud.cortexdrone.action.visuals.VisualsState;
+import ir.layercloud.cortexdrone.harness.markdown.AtomicFiles;
 import ir.layercloud.cortexdrone.service.navigation.DroneSpeed;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -151,7 +150,8 @@ public class ModConfig {
 
     public static ModConfig load(File file, Gson gson) {
         if (file == null || !file.exists()) return new ModConfig();
-        try (FileReader reader = new FileReader(file)) {
+        try (java.io.Reader reader = new java.io.InputStreamReader(
+                new java.io.FileInputStream(file), java.nio.charset.StandardCharsets.UTF_8)) {
             ModConfig loaded = gson.fromJson(reader, ModConfig.class);
             if (loaded == null) return new ModConfig();
             return loaded.sanitized();
@@ -179,7 +179,10 @@ public class ModConfig {
                 MIN_TASK_DEADLINE_SECONDS, MAX_TASK_DEADLINE_SECONDS);
         if (this.maxTokens <= 0) this.maxTokens = DEFAULT_MAX_TOKENS;
         this.maxTokens = clamp(this.maxTokens, MIN_MAX_TOKENS, MAX_MAX_TOKENS);
-        if (this.temperature < MIN_TEMPERATURE || this.temperature > MAX_TEMPERATURE) {
+        if (Double.isNaN(this.temperature)
+                || this.temperature < MIN_TEMPERATURE || this.temperature > MAX_TEMPERATURE) {
+            // NaN survives both comparisons and would be serialized as `NaN`,
+            // which every OpenAI-compatible gateway rejects as invalid JSON.
             this.temperature = DEFAULT_TEMPERATURE;
         }
         if (this.executeTimeoutMs <= 0) this.executeTimeoutMs = DEFAULT_EXECUTE_TIMEOUT_MS;
@@ -198,7 +201,15 @@ public class ModConfig {
         this.droneSpeedMultiplier = Math.max(DroneSpeed.MIN_MULTIPLIER,
                 Math.min(DroneSpeed.MAX_MULTIPLIER,
                         this.droneSpeedMultiplier));
-        if (this.savedDrones == null) this.savedDrones = new ArrayList<>();
+        if (this.savedDrones == null) {
+            this.savedDrones = new ArrayList<>();
+        } else {
+            // A hand-edited file can contain a null entry (Gson happily
+            // deserializes `[null]`), and the reconnector dereferences every
+            // element at server start. Drop unusable bindings here, once.
+            this.savedDrones.removeIf(info -> info == null
+                    || info.getUuid() == null || info.getUuid().trim().isEmpty());
+        }
         return this;
     }
 
@@ -234,12 +245,12 @@ public class ModConfig {
                 }
             }
             this.savedDrones = new ArrayList<>(byUuid.values());
-            File parent = file.getParentFile();
-            if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                LOG.warning("Could not create config directory " + parent.getAbsolutePath());
-            }
-            try (FileWriter writer = new FileWriter(file)) {
-                gson.toJson(this, writer);
+            // Atomic replace: a crash or a disk-full during the write used to
+            // leave a truncated config.json behind, and the next start then
+            // fell back to compiled defaults, silently losing the gateway,
+            // key and every saved drone binding.
+            if (!AtomicFiles.writeText(file, gson.toJson(this))) {
+                LOG.warning("Could not write " + file.getAbsolutePath());
             }
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Failed to save " + file.getAbsolutePath(), e);

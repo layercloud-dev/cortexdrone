@@ -99,10 +99,11 @@ public final class LessonStore {
     public synchronized List<Lesson> forContext(String query, int limit) {
         int max = RankedSearch.clampContext(limit);
         List<Lesson> out = new ArrayList<>(search(query, null, max));
+        if (out.size() >= max) return out;
         for (Lesson lesson : this.entries.values()) {
+            if (out.size() >= max) break;
             if (!lesson.isPinned() || out.contains(lesson)) continue;
             out.add(lesson);
-            if (out.size() >= max) break;
         }
         return out;
     }

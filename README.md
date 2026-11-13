@@ -30,7 +30,7 @@ There is **no Node.js process, no temp script file, no RPC hop, and no hidden in
 
 ## Highlights
 
-- **Native OpenAI tool calling** — 74 declared tools sent as real `tools[]` schemas, with results appended as `tool` messages.
+- **Native OpenAI tool calling** — 75 declared tools sent as real `tools[]` schemas, with results appended as `tool` messages.
 - **Code Mode** — one `execute` script performs a whole multi-step workflow inside the JVM instead of dozens of slow round trips.
 - **RLM skill compilation** — successful trajectories are recursively rewritten into stable, parameterized skills that can call each other.
 - **Persistent memory layers** — facts and named places (`memory`), procedural rules (`lesson`), and executable workflows (`skill`).
@@ -89,7 +89,7 @@ The agent works in four phases:
 | LLM transport | Plain `HttpURLConnection` against any OpenAI-compatible chat-completions gateway |
 | Serialization | Gson |
 | Boilerplate | Lombok |
-| Tests | JUnit 4 — 635+ tests |
+| Tests | JUnit 4 — 700+ tests |
 | Optional client | Xaero minimap markers and an `ask_player` answer screen |
 
 ---
@@ -179,7 +179,7 @@ Key properties:
 
 ## Bundled skills
 
-48 workflows ship in `src/main/resources/skills/`, each as `SKILL.md` + `code.js`.
+50 workflows ship in `src/main/resources/skills/`, each as `SKILL.md` + `code.js`.
 
 | Area | Skills |
 |---|---|
@@ -188,10 +188,11 @@ Key properties:
 | Storage | `store_items`, `withdraw_items`, `fetch_materials`, `sort_chests`, `place_double_chest` |
 | Crafting & smelting | `craft_items`, `smelt_items`, `ore_to_ingots` |
 | Combat | `hunt`, `attack_to_death`, `guard_scan`, `guard`, `patrol` |
+| Ordnance | `tnt_strike` |
 | Transport & survival | `follow_player`, `carry_player`, `transport_entity`, `escape_cave` |
 | Farming | `harvest_crops`, `sugarcane_farm`, `bamboo_farm`, `melon_pumpkin_farm`, `nether_wart_farm`, `cactus_farm`, `farm_cycle`, `plant_farm`, `fertilize_crops`, `chop_tree` |
 | Building | `survey_build_site`, `place_build_plan`, `build_structure`, `build_wall`, `build_platform`, `build_nether_portal`, `replace_surface`, `replace_box`, `light_area` |
-| Utility | `return_to_player`, `rainbow_show` |
+| Utility | `return_to_player`, `rainbow_show`, `drop_junk` |
 
 Skills are intentionally small. `mine_and_deliver` composes `mine_blocks` and `deliver_items`; `build_structure` composes `survey_build_site` and `place_build_plan`.
 
@@ -205,9 +206,9 @@ The registry is the single source of truth. Adding a tool spec and a handler exp
 |---|---|
 | Session & state | `state`, `get_player`, `get_player_inventory`, `get_breadcrumbs`, `cancel` |
 | Navigation | `goto`, `stop`, `find_safe_landing`, `repair_trail` |
-| Blocks | `break_block`, `place_block`, `replace_block` |
+| Blocks | `break_block` (single or `vein:true` + `vein_radius`/`max_vein_blocks`), `place_block`, `replace_block` |
 | Interaction | `interact_block`, `use_item`, `attack_entity`, `pick_entity`, `unpick_entity` |
-| Combat | `attack_plan`, `get_entity_health` |
+| Combat | `attack_plan`, `get_entity_health`, `tnt_drop` |
 | Inventory | `move_item`, `give_to_player`, `take_from_player`, `withdraw_chest`, `deposit_chest`, `drop_items`, `suck_items`, `craft`, `scan_chests`, `get_chest`, `find_item`, `find_item_in_chests` |
 | World & scanning | `scan_blocks`, `poll_scan`, `scan_veins`, `scan_room`, `get_block`, `get_blocks_in_box`, `get_top_y`, `get_entities`, `get_drops`, `raycast_player`, `find_distant`, `find_build_site`, `plan_structure`, `survey_build_site`, `scan_furnaces`, `scan_machines` |
 | Knowledge | `get_recipes`, `get_machine_recipes`, `get_machine_recipe`, `machine_ingredients`, `find_oredict`, `doc_lookup`, `wiki_lookup`, `web_search`, `web_fetch` |
@@ -369,7 +370,7 @@ Messages that arrive while a task is running are **queued into the same generati
 /drone memory [list|search <q>|remember <text>|here <name>|forget <id|name>]
 /drone lesson [list|search <q>|forget <id|title>]
 /drone sessions [list [success|failure|...] [n]|stats|show <id>]
-/drone skills [list [n]|search <q>|show <name>]
+/drone skills [list [n]|search <q>|show <name>|disabled|disable|enable <name>]
 /drone debug [on|off|tail|clear]
 /drone js <code>            operator-only Rhino console
 ```
@@ -382,7 +383,7 @@ Messages that arrive while a task is running are **queued into the same generati
 config/cortexdrone/            harness state (survives a world reset)
   config.json               LLM gateway, limits, saved drone bindings
   skills/<name>/            learned skills (SKILL.md + code.js)
-  skills-disabled/<name>/   retired learned skills (not loaded)
+  skills-disabled/<name>/   retired learned skills (kept on disk, not loaded)
   lessons/<id>/             learned rules (LESSON.md)
   sessions/
     index.jsonl             compact run index

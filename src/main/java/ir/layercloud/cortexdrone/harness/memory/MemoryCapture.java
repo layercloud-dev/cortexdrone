@@ -18,6 +18,9 @@ import java.util.regex.Pattern;
  * coordinates to use.</p>
  */
 public final class MemoryCapture {
+    private static final Pattern LOCATION_PHRASE = Pattern.compile(
+            "\\b(?:this place|this location|this spot|this area|here|waypoint"
+                    + "|coordinates|coords)\\b");
     private static final Pattern COORDS = Pattern.compile(
             "(-?\\d{1,7})[\\s,]+(-?\\d{1,7})[\\s,]+(-?\\d{1,7})");
     private static final Pattern PLACE_IS = Pattern.compile(
@@ -37,10 +40,6 @@ public final class MemoryCapture {
                     + "note\\s+that|save\\s+this\\s+(?:location|place|spot))\\b\\s*(.*)",
             Pattern.CASE_INSENSITIVE);
 
-    private static final String[] LOCATION_PHRASES = new String[]{
-            "this place", "this location", "this spot", "this area", "here",
-            "waypoint", "coordinates", "coords"
-    };
 
     private MemoryCapture() {
     }
@@ -76,9 +75,11 @@ public final class MemoryCapture {
     public static boolean isLocation(String message) {
         String text = normalize(message);
         if (COORDS.matcher(text).find()) return true;
-        for (String phrase : LOCATION_PHRASES) {
-            if (text.contains(phrase)) return true;
-        }
+        // Word-boundary match: a plain `contains("here")` also matched "where",
+        // "there" and "somewhere", so "remember where I died" was stored as a
+        // location at the player's current position instead of remembering the
+        // text.
+        if (LOCATION_PHRASE.matcher(text).find()) return true;
         return MY_PLACE.matcher(text).find()
                 || PLACE_IS.matcher(text).find()
                 || CALL_THIS.matcher(text).find()

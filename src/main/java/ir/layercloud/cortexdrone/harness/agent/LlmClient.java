@@ -137,6 +137,20 @@ public final class LlmClient {
 
 
     /**
+     * True when a gateway failure means the request exceeded the model's
+     * context window. The gateway answers 400, which the retry policy correctly
+     * treats as permanent; the agent loop compacts and tries once instead.
+     */
+    static boolean isContextWindowRejection(Throwable failure) {
+        String text = failure != null ? String.valueOf(failure.getMessage()) : "";
+        if (text == null) return false;
+        String lower = text.toLowerCase(Locale.ROOT);
+        return lower.contains("context window") || lower.contains("context length")
+                || lower.contains("too many tokens") || lower.contains("maximum context")
+                || lower.contains("context too long") || lower.contains("token limit");
+    }
+
+    /**
      * True for a dropped connection, a TLS reset or a read timeout.
      *
      * <p>The gateway sometimes accepts the request and then closes the socket

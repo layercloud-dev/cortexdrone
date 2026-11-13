@@ -30,6 +30,7 @@ public final class Conversation {
     private final int maxChars;
     private final int maxToolChars;
     private int compactions;
+    private boolean contextRejected;
 
     public Conversation(String systemPrompt, String contextMessage, String userPrompt,
                         int maxChars, int maxToolChars) {
@@ -115,6 +116,48 @@ public final class Conversation {
         return estimate() > this.maxChars;
     }
 
+    /**
+     * True when the gateway rejected the request because it exceeded the model's
+     * context window.
+     *
+     * <p>Seen in the rotated logs: {@code HTTP 400 ... "request exceeds the
+     * available context window for this model"}. The gateway reports 400, which
+     * is not retryable, so the task died even though {@code compactIfNeeded()}
+     * could have shrunk the transcript. The loop now compacts and retries once.
+     */
+    public boolean contextRejected() {
+        return this.contextRejected;
+    }
+
+    /**
+     * Marks that a gateway context-window rejection was seen.
+     */
+    public void markContextRejected() {
+        this.contextRejected = true;
+    }
+
+    /**
+     * Drops the oldest tool turns even when the local estimate looked fine.
+     *
+     * <p>Used after a context-window rejection: the gateway counts tokens, not
+     * characters, so the local estimate can be under the limit while the model
+     * still refuses. This keeps the system prompt, the live context, the task
+     * and the newest {@code keepRecent} messages.
+     */
+    public boolean compactAggressively(int keepRecent) {
+        int keepFrom = Math.max(3, this.messages.size() - Math.max(2, keepRecent));
+        while (keepFrom < this.messages.size()) {
+            JsonObject message = this.messages.get(keepFrom);
+            String role = message.has("role") ? message.get("role").getAsString() : "";
+            if (!"tool".equals(role)) break;
+            keepFrom++;
+        }
+        if (keepFrom <= 3) return false;
+        rebuildDigest(keepFrom);
+        this.compactions++;
+        return true;
+    }
+
     public int compactions() {
         return this.compactions;
     }
@@ -147,7 +190,14 @@ public final class Conversation {
             keepFrom++;
         }
         if (keepFrom <= 3) return;
+        rebuildDigest(keepFrom);
+        this.compactions++;
+    }
 
+    /**
+     * Replaces messages {@code [3, keepFrom)} with one digest system message.
+     */
+    private void rebuildDigest(int keepFrom) {
         StringBuilder digest = new StringBuilder();
         digest.append("[Compacted transcript — earlier tool turns summarized to keep the context bounded]\n");
         for (int i = 3; i < keepFrom; i++) {
@@ -173,7 +223,6 @@ public final class Conversation {
 
         this.messages.clear();
         this.messages.addAll(rebuilt);
-        this.compactions++;
     }
 
     private JsonObject cap(JsonObject result) {

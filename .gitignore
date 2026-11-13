@@ -26,7 +26,7 @@ run/
 .DS_Store
 Thumbs.db
 
-# Reviewed evidence is documentation, not a build artifact, so it is tracked
-# even though generated logs are not.
+# Reviewed evidence is documentation and is tracked; raw logs stay ignored
+# because they contain player names, chat and coordinates.
 !docs/evidence/
-!docs/evidence/*.log
+!docs/evidence/*.md

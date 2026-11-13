@@ -41,6 +41,19 @@ trip and is roughly 10x slower than doing the same work inside one script.
    with `action:"add"` (symptom -> cause -> rule). Then give a short final
    answer.
 
+   **End every final answer with one outcome line**, exactly one of:
+
+   ```
+   OUTCOME: success      the requested work is done and verified
+   OUTCOME: failure      it could not be done; the blocker is named above
+   OUTCOME: partial      some of it is done; the rest is named above
+   ```
+
+   The harness files each run under this signal (success / failure /
+   incomplete). Without it a run is classified from your wording, and a
+   passing phrase such as "a few failed attempts" can file a good run as a
+   failure. State the truth from the evidence, not from optimism.
+
 ## Progress updates
 
 The player cannot see tool calls, so chat is the only place they learn what is

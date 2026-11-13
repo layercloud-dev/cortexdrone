@@ -211,7 +211,10 @@ public final class JsEngine {
                 final Function fn = (Function) args[0];
                 final Object[] callArgs = new Object[Math.max(0, args.length - 1)];
                 System.arraycopy(args, 1, callArgs, 0, callArgs.length);
-                if (!onServerThread()) return fn.call(inner, innerScope, innerScope, callArgs);
+                // The whole point of main(fn) is the hop: this guard used to be
+                // inverted, so an agent-thread script ran the body on the agent
+                // thread (HodgePodge: "Off-thread read" in fml-client-3.log).
+                if (onServerThread()) return fn.call(inner, innerScope, innerScope, callArgs);
                 AIDroneManager manager = context != null ? context.manager() : null;
                 if (manager == null) return fn.call(inner, innerScope, innerScope, callArgs);
                 long timeout = context.config() != null

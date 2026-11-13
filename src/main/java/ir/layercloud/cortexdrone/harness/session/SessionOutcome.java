@@ -36,11 +36,32 @@ public enum SessionOutcome {
     ERROR("error", "error");
 
     private static final String[] FAILURE_MARKERS = {
-            "couldn't", "could not", "can't", "cannot", "unable to",
-            "failed to", "blocked by", "impossible", "not possible", "no route",
-            "not enough", "gave up", "no safe", "no access", "no room", "denied",
+            "i couldn't", "i could not", "i can't", "i cannot", "i was unable",
+            "i am unable", "unable to", "failed to", "gave up", "blocked by",
+            "not possible", "impossible", "no route", "no safe", "not enough",
+            "no access", "no room", "denied", "could not be", "couldn't be",
             "not found"
     };
+
+    /**
+     * Explicit signal a final answer may carry, e.g. {@code OUTCOME: failure}.
+     *
+     * <p>The model knows whether the task succeeded; text heuristics do not.
+     * When the signal is present it wins outright, so a confident-sounding
+     * failure and a report that merely mentions an earlier setback are both
+     * filed correctly.</p>
+     */
+    private static final java.util.regex.Pattern EXPLICIT =
+            java.util.regex.Pattern.compile(
+                    "(?i)\\boutcome\\s*[:=]\\s*[*_`]*(success|succeeded|done|failure|failed"
+                            + "|blocked|incomplete|partial)\\b");
+
+    /**
+     * Sentence boundary: a newline (list items are one sentence each), a period
+     * followed by space and a capital, or a closing punctuation mark.
+     */
+    private static final java.util.regex.Pattern SENTENCE =
+            java.util.regex.Pattern.compile("(?<=[.!?])\\s+|\\n+");
 
     private final String id;
     private final String directory;
@@ -59,20 +80,56 @@ public enum SessionOutcome {
     }
 
     /**
-     * Heuristic classification of a final model reply.
+     * Classification of a final model reply.
      *
-     * <p>Only failure phrasing counts. Bare nouns such as "failed attempts" or
-     * "missing" also appear in successful reports ("a few failed attempts, then
-     * 60 ore mined"), and the live journal filed exactly such a successful
-     * mining run under {@code failures/}.</p>
+     * <p>Order of authority:</p>
+     * <ol>
+     *   <li>an explicit {@code OUTCOME: success|failure|...} line, because the
+     *       model knows the real result and a text scan does not;</li>
+     *   <li>a task-failure sentence — one that names the requested work as
+     *       blocked. A report that only mentions a past attempt ("a few failed
+     *       attempts, then 60 ore mined") is not a failure;</li>
+     *   <li>otherwise success.</li>
+     * </ol>
      */
     public static SessionOutcome fromReply(String reply) {
         if (reply == null || reply.trim().isEmpty()) return INCOMPLETE;
-        String lower = reply.toLowerCase(Locale.ROOT);
-        for (String marker : FAILURE_MARKERS) {
-            if (lower.contains(marker)) return FAILURE;
+        SessionOutcome explicit = explicitOutcome(reply);
+        if (explicit != null) return explicit;
+        for (String sentence : SENTENCE.split(reply.toLowerCase(Locale.ROOT))) {
+            if (sentence.isEmpty()) continue;
+            if (mentionsASetback(sentence)) continue;
+            for (String marker : FAILURE_MARKERS) {
+                if (sentence.contains(marker)) return FAILURE;
+            }
         }
         return SUCCESS;
+    }
+
+    /**
+     * The outcome named by an explicit signal, or {@code null}.
+     */
+    public static SessionOutcome explicitOutcome(String reply) {
+        if (reply == null) return null;
+        java.util.regex.Matcher matcher = EXPLICIT.matcher(reply);
+        if (!matcher.find()) return null;
+        String signal = matcher.group(1).toLowerCase(Locale.ROOT);
+        if (signal.startsWith("success") || "done".equals(signal)) return SUCCESS;
+        if (signal.startsWith("fail") || "blocked".equals(signal)) return FAILURE;
+        return INCOMPLETE;
+    }
+
+    /**
+     * True when the sentence is about a past attempt rather than the task
+     * result, so its failure wording must not decide the outcome.
+     */
+    private static boolean mentionsASetback(String sentence) {
+        return sentence.contains("attempt")
+                || sentence.contains("retry")
+                || sentence.contains("retried")
+                || sentence.contains("after a few")
+                || sentence.contains("initially")
+                || sentence.contains("at first");
     }
 
     public static SessionOutcome fromId(String value) {

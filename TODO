@@ -1,16 +1,22 @@
 # Remaining work
 
-State at this revision: 75 tools, 50 bundled skills, 775 tests, `./gradlew build`
+State at this revision: 75 tools, 50 bundled skills, 787 tests, `./gradlew build`
 green (validate + test + reobf + deploy).
 
 ## Open items (none blocking)
 
-- **`SessionOutcome.fromReply` is still a heuristic.** It no longer counts
-  bare "failed"/"missing", but a reply that reports a problem in a confident
-  sentence can still be filed as success. Prefer an explicit outcome signal
-  from the model.
-- **`.gitignore` still excludes `docs/evidence/*.log`,** but the `docs/` tree was
-  removed in the refactor. Either restore the docs or drop the stale rules.
+_None. The two previously-open items (outcome heuristic, stale docs rule) are
+resolved below. Every item on this list gets a test before it is closed._
+
+## Closed
+
+- **`SessionOutcome.fromReply`** now takes an explicit `OUTCOME:` line first
+  (the prompt requires one), then a sentence-level failure test that ignores
+  past-setback sentences, then success
+  (`SessionOutcomeClassificationTest`, including the exact mis-filed reply).
+- **`docs/evidence/`** restored with the log/session reviews, and the
+  `.gitignore` rule now matches what it was written for: raw `*.log` stays out,
+  reviewed `docs/evidence/*.md` is tracked.
 
 ## Log audit (7.8 MB cortexdrone.log, all 1370 WARN/ERROR/STUCK/exception lines)
 
@@ -35,6 +41,15 @@ is a deliberate refusal or a bounded retry that ends in a navigation failure the
 model can act on.
 
 ## Done recently
+
+- Rotated logs audited (109 `*.log.gz` + 4 `fml-client-*.log`): two live
+  defects found and fixed — `main(fn)` ran the callback on the agent thread
+  (inverted guard, HodgePodge "Off-thread read"), and a gateway
+  context-window rejection killed the task instead of compacting.
+- Outcome classification takes an explicit `OUTCOME:` line and ignores
+  past-setback sentences; the prompt now requires the line.
+- `docs/evidence/` restored (log audit + session findings) and tracked while
+  raw `*.log` stays ignored.
 
 - Log audit: all 1370 WARN/ERROR/STUCK/exception lines in the 7.8 MB log were
   grouped and classified (see the table above); the only real defect was the

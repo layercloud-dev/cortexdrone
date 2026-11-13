@@ -132,6 +132,20 @@ public final class AgentService {
                     response = this.llm.chat(controller, conversation.messages(),
                             this.registry.toOpenAiTools(), false, outputTokens);
                 } catch (Throwable t) {
+                    // The gateway counts tokens, not characters, so its
+                    // context-window rejection can arrive while the local
+                    // estimate still looks fine. Compact hard and retry once
+                    // instead of failing the task (seen in the rotated logs).
+                    if (!conversation.contextRejected()
+                            && LlmClient.isContextWindowRejection(t)) {
+                        conversation.markContextRejected();
+                        conversation.compactAggressively(6);
+                        this.logger.log("LLM", controller,
+                                "Gateway rejected the context window; compacted and retrying",
+                                "estimate=" + conversation.estimate() + " compact="
+                                        + conversation.compactions() + " " + t);
+                        continue;
+                    }
                     this.logger.log("LLM", controller, "LLM request failed on turn " + turn,
                             t.toString() + " key=" + LoopTracer.maskKey(this.config.getApiKey()));
                     String message = "AI backend error: " + LlmFailureAdvice.diagnose(t.toString())

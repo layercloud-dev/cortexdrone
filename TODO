@@ -1,6 +1,6 @@
 # Remaining work
 
-State at this revision: 74 tools, 49 bundled skills, 712 tests, `./gradlew build`
+State at this revision: 75 tools, 50 bundled skills, 747 tests, `./gradlew build`
 green (validate + test + reobf + deploy).
 
 ## Open items (none blocking)
@@ -9,9 +9,10 @@ green (validate + test + reobf + deploy).
   `SkillLibrary` log a warning when the atomic write fails (disk full, read-only
   directory, Windows file lock) but the tool envelope still says saved. Return a
   `*_not_persisted` error so the model can retry instead of trusting memory.
-- **`SessionOutcome.fromReply` is a substring heuristic.** Markers such as
-  `missing` and `failed` also occur in successful answers ("nothing is missing").
-  Prefer an explicit outcome signal from the model, or match whole sentences.
+- **`SessionOutcome.fromReply` is still a heuristic.** It no longer counts
+  bare "failed"/"missing", but a reply that reports a problem in a confident
+  sentence can still be filed as success. Prefer an explicit outcome signal
+  from the model.
 - **`MachineRecipeService.loadAllRecipes` caches without synchronization.** Two
   agent threads can duplicate the read; the result is correct, the work is not.
 - **`SessionIndex` grows forever.** `index.jsonl` keeps one line per run with no
@@ -21,6 +22,12 @@ green (validate + test + reobf + deploy).
 
 ## Done recently
 
+- Live-log fixes: navigation gives up after 8 recoveries from one place
+  (it repeated `dug=0/32 recov=4 detours=12` at one block for 20 minutes),
+  MCP<->SRG aliasing is bidirectional, gateway errors name the setting that
+  actually failed and a per-day quota is not retried.
+- Vein mining (`break_block` `vein`/`vein_radius`/`max_vein_blocks`) and
+  aerial TNT (`tnt_drop` + `tnt_strike` skill).
 - UTF-8 (not platform charset) for every persisted harness file.
 - Unique temp file per atomic write, so two live stores cannot splice a file.
 - Learned skill directories are the authoritative key; `skills-disabled/` is now

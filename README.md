@@ -89,7 +89,7 @@ The agent works in four phases:
 | LLM transport | Plain `HttpURLConnection` against any OpenAI-compatible chat-completions gateway |
 | Serialization | Gson |
 | Boilerplate | Lombok |
-| Tests | JUnit 4 — 700+ tests |
+| Tests | JUnit 4 — 747 tests |
 | Optional client | Xaero minimap markers and an `ask_player` answer screen |
 
 ---

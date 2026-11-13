@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import ir.layercloud.cortexdrone.harness.markdown.AtomicFiles;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -21,9 +22,20 @@ import java.util.Map;
  */
 final class SessionIndex {
     private static final int MAX_HISTORY = 200;
+    /**
+     * Lines kept in {@code index.jsonl}. Older lines are dropped from the cache
+     * file; their session JSON/Markdown transcripts remain on disk.
+     */
+    static final int MAX_LINES = 5000;
+    /**
+     * Appends between trim checks; trimming re-reads the file, so it must not
+     * run on every finished task.
+     */
+    static final int TRIM_CHECK_INTERVAL = 64;
     private static final Gson COMPACT = new Gson();
 
     private final File indexFile;
+    private int appendsSinceTrim;
 
     SessionIndex(File indexFile) {
         this.indexFile = indexFile;
@@ -44,6 +56,38 @@ final class SessionIndex {
         } catch (Exception ignored) {
             // A failed index append must not lose the session files themselves.
         }
+        trimIfNeeded();
+    }
+
+    /**
+     * Keeps the append-only index bounded.
+     *
+     * <p>The index is a cache: the per-session JSON files are authoritative, so
+     * dropping the oldest lines is safe. It used to grow without limit (one line
+     * per task, forever) and every {@code /drone sessions list} loaded the whole
+     * file.</p>
+     */
+    private void trimIfNeeded() {
+        if (!this.indexFile.isFile()) return;
+        this.appendsSinceTrim++;
+        if (this.appendsSinceTrim < TRIM_CHECK_INTERVAL) return;
+        this.appendsSinceTrim = 0;
+        List<String> lines = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new java.io.InputStreamReader(
+                new java.io.FileInputStream(this.indexFile),
+                java.nio.charset.StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.trim().isEmpty()) lines.add(line);
+            }
+        } catch (Exception ignored) {
+            return;
+        }
+        if (lines.size() <= MAX_LINES) return;
+        List<String> kept = new ArrayList<>(lines.subList(lines.size() - MAX_LINES, lines.size()));
+        StringBuilder out = new StringBuilder(kept.size() * 160);
+        for (String line : kept) out.append(line).append('\n');
+        AtomicFiles.writeText(this.indexFile, out.toString());
     }
 
     /**

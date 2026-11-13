@@ -82,8 +82,7 @@ public final class OrdnanceTools implements ToolProvider {
                 (context, arguments) -> drop(context.controller(), arguments));
     }
 
-    private JsonObject drop(DroneController controller, JsonObject args) {
-        if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
+    private JsonObject drop(DroneController controller, JsonObject args) {        if (controller == null || controller.drone == null || controller.drone.worldObj == null) {
             return ToolJson.error("no_drone", "No active drone or world.",
                     "Spawn or link a drone before dropping TNT.", false);
         }

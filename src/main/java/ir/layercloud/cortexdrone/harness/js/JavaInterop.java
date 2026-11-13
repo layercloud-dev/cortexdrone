@@ -2,6 +2,7 @@ package ir.layercloud.cortexdrone.harness.js;
 
 import org.mozilla.javascript.*;
 
+import java.io.File;
 import java.lang.reflect.Array;
 
 /**
@@ -130,8 +131,7 @@ final class JavaInterop {
                 return raw == null ? Undefined.instance : raw.getClass().getName();
             }
         });
-        ScriptableObject.putProperty(java, "from", new BaseFunction() {
-            @Override
+        ScriptableObject.putProperty(java, "from", new BaseFunction() {            @Override
             public Object call(Context inner, Scriptable innerScope, Scriptable thisObj, Object[] args) {
                 return fromJava(inner, innerScope, args.length > 0 ? args[0] : null);
             }
@@ -145,6 +145,23 @@ final class JavaInterop {
             }
         });
         ScriptableObject.putProperty(scope, "Java", java);
+        // One-step conversion for the live failure `new java.io.File(url.getPath())`
+        // on a `file:/F:/...` URL. Kept next to Java.type because scripts reach
+        // for it while inspecting a mod jar.
+        ScriptableObject.putProperty(scope, "toFile", new BaseFunction() {
+            @Override
+            public Object call(Context inner, Scriptable innerScope, Scriptable thisObj, Object[] args) {
+                File file = JavaFiles.fileFrom(args.length > 0 ? args[0] : null);
+                return file == null ? null
+                        : inner.getWrapFactory().wrapAsJavaObject(inner, innerScope, file, File.class);
+            }
+        });
+        ScriptableObject.putProperty(scope, "toPath", new BaseFunction() {
+            @Override
+            public Object call(Context inner, Scriptable innerScope, Scriptable thisObj, Object[] args) {
+                return JavaFiles.toPath(JavaFiles.normalize(args.length > 0 ? args[0] : null));
+            }
+        });
 
         bindImports(cx, scope, loader);
     }

@@ -147,6 +147,16 @@ There is **no Node.js process, no temp file and no RPC hop**.
     - Reflection works: `Java.type("java.lang.Class").forName(...)`,
       `getDeclaredMethods()`, `Method.invoke(...)`.
     - Live objects are wrapped, so `.getClass()` and `.class` are available.
+    - `Java.type("x.Y").class` is also **constructible**: `new C(args)` and
+      `C(args)` both create an instance, and reflection members still work.
+    - Compare Java strings as `String(value) === "x"`; a wrapped `String` is
+      not a JS primitive.
+    - A code-source URL is `file:/F:/...`; convert it with `toFile(url)` or
+      `toPath(url)` instead of `new java.io.File(url.toString())`.
+    - Iterate a **copy** of a live world list
+      (`Java.from(world.loadedEntityList.slice(0))`); the server tick mutates
+      the original and an iterator over it throws
+      `ConcurrentModificationException`.
 - **Threading:** scripts run on the agent thread and Minecraft state is not
   thread safe. Read-only inspection is fine; any mutation of live objects must
   use `main(fn)`, which runs `fn` on the server thread and returns its value:

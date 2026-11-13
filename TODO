@@ -1,6 +1,6 @@
 # Remaining work
 
-State at this revision: 75 tools, 50 bundled skills, 753 tests, `./gradlew build`
+State at this revision: 75 tools, 50 bundled skills, 769 tests, `./gradlew build`
 green (validate + test + reobf + deploy).
 
 ## Open items (none blocking)
@@ -9,15 +9,19 @@ green (validate + test + reobf + deploy).
   bare "failed"/"missing", but a reply that reports a problem in a confident
   sentence can still be filed as success. Prefer an explicit outcome signal
   from the model.
-- **`MachineRecipeService.loadAllRecipes` caches without synchronization.** Two
-  agent threads can duplicate the read; the result is correct, the work is not.
-- **`SessionIndex` grows forever.** `index.jsonl` keeps one line per run with no
-  rotation; cap it once a server has thousands of sessions.
 - **`.gitignore` still excludes `docs/evidence/*.log`,** but the `docs/` tree was
   removed in the refactor. Either restore the docs or drop the stale rules.
 
 ## Done recently
 
+- Live-session JS failures: `Java.type("x.Y").class` is now constructible
+  (`new C(...)`), `toFile`/`toPath` convert a `file:` code-source URL, and every
+  harness-level failure (ambiguous overload, wrapped-object call,
+  JavaAdapter, ConcurrentModification) gets a specific hint via `JsHints`.
+- `MachineRecipeService` recipe cache is synchronized; one reflective load for
+  eight concurrent lookups (`MachineRecipeCacheTest`).
+- `sessions/index.jsonl` is trimmed to 5000 lines (`SessionIndexBoundsTest`),
+  so `/drone sessions list` no longer parses an unbounded file.
 - Persistence honesty: a store whose write fails returns null and a
   `*_not_persisted` tool error instead of `saved:true`, and rolls the in-memory
   map back (`WriteStatus`, `StorePersistenceFailureTest`).

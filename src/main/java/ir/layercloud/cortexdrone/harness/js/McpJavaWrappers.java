@@ -32,7 +32,7 @@ final class McpJavaWrappers {
     /**
      * A live Java object that also answers {@code .class} and aliased members.
      */
-    static final class ObjectWrapper extends NativeJavaObject {
+    static class ObjectWrapper extends NativeJavaObject {
         ObjectWrapper(Scriptable scope, Object javaObject, Class<?> staticType) {
             super(scope, javaObject, staticType);
         }
@@ -43,7 +43,7 @@ final class McpJavaWrappers {
                 Class<?> type = this.javaObject != null ? this.javaObject.getClass() : null;
                 Scriptable parent = getParentScope();
                 if (type != null && parent != null) {
-                    return new ObjectWrapper(parent, type, Class.class);
+                    return classHandle(parent, type);
                 }
             }
             if (this.javaObject instanceof Class && isReflectionLookup(name)) {
@@ -65,15 +65,6 @@ final class McpJavaWrappers {
             return direct;
         }
 
-        @Override
-        public boolean has(String name, Scriptable start) {
-            if ("class".equals(name) || super.has(name, start)) return true;
-            Class<?> owner = this.javaObject != null ? this.javaObject.getClass() : null;
-            String method = McpAliases.method(owner, name);
-            if (method != null && super.has(method, start)) return true;
-            String field = McpAliases.field(owner, name);
-            return field != null && super.has(field, start);
-        }
     }
 
     /**
@@ -88,7 +79,7 @@ final class McpJavaWrappers {
         private Scriptable asClassInstance() {
             Scriptable parent = getParentScope();
             return parent == null ? null
-                    : new ObjectWrapper(parent, getClassObject(), Class.class);
+                    : classHandle(parent, getClassObject());
         }
 
         @Override
@@ -121,6 +112,59 @@ final class McpJavaWrappers {
             String field = McpAliases.field(getClassObject(), name);
             return field != null && super.has(field, start);
         }
+    }
+
+    /**
+     * A {@code java.lang.Class} value that is also constructible.
+     *
+     * <p>{@code Java.type("x.Y").class} returns the {@code Class} object, and
+     * scripts then write {@code new C(...)} on it. A plain object wrapper is not
+     * a function, so Rhino answered {@code JavaAdapter requires at least one
+     * argument} / "is not a function" in the live sessions. This handle keeps
+     * every reflection member and adds a real constructor call.</p>
+     */
+    static final class ClassLiteral extends ObjectWrapper implements org.mozilla.javascript.Function {
+        private final Class<?> target;
+
+        ClassLiteral(Scriptable scope, Class<?> target) {
+            super(scope, target, Class.class);
+            this.target = target;
+        }
+
+        @Override
+        public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+            Scriptable parent = getParentScope();
+            ClassWrapper handle = new ClassWrapper(parent != null ? parent : scope, this.target);
+            return handle.construct(cx, scope, args == null ? new Object[0] : args);
+        }
+
+        @Override
+        public Scriptable construct(Context cx, Scriptable scope, Object[] args) {
+            Object created = call(cx, scope, this, args);
+            return created instanceof Scriptable ? (Scriptable) created
+                    : cx.getWrapFactory().wrapAsJavaObject(cx, scope, created, this.target);
+        }
+
+        @Override
+        public String getClassName() {
+            return "ClassLiteral";
+        }
+    }
+
+    /**
+     * The right handle for a {@code Class}: callable, reflection-aware.
+     */
+    static ObjectWrapper classHandle(Scriptable scope, Class<?> type) {
+        return new ClassLiteral(scope, type);
+    }
+
+    private static Object[] wrapArgs(Context cx, Scriptable scope, Object[] args) {
+        if (args == null || args.length == 0) return new Object[0];
+        Object[] wrapped = new Object[args.length];
+        for (int i = 0; i < args.length; i++) {
+            wrapped[i] = JavaInterop.unwrapValue(args[i]);
+        }
+        return wrapped;
     }
 
     private static boolean isReflectionLookup(String name) {

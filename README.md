@@ -89,7 +89,7 @@ The agent works in four phases:
 | LLM transport | Plain `HttpURLConnection` against any OpenAI-compatible chat-completions gateway |
 | Serialization | Gson |
 | Boilerplate | Lombok |
-| Tests | JUnit 4 — 753 tests |
+| Tests | JUnit 4 — 769 tests |
 | Optional client | Xaero minimap markers and an `ask_player` answer screen |
 
 ---
@@ -127,6 +127,7 @@ return { broken: broken, given: drone.giveToPlayer({ filter: "iron_ore", count: 
 | `sleep(ms)` | Pause, capped at 10 seconds; tools already wait for completion |
 | `hsvToRgb(h, s, v)` | LED colour helper |
 | `main(fn)` | Run a callback on the Minecraft server thread and return its value |
+| `toFile(value)` / `toPath(value)` | Turn a `file:` code-source URL into a path (Windows-safe) |
 | `Java.type(...)`, `Java.from`, `Java.to`, `importClass`, `Packages.*` | Java interop when `allowJavaReflection` is enabled |
 
 The preprocessor handles common model syntax: `async`/`await`, optional chaining, nullish coalescing, `for (const x of ...)`, simple spread, and optional `catch` bindings. TypeScript annotations are erased before execution.

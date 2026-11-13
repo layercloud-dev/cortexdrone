@@ -39,7 +39,6 @@ public class MachineRecipeService {
 
     private final InventoryService inventoryService;
     private final List<MachineRecipeHook> hooks = new ArrayList<>();
-
     public static class NormalizedRecipe {
         String machine;
         String name;
@@ -182,7 +181,13 @@ public class MachineRecipeService {
         return arr;
     }
 
-    private List<NormalizedRecipe> loadAllRecipes() {
+    /**
+     * Cached recipe list. Every tool call can reach this from a different agent
+     * thread, so the cache fields are guarded; two threads racing the same load
+     * used to duplicate the reflective read and could publish a stale timestamp
+     * with the new list.
+     */
+    private synchronized List<NormalizedRecipe> loadAllRecipes() {
         long now = System.currentTimeMillis();
         if (this.cachedRecipes != null && now - this.cachedRecipesAtMs < RECIPE_CACHE_TTL_MS) {
             return new ArrayList<>(this.cachedRecipes);

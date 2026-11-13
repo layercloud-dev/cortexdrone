@@ -111,19 +111,30 @@ public final class LlmClient {
      * gateway briefly failing to place the request. A bad key or malformed body
      * is not, and retrying it just delays the error the player needs to see.</p>
      */
-    private static boolean isTransient(GatewayException gateway) {
+    static boolean isTransient(GatewayException gateway) {
         int code = gateway.httpCode();
-        if (code >= 500) return true;
-        if (code == 408 || code == 429) return true;
-        if (code != 403) return false;
         String message = gateway.getMessage() != null
-                ? gateway.getMessage().toLowerCase() : "";
+                ? gateway.getMessage().toLowerCase(Locale.ROOT) : "";
+        if (code == 429) {
+            // A per-day/free-tier quota is not transient: retrying seven times
+            // only burns a minute before the same error. The live journal has
+            // six sessions that ended like this.
+            if (message.contains("per-day") || message.contains("per day")
+                    || message.contains("daily") || message.contains("credits")) {
+                return false;
+            }
+            return true;
+        }
+        if (code >= 500) return true;
+        if (code == 408) return true;
+        if (code != 403) return false;
         return message.contains("model_not_available")
                 || message.contains("all_upstreams_failed")
                 || message.contains("upstream")
                 || message.contains("overload")
                 || message.contains("timeout");
     }
+
 
     /**
      * True for a dropped connection, a TLS reset or a read timeout.
@@ -352,7 +363,6 @@ public final class LlmClient {
             super(message);
             this.httpCode = httpCode;
         }
-
         public int httpCode() {
             return this.httpCode;
         }

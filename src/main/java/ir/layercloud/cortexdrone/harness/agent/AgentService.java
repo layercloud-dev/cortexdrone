@@ -134,8 +134,8 @@ public final class AgentService {
                 } catch (Throwable t) {
                     this.logger.log("LLM", controller, "LLM request failed on turn " + turn,
                             t.toString() + " key=" + LoopTracer.maskKey(this.config.getApiKey()));
-                    String message = "AI backend error: " + LoopTracer.snippet(t.toString(), 220)
-                            + ". Fix the gateway/key and re-send the task.";
+                    String message = "AI backend error: " + LlmFailureAdvice.diagnose(t.toString())
+                            + " (" + LoopTracer.snippet(t.toString(), 160) + ")";
                     finishRun(run, SessionOutcome.ERROR, "llm_error", message);
                     speak(player, controller, message);
                     return;
